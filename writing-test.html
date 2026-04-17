@@ -1,0 +1,314 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IELTS Writing Practice Test - Ultimate Dynamic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Modern CSS Reset & Variables */
+        :root {
+            --primary: #0e6150;
+            --primary-hover: #0a4a3d;
+            --bg-body: #f3f7f5;
+            --bg-surface: #ffffff;
+            --text-main: #182621;
+            --text-muted: #5a6d66;
+            --border-color: #d8e4de;
+            --danger: #c44444;
+            --success: #1f9d63;
+            --text-zoom: 1; 
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        h1, h2, h3, h4, .header-title, .prompt-section h2 { font-family: 'Sora', sans-serif; letter-spacing: -0.01em; }
+
+        /* Header */
+        header { background-color: var(--bg-surface); padding: 16px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05); z-index: 10; }
+        .header-title { font-size: 1.25rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 20px; }
+        .timer-container { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+        #timer { background: var(--bg-body); color: var(--primary); padding: 6px 16px; border-radius: 999px; border: 1px solid var(--border-color); font-variant-numeric: tabular-nums; transition: all 0.3s ease; }
+        #timer.warning { color: white; background: var(--danger); border-color: var(--danger); }
+
+        /* Container */
+        .container { display: flex; flex: 1; overflow: hidden; padding: 20px; gap: 10px; max-width: 1600px; margin: 0 auto; width: 100%; }
+        .panel { background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow-y: auto; padding: 40px; position: relative; scroll-behavior: smooth; }
+        .prompt-section { width: 40%; }
+        .writing-section { flex: 1; display: flex; flex-direction: column; }
+
+        .panel::-webkit-scrollbar { width: 8px; }
+        .panel::-webkit-scrollbar-track { background: transparent; }
+        .panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .panel::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Typography */
+        .prompt-section h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 20px; color: var(--text-main); border-bottom: 2px solid var(--bg-body); padding-bottom: 10px; }
+        .prompt-section p { margin-bottom: 15px; font-size: 1rem; line-height: 1.8; color: #334155; }
+        .task-info { background: var(--bg-body); padding: 15px; border-radius: 8px; margin-top: 20px; border-left: 4px solid var(--primary); }
+        .task-info h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 8px; }
+        .task-info ul { margin-left: 20px; }
+        .task-info li { margin: 5px 0; font-size: 0.9rem; color: var(--text-muted); }
+
+        /* Writing Area */
+        .writing-container { display: flex; flex-direction: column; gap: 15px; flex: 1; }
+        .word-count { font-size: 0.85rem; color: var(--text-muted); }
+        .writing-textarea { width: 100%; flex: 1; padding: 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; font-family: 'Poppins', sans-serif; resize: none; background: var(--bg-surface); color: var(--text-main); }
+        .writing-textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+
+        /* Submit Button */
+        .submit-area { margin-top: 20px; }
+        .submit-btn { background-color: var(--primary); color: white; border: none; padding: 14px 28px; font-size: 1.1rem; font-weight: 600; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.2s ease; }
+        .submit-btn:hover { background-color: var(--primary-hover); }
+        .submit-btn:disabled { background-color: var(--text-muted); cursor: not-allowed; }
+        #result { margin-top: 20px; padding: 16px; border-radius: 8px; font-weight: 600; font-size: 1.1rem; text-align: center; display: none; }
+        .result-good { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .result-bad { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .prompt-section, .writing-section { width: 100% !important; flex: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">
+            <span id="display-title">IELTS Academic Writing</span>
+        </div>
+        <div class="timer-container">
+            <span>Time left:</span> 
+            <span id="timer">60:00</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="panel prompt-section" id="leftPanel">
+            <h2 id="display-task-title">Writing Task</h2>
+            <div id="display-prompt-content"></div>
+        </div>
+
+        <div class="panel writing-section" id="rightPanel">
+            <form id="writingForm">
+                <div class="word-count">
+                    Word count: <span id="wordCount">0</span> / <span id="wordTarget">150</span>
+                </div>
+                
+                <textarea id="writingTextarea" class="writing-textarea" placeholder="Start typing your essay here..."></textarea>
+
+                <div class="submit-area">
+                    <button type="button" class="submit-btn" id="submitBtn" onclick="submitTest()">Submit Essay</button>
+                    <button type="button" class="submit-btn" id="continueBtn" onclick="goToNextModule()" style="display: none; margin-top: 10px;">Continue To Speaking</button>
+                    <div id="result"></div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = "prephaven_problems_writing_v1";
+        const TEST_RESULTS_KEY = "prephaven_test_results_v1";
+        const DAILY_TEST_KEY = "prephaven_daily_tests_v1";
+        const params = new URLSearchParams(window.location.search);
+        const PACKAGE_MODE = params.get("package") === "1";
+        const RETURN_TO = params.get("returnTo");
+        const DAY_VALUE = params.get("day");
+        const NEXT_URL = PACKAGE_MODE ? "speaking-test.html?package=1" : (RETURN_TO || "index.html");
+
+        const defaultProblemSet = {
+            moduleId: "writing",
+            icon: "",
+            moduleName: "Writing",
+            title: "IELTS Academic Writing",
+            taskTitle: "Task 1: Describe a Chart",
+            taskDescription: `Write a report to a university lecturer describing the information shown below.
+
+You should spend about 20 minutes on this task.
+
+Write at least 150 words.`,
+            promptContent: `<p><strong>The chart below shows the percentage of household energy use in the USA by different sectors.</strong></p>
+            
+<div class="task-info">
+    <h4>Sector breakdown:</h4>
+    <ul>
+        <li>Heating and cooling: 42%</li>
+        <li>Water heating: 17%</li>
+        <li>Appliances: 13%</li>
+        <li>Lighting: 12%</li>
+        <li>Other: 16%</li>
+    </ul>
+</div>
+
+<p style="margin-top: 20px; color: #64748b; font-size: 0.9rem;">Summarize the information by selecting and reporting the main features, and make comparisons where relevant.</p>`,
+            minimumWords: 150
+        };
+
+        let currentProblem = null;
+
+        function loadProblem() {
+            const problems = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+            if (problems.length > 0 && problems[0].promptContent && problems[0].promptContent.trim().length > 0) {
+                currentProblem = problems[0];
+            } else {
+                currentProblem = defaultProblemSet;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([defaultProblemSet]));
+            }
+            renderTest();
+        }
+
+        function renderTest() {
+            if (!currentProblem) return;
+
+            document.getElementById('display-title').innerText = currentProblem.title || "IELTS Writing";
+            document.getElementById('display-task-title').innerText = currentProblem.taskTitle || "Task";
+            document.getElementById('display-prompt-content').innerHTML = currentProblem.promptContent || "";
+            document.getElementById('wordTarget').innerText = currentProblem.minimumWords || 150;
+
+            attachListeners();
+        }
+
+        function attachListeners() {
+            const textarea = document.getElementById('writingTextarea');
+            textarea.addEventListener('input', updateWordCount);
+        }
+
+        function updateWordCount() {
+            const textarea = document.getElementById('writingTextarea');
+            const text = textarea.value.trim();
+            const words = text === '' ? 0 : text.split(/\s+/).length;
+            document.getElementById('wordCount').innerText = words;
+        }
+
+        let timeInSeconds = 3600;
+        const timerElement = document.getElementById('timer');
+        let timerInterval;
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeInSeconds = 3600;
+            timerElement.classList.remove('warning');
+            
+            timerInterval = setInterval(() => {
+                const minutes = Math.floor(timeInSeconds / 60);
+                let seconds = timeInSeconds % 60;
+                if (seconds < 10) seconds = '0' + seconds;
+                timerElement.textContent = `${minutes}:${seconds}`;
+                if (timeInSeconds <= 300) timerElement.classList.add('warning');
+                
+                if (timeInSeconds > 0) {
+                    timeInSeconds--;
+                } else {
+                    clearInterval(timerInterval);
+                    alert("Time is up! Submitting your essay.");
+                    submitTest(true);
+                }
+            }, 1000);
+        }
+
+        function goToNextModule() {
+            window.location.href = NEXT_URL;
+        }
+
+        function recordDailyModuleResult(moduleKey, scoreValue, extras) {
+            if (!DAY_VALUE) {
+                return;
+            }
+
+            const safeExtras = extras || {};
+            const store = JSON.parse(localStorage.getItem(DAILY_TEST_KEY) || "{}");
+            if (!store[DAY_VALUE]) {
+                store[DAY_VALUE] = {
+                    date: DAY_VALUE,
+                    modules: {
+                        listening: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] },
+                        reading: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] },
+                        writing: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] },
+                        speaking: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] }
+                    }
+                };
+            }
+
+            const dateEntry = store[DAY_VALUE];
+            if (!dateEntry.modules[moduleKey]) {
+                dateEntry.modules[moduleKey] = { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] };
+            }
+
+            const moduleEntry = dateEntry.modules[moduleKey];
+            moduleEntry.taken = true;
+            moduleEntry.score = scoreValue;
+            moduleEntry.attempts = (moduleEntry.attempts || 0) + 1;
+            moduleEntry.lastTakenAt = new Date().toISOString();
+            if (!Array.isArray(moduleEntry.history)) {
+                moduleEntry.history = [];
+            }
+            moduleEntry.history.push({
+                score: scoreValue,
+                timestamp: moduleEntry.lastTakenAt,
+                details: safeExtras
+            });
+
+            localStorage.setItem(DAILY_TEST_KEY, JSON.stringify(store));
+        }
+
+        function submitTest(isAutoContinue) {
+            clearInterval(timerInterval);
+
+            const textarea = document.getElementById('writingTextarea');
+            const text = textarea.value.trim();
+            const wordCount = text === '' ? 0 : text.split(/\s+/).length;
+            const minimumWords = currentProblem.minimumWords || 150;
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            
+            if (wordCount >= minimumWords) {
+                resultDiv.innerHTML = ` Essay submitted! Word count: ${wordCount} words (minimum: ${minimumWords})`;
+                resultDiv.className = 'result-good';
+            } else {
+                resultDiv.innerHTML = ` Word count too low: ${wordCount} words (minimum: ${minimumWords})`;
+                resultDiv.className = 'result-bad';
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Essay Submitted';
+            textarea.disabled = true;
+            const continueBtn = document.getElementById('continueBtn');
+
+            // Save results
+            const results = JSON.parse(localStorage.getItem(TEST_RESULTS_KEY) || "{}");
+            const writingScore = Math.max(0, Math.min(100, Math.round((wordCount / minimumWords) * 100)));
+            results["writing"] = {
+                timestamp: new Date().toISOString(),
+                score: writingScore,
+                wordCount: wordCount,
+                minimumRequired: minimumWords,
+                status: wordCount >= minimumWords ? "pass" : "fail"
+            };
+            localStorage.setItem(TEST_RESULTS_KEY, JSON.stringify(results));
+            recordDailyModuleResult("writing", writingScore, {
+                wordCount: wordCount,
+                minimumRequired: minimumWords,
+                status: wordCount >= minimumWords ? "pass" : "fail"
+            });
+
+            if (PACKAGE_MODE) {
+                if (isAutoContinue) {
+                    setTimeout(goToNextModule, 900);
+                } else {
+                    continueBtn.style.display = 'block';
+                }
+            } else {
+                setTimeout(goToNextModule, 1200);
+            }
+        }
+
+        // Init
+        loadProblem();
+        startTimer();
+    </script>
+</body>
+</html>
+
+

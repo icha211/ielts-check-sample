@@ -1,0 +1,815 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrepHaven | Daily Practice</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f3f7f5;
+            --surface: #ffffff;
+            --text: #182621;
+            --muted: #5a6d66;
+            --border: #d8e4de;
+            --listening: #2c9bb4;
+            --reading: #2f7c48;
+            --writing: #d79245;
+            --speaking: #af566f;
+            --full: #2f4f77;
+            --shadow: 0 12px 28px rgba(14, 97, 80, 0.11);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 7% 8%, rgba(157, 225, 111, 0.2), transparent 35%),
+                        radial-gradient(circle at 95% 2%, rgba(31, 138, 112, 0.2), transparent 30%),
+                        var(--bg);
+            color: var(--text);
+            font-family: "Poppins", sans-serif;
+            padding: 0;
+        }
+
+        .app-shell {
+            display: grid;
+            grid-template-columns: 260px minmax(0, 1fr);
+            min-height: 100vh;
+            transition: grid-template-columns 0.2s ease;
+        }
+
+        body.sidebar-collapsed .app-shell {
+            grid-template-columns: 90px minmax(0, 1fr);
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.9);
+            border-right: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            padding: 1.15rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+
+        .brand-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(140deg, #0e6150, #1f8a70);
+            color: #fff;
+            font-size: 0.86rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+
+        .brand-copy strong {
+            display: block;
+            font-family: "Sora", sans-serif;
+            font-size: 1.42rem;
+            line-height: 1;
+        }
+
+        .brand-copy span {
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        .nav-link {
+            border: 1px solid transparent;
+            border-radius: 12px;
+            min-height: 44px;
+            padding: 0.6rem 0.75rem;
+            color: var(--text);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            font-weight: 700;
+        }
+
+        .nav-emoji {
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            background: #e7f3ee;
+            color: #1e5b4b;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+        }
+
+        .nav-link.active,
+        .nav-link:hover {
+            background: #eef5f1;
+            border-color: #d6e1ee;
+        }
+
+        .sidebar-toggle {
+            margin-top: auto;
+            border: 1px solid #d6e1ee;
+            background: #fff;
+            border-radius: 10px;
+            min-height: 40px;
+            padding: 0.45rem 0.65rem;
+            font: inherit;
+            font-weight: 700;
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .content-wrap {
+            padding: 1.25rem;
+        }
+
+        .page {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            gap: 1rem;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
+            padding: 1.25rem;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 210px 1fr;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .cover {
+            border-radius: 16px;
+            min-height: 140px;
+            background: linear-gradient(140deg, #11345a 0%, #19416a 60%, #255686 100%);
+            color: #fff;
+            padding: 1rem;
+            display: grid;
+            align-content: end;
+            font-family: "Sora", sans-serif;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            line-height: 1.05;
+            font-size: 1.85rem;
+        }
+
+        .hero h1 {
+            font-family: "Sora", sans-serif;
+            font-size: clamp(1.7rem, 4vw, 3rem);
+            line-height: 1.1;
+        }
+
+        .hero-meta {
+            color: #6e7f78;
+            font-weight: 700;
+            margin: 0.35rem 0;
+        }
+
+        .hero-stats {
+            display: grid;
+            gap: 0.35rem;
+            color: #2f4868;
+            font-weight: 600;
+        }
+
+        .top-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 0.8rem;
+        }
+
+        .back-btn {
+            border: 1px solid var(--border);
+            background: #0e6150;
+            color: #fff;
+            border-radius: 12px;
+            min-height: 44px;
+            padding: 0.55rem 1rem;
+            font: inherit;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.18s ease, background-color 0.18s ease;
+        }
+
+        .back-btn:hover {
+            background: #0a4a3d;
+            transform: translateY(-1px);
+        }
+
+        .practice-wrap h2 {
+            font-family: "Sora", sans-serif;
+            font-size: 2rem;
+            margin-bottom: 0.8rem;
+            color: #184c3f;
+        }
+
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.8rem;
+        }
+
+        .module-card {
+            border-radius: 18px;
+            border: 1px solid var(--border);
+            padding: 0.9rem;
+            background: #fff;
+            display: grid;
+            gap: 0.75rem;
+            min-height: 220px;
+        }
+
+        .module-card h3 {
+            font-size: 1.55rem;
+            line-height: 1;
+            font-family: "Sora", sans-serif;
+        }
+
+        .module-card p {
+            color: var(--muted);
+            font-size: 0.87rem;
+        }
+
+        .module-card.listening { border-color: #bbe5ec; }
+        .module-card.reading { border-color: #b9dcc6; }
+        .module-card.writing { border-color: #f2d9b8; }
+        .module-card.speaking { border-color: #ebcad3; }
+
+        .score-ring {
+            width: 92px;
+            height: 92px;
+            border-radius: 50%;
+            border: 5px solid #d9e4f1;
+            display: grid;
+            place-items: center;
+            margin: 0 auto;
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #1c3a5a;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 999px;
+            min-height: 44px;
+            padding: 0.55rem 1rem;
+            font: inherit;
+            font-size: 1.02rem;
+            font-weight: 800;
+            color: #fff;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .btn.listening { background: var(--listening); }
+        .btn.reading { background: var(--reading); }
+        .btn.writing { background: var(--writing); }
+        .btn.speaking { background: var(--speaking); }
+
+        .mini-row {
+            display: flex;
+            justify-content: center;
+            gap: 0.55rem;
+        }
+
+        .mini-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid #cad8e8;
+            background: #fff;
+            color: #435f80;
+            font-size: 1rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mini-btn[disabled] {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .full-box {
+            margin-top: 0.8rem;
+            border: 1px solid #c4d4e6;
+            border-radius: 18px;
+            background: #eff4fa;
+            padding: 0.8rem;
+            display: grid;
+            grid-template-columns: 1fr minmax(170px, 320px) auto;
+            gap: 0.8rem;
+            align-items: center;
+        }
+
+        .full-box strong { font-size: 2rem; color: #2d4f76; font-family: "Sora", sans-serif; }
+
+        .progress {
+            height: 16px;
+            border-radius: 999px;
+            border: 2px solid #587aa2;
+            background: #fff;
+            position: relative;
+        }
+
+        .progress span {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #29466a;
+        }
+
+        .full-start {
+            border: none;
+            border-radius: 999px;
+            background: var(--full);
+            color: #fff;
+            min-height: 48px;
+            padding: 0.55rem 1.5rem;
+            font: inherit;
+            background: #0e6150;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(20, 38, 59, 0.45);
+            display: grid;
+            place-items: center;
+            padding: 1rem;
+        }
+
+        .modal.hidden { display: none; }
+
+        .modal-card {
+            width: min(760px, 100%);
+            max-height: 84vh;
+            overflow: auto;
+            border-radius: 16px;
+            border: 1px solid #cad7e8;
+            background: #fff;
+            padding: 1rem;
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .modal-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .modal-top h4 {
+            font-family: "Sora", sans-serif;
+            font-size: 1.3rem;
+            color: #24415f;
+        }
+
+        .close-btn {
+            border: 1px solid #c2d2e5;
+            background: #fff;
+            border-radius: 10px;
+            min-height: 40px;
+            padding: 0.4rem 0.8rem;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .set-group {
+            border: 1px solid #dbe4f0;
+            border-radius: 12px;
+            padding: 0.75rem;
+            background: #fbfdff;
+        }
+
+        .set-group h5 {
+            margin-bottom: 0.3rem;
+            color: #2d4c70;
+        }
+
+        .set-group p {
+            margin-bottom: 0.35rem;
+            color: #5f7795;
+            font-size: 0.88rem;
+        }
+
+        .set-group ul {
+            padding-left: 1rem;
+            display: grid;
+            gap: 0.3rem;
+            color: #324a66;
+            font-size: 0.92rem;
+        }
+
+        @media (max-width: 920px) {
+            .app-shell {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .sidebar-toggle {
+                display: none;
+            }
+
+            .module-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .full-box { grid-template-columns: 1fr; }
+            .hero { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 620px) {
+            .module-grid { grid-template-columns: 1fr; }
+            .cover { min-height: 110px; font-size: 1.55rem; }
+        }
+
+        body.sidebar-collapsed .brand-copy,
+        body.sidebar-collapsed .nav-text,
+        body.sidebar-collapsed .toggle-text {
+            display: none;
+        }
+
+        body.sidebar-collapsed .nav-link,
+        body.sidebar-collapsed .sidebar-toggle {
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="appSidebar">
+            <div class="brand">
+                <div class="brand-badge">PH</div>
+                <div class="brand-copy">
+                    <strong>PrepHaven</strong>
+                    <span>IELTS with clear feedback</span>
+                </div>
+            </div>
+            <a class="nav-link" href="index.html"><span class="nav-emoji">DB</span><span class="nav-text">Dashboard</span></a>
+            <a class="nav-link active" href="study-plan.html"><span class="nav-emoji">SP</span><span class="nav-text">Study Plan</span></a>
+            <a class="nav-link" href="developer.html"><span class="nav-emoji">DV</span><span class="nav-text">Developer Console</span></a>
+            <button class="sidebar-toggle" id="sidebarToggleBtn" type="button"><span class="toggle-icon">&lt;&gt;</span> <span class="toggle-text">Minimize</span></button>
+        </aside>
+        <div class="content-wrap">
+    <main class="page">
+        <section class="panel">
+            <div class="hero">
+                <div class="cover">IELTS MOCK TEST</div>
+                <div>
+                    <h1 id="dayTitle">IELTS Mock Test</h1>
+                    <p class="hero-meta">Rating 4.3 / 5.0 (1,056 votes)</p>
+                    <div class="hero-stats">
+                        <span id="publishedLine">Published on: --</span>
+                        <span id="takenLine">Tests taken: 0</span>
+                    </div>
+                    <div class="top-actions"><a class="back-btn" href="study-plan.html">Back to Study Plan</a></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel practice-wrap">
+            <h2>Practice Test</h2>
+            <div class="module-grid" id="moduleGrid"></div>
+            <div class="full-box">
+                <strong>Full Test</strong>
+                <div class="progress"><span id="fullProgressText">0%</span></div>
+                <button class="full-start" type="button" onclick="window.location.href='full-package-test.html'">Start Full Test</button>
+            </div>
+        </section>
+    </main>
+        </div>
+    </div>
+
+    <div class="modal hidden" id="modal" aria-hidden="true">
+        <div class="modal-card">
+            <div class="modal-top">
+                <h4 id="modalTitle">Preview</h4>
+                <button class="close-btn" type="button" onclick="closeModal()">Close</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script>
+        const SIDEBAR_KEY = "prephaven_sidebar_collapsed_v1";
+        const TEST_RESULTS_KEY = "prephaven_test_results_v1";
+        const DAILY_TEST_KEY = "prephaven_daily_tests_v1";
+        const MODULES = ["listening", "reading", "writing", "speaking"];
+
+        const MODULE_META = {
+            listening: { icon: "L", label: "Listening", colorClass: "listening", url: "listening-test.html" },
+            reading: { icon: "R", label: "Reading", colorClass: "reading", url: "reading-test.html" },
+            writing: { icon: "W", label: "Writing", colorClass: "writing", url: "writing-test.html" },
+            speaking: { icon: "S", label: "Speaking", colorClass: "speaking", url: "speaking-test.html" }
+        };
+
+        const SAMPLE_PROBLEM_SETS = {
+            listening: {
+                title: "Listening Sample Set",
+                groups: [{ title: "Section 1", instruction: "Answer based on travel booking conversation.", questions: ["Destination of the customer", "Length of stay", "Preferred accommodation"] }]
+            },
+            reading: {
+                title: "Reading Sample Set",
+                groups: [{ title: "Passage Questions", instruction: "True / False / Not Given and short answers.", questions: ["Drais invention propelled by pedals?", "Nickname of velocipede", "Who invented pneumatic tire?"] }]
+            },
+            writing: {
+                title: "Writing Sample Set",
+                groups: [{ title: "Task 1", instruction: "Write at least 150 words from chart prompt.", questions: ["Summarize key features", "Compare major sectors", "Give overview statement"] }]
+            },
+            speaking: {
+                title: "Speaking Sample Set",
+                groups: [{ title: "Parts 1-3", instruction: "Interview, cue card, and follow-up discussion.", questions: ["Part 1 personal questions", "Part 2 cue card response", "Part 3 analytical discussion"] }]
+            }
+        };
+
+        const params = new URLSearchParams(window.location.search);
+        const DATE_PARAM = params.get("date") || toDateId(new Date());
+
+        function initSidebar() {
+            const toggleBtn = document.getElementById("sidebarToggleBtn");
+            const collapsed = localStorage.getItem(SIDEBAR_KEY) === "1";
+            if (collapsed) {
+                document.body.classList.add("sidebar-collapsed");
+            }
+            toggleBtn.addEventListener("click", () => {
+                const next = !document.body.classList.contains("sidebar-collapsed");
+                document.body.classList.toggle("sidebar-collapsed", next);
+                localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0");
+            });
+        }
+
+        function safeParse(raw, fallback) {
+            try {
+                return JSON.parse(raw) || fallback;
+            } catch (error) {
+                return fallback;
+            }
+        }
+
+        function toDateId(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+            const d = String(dateObj.getDate()).padStart(2, "0");
+            return `${y}-${m}-${d}`;
+        }
+
+        function formatLongDate(dateId) {
+            const [y, m, d] = dateId.split("-").map(Number);
+            const dt = new Date(y, m - 1, d);
+            const monthLabel = dt.toLocaleString("en-US", { month: "long" });
+            return `${d} ${monthLabel} ${y}`;
+        }
+
+        function getDailyStore() {
+            return safeParse(localStorage.getItem(DAILY_TEST_KEY), {});
+        }
+
+        function saveDailyStore(store) {
+            localStorage.setItem(DAILY_TEST_KEY, JSON.stringify(store));
+        }
+
+        function getDefaultModuleState() {
+            return { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] };
+        }
+
+        function ensureDateState(store, dateKey) {
+            if (!store[dateKey]) {
+                store[dateKey] = {
+                    date: dateKey,
+                    modules: {
+                        listening: getDefaultModuleState(),
+                        reading: getDefaultModuleState(),
+                        writing: getDefaultModuleState(),
+                        speaking: getDefaultModuleState()
+                    }
+                };
+            }
+            MODULES.forEach((module) => {
+                if (!store[dateKey].modules[module]) {
+                    store[dateKey].modules[module] = getDefaultModuleState();
+                }
+            });
+            return store[dateKey];
+        }
+
+        function getReturnUrl() {
+            return `practice-day.html?date=${encodeURIComponent(DATE_PARAM)}`;
+        }
+
+        function openKeyPreview(module) {
+            const data = SAMPLE_PROBLEM_SETS[module];
+            if (!data) return;
+
+            const title = document.getElementById("modalTitle");
+            const body = document.getElementById("modalBody");
+            title.textContent = data.title;
+            body.innerHTML = "";
+
+            data.groups.forEach((group) => {
+                const section = document.createElement("section");
+                section.className = "set-group";
+                section.innerHTML = `<h5>${group.title}</h5><p>${group.instruction}</p>`;
+
+                const ul = document.createElement("ul");
+                group.questions.forEach((q) => {
+                    const li = document.createElement("li");
+                    li.textContent = q;
+                    ul.appendChild(li);
+                });
+                section.appendChild(ul);
+                body.appendChild(section);
+            });
+
+            document.getElementById("modal").classList.remove("hidden");
+            document.getElementById("modal").setAttribute("aria-hidden", "false");
+        }
+
+        function openPreviousDetails(module, moduleState) {
+            if (!moduleState.taken) return;
+            const title = document.getElementById("modalTitle");
+            const body = document.getElementById("modalBody");
+            title.textContent = `${MODULE_META[module].label} - Previous Test Details`;
+
+            const history = Array.isArray(moduleState.history) ? moduleState.history : [];
+            const lastTaken = moduleState.lastTakenAt ? new Date(moduleState.lastTakenAt).toLocaleString() : "Unknown";
+
+            body.innerHTML = `
+                <section class="set-group">
+                    <h5>Latest Result</h5>
+                    <p>Score: ${typeof moduleState.score === "number" ? `${moduleState.score}%` : "--"}</p>
+                    <p>Attempts: ${moduleState.attempts || 0}</p>
+                    <p>Last Taken: ${lastTaken}</p>
+                </section>
+            `;
+
+            if (history.length > 0) {
+                const historyBox = document.createElement("section");
+                historyBox.className = "set-group";
+                historyBox.innerHTML = "<h5>Attempt History</h5>";
+
+                const ul = document.createElement("ul");
+                history.slice().reverse().forEach((attempt, index) => {
+                    const li = document.createElement("li");
+                    const when = attempt.timestamp ? new Date(attempt.timestamp).toLocaleString() : "Unknown";
+                    li.textContent = `#${history.length - index} - ${attempt.score}% (${when})`;
+                    ul.appendChild(li);
+                });
+                historyBox.appendChild(ul);
+                body.appendChild(historyBox);
+            }
+
+            document.getElementById("modal").classList.remove("hidden");
+            document.getElementById("modal").setAttribute("aria-hidden", "false");
+        }
+
+        function closeModal() {
+            document.getElementById("modal").classList.add("hidden");
+            document.getElementById("modal").setAttribute("aria-hidden", "true");
+        }
+
+        function restartModule(module) {
+            const store = getDailyStore();
+            const dateState = ensureDateState(store, DATE_PARAM);
+            dateState.modules[module] = getDefaultModuleState();
+            saveDailyStore(store);
+            openTestPage(module);
+        }
+
+        function openTestPage(module) {
+            const target = MODULE_META[module].url;
+            const testParams = new URLSearchParams({ day: DATE_PARAM, returnTo: getReturnUrl() });
+            window.location.href = `${target}?${testParams.toString()}`;
+        }
+
+        function getTakenCount(dateState) {
+            return MODULES.filter((module) => dateState.modules[module].taken).length;
+        }
+
+        function renderModules() {
+            const testResults = safeParse(localStorage.getItem(TEST_RESULTS_KEY), {});
+            const store = getDailyStore();
+            const dateState = ensureDateState(store, DATE_PARAM);
+            saveDailyStore(store);
+
+            document.getElementById("dayTitle").textContent = `IELTS Mock Test ${formatLongDate(DATE_PARAM)}`;
+            document.getElementById("publishedLine").textContent = `Published on: ${formatLongDate(DATE_PARAM)}`;
+
+            const takenCount = getTakenCount(dateState);
+            document.getElementById("takenLine").textContent = `Tests taken: ${takenCount}`;
+            document.getElementById("fullProgressText").textContent = `${Math.round((takenCount / MODULES.length) * 100)}%`;
+
+            const grid = document.getElementById("moduleGrid");
+            grid.innerHTML = "";
+
+            MODULES.forEach((module) => {
+                const meta = MODULE_META[module];
+                const moduleState = dateState.modules[module];
+                const latest = testResults[module] && typeof testResults[module].score === "number" ? Math.round(testResults[module].score) : null;
+
+                if (!moduleState.taken && latest !== null) {
+                    moduleState.score = latest;
+                }
+
+                const card = document.createElement("article");
+                card.className = `module-card ${meta.colorClass}`;
+
+                const title = document.createElement("h3");
+                title.textContent = `${meta.icon} ${meta.label}`;
+                card.appendChild(title);
+
+                const hint = document.createElement("p");
+                hint.textContent = moduleState.taken ? "Completed for this date." : "Start this module for the selected date.";
+                card.appendChild(hint);
+
+                const score = document.createElement("div");
+                score.className = "score-ring";
+                score.textContent = moduleState.taken && typeof moduleState.score === "number" ? `${moduleState.score}%` : "--";
+                card.appendChild(score);
+
+                const action = document.createElement("button");
+                action.type = "button";
+                action.className = `btn ${meta.colorClass}`;
+                action.textContent = moduleState.taken ? "Retake" : "Take Test";
+                action.addEventListener("click", () => {
+                    if (moduleState.taken) {
+                        restartModule(module);
+                    } else {
+                        openTestPage(module);
+                    }
+                });
+                card.appendChild(action);
+
+                const miniRow = document.createElement("div");
+                miniRow.className = "mini-row";
+
+                const keyBtn = document.createElement("button");
+                keyBtn.type = "button";
+                keyBtn.className = "mini-btn";
+                keyBtn.title = "View key answer preview";
+                keyBtn.textContent = "Key";
+                keyBtn.addEventListener("click", () => openKeyPreview(module));
+                miniRow.appendChild(keyBtn);
+
+                const detailBtn = document.createElement("button");
+                detailBtn.type = "button";
+                detailBtn.className = "mini-btn";
+                detailBtn.title = "View previous test details";
+                detailBtn.textContent = "Logs";
+                detailBtn.disabled = !moduleState.taken;
+                detailBtn.addEventListener("click", () => openPreviousDetails(module, moduleState));
+                miniRow.appendChild(detailBtn);
+
+                card.appendChild(miniRow);
+                grid.appendChild(card);
+            });
+
+            saveDailyStore(store);
+        }
+
+        document.getElementById("modal").addEventListener("click", function (event) {
+            if (event.target.id === "modal") {
+                closeModal();
+            }
+        });
+
+        initSidebar();
+        renderModules();
+    </script>
+</body>
+</html>
+
+
+

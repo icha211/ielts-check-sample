@@ -1,0 +1,777 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrepHaven | Study Plan Calendar</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0e6150;
+            --primary-dark: #0a4a3d;
+            --secondary: #1f8a70;
+            --accent: #9de16f;
+            --surface: #ffffff;
+            --bg: #f3f7f5;
+            --text: #182621;
+            --muted: #5a6d66;
+            --border: #d8e4de;
+            --shadow: 0 12px 28px rgba(14, 97, 80, 0.11);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            min-height: 100vh;
+            font-family: "Poppins", sans-serif;
+            color: var(--text);
+            background: radial-gradient(circle at 8% 8%, rgba(157, 225, 111, 0.2), transparent 32%),
+                        radial-gradient(circle at 90% 3%, rgba(31, 138, 112, 0.2), transparent 30%),
+                        var(--bg);
+            line-height: 1.5;
+            padding: 0;
+        }
+
+        .app-shell {
+            display: grid;
+            grid-template-columns: 260px minmax(0, 1fr);
+            min-height: 100vh;
+            transition: grid-template-columns 0.2s ease;
+        }
+
+        body.sidebar-collapsed .app-shell {
+            grid-template-columns: 90px minmax(0, 1fr);
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.9);
+            border-right: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            padding: 1.15rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+
+        .brand-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(140deg, var(--primary), var(--secondary));
+            color: #fff;
+            font-size: 0.86rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+
+        .brand-copy strong {
+            display: block;
+            font-family: "Sora", sans-serif;
+            font-size: 1.42rem;
+            line-height: 1;
+        }
+
+        .brand-copy span {
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        .nav-link {
+            border: 1px solid transparent;
+            border-radius: 12px;
+            min-height: 44px;
+            padding: 0.6rem 0.75rem;
+            color: var(--text);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            font-weight: 700;
+        }
+
+        .nav-emoji {
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            background: #e7f3ee;
+            color: #1e5b4b;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+        }
+
+        .nav-link.active,
+        .nav-link:hover {
+            background: #eef5f1;
+            border-color: var(--border);
+        }
+
+        .sidebar-toggle {
+            margin-top: auto;
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 10px;
+            min-height: 40px;
+            padding: 0.45rem 0.65rem;
+            font: inherit;
+            font-weight: 700;
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .content-wrap {
+            padding: 1rem;
+        }
+
+        .page {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            gap: 1rem;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
+            padding: 1rem;
+        }
+
+        .study-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .study-topbar h1 {
+            font-family: "Sora", sans-serif;
+            font-size: clamp(1.45rem, 2.8vw, 2.1rem);
+            line-height: 1.15;
+        }
+
+        .study-topbar p { color: var(--muted); margin-top: 0.3rem; }
+
+        .btn {
+            border: 1px solid var(--border);
+            background: var(--primary);
+            color: #fff;
+            border-radius: 12px;
+            min-height: 44px;
+            padding: 0.55rem 1rem;
+            font: inherit;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.18s ease, background-color 0.18s ease;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.8rem;
+        }
+
+        .metric {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: #fff;
+            padding: 0.85rem;
+        }
+
+        .metric small {
+            color: var(--muted);
+            font-weight: 700;
+            display: block;
+            margin-bottom: 0.35rem;
+        }
+
+        .metric strong {
+            font-size: 1.35rem;
+            line-height: 1;
+        }
+
+        .metric span {
+            display: block;
+            margin-top: 0.35rem;
+            color: var(--muted);
+            font-size: 0.83rem;
+        }
+
+        .analysis details {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.65rem 0.8rem;
+            background: #fbfefd;
+        }
+
+        .analysis summary {
+            list-style: none;
+            cursor: pointer;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .analysis summary::-webkit-details-marker { display: none; }
+
+        .analysis-grid {
+            margin-top: 0.75rem;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.7rem;
+        }
+
+        .analysis-box {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fff;
+            padding: 0.75rem;
+        }
+
+        .analysis-box h4 { font-size: 0.92rem; margin-bottom: 0.4rem; }
+
+        .analysis-box ul {
+            padding-left: 1rem;
+            display: grid;
+            gap: 0.25rem;
+            color: #304238;
+            font-size: 0.88rem;
+        }
+
+        .month-overview-head {
+            margin-bottom: 0.75rem;
+        }
+
+        .month-overview-head h3 {
+            font-family: "Sora", sans-serif;
+            font-size: 1.3rem;
+        }
+
+        .month-overview-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.8rem;
+        }
+
+        .month-btn {
+            border: 2px solid transparent;
+            border-radius: 18px;
+            min-height: 108px;
+            background: #fff;
+            box-shadow: var(--shadow);
+            padding: 1rem;
+            font: inherit;
+            text-transform: uppercase;
+            font-size: 1.12rem;
+            font-weight: 800;
+            color: #213129;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            letter-spacing: 0.3px;
+        }
+
+        .month-btn.active {
+            background: #eff8f4;
+            color: #145142;
+            border-color: #79bf9f;
+        }
+
+        .month-arrow {
+            font-size: 2rem;
+            color: #7e9d91;
+        }
+
+        .calendar-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.7rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .calendar-head h3 {
+            font-family: "Sora", sans-serif;
+            font-size: 1.85rem;
+        }
+
+        .weekday-row,
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 0.45rem;
+        }
+
+        .weekday {
+            text-align: center;
+            font-weight: 800;
+            color: #5a6d66;
+            font-size: 0.95rem;
+            padding: 0.22rem;
+        }
+
+        .calendar-grid { margin-top: 0.45rem; }
+
+        .day-placeholder,
+        .day-card {
+            min-height: 128px;
+            border-radius: 12px;
+            border: 1px solid #cfe0d8;
+            background: #fff;
+            padding: 0.7rem;
+        }
+
+        .day-placeholder {
+            background: #f6f8f7;
+            border-style: dashed;
+        }
+
+        .day-card {
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .day-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 16px rgba(67, 95, 129, 0.15);
+        }
+
+        .day-card.done {
+            border-color: #79bf9f;
+            background: linear-gradient(180deg, #ffffff 0%, #f0faf5 100%);
+        }
+
+        .day-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .day-index {
+            font-size: 2rem;
+            line-height: 1;
+            font-weight: 800;
+            color: #34594d;
+        }
+
+        .done-chip {
+            font-size: 0.72rem;
+            border-radius: 999px;
+            padding: 0.14rem 0.45rem;
+            background: #e8f4ef;
+            color: #2e7d5a;
+            font-weight: 700;
+        }
+
+        .task-pills {
+            display: flex;
+            gap: 0.35rem;
+            align-items: center;
+            margin-top: 0.25rem;
+        }
+
+        .task-pill {
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            background: #e5e9ef;
+            color: #33465f;
+            border: 1px solid transparent;
+        }
+
+        .task-pill.done { color: #fff; }
+        .task-pill.listening.done { background: #2c9bb4; }
+        .task-pill.reading.done { background: #2f7c48; }
+        .task-pill.writing.done { background: #d79245; }
+        .task-pill.speaking.done { background: #af566f; }
+
+        .legend {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.8rem;
+            font-size: 0.81rem;
+            color: var(--muted);
+        }
+
+        @media (max-width: 1050px) {
+            .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .analysis-grid { grid-template-columns: 1fr; }
+            .month-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 760px) {
+            .app-shell {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .sidebar-toggle {
+                display: none;
+            }
+
+            .summary-grid { grid-template-columns: 1fr; }
+            .calendar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .weekday-row { display: none; }
+            .month-overview-grid { grid-template-columns: 1fr; }
+            .month-btn { min-height: 90px; }
+            .day-index { font-size: 1.45rem; }
+        }
+
+        body.sidebar-collapsed .brand-copy,
+        body.sidebar-collapsed .nav-text,
+        body.sidebar-collapsed .toggle-text {
+            display: none;
+        }
+
+        body.sidebar-collapsed .nav-link,
+        body.sidebar-collapsed .sidebar-toggle {
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="appSidebar">
+            <div class="brand">
+                <div class="brand-badge">PH</div>
+                <div class="brand-copy">
+                    <strong>PrepHaven</strong>
+                    <span>IELTS with clear feedback</span>
+                </div>
+            </div>
+            <a class="nav-link" href="index.html"><span class="nav-emoji">DB</span><span class="nav-text">Dashboard</span></a>
+            <a class="nav-link active" href="study-plan.html"><span class="nav-emoji">SP</span><span class="nav-text">Study Plan</span></a>
+            <a class="nav-link" href="developer.html"><span class="nav-emoji">DV</span><span class="nav-text">Developer Console</span></a>
+            <button class="sidebar-toggle" id="sidebarToggleBtn" type="button"><span class="toggle-icon">&lt;&gt;</span> <span class="toggle-text">Minimize</span></button>
+        </aside>
+        <div class="content-wrap">
+    <main class="page">
+        <header class="study-topbar panel">
+            <div>
+                <h1>Monthly IELTS Study Plan Calendar</h1>
+                <p>Select a month first, then continue to a dedicated schedule page.</p>
+            </div>
+            <a class="btn" href="index.html">Back To Dashboard</a>
+        </header>
+
+        <section class="panel" aria-label="Study plan summary metrics">
+            <div class="summary-grid">
+                <article class="metric">
+                    <small>Target Score</small>
+                    <strong id="targetScoreValue">7.0</strong>
+                    <span>From your selected goal</span>
+                </article>
+                <article class="metric">
+                    <small>Actual Score</small>
+                    <strong id="actualScoreValue">--</strong>
+                    <span>Based on latest module results</span>
+                </article>
+                <article class="metric">
+                    <small>Study Streak</small>
+                    <strong id="streakValue">0 days</strong>
+                    <span>Consecutive full-package days</span>
+                </article>
+                <article class="metric">
+                    <small>Plan Completion</small>
+                    <strong id="completionValue">0%</strong>
+                    <span id="completionSub">0 / 0 tasks completed</span>
+                </article>
+            </div>
+        </section>
+
+        <section class="panel analysis" aria-label="Study plan analysis dropdown">
+            <details open>
+                <summary>
+                    <span>Plan Analysis (Dropdown)</span>
+                    <span id="analysisHint">Updated from your progress</span>
+                </summary>
+                <div class="analysis-grid">
+                    <article class="analysis-box">
+                        <h4>Strength Areas</h4>
+                        <ul id="strengthList"></ul>
+                    </article>
+                    <article class="analysis-box">
+                        <h4>Need More Work</h4>
+                        <ul id="weaknessList"></ul>
+                    </article>
+                    <article class="analysis-box">
+                        <h4>This Month Focus</h4>
+                        <ul id="focusList"></ul>
+                    </article>
+                </div>
+            </details>
+        </section>
+
+        <section class="panel" aria-label="Months overview">
+            <div class="month-overview-head">
+                <h3>Choose Study Plan Month</h3>
+            </div>
+            <div class="month-overview-grid" id="monthButtons"></div>
+        </section>
+
+    </main>
+        </div>
+    </div>
+
+    <script>
+        const SIDEBAR_KEY = "prephaven_sidebar_collapsed_v1";
+
+        function initSidebar() {
+            const toggleBtn = document.getElementById("sidebarToggleBtn");
+            const collapsed = localStorage.getItem(SIDEBAR_KEY) === "1";
+            if (collapsed) {
+                document.body.classList.add("sidebar-collapsed");
+            }
+            toggleBtn.addEventListener("click", () => {
+                const next = !document.body.classList.contains("sidebar-collapsed");
+                document.body.classList.toggle("sidebar-collapsed", next);
+                localStorage.setItem(SIDEBAR_KEY, next ? "1" : "0");
+            });
+        }
+
+        const DASHBOARD_KEY = "prephaven_dashboard_v1";
+        const TEST_RESULTS_KEY = "prephaven_test_results_v1";
+        const DAILY_TEST_KEY = "prephaven_daily_tests_v1";
+        const MODULES = ["listening", "reading", "writing", "speaking"];
+        const MONTH_LABELS_ID = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+        const MODULE_ICONS = { listening: "L", reading: "R", writing: "W", speaking: "S" };
+
+        let months = [];
+        let selectedMonthId = "";
+
+        function safeParse(raw, fallback) {
+            try {
+                return JSON.parse(raw) || fallback;
+            } catch (error) {
+                return fallback;
+            }
+        }
+
+        function toBand(scoreOutOf100) {
+            const band = Math.max(0, Math.min(9, (scoreOutOf100 / 100) * 9));
+            return Math.round(band * 10) / 10;
+        }
+
+        function monthIdFromDate(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+            return `${y}-${m}`;
+        }
+
+        function dateId(year, monthIndex, day) {
+            return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        }
+
+        function buildMonths(count) {
+            const list = [];
+            const start = new Date(new Date().getFullYear(), 0, 1);
+
+            for (let i = 0; i < count; i++) {
+                const cursor = new Date(start.getFullYear(), start.getMonth() + i, 1);
+                const year = cursor.getFullYear();
+                const month = cursor.getMonth();
+                const dayCount = new Date(year, month + 1, 0).getDate();
+                list.push({
+                    id: monthIdFromDate(cursor),
+                    label: MONTH_LABELS_ID[month],
+                    labelWithYear: `${MONTH_LABELS_ID[month]} ${year}`,
+                    year,
+                    month,
+                    dayCount
+                });
+            }
+
+            return list;
+        }
+
+        function getDailyStore() {
+            return safeParse(localStorage.getItem(DAILY_TEST_KEY), {});
+        }
+
+        function getDateState(dateKey) {
+            const store = getDailyStore();
+            return store[dateKey] || null;
+        }
+
+        function isModuleDone(dateKey, module) {
+            const dateState = getDateState(dateKey);
+            return Boolean(dateState && dateState.modules && dateState.modules[module] && dateState.modules[module].taken);
+        }
+
+        function isFullPackageDay(dateKey) {
+            return MODULES.every((module) => isModuleDone(dateKey, module));
+        }
+
+        function calculateStreak() {
+            let streak = 0;
+            const cursor = new Date();
+            cursor.setHours(0, 0, 0, 0);
+
+            while (true) {
+                const key = dateId(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+                if (isFullPackageDay(key)) {
+                    streak += 1;
+                    cursor.setDate(cursor.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+            return streak;
+        }
+
+        function calculateCompletion() {
+            const totalTasks = months.reduce((sum, month) => sum + (month.dayCount * MODULES.length), 0);
+            let completedTasks = 0;
+
+            months.forEach((month) => {
+                for (let day = 1; day <= month.dayCount; day++) {
+                    const key = dateId(month.year, month.month, day);
+                    MODULES.forEach((module) => {
+                        if (isModuleDone(key, module)) completedTasks += 1;
+                    });
+                }
+            });
+
+            const completionPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            return { totalTasks, completedTasks, completionPct };
+        }
+
+        function getScoreSummary() {
+            const dashboard = safeParse(localStorage.getItem(DASHBOARD_KEY), {});
+            const testResults = safeParse(localStorage.getItem(TEST_RESULTS_KEY), {});
+            const targetBand = dashboard.plan && dashboard.plan.targetBand ? Number(dashboard.plan.targetBand) : 7.0;
+
+            const moduleScores = MODULES
+                .map((module) => testResults[module] && typeof testResults[module].score === "number" ? testResults[module].score : null)
+                .filter((score) => score !== null);
+
+            const avgScore = moduleScores.length > 0
+                ? Math.round(moduleScores.reduce((a, b) => a + b, 0) / moduleScores.length)
+                : null;
+
+            const actualBand = avgScore !== null ? toBand(avgScore) : null;
+            return { targetBand, actualBand, avgScore, testResults };
+        }
+
+        function fillList(id, items) {
+            const node = document.getElementById(id);
+            node.innerHTML = "";
+            items.forEach((item) => {
+                const li = document.createElement("li");
+                li.textContent = item;
+                node.appendChild(li);
+            });
+        }
+
+        function updateSummary() {
+            const { targetBand, actualBand, avgScore, testResults } = getScoreSummary();
+            const streak = calculateStreak();
+            const completion = calculateCompletion();
+
+            document.getElementById("targetScoreValue").textContent = Number(targetBand).toFixed(1);
+            document.getElementById("actualScoreValue").textContent = actualBand !== null ? actualBand.toFixed(1) : "--";
+            document.getElementById("streakValue").textContent = `${streak} day${streak === 1 ? "" : "s"}`;
+            document.getElementById("completionValue").textContent = `${completion.completionPct}%`;
+            document.getElementById("completionSub").textContent = `${completion.completedTasks} / ${completion.totalTasks} tasks completed`;
+
+            const strengths = [];
+            const weak = [];
+
+            MODULES.forEach((module) => {
+                const r = testResults[module];
+                if (!r || typeof r.score !== "number") return;
+                const label = module.charAt(0).toUpperCase() + module.slice(1);
+                if (r.score >= 70) strengths.push(`${label} currently strong (${r.score}%)`);
+                else weak.push(`${label} needs more work (${r.score}%)`);
+            });
+
+            if (strengths.length === 0) strengths.push("Take a full package test to identify strength areas.");
+            if (weak.length === 0) weak.push("No weak module detected yet.");
+
+            const focus = [];
+            if (avgScore === null) {
+                focus.push("Complete your first full package to unlock data-based plan focus.");
+            } else {
+                focus.push(`Target band ${Number(targetBand).toFixed(1)} vs actual band ${actualBand.toFixed(1)}.`);
+                focus.push("Open each calendar date and complete L/R/W/S modules.");
+                focus.push("Prioritize weaker modules first each day.");
+            }
+
+            fillList("strengthList", strengths);
+            fillList("weaknessList", weak);
+            fillList("focusList", focus);
+            document.getElementById("analysisHint").textContent = avgScore === null ? "Waiting for module data" : `Average module score: ${avgScore}%`;
+        }
+
+        function renderMonthButtons() {
+            const holder = document.getElementById("monthButtons");
+            holder.innerHTML = "";
+
+            months.forEach((month) => {
+                const btn = document.createElement("button");
+                btn.type = "button";
+                btn.className = `month-btn${month.id === selectedMonthId ? " active" : ""}`;
+                btn.innerHTML = `<span>${month.label}</span><span class="month-arrow">></span>`;
+                btn.addEventListener("click", () => {
+                    window.location.href = `study-plan-schedule.html?month=${encodeURIComponent(month.id)}`;
+                });
+                holder.appendChild(btn);
+            });
+        }
+
+        function init() {
+            months = buildMonths(12);
+            selectedMonthId = monthIdFromDate(new Date());
+            if (!months.some((month) => month.id === selectedMonthId)) {
+                selectedMonthId = months[0].id;
+            }
+
+            updateSummary();
+            renderMonthButtons();
+        }
+
+        initSidebar();
+        init();
+    </script>
+</body>
+</html>
+
+
+

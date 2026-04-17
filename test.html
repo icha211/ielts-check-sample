@@ -1,0 +1,819 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IELTS Practice Test | PrepHaven</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #114B3A;
+            --primary-dark: #0B3227;
+            --secondary: #2E7D5A;
+            --accent-gold: #E8B64A;
+            --accent-sky: #4DA3FF;
+            --bg: #F5F8F6;
+            --surface: #FFFFFF;
+            --text-main: #1D2A24;
+            --text-muted: #5E6E66;
+            --success: #22A06B;
+            --warning: #F2A93B;
+            --error: #D64545;
+            --border: #D9E4DE;
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+            --shadow-soft: 0 10px 28px rgba(17, 75, 58, 0.08);
+            --space-1: 0.5rem;
+            --space-2: 0.75rem;
+            --space-3: 1rem;
+            --space-4: 1.5rem;
+            --space-5: 2rem;
+            --space-6: 3rem;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: "Poppins", sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, h4, .test-title {
+            font-family: "Sora", sans-serif;
+            letter-spacing: -0.01em;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--space-5);
+        }
+
+        /* Header */
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-5);
+            background: var(--surface);
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .test-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .timer-display {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent-sky);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .timer-icon {
+            font-size: 1.5rem;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: var(--space-3);
+        }
+
+        .btn {
+            padding: var(--space-2) var(--space-4);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: "Poppins", sans-serif;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Main Layout */
+        .test-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: var(--space-5);
+        }
+
+        @media (max-width: 1180px) {
+            .test-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Content Area */
+        .test-content {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: var(--space-5);
+            box-shadow: var(--shadow-soft);
+        }
+
+        .module-selector {
+            display: flex;
+            gap: var(--space-3);
+            margin-bottom: var(--space-5);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: var(--space-3);
+        }
+
+        .module-tab {
+            padding: var(--space-3) var(--space-4);
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: var(--text-muted);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .module-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Problem Display */
+        .problem-container {
+            display: none;
+        }
+
+        .problem-container.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .passage {
+            background: var(--bg);
+            padding: var(--space-4);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-4);
+            border-left: 4px solid var(--accent-gold);
+        }
+
+        .passage-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: var(--space-2);
+            font-weight: 600;
+        }
+
+        .passage-text {
+            font-size: 0.95rem;
+            line-height: 1.8;
+            color: var(--text-main);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .questions-group {
+            margin-top: var(--space-5);
+        }
+
+        .question-item {
+            margin-bottom: var(--space-5);
+            padding: var(--space-4);
+            background: var(--bg);
+            border-radius: var(--radius-md);
+            border-left: 4px solid var(--accent-sky);
+        }
+
+        .question-text {
+            font-weight: 600;
+            margin-bottom: var(--space-3);
+            color: var(--text-main);
+        }
+
+        .question-num {
+            color: var(--accent-sky);
+            font-weight: 700;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-2);
+        }
+
+        .option {
+            padding: var(--space-3);
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+
+        .option:hover {
+            border-color: var(--primary);
+            background: rgba(17, 75, 58, 0.05);
+        }
+
+        .option input[type="radio"],
+        .option input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .option.selected {
+            background: rgba(17, 75, 58, 0.1);
+            border-color: var(--primary);
+        }
+
+        .answer-input {
+            width: 100%;
+            padding: var(--space-3);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-family: "Poppins", sans-serif;
+            font-size: 0.95rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .answer-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Sidebar - Question Navigator */
+        .sidebar {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            padding: var(--space-4);
+            box-shadow: var(--shadow-soft);
+            height: fit-content;
+            position: sticky;
+            top: var(--space-5);
+        }
+
+        .sidebar-title {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: var(--space-3);
+            font-weight: 700;
+        }
+
+        .question-navigator {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-2);
+        }
+
+        .nav-question {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--border);
+            background: var(--surface);
+            color: var(--text-main);
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-question:hover {
+            border-color: var(--primary);
+        }
+
+        .nav-question.answered {
+            background: var(--success);
+            color: white;
+            border-color: var(--success);
+        }
+
+        .nav-question.current {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Footer Actions */
+        .test-footer {
+            display: flex;
+            justify-content: space-between;
+            gap: var(--space-4);
+            margin-top: var(--space-5);
+        }
+
+        .btn-block {
+            flex: 1;
+        }
+
+        .btn-block button {
+            width: 100%;
+        }
+
+        /* Message */
+        .empty-state {
+            text-align: center;
+            padding: var(--space-6);
+            color: var(--text-muted);
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: var(--space-3);
+        }
+
+        .empty-state-text {
+            font-size: 1.1rem;
+            margin-bottom: var(--space-3);
+        }
+
+        /* Results */
+        .results-container {
+            display: none;
+        }
+
+        .results-container.visible {
+            display: block;
+        }
+
+        .result-card {
+            background: var(--surface);
+            padding: var(--space-5);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-soft);
+            margin-bottom: var(--space-4);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-4);
+            padding-bottom: var(--space-4);
+            border-bottom: 2px solid var(--border);
+        }
+
+        .result-score {
+            display: flex;
+            align-items: center;
+            gap: var(--space-3);
+        }
+
+        .score-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-sky));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .result-details h3 {
+            font-size: 1.2rem;
+            margin-bottom: var(--space-2);
+        }
+
+        .result-details p {
+            color: var(--text-muted);
+            margin-bottom: var(--space-2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="test-header">
+            <h1 class="test-title"> IELTS Practice Test</h1>
+            <div class="timer-display">
+                <span class="timer-icon"></span>
+                <span id="timerDisplay">00:00</span>
+            </div>
+            <div class="nav-buttons">
+                <button class="btn btn-secondary" onclick="goBackToDashboard()"> Back to Dashboard</button>
+            </div>
+        </div>
+
+        <!-- Test Layout -->
+        <div class="test-layout">
+            <!-- Main Content -->
+            <div class="test-content">
+                <!-- Module Tabs -->
+                <div class="module-selector" id="moduleTabs"></div>
+
+                <!-- Problem Containers -->
+                <div id="problemsArea"></div>
+
+                <!-- Results -->
+                <div id="resultsArea" class="results-container"></div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="empty-state">
+                    <div class="empty-state-icon"></div>
+                    <p class="empty-state-text">No problem sets available yet.</p>
+                    <p>Ask an admin to add IELTS practice problems.</p>
+                </div>
+
+                <!-- Footer Actions -->
+                <div class="test-footer" id="testFooter" style="display: none;">
+                    <div class="btn-block">
+                        <button class="btn btn-secondary" onclick="previousQuestion()"> Previous</button>
+                    </div>
+                    <div class="btn-block">
+                        <button class="btn btn-secondary" onclick="nextQuestion()">Next </button>
+                    </div>
+                    <div class="btn-block">
+                        <button class="btn btn-primary" id="submitBtn" onclick="submitTest()">Submit Test</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar" id="sidebarArea"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============ DATA MANAGEMENT ============
+        const PROBLEMS_KEY = "prephaven_problems_v1";
+        const TEST_ANSWERS_KEY = "prephaven_test_answers_v1";
+        const TEST_RESULTS_KEY = "prephaven_test_results_v1";
+
+        let allProblems = [];
+        let currentModule = null;
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+        let testInProgress = false;
+        let testStartTime = null;
+        let timerInterval = null;
+
+        // ============ INITIALIZATION ============
+        document.addEventListener("DOMContentLoaded", () => {
+            loadProblems();
+            renderModuleTabs();
+            if (allProblems.length > 0) {
+                selectModule(allProblems[0].moduleId);
+            }
+        });
+
+        function loadProblems() {
+            const stored = localStorage.getItem(PROBLEMS_KEY);
+            if (stored) {
+                allProblems = JSON.parse(stored);
+                console.log(`Loaded ${allProblems.length} problem sets`);
+            }
+        }
+
+        // ============ UI RENDERING ============
+        function renderModuleTabs() {
+            const tabsContainer = document.getElementById("moduleTabs");
+            tabsContainer.innerHTML = "";
+
+            if (allProblems.length === 0) {
+                document.getElementById("emptyState").style.display = "block";
+                document.getElementById("testFooter").style.display = "none";
+                return;
+            }
+
+            document.getElementById("emptyState").style.display = "none";
+            document.getElementById("testFooter").style.display = "flex";
+
+            allProblems.forEach((module) => {
+                const tab = document.createElement("button");
+                tab.className = "module-tab";
+                tab.textContent = `${module.icon} ${module.moduleName}`;
+                tab.onclick = () => selectModule(module.moduleId);
+                tabsContainer.appendChild(tab);
+            });
+        }
+
+        function selectModule(moduleId) {
+            currentModule = allProblems.find((m) => m.moduleId === moduleId);
+            currentQuestionIndex = 0;
+            testInProgress = true;
+
+            // Update tabs
+            document.querySelectorAll(".module-tab").forEach((tab, idx) => {
+                tab.classList.toggle("active", allProblems[idx].moduleId === moduleId);
+            });
+
+            // Load saved answers for this module if any
+            const saved = localStorage.getItem(TEST_ANSWERS_KEY);
+            if (saved) {
+                const answers = JSON.parse(saved);
+                if (answers[moduleId]) {
+                    userAnswers = answers[moduleId];
+                }
+            }
+
+            renderProblems();
+            renderQuestionNavigator();
+            startTimer();
+        }
+
+        function renderProblems() {
+            const container = document.getElementById("problemsArea");
+            container.innerHTML = "";
+
+            if (!currentModule || !currentModule.questions) {
+                return;
+            }
+
+            const problemDiv = document.createElement("div");
+            problemDiv.className = "problem-container active";
+            problemDiv.id = `problem-${currentModule.moduleId}`;
+
+            // Render passage if exists
+            if (currentModule.passage) {
+                const passageDiv = document.createElement("div");
+                passageDiv.className = "passage";
+                passageDiv.innerHTML = `
+                    <div class="passage-title">${currentModule.passage.title || "Passage"}</div>
+                    <div class="passage-text">${currentModule.passage.text}</div>
+                `;
+                problemDiv.appendChild(passageDiv);
+            }
+
+            // Render questions
+            const questionsDiv = document.createElement("div");
+            questionsDiv.className = "questions-group";
+
+            currentModule.questions.forEach((q, idx) => {
+                const questionDiv = document.createElement("div");
+                questionDiv.className = `question-item ${idx === currentQuestionIndex ? "current" : ""}`;
+
+                let questionHTML = `
+                    <div class="question-text">
+                        <span class="question-num">Q${idx + 1}.</span>
+                        ${q.text}
+                    </div>
+                `;
+
+                if (q.type === "mcq") {
+                    questionHTML += `<div class="options">`;
+                    q.options.forEach((opt) => {
+                        const checked = userAnswers[`q${idx}`] === opt;
+                        questionHTML += `
+                            <label class="option ${checked ? "selected" : ""}">
+                                <input type="radio" name="question_${idx}" value="${opt}" 
+                                    ${checked ? "checked" : ""} 
+                                    onchange="saveAnswer(${idx}, '${opt}')">
+                                <span>${opt}</span>
+                            </label>
+                        `;
+                    });
+                    questionHTML += `</div>`;
+                } else if (q.type === "fill-in") {
+                    const answer = userAnswers[`q${idx}`] || "";
+                    questionHTML += `
+                        <input type="text" class="answer-input" placeholder="Type your answer"
+                            value="${answer}"
+                            onchange="saveAnswer(${idx}, this.value)">
+                    `;
+                } else if (q.type === "matching") {
+                    // Simplified matching UI
+                    questionHTML += `<div class="options">`;
+                    q.options.forEach((opt) => {
+                        const checked = userAnswers[`q${idx}`] === opt;
+                        questionHTML += `
+                            <label class="option ${checked ? "selected" : ""}">
+                                <input type="radio" name="question_${idx}" value="${opt}" 
+                                    ${checked ? "checked" : ""} 
+                                    onchange="saveAnswer(${idx}, '${opt}')">
+                                <span>${opt}</span>
+                            </label>
+                        `;
+                    });
+                    questionHTML += `</div>`;
+                }
+
+                questionDiv.innerHTML = questionHTML;
+                questionsDiv.appendChild(questionDiv);
+            });
+
+            problemDiv.appendChild(questionsDiv);
+            container.appendChild(problemDiv);
+        }
+
+        function renderQuestionNavigator() {
+            const sidebar = document.getElementById("sidebarArea");
+            sidebar.innerHTML = `<div class="sidebar-title">Questions</div>`;
+
+            const navigator = document.createElement("div");
+            navigator.className = "question-navigator";
+
+            if (currentModule && currentModule.questions) {
+                currentModule.questions.forEach((q, idx) => {
+                    const btn = document.createElement("button");
+                    btn.className = "nav-question";
+                    btn.textContent = idx + 1;
+                    btn.onclick = () => goToQuestion(idx);
+
+                    if (userAnswers[`q${idx}`]) {
+                        btn.classList.add("answered");
+                    }
+                    if (idx === currentQuestionIndex) {
+                        btn.classList.add("current");
+                    }
+
+                    navigator.appendChild(btn);
+                });
+            }
+
+            sidebar.appendChild(navigator);
+        }
+
+        // ============ INTERACTION ============
+        function saveAnswer(questionIndex, answer) {
+            userAnswers[`q${questionIndex}`] = answer;
+            
+            // Persist answers
+            const allAnswers = JSON.parse(localStorage.getItem(TEST_ANSWERS_KEY) || "{}");
+            allAnswers[currentModule.moduleId] = userAnswers;
+            localStorage.setItem(TEST_ANSWERS_KEY, JSON.stringify(allAnswers));
+
+            renderQuestionNavigator();
+        }
+
+        function goToQuestion(index) {
+            currentQuestionIndex = index;
+            renderProblems();
+            renderQuestionNavigator();
+        }
+
+        function nextQuestion() {
+            if (currentModule && currentQuestionIndex < currentModule.questions.length - 1) {
+                goToQuestion(currentQuestionIndex + 1);
+            }
+        }
+
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                goToQuestion(currentQuestionIndex - 1);
+            }
+        }
+
+        // ============ TIMER ============
+        function startTimer() {
+            if (!testStartTime) {
+                testStartTime = Date.now();
+            }
+
+            if (timerInterval) clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - testStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById("timerDisplay").textContent = 
+                    `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+            }, 1000);
+        }
+
+        // ============ SUBMISSION ============
+        function submitTest() {
+            if (!confirm("Are you sure you want to submit your test? You cannot change answers after submission.")) {
+                return;
+            }
+
+            clearInterval(timerInterval);
+            testInProgress = false;
+
+            // Calculate results
+            const results = calculateResults();
+            
+            // Save results
+            const allResults = JSON.parse(localStorage.getItem(TEST_RESULTS_KEY) || "{}");
+            allResults[currentModule.moduleId] = {
+                timestamp: new Date().toISOString(),
+                score: results.score,
+                total: results.total,
+                answers: userAnswers,
+                timeSpent: document.getElementById("timerDisplay").textContent
+            };
+            localStorage.setItem(TEST_RESULTS_KEY, JSON.stringify(allResults));
+
+            // Clear test answers
+            localStorage.removeItem(TEST_ANSWERS_KEY);
+
+            // Display results
+            displayResults(results);
+        }
+
+        function calculateResults() {
+            let correct = 0;
+            let total = 0;
+
+            currentModule.questions.forEach((q, idx) => {
+                total++;
+                const userAnswer = userAnswers[`q${idx}`];
+                if (userAnswer === q.correctAnswer || (q.answers && q.answers.includes(userAnswer))) {
+                    correct++;
+                }
+            });
+
+            const score = Math.round((correct / total) * 100);
+            return { score, correct, total };
+        }
+
+        function displayResults(results) {
+            const resultsArea = document.getElementById("resultsArea");
+            const problemsArea = document.getElementById("problemsArea");
+            const testFooter = document.getElementById("testFooter");
+            const moduleTabs = document.getElementById("moduleTabs");
+
+            moduleTabs.style.display = "none";
+            problemsArea.style.display = "none";
+            testFooter.style.display = "none";
+
+            resultsArea.classList.add("visible");
+            resultsArea.innerHTML = `
+                <div class="result-card">
+                    <div class="result-header">
+                        <div class="result-score">
+                            <div class="score-circle">${results.score}%</div>
+                            <div class="result-details">
+                                <h3>${currentModule.moduleName}</h3>
+                                <p>Score: <strong>${results.correct}/${results.total}</strong> correct</p>
+                                <p>Time spent: <span id="finalTime"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <p style="margin-bottom: var(--space-4);">Well done! Your test has been submitted. This score will help us create a personalized study plan.</p>
+                    <button class="btn btn-primary" onclick="generateStudyPlan()"> Generate Study Plan</button>
+                </div>
+            `;
+            document.getElementById("finalTime").textContent = document.getElementById("timerDisplay").textContent;
+        }
+
+        // ============ NAVIGATION ============
+        function goBackToDashboard() {
+            if (testInProgress) {
+                if (!confirm("Your test progress will be saved. Continue?")) {
+                    return;
+                }
+            }
+            window.location.href = "index.html";
+        }
+
+        function generateStudyPlan() {
+            // This will integrate with the dashboard's study plan generator
+            window.location.href = "index.html?studyPlanReady=true";
+        }
+    </script>
+</body>
+</html>
+
+
+

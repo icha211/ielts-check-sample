@@ -1,0 +1,435 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IELTS Speaking Practice Test - Ultimate Dynamic</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* Modern CSS Reset & Variables */
+        :root {
+            --primary: #0e6150;
+            --primary-hover: #0a4a3d;
+            --bg-body: #f3f7f5;
+            --bg-surface: #ffffff;
+            --text-main: #182621;
+            --text-muted: #5a6d66;
+            --border-color: #d8e4de;
+            --danger: #c44444;
+            --success: #1f9d63;
+            --text-zoom: 1; 
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        h1, h2, h3, h4, .header-title, .topic-section h2, .part-title { font-family: 'Sora', sans-serif; letter-spacing: -0.01em; }
+
+        /* Header */
+        header { background-color: var(--bg-surface); padding: 16px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05); z-index: 10; }
+        .header-title { font-size: 1.25rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 20px; }
+        .timer-container { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+        #timer { background: var(--bg-body); color: var(--primary); padding: 6px 16px; border-radius: 999px; border: 1px solid var(--border-color); font-variant-numeric: tabular-nums; transition: all 0.3s ease; }
+        #timer.warning { color: white; background: var(--danger); border-color: var(--danger); }
+
+        /* Container */
+        .container { display: flex; flex: 1; overflow: hidden; padding: 20px; gap: 10px; max-width: 1600px; margin: 0 auto; width: 100%; }
+        .panel { background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow-y: auto; padding: 40px; position: relative; scroll-behavior: smooth; }
+        .topic-section { width: 35%; }
+        .speaking-section { flex: 1; display: flex; flex-direction: column; }
+
+        .panel::-webkit-scrollbar { width: 8px; }
+        .panel::-webkit-scrollbar-track { background: transparent; }
+        .panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .panel::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Topic Section */
+        .topic-section h2 { font-size: 1.4rem; font-weight: 700; margin-bottom: 20px; color: var(--text-main); border-bottom: 2px solid var(--bg-body); padding-bottom: 10px; }
+        .part-box { background: var(--bg-body); padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid var(--primary); }
+        .part-title { font-size: 1rem; font-weight: 600; margin-bottom: 10px; }
+        .part-description { font-size: 0.95rem; line-height: 1.7; color: #334155; margin-bottom: 15px; }
+        .cue-card { background: var(--bg-surface); border: 2px dashed var(--border-color); padding: 15px; border-radius: 8px; margin-top: 15px; }
+        .cue-card-title { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+        .cue-card-content { font-size: 0.95rem; line-height: 1.6; color: var(--text-main); }
+        .cue-card-content li { margin: 8px 0 8px 20px; }
+
+        /* Recording Section */
+        .recording-container { display: flex; flex-direction: column; gap: 20px; flex: 1; }
+        .recording-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 1rem; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: #d64545; opacity: 0.9; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: #22a06b; opacity: 0.9; }
+        .btn:disabled { background: var(--text-muted); cursor: not-allowed; }
+
+        .recording-status { padding: 15px; background: var(--bg-body); border-radius: 8px; text-align: center; font-weight: 600; }
+        .recording-status.active { background: #fee2e2; color: var(--danger); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+
+        .transcript-area { flex: 1; display: flex; flex-direction: column; }
+        .transcript-label { font-size: 0.9rem; font-weight: 600; color: var(--text-muted); margin-bottom: 10px; }
+        .transcript-box { flex: 1; padding: 15px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-body); font-size: 0.95rem; line-height: 1.6; color: #334155; overflow-y: auto; }
+
+        #audioPlayback { width: 100%; border-radius: 8px; }
+
+        .submit-area { margin-top: 20px; }
+        .submit-btn { background-color: var(--primary); color: white; border: none; padding: 14px 28px; font-size: 1.1rem; font-weight: 600; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.2s ease; }
+        .submit-btn:hover { background-color: var(--primary-hover); }
+        .submit-btn:disabled { background-color: var(--text-muted); cursor: not-allowed; }
+        #result { margin-top: 20px; padding: 16px; border-radius: 8px; font-weight: 600; font-size: 1rem; text-align: center; display: none; }
+        .result-good { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .result-bad { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
+            .topic-section, .speaking-section { width: 100% !important; flex: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">
+            <span id="display-title">IELTS Academic Speaking</span>
+        </div>
+        <div class="timer-container">
+            <span>Phase Time:</span> 
+            <span id="timer">02:00</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="panel topic-section" id="leftPanel">
+            <h2>Speaking Topics</h2>
+            <div id="topicContent"></div>
+        </div>
+
+        <div class="panel speaking-section" id="rightPanel">
+            <div id="recordingUI">
+                <div class="recording-controls">
+                    <button class="btn btn-primary" id="startBtn" onclick="startRecording()"> Start Recording</button>
+                    <button class="btn btn-danger" id="stopBtn" onclick="stopRecording()" disabled> Stop Recording</button>
+                    <button class="btn btn-success" id="playBtn" onclick="playRecording()" disabled> Play Recording</button>
+                </div>
+
+                <div class="recording-status" id="recordingStatus">Ready to record</div>
+
+                <audio id="audioPlayback" controls style="display: none;"></audio>
+
+                <div class="transcript-area">
+                    <div class="transcript-label">Your Response (Manual Transcript - For Practice):</div>
+                    <textarea id="transcript" style="width: 100%; flex: 1; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-family: 'Poppins', sans-serif; resize: none;" placeholder="Your transcribed response appears here or type manually..."></textarea>
+                </div>
+
+                <div class="submit-area">
+                    <button class="submit-btn" id="submitBtn" onclick="submitTest()">Submit Response</button>
+                    <button class="submit-btn" id="continueBtn" onclick="goToNextModule()" style="display: none; margin-top: 10px;">Finish Package & Return To Dashboard</button>
+                    <div id="result"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = "prephaven_problems_speaking_v1";
+        const TEST_RESULTS_KEY = "prephaven_test_results_v1";
+        const DAILY_TEST_KEY = "prephaven_daily_tests_v1";
+        const params = new URLSearchParams(window.location.search);
+        const PACKAGE_MODE = params.get("package") === "1";
+        const RETURN_TO = params.get("returnTo");
+        const DAY_VALUE = params.get("day");
+        const NEXT_URL = PACKAGE_MODE ? "index.html?packageDone=1" : (RETURN_TO || "index.html");
+
+        const defaultProblemSet = {
+            moduleId: "speaking",
+            icon: "",
+            moduleName: "Speaking",
+            title: "IELTS Academic Speaking",
+            parts: [
+                {
+                    partNumber: 1,
+                    title: "Part 1: Introduction & Interview",
+                    duration: "4-5 minutes",
+                    description: "The examiner asks general questions about familiar topics.",
+                    questions: [
+                        "Tell me about your hometown.",
+                        "What do you like to do in your free time?",
+                        "Describe a person you admire."
+                    ]
+                },
+                {
+                    partNumber: 2,
+                    title: "Part 2: Long Turn (Cue Card)",
+                    duration: "3-4 minutes",
+                    description: "You receive a cue card and have 1 minute to prepare, then speak for 2 minutes.",
+                    cueCard: {
+                        prompt: "Describe a memorable journey you have taken.",
+                        points: [
+                            "Where you went",
+                            "When you went",
+                            "Who you went with",
+                            "Why it was memorable"
+                        ]
+                    }
+                },
+                {
+                    partNumber: 3,
+                    title: "Part 3: Discussion",
+                    duration: "4-5 minutes",
+                    description: "The examiner asks follow-up questions related to Part 2.",
+                    questions: [
+                        "How do you think travel has changed over the past decade?",
+                        "What are the benefits of traveling with friends vs. alone?"
+                    ]
+                }
+            ]
+        };
+
+        let currentProblem = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recordingTime = 0;
+        let recordingInterval = null;
+        let examTimeInSeconds = 900;
+        let examTimerInterval = null;
+        let hasSubmitted = false;
+
+        function loadProblem() {
+            const problems = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+            if (problems.length > 0 && problems[0].parts && problems[0].parts.length > 0) {
+                currentProblem = problems[0];
+            } else {
+                currentProblem = defaultProblemSet;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([defaultProblemSet]));
+            }
+            renderTest();
+        }
+
+        function renderTest() {
+            if (!currentProblem) return;
+
+            const topicContent = document.getElementById('topicContent');
+            let html = '';
+
+            currentProblem.parts.forEach(part => {
+                html += `<div class="part-box">
+                    <div class="part-title"> ${part.title}</div>
+                    <div class="part-description"><strong>Duration:</strong> ${part.duration}</div>
+                    <div class="part-description">${part.description}</div>`;
+                
+                if (part.questions) {
+                    html += `<ul style="margin-top: 10px; margin-left: 20px;">`;
+                    part.questions.forEach(q => {
+                        html += `<li style="margin: 5px 0; color: #334155; font-size: 0.9rem;">${q}</li>`;
+                    });
+                    html += `</ul>`;
+                }
+
+                if (part.cueCard) {
+                    html += `<div class="cue-card">
+                        <div class="cue-card-title">Cue Card</div>
+                        <div class="cue-card-content">
+                            <p><strong>${part.cueCard.prompt}</strong></p>
+                            <p style="margin-top: 10px;">You should say:</p>
+                            <ul>`;
+                    part.cueCard.points.forEach(point => {
+                        html += `<li>${point}</li>`;
+                    });
+                    html += `</ul></div></div>`;
+                }
+
+                html += `</div>`;
+            });
+
+            topicContent.innerHTML = html;
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    document.getElementById('audioPlayback').src = audioUrl;
+                    document.getElementById('audioPlayback').style.display = 'block';
+                    document.getElementById('playBtn').disabled = false;
+                };
+
+                mediaRecorder.start();
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                document.getElementById('recordingStatus').classList.add('active');
+                document.getElementById('recordingStatus').innerText = ' Recording...';
+
+                recordingTime = 0;
+                recordingInterval = setInterval(() => {
+                    recordingTime++;
+                    const minutes = Math.floor(recordingTime / 60);
+                    const seconds = recordingTime % 60;
+                    document.getElementById('timer').textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                }, 1000);
+
+            } catch (error) {
+                alert('Microphone access denied. Please enable microphone permissions.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            }
+            clearInterval(recordingInterval);
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('recordingStatus').classList.remove('active');
+            document.getElementById('recordingStatus').innerText = ' Recording completed';
+        }
+
+        function playRecording() {
+            const audio = document.getElementById('audioPlayback');
+            audio.play();
+        }
+
+        function startExamTimer() {
+            clearInterval(examTimerInterval);
+            examTimeInSeconds = 900;
+
+            const timerEl = document.getElementById('timer');
+            timerEl.classList.remove('warning');
+            timerEl.textContent = '15:00';
+
+            examTimerInterval = setInterval(() => {
+                const minutes = Math.floor(examTimeInSeconds / 60);
+                const seconds = examTimeInSeconds % 60;
+                timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+                if (examTimeInSeconds <= 300) {
+                    timerEl.classList.add('warning');
+                }
+
+                if (examTimeInSeconds > 0) {
+                    examTimeInSeconds--;
+                } else {
+                    clearInterval(examTimerInterval);
+                    alert('Time is up! Submitting your response.');
+                    submitTest(true);
+                }
+            }, 1000);
+        }
+
+        function goToNextModule() {
+            window.location.href = NEXT_URL;
+        }
+
+        function recordDailyModuleResult(moduleKey, scoreValue, extras) {
+            if (!DAY_VALUE) {
+                return;
+            }
+
+            const safeExtras = extras || {};
+            const store = JSON.parse(localStorage.getItem(DAILY_TEST_KEY) || "{}");
+            if (!store[DAY_VALUE]) {
+                store[DAY_VALUE] = {
+                    date: DAY_VALUE,
+                    modules: {
+                        listening: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] },
+                        reading: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] },
+                        writing: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] },
+                        speaking: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] }
+                    }
+                };
+            }
+
+            const dateEntry = store[DAY_VALUE];
+            if (!dateEntry.modules[moduleKey]) {
+                dateEntry.modules[moduleKey] = { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] };
+            }
+
+            const moduleEntry = dateEntry.modules[moduleKey];
+            moduleEntry.taken = true;
+            moduleEntry.score = scoreValue;
+            moduleEntry.attempts = (moduleEntry.attempts || 0) + 1;
+            moduleEntry.lastTakenAt = new Date().toISOString();
+            if (!Array.isArray(moduleEntry.history)) {
+                moduleEntry.history = [];
+            }
+            moduleEntry.history.push({
+                score: scoreValue,
+                timestamp: moduleEntry.lastTakenAt,
+                details: safeExtras
+            });
+
+            localStorage.setItem(DAILY_TEST_KEY, JSON.stringify(store));
+        }
+
+        function submitTest(isAutoContinue) {
+            if (hasSubmitted) {
+                return;
+            }
+            hasSubmitted = true;
+
+            clearInterval(examTimerInterval);
+            const transcript = document.getElementById('transcript').value.trim();
+            const recordedSeconds = recordingTime;
+
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+
+            if (recordedSeconds > 0 || transcript.length > 10) {
+                resultDiv.innerHTML = ` Response submitted! Recording duration: ${Math.floor(recordedSeconds / 60)}:${String(recordedSeconds % 60).padStart(2, '0')}. Your response has been recorded.`;
+                resultDiv.className = 'result-good';
+            } else {
+                resultDiv.innerHTML = ` Please record audio or provide a transcript before submitting.`;
+                resultDiv.className = 'result-bad';
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            const continueBtn = document.getElementById('continueBtn');
+
+            // Save results
+            const results = JSON.parse(localStorage.getItem(TEST_RESULTS_KEY) || "{}");
+            const speakingScore = recordedSeconds > 0 || transcript.length > 10 ? 75 : 40;
+            results["speaking"] = {
+                timestamp: new Date().toISOString(),
+                score: speakingScore,
+                recordingDuration: recordedSeconds,
+                transcriptLength: transcript.length,
+                status: recordedSeconds > 0 || transcript.length > 10 ? "complete" : "incomplete"
+            };
+            localStorage.setItem(TEST_RESULTS_KEY, JSON.stringify(results));
+            recordDailyModuleResult("speaking", speakingScore, {
+                recordingDuration: recordedSeconds,
+                transcriptLength: transcript.length,
+                status: recordedSeconds > 0 || transcript.length > 10 ? "complete" : "incomplete"
+            });
+
+            if (PACKAGE_MODE) {
+                if (isAutoContinue) {
+                    setTimeout(goToNextModule, 900);
+                } else {
+                    continueBtn.style.display = 'block';
+                }
+            } else {
+                setTimeout(goToNextModule, 1200);
+            }
+        }
+
+        // Init
+        loadProblem();
+        startExamTimer();
+    </script>
+</body>
+</html>
+
+
