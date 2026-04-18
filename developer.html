@@ -1,789 +1,1338 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Developer Console | PrepHaven</title>
+    <title>Developer Dashboard | IELTS Check</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #114B3A;
-            --primary-dark: #0B3227;
-            --secondary: #2E7D5A;
-            --accent-gold: #E8B64A;
-            --accent-sky: #4DA3FF;
-            --bg: #F5F8F6;
-            --surface: #FFFFFF;
-            --text-main: #1D2A24;
-            --text-muted: #5E6E66;
-            --success: #22A06B;
-            --warning: #F2A93B;
-            --error: #D64545;
-            --border: #D9E4DE;
-            --radius-sm: 10px;
+            --bg: #f3f8f6;
+            --surface: #ffffff;
+            --teal-900: #0f3f32;
+            --teal-800: #145545;
+            --teal-700: #1f745e;
+            --lime-500: #9fda57;
+            --text: #18261f;
+            --muted: #607067;
+            --border: #d9e7df;
+            --danger: #d64545;
+            --shadow: 0 14px 34px rgba(12, 66, 52, 0.1);
+            --radius-lg: 22px;
             --radius-md: 16px;
-            --radius-lg: 24px;
-            --shadow-soft: 0 10px 28px rgba(17, 75, 58, 0.08);
-            --space-1: 0.5rem;
-            --space-2: 0.75rem;
-            --space-3: 1rem;
-            --space-4: 1.5rem;
-            --space-5: 2rem;
-            --space-6: 3rem;
+            --radius-sm: 12px;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
             font-family: "Poppins", sans-serif;
-            background: var(--bg);
-            color: var(--text-main);
-            line-height: 1.6;
+            background:
+                radial-gradient(circle at 10% 10%, rgba(159, 218, 87, 0.15), transparent 36%),
+                radial-gradient(circle at 90% 0%, rgba(21, 95, 75, 0.14), transparent 32%),
+                var(--bg);
+            color: var(--text);
             min-height: 100vh;
         }
 
-        h1, h2, h3, h4, .dev-title {
-            font-family: "Sora", sans-serif;
-            letter-spacing: -0.01em;
+        .app-shell {
+            min-height: 100vh;
         }
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: var(--space-5);
+        .sidebar {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            background: rgba(243, 247, 245, 0.88);
         }
 
-        /* Header */
-        .dev-header {
+        .sidebar-inner {
+            width: min(1200px, calc(100% - 2rem));
+            margin-inline: auto;
+            min-height: 68px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .top-brand {
+            display: flex;
+            align-items: center;
+            gap: 0;
+        }
+
+        .brand-badge {
+            width: clamp(64px, 9vw, 104px);
+            height: 34px;
+            border-radius: 0;
+            display: grid;
+            place-items: center;
+            overflow: visible;
+            background: transparent;
+            transform: translateY(-5px);
+        }
+
+        .brand-badge img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            list-style: none;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #28443b;
+            font-size: 0.88rem;
+            font-weight: 600;
+            min-height: 44px;
+            padding: 0 0.75rem;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background-color 0.18s ease, transform 0.18s ease;
+        }
+
+        .nav-link.active,
+        .nav-link:hover {
+            background: #e4efea;
+            transform: translateY(-1px);
+        }
+
+        .content-wrap {
+            width: min(1200px, calc(100% - 2rem));
+            margin-inline: auto;
+            padding: 1rem 0;
+        }
+
+        .frame {
+            width: 100%;
+            margin: 0;
+            padding: 0 0 36px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #ffffff, #edf8f2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: var(--space-5);
-            background: var(--surface);
-            padding: var(--space-4);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-soft);
+            gap: 14px;
+            flex-wrap: wrap;
         }
 
-        .dev-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .dev-subtitle {
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            margin-top: var(--space-1);
-        }
-
-        .nav-buttons {
+        .hero-brand {
             display: flex;
-            gap: var(--space-3);
+            gap: 12px;
+            align-items: center;
+        }
+
+        .hero-brand img {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            object-fit: contain;
+            background: #fff;
+            border: 1px solid var(--border);
+            padding: 5px;
+        }
+
+        h1, h2, h3 {
+            font-family: "Sora", sans-serif;
+            letter-spacing: -0.02em;
+        }
+
+        .hero h1 { font-size: 1.45rem; }
+        .hero p { color: var(--muted); max-width: 70ch; margin-top: 6px; font-size: 0.92rem; }
+
+        .hero-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
+        .create-stack {
+            display: grid;
+            gap: 8px;
+        }
+
+        .create-inline-options {
+            min-width: 280px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: #fff;
+            box-shadow: var(--shadow);
+            padding: 10px;
+            display: none;
+            gap: 8px;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .create-inline-options.show {
+            display: grid;
+        }
+
+        .create-inline-options a {
+            font-size: 0.86rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px;
+            color: var(--teal-900);
+            text-decoration: none;
+            font-weight: 700;
+            background: #f8fcfa;
+        }
+
+        .create-inline-options a:hover {
+            background: #edf8f2;
         }
 
         .btn {
-            padding: var(--space-2) var(--space-4);
             border: none;
-            border-radius: var(--radius-md);
-            font-size: 0.95rem;
-            font-weight: 600;
+            border-radius: 12px;
+            padding: 11px 14px;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: "Poppins", sans-serif;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+
+        .btn:hover { transform: translateY(-2px); }
 
         .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
+            background: linear-gradient(135deg, var(--teal-800), var(--teal-700));
+            color: #fff;
+            box-shadow: 0 10px 22px rgba(20, 85, 69, 0.28);
         }
 
         .btn-secondary {
-            background: var(--surface);
-            color: var(--primary);
-            border: 2px solid var(--primary);
+            background: #fff;
+            color: var(--teal-900);
+            border: 1px solid var(--border);
         }
 
-        .btn-secondary:hover {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-danger {
-            background: var(--error);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            opacity: 0.9;
-        }
-
-        /* Tabs */
-        .tab-container {
-            display: flex;
-            gap: var(--space-3);
-            margin-bottom: var(--space-5);
-            border-bottom: 2px solid var(--border);
-            background: var(--surface);
-            padding: var(--space-3) var(--space-4);
-            border-radius: var(--radius-md);
-        }
-
-        .tab-btn {
-            padding: var(--space-2) var(--space-4);
-            background: transparent;
-            border: none;
-            border-bottom: 3px solid transparent;
-            color: var(--text-muted);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .tab-btn.active {
-            color: var(--primary);
-            border-bottom-color: var(--primary);
-        }
-
-        /* Content */
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        /* Form */
-        .form-section {
-            background: var(--surface);
-            padding: var(--space-5);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-soft);
-            margin-bottom: var(--space-5);
-        }
-
-        .form-group {
-            margin-bottom: var(--space-4);
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: var(--space-2);
-            font-weight: 600;
-            color: var(--text-main);
-        }
-
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: var(--space-3);
-            border: 2px solid var(--border);
-            border-radius: var(--radius-sm);
-            font-family: "Poppins", sans-serif;
-            font-size: 0.95rem;
-            transition: border-color 0.3s ease;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        .form-row {
+        .stats {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--space-4);
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
         }
 
-        @media (max-width: 900px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Options Input */
-        .options-list {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-2);
-        }
-
-        .option-input {
-            display: flex;
-            gap: var(--space-2);
-            align-items: center;
-        }
-
-        .option-input input {
-            flex: 1;
-        }
-
-        .option-input button {
-            padding: var(--space-2) var(--space-3);
-            background: var(--error);
-            color: white;
-            border: none;
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            font-weight: 600;
-        }
-
-        /* Problem List */
-        .problems-grid {
+        .module-overview {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: var(--space-4);
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: 10px;
         }
 
-        .problem-card {
-            background: var(--surface);
-            padding: var(--space-4);
+        .module-pill {
+            border: 1px solid var(--border);
             border-radius: var(--radius-md);
-            box-shadow: var(--shadow-soft);
-            border-left: 4px solid var(--accent-sky);
+            background: linear-gradient(180deg, #ffffff, #f7fbf9);
+            box-shadow: var(--shadow);
+            padding: 0;
+            overflow: hidden;
         }
 
-        .problem-card-header {
+        .pill-head {
+            padding: 8px 10px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .pill-body {
+            padding: 10px;
+        }
+
+        .pill-body small {
+            color: var(--muted);
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .pill-body strong {
+            color: var(--teal-900);
+            font-size: 1.05rem;
+        }
+
+        .module-pill.reading .pill-head {
+            background: #ecf7ef;
+            color: #356046;
+        }
+
+        .module-pill.listening .pill-head {
+            background: #eaf4ff;
+            color: #2e5f8f;
+        }
+
+        .module-pill.writing .pill-head {
+            background: #fff5e8;
+            color: #8a6532;
+        }
+
+        .module-pill.speaking .pill-head {
+            background: #f9edf6;
+            color: #7c4c6c;
+        }
+
+        .module-pill.package .pill-head {
+            background: #eef6f9;
+            color: #2c5a67;
+        }
+
+        .module-pill.questions .pill-head {
+            background: #eef7f4;
+            color: #2f6a53;
+        }
+
+        .stat {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(8px);
+            box-shadow: var(--shadow);
+            padding: 12px;
+        }
+
+        .stat small { color: var(--muted); display: block; font-size: 0.72rem; text-transform: uppercase; font-weight: 700; }
+        .stat strong { color: var(--teal-900); font-size: 1.15rem; }
+
+        .board {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--surface);
+            box-shadow: var(--shadow);
+            padding: 18px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .month-card {
+            appearance: none;
+            cursor: pointer;
+            text-decoration: none;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #fff, #f7fbf9);
+            box-shadow: 0 10px 20px rgba(17, 75, 58, 0.08);
+            padding: 14px;
+            display: grid;
+            gap: 10px;
+            min-height: 112px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            color: var(--teal-900);
+        }
+
+        .month-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 24px rgba(17, 75, 58, 0.12);
+        }
+
+        .month-card:focus-visible {
+            outline: 3px solid rgba(31, 116, 94, 0.22);
+            outline-offset: 2px;
+        }
+
+        .month-card.complete {
+            border-color: rgba(31, 116, 94, 0.45);
+            background: linear-gradient(180deg, #f5fff9, #ecfbf2);
+        }
+
+        .month-card.partial {
+            border-color: rgba(214, 69, 69, 0.35);
+            background: linear-gradient(180deg, #fff7f7, #fff0f0);
+        }
+
+        .month-card.active {
+            box-shadow: 0 0 0 2px rgba(31, 116, 94, 0.18), 0 14px 24px rgba(17, 75, 58, 0.12);
+        }
+
+        .month-head {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: var(--space-3);
+            gap: 10px;
         }
 
-        .problem-card-title {
+        .month-head strong {
+            font-family: "Sora", sans-serif;
+            font-size: 0.95rem;
+            letter-spacing: 0.02em;
+        }
+
+        .month-ratio {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .month-note {
+            font-size: 0.76rem;
+            color: var(--muted);
             font-weight: 700;
-            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
-        .problem-card-stats {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            margin-bottom: var(--space-3);
+        .month-status {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 7px 9px;
+            border-radius: 999px;
+            justify-self: start;
         }
 
-        .problem-card-actions {
-            display: flex;
-            gap: var(--space-2);
+        .month-card.complete .month-status {
+            background: #e1f7ea;
+            color: #16724f;
         }
 
-        .problem-card-actions button {
-            flex: 1;
-            padding: var(--space-2);
-            font-size: 0.85rem;
+        .month-card.partial .month-status {
+            background: #ffe6e6;
+            color: #b24040;
         }
 
-        /* Messages */
-        .alert {
-            padding: var(--space-3) var(--space-4);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--space-4);
+        .month-card .arrow {
+            font-size: 1.15rem;
+            opacity: 0.55;
+            align-self: center;
+        }
+
+        .month-detail {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: linear-gradient(180deg, #ffffff, #f7fbf9);
+            box-shadow: var(--shadow);
+            padding: 16px;
             display: none;
+            gap: 12px;
         }
 
-        .alert.show {
-            display: block;
+        .month-detail.show {
+            display: grid;
         }
 
-        .alert-success {
-            background: rgba(34, 160, 107, 0.1);
-            color: var(--success);
-            border-left: 4px solid var(--success);
+        .month-detail-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
-        .alert-error {
-            background: rgba(214, 69, 69, 0.1);
-            color: var(--error);
-            border-left: 4px solid var(--error);
+        .month-detail-head h3 {
+            font-size: 1.1rem;
         }
 
-        /* Empty State */
-        .empty-state {
+        .month-detail-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .month-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .month-detail-day {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 10px;
+            min-height: 110px;
+            background: #fff;
+            display: grid;
+            gap: 8px;
+        }
+
+        .month-detail-day.empty {
+            background: #f8fbfd;
+            border-style: dashed;
+            min-height: 110px;
+        }
+
+        .month-detail-day.complete {
+            background: linear-gradient(180deg, #f5fff9, #ecfbf2);
+            border-color: rgba(31, 116, 94, 0.38);
+        }
+
+        .month-detail-day.partial {
+            background: linear-gradient(180deg, #fff6f6, #fff0f0);
+            border-color: rgba(214, 69, 69, 0.3);
+        }
+
+        .month-detail-day .day-no {
+            font-size: 1.45rem;
+            font-weight: 800;
+            line-height: 1;
+            color: var(--teal-900);
+        }
+
+        .month-detail-day.empty .day-no {
+            color: #b1c0bb;
+        }
+
+        .module-chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .module-chip {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.82rem;
+            background: #eef3f1;
+            color: #7b8c88;
+        }
+
+        .module-chip.done {
+            background: #2f8f62;
+            color: #fff;
+        }
+
+        .month-actions {
+            display: grid;
+            gap: 6px;
+        }
+
+        .month-action {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 7px 8px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            color: var(--teal-900);
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .month-action.create {
+            background: #eefaf2;
+            border-color: rgba(31, 116, 94, 0.28);
+        }
+
+        .month-action.complete {
+            background: #f0f8ff;
+            border-color: rgba(31, 79, 149, 0.2);
+        }
+
+        .month-action:hover {
+            transform: translateY(-1px);
+        }
+
+        .month-results {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: #fff;
+            padding: 12px;
+            display: none;
+            gap: 10px;
+        }
+
+        .month-results.show {
+            display: grid;
+        }
+
+        .month-results h4 {
+            font-size: 0.98rem;
+        }
+
+        .result-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .result-card {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: linear-gradient(180deg, #fff, #f8fcfa);
+            padding: 10px;
+            display: grid;
+            gap: 6px;
+        }
+
+        .result-card strong {
+            color: var(--teal-900);
+            font-size: 0.92rem;
+        }
+
+        .result-card span {
+            color: var(--muted);
+            font-size: 0.78rem;
+        }
+
+        .detail-note {
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        .board-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .library {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 10px;
+        }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #fff, #f7fbf9);
+            overflow: hidden;
+            display: grid;
+            box-shadow: 0 10px 20px rgba(17, 75, 58, 0.08);
+        }
+
+        .card img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+            border-bottom: 1px solid var(--border);
+            background: #edf7f2;
+        }
+
+        .card-body { padding: 12px; display: grid; gap: 7px; }
+        .card h3 { font-size: 0.96rem; color: var(--teal-900); }
+        .meta { font-size: 0.8rem; color: var(--muted); display: grid; gap: 2px; }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .btn-mini {
+            font-size: 0.78rem;
+            border-radius: 10px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            background: #fff;
+            font-weight: 700;
+        }
+
+        .btn-mini.edit { background: #ecf9f2; color: var(--teal-900); }
+        .btn-mini.open { background: #eef5ff; color: #214d98; }
+        .btn-mini.delete { background: #fff3f3; color: var(--danger); }
+
+        .empty {
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-md);
+            padding: 24px;
             text-align: center;
-            padding: var(--space-6);
-            color: var(--text-muted);
+            color: var(--muted);
+            background: #fbfdfc;
         }
 
-        .empty-icon {
-            font-size: 3rem;
-            margin-bottom: var(--space-3);
+        .toast {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            background: #0f3f32;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            display: none;
+            z-index: 20;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar-inner {
+                min-height: auto;
+                padding: 0.75rem 0;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .nav-links {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .stats { grid-template-columns: 1fr 1fr; }
+            .module-overview { grid-template-columns: 1fr 1fr; }
+            .month-grid { grid-template-columns: 1fr 1fr; }
+            .month-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .result-list { grid-template-columns: 1fr; }
+            .actions { grid-template-columns: 1fr; }
+            .create-inline-options { grid-template-columns: 1fr; min-width: 100%; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="dev-header">
+    <div class="app-shell">
+        <aside class="sidebar" id="appSidebar">
+            <div class="sidebar-inner">
+                <div class="top-brand">
+                    <div class="brand-badge"><img src="logo.png" alt="IELTS Check logo"></div>
+                </div>
+                <ul class="nav-links">
+                    <li><a class="nav-link" href="index.html">🏠 Dashboard</a></li>
+                    <li><a class="nav-link" href="study-plan.html">📚 Study Plan</a></li>
+                    <li><a class="nav-link active" href="developer.html">🧑‍💻 Developer Console</a></li>
+                </ul>
+            </div>
+        </aside>
+        <div class="content-wrap">
+    <main class="frame">
+        <section class="hero">
             <div>
-                <h1 class="dev-title"> Developer Console</h1>
-                <p class="dev-subtitle">Manage IELTS problem sets</p>
-            </div>
-            <div class="nav-buttons">
-                <button class="btn btn-secondary" onclick="goToDashboard()"> Back to Dashboard</button>
-                <button class="btn btn-primary" onclick="exportProblems()"> Export Data</button>
-            </div>
-        </div>
-
-        <!-- Alert Messages -->
-        <div id="alertSuccess" class="alert alert-success"></div>
-        <div id="alertError" class="alert alert-error"></div>
-
-        <!-- Tabs -->
-        <div class="tab-container">
-            <button class="tab-btn active" onclick="switchTab('create')"> Create Problem Set</button>
-            <button class="tab-btn" onclick="switchTab('manage')"> Manage Sets</button>
-        </div>
-
-        <!-- CREATE TAB -->
-        <div id="create" class="tab-content active">
-            <div class="form-section">
-                <h2 style="margin-bottom: var(--space-4);">Create New Problem Set</h2>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Module Name</label>
-                        <select id="moduleName">
-                            <option value="">Select a module...</option>
-                            <option value="reading"> Reading</option>
-                            <option value="writing"> Writing</option>
-                            <option value="listening"> Listening</option>
-                            <option value="speaking"> Speaking</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Difficulty Level</label>
-                        <select id="difficultyLevel">
-                            <option value="beginner">Beginner</option>
-                            <option value="intermediate">Intermediate</option>
-                            <option value="advanced">Advanced</option>
-                        </select>
+                <div class="hero-brand">
+                    <img src="logo.png" alt="IELTS Check logo">
+                    <div>
+                        <h1>IELTS Check Developer Dashboard</h1>
+                        <p>This page is now dashboard-only. Create and Edit are moved into dedicated pages so each workflow has its own UI and focus.</p>
                     </div>
                 </div>
-
-                <div class="form-group">
-                    <label>Set Title</label>
-                    <input type="text" id="setTitle" placeholder="e.g., Academic Reading: Business Trends">
-                </div>
-
-                <!-- Passage Section (for Reading/Listening) -->
-                <div id="passageSection">
-                    <div class="form-group">
-                        <label>Passage/Text</label>
-                        <textarea id="passageText" placeholder="Enter the main text/passage..."></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label>Passage Title (optional)</label>
-                        <input type="text" id="passageTitle" placeholder="e.g., The Future of Work">
+            </div>
+            <div class="hero-actions">
+                <div class="create-stack">
+                    <button class="btn btn-primary" type="button" id="createBtn">Create New Problem Set</button>
+                    <div class="create-inline-options" id="createOptions">
+                        <a href="developer-create-listening.html">🎧 Listening</a>
+                        <a href="developer-create.html">📖 Reading</a>
+                        <a href="developer-create-writing.html">✍️ Writing</a>
+                        <a href="developer-create-speaking.html">🗣️ Speaking</a>
                     </div>
                 </div>
+                <a class="btn btn-secondary" href="developer-edit.html">Edit Reading</a>
+                <a class="btn btn-secondary" href="developer-edit-listening.html">Edit Listening</a>
+                <a class="btn btn-secondary" href="developer-edit-writing.html">Edit Writing</a>
+                <a class="btn btn-secondary" href="developer-edit-speaking.html">Edit Speaking</a>
+                <button class="btn btn-secondary" type="button" id="exportBtn">Export Data</button>
+            </div>
+        </section>
 
-                <!-- Questions Section -->
-                <div id="questionsSection">
-                    <h3 style="margin-bottom: var(--space-3);">Questions</h3>
-                    <div id="questionsList"></div>
-                    <button class="btn btn-secondary" style="width: 100%; margin-top: var(--space-3);" onclick="addQuestion()">+ Add Question</button>
+        <section class="stats" id="stats"></section>
+        <section class="module-overview" id="moduleOverview"></section>
+
+        <section class="board">
+            <div class="board-head">
+                <div>
+                    <h2>Problem Set Library</h2>
+                    <p style="color: var(--muted); font-size: 0.86rem;">Manage existing sets or jump directly into dedicated edit page.</p>
                 </div>
-
-                <button class="btn btn-primary" style="width: 100%; margin-top: var(--space-5);" onclick="saveProblemSet()"> Save Problem Set</button>
             </div>
-        </div>
+            <div class="library" id="library"></div>
+        </section>
 
-        <!-- MANAGE TAB -->
-        <div id="manage" class="tab-content">
-            <div id="problemsList" class="problems-grid"></div>
-            <div id="emptyState" class="empty-state" style="display: none;">
-                <div class="empty-icon"></div>
-                <p>No problem sets yet. Create one to get started!</p>
+        <section class="board month-board">
+            <div class="board-head">
+                <div>
+                    <h2>Monthly Package Calendar</h2>
+                    <p style="color: var(--muted); font-size: 0.86rem;">Red means the month is not fully complete. Green means every day in that month has all 4 modules done.</p>
+                </div>
             </div>
+            <div class="month-grid" id="monthGrid"></div>
+            <div class="month-detail" id="monthDetail"></div>
+            <div class="month-results" id="monthResults"></div>
+        </section>
+    </main>
         </div>
     </div>
 
+    <div id="toast" class="toast"></div>
+
     <script>
-        // ============ DATA MANAGEMENT ============
-        const PROBLEMS_KEY = "prephaven_problems_v1";
-        let allProblems = [];
-        let questions = [];
+        const MODULE_CONFIG = {
+            reading: {
+                key: "prephaven_problems_v1",
+                editPage: "developer-edit.html",
+                icon: "📖",
+                label: "Reading"
+            },
+            listening: {
+                key: "prephaven_problems_listening_v1",
+                editPage: "developer-edit-listening.html",
+                icon: "🎧",
+                label: "Listening"
+            },
+            writing: {
+                key: "prephaven_problems_writing_v1",
+                editPage: "developer-edit-writing.html",
+                icon: "✍️",
+                label: "Writing"
+            },
+            speaking: {
+                key: "prephaven_problems_speaking_v1",
+                editPage: "developer-edit-speaking.html",
+                icon: "🗣️",
+                label: "Speaking"
+            }
+        };
 
-        // ============ INITIALIZATION ============
-        document.addEventListener("DOMContentLoaded", () => {
-            loadProblems();
-            initializeSampleProblems();
-            renderProblemsList();
-        });
+        let allProblemsByModule = {
+            reading: [],
+            listening: [],
+            writing: [],
+            speaking: []
+        };
+        let mergedProblems = [];
 
-        function loadProblems() {
-            const stored = localStorage.getItem(PROBLEMS_KEY);
-            if (stored) {
-                allProblems = JSON.parse(stored);
-                console.log(`Loaded ${allProblems.length} problem sets`);
+        const MONTH_LABELS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+        const MODULES = ["listening", "reading", "writing", "speaking"];
+
+        function readProblemsByKey(key) {
+            const raw = localStorage.getItem(key);
+            if (!raw) return [];
+            try {
+                const parsed = JSON.parse(raw);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (err) {
+                return [];
             }
         }
 
-        function initializeSampleProblems() {
-            // Only add samples if empty
-            if (allProblems.length > 0) return;
-            
-            const sampleProblems = [
+        function writeProblemsByModule(moduleId, value) {
+            const config = MODULE_CONFIG[moduleId];
+            if (!config) return;
+            localStorage.setItem(config.key, JSON.stringify(value));
+        }
+
+        function safeParse(raw, fallback) {
+            try {
+                return JSON.parse(raw) || fallback;
+            } catch (error) {
+                return fallback;
+            }
+        }
+
+        function dateKey(year, monthIndex, day) {
+            return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        }
+
+        function buildScheduleMap() {
+            const scheduleMap = {};
+
+            MODULES.forEach((moduleId) => {
+                (allProblemsByModule[moduleId] || []).forEach((problem) => {
+                    if (!problem || !problem.scheduledDate) return;
+                    const normalizedDate = String(problem.scheduledDate).slice(0, 10);
+                    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalizedDate)) return;
+                    if (!scheduleMap[normalizedDate]) {
+                        scheduleMap[normalizedDate] = {
+                            listening: false,
+                            reading: false,
+                            writing: false,
+                            speaking: false
+                        };
+                    }
+                    scheduleMap[normalizedDate][moduleId] = true;
+                });
+            });
+
+            return scheduleMap;
+        }
+
+        function isModuleScheduled(dateKeyValue, moduleId, scheduleMap) {
+            return Boolean(scheduleMap[dateKeyValue] && scheduleMap[dateKeyValue][moduleId]);
+        }
+
+        function isPackageComplete(dateKeyValue, scheduleMap) {
+            return MODULES.every((moduleId) => isModuleScheduled(dateKeyValue, moduleId, scheduleMap));
+        }
+
+        function getMonthCompletion(year, monthIndex) {
+            const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+            let completedDays = 0;
+            const scheduleMap = buildScheduleMap();
+
+            for (let day = 1; day <= daysInMonth; day += 1) {
+                if (isPackageComplete(dateKey(year, monthIndex, day), scheduleMap)) {
+                    completedDays += 1;
+                }
+            }
+
+            return { daysInMonth, completedDays };
+        }
+
+        function getMonthStats(year, monthIndex) {
+            const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+            const scheduleMap = buildScheduleMap();
+            let completeDays = 0;
+            let activeDays = 0;
+
+            for (let day = 1; day <= daysInMonth; day += 1) {
+                const key = dateKey(year, monthIndex, day);
+                const hasAny = MODULES.some((moduleId) => isModuleScheduled(key, moduleId, scheduleMap));
+                if (hasAny) activeDays += 1;
+                if (isPackageComplete(key, scheduleMap)) completeDays += 1;
+            }
+
+            return { daysInMonth, completeDays, activeDays, scheduleMap };
+        }
+
+        function getModuleCreatePage(moduleId) {
+            const config = MODULE_CONFIG[moduleId];
+            if (!config) return "developer.html";
+            if (moduleId === "reading") return "developer-create.html";
+            if (moduleId === "listening") return "developer-create-listening.html";
+            if (moduleId === "writing") return "developer-create-writing.html";
+            if (moduleId === "speaking") return "developer-create-speaking.html";
+            return config.editPage;
+        }
+
+        function getModuleLabel(moduleId) {
+            return MODULE_CONFIG[moduleId] ? MODULE_CONFIG[moduleId].label : moduleId;
+        }
+
+        function getModuleIcon(moduleId) {
+            return MODULE_CONFIG[moduleId] ? MODULE_CONFIG[moduleId].icon : "";
+        }
+
+        function getProblemsForDateAndModule(dateKeyValue, moduleId) {
+            return (allProblemsByModule[moduleId] || [])
+                .map((problem, index) => ({ problem, index }))
+                .filter((entry) => String(entry.problem.scheduledDate || "").slice(0, 10) === dateKeyValue);
+        }
+
+        function renderMonthResults(dateKeyValue, moduleId) {
+            const host = document.getElementById("monthResults");
+            if (!host) return;
+
+            const matchingSets = getProblemsForDateAndModule(dateKeyValue, moduleId);
+            const [year, month, day] = dateKeyValue.split("-");
+            const title = `${getModuleIcon(moduleId)} ${getModuleLabel(moduleId)} on ${day}/${month}/${year}`;
+
+            if (matchingSets.length === 0) {
+                host.innerHTML = `
+                    <div>
+                        <h4>${title}</h4>
+                        <p style="color: var(--muted); font-size: 0.85rem;">No problem set found for this date and module.</p>
+                    </div>
+                `;
+                host.classList.add("show");
+                return;
+            }
+
+            host.innerHTML = `
+                <div>
+                    <h4>${title}</h4>
+                    <p style="color: var(--muted); font-size: 0.85rem; margin-top: 4px;">Click a card to open the matching set in its edit page.</p>
+                </div>
+                <div class="result-list">
+                    ${matchingSets.map((entry) => {
+                        const problem = entry.problem;
+                        const editPage = MODULE_CONFIG[moduleId].editPage;
+                        return `
+                            <article class="result-card">
+                                <strong>${escapeHtml(problem.title || `Untitled ${getModuleLabel(moduleId)} Set`)}</strong>
+                                <span>Date: ${escapeHtml(problem.scheduledDate || dateKeyValue)}</span>
+                                <span>Questions: ${countProblemQuestions(moduleId, problem)}</span>
+                                <a class="month-action complete" href="${editPage}?index=${entry.index}">Open Problem Set</a>
+                            </article>
+                        `;
+                    }).join("")}
+                </div>
+            `;
+            host.classList.add("show");
+        }
+
+        function toast(message) {
+            const el = document.getElementById("toast");
+            el.textContent = message;
+            el.style.display = "block";
+            setTimeout(() => { el.style.display = "none"; }, 2200);
+        }
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function toggleCreateOptions(force) {
+            const menu = document.getElementById("createOptions");
+            if (!menu) return;
+            if (typeof force === "boolean") {
+                menu.classList.toggle("show", force);
+                return;
+            }
+            menu.classList.toggle("show");
+        }
+
+        function loadAllModuleProblems() {
+            allProblemsByModule = {
+                reading: readProblemsByKey(MODULE_CONFIG.reading.key),
+                listening: readProblemsByKey(MODULE_CONFIG.listening.key),
+                writing: readProblemsByKey(MODULE_CONFIG.writing.key),
+                speaking: readProblemsByKey(MODULE_CONFIG.speaking.key)
+            };
+
+            mergedProblems = [];
+            Object.keys(allProblemsByModule).forEach((moduleId) => {
+                const list = allProblemsByModule[moduleId];
+                list.forEach((problem, index) => {
+                    mergedProblems.push({ moduleId, index, problem });
+                });
+            });
+        }
+
+        function countProblemQuestions(moduleId, problem) {
+            if (!problem) return 0;
+
+            if (moduleId === "reading" || moduleId === "listening") {
+                return Array.isArray(problem.questionGroups)
+                    ? problem.questionGroups.reduce((sum, group) => sum + ((group.questions || []).length), 0)
+                    : 0;
+            }
+
+            if (moduleId === "writing") {
+                return 1;
+            }
+
+            if (moduleId === "speaking") {
+                if (!Array.isArray(problem.parts)) return 0;
+                return problem.parts.reduce((sum, part) => {
+                    const qCount = Array.isArray(part.questions) ? part.questions.length : 0;
+                    const cueCount = Array.isArray(part.cueCard?.points) ? part.cueCard.points.length : 0;
+                    return sum + qCount + cueCount;
+                }, 0);
+            }
+
+            return 0;
+        }
+
+        function renderStats() {
+            const totalQuestions = mergedProblems.reduce((sum, entry) => sum + countProblemQuestions(entry.moduleId, entry.problem), 0);
+            const upcoming = mergedProblems.filter((entry) => entry.problem.scheduledDate && new Date(entry.problem.scheduledDate) >= new Date(new Date().toDateString())).length;
+            const stats = [
+                { label: "Total Sets", value: mergedProblems.length },
+                { label: "Total Questions", value: totalQuestions },
+                { label: "Reading Sets", value: allProblemsByModule.reading.length },
+                { label: "Upcoming Dates", value: upcoming }
+            ];
+
+            const host = document.getElementById("stats");
+            host.innerHTML = stats.map((item) => `
+                <article class="stat">
+                    <small>${item.label}</small>
+                    <strong>${item.value}</strong>
+                </article>
+            `).join("");
+        }
+
+        function renderModuleOverview() {
+            const host = document.getElementById("moduleOverview");
+            if (!host) return;
+
+            const moduleItems = ["listening", "reading", "writing", "speaking"].map((moduleId) => ({
+                moduleId,
+                label: MODULE_CONFIG[moduleId].label,
+                icon: MODULE_CONFIG[moduleId].icon,
+                sets: allProblemsByModule[moduleId].length,
+                helper: "Problem sets"
+            }));
+
+            const totalQuestions = mergedProblems.reduce((sum, entry) => sum + countProblemQuestions(entry.moduleId, entry.problem), 0);
+            const totalPackages = Math.min(
+                allProblemsByModule.reading.length,
+                allProblemsByModule.listening.length,
+                allProblemsByModule.writing.length,
+                allProblemsByModule.speaking.length
+            );
+
+            const items = [
+                ...moduleItems,
                 {
-                    moduleId: "reading",
+                    moduleId: "package",
+                    label: "📦 Total Package",
                     icon: "",
-                    moduleName: "Reading",
-                    title: "Academic Reading: Technology & Society",
-                    difficulty: "intermediate",
-                    passage: {
-                        title: "The Impact of Artificial Intelligence",
-                        text: "The rapid advancement of artificial intelligence has transformed multiple sectors of society. From healthcare diagnostics to autonomous vehicles, AI systems now perform tasks that were once considered exclusively human domains. However, this technological revolution brings both opportunities and challenges. While AI can process vast amounts of data and identify patterns beyond human capability, concerns about job displacement and ethical implications remain. Organizations worldwide are investing heavily in AI research, recognizing both its potential and the need for responsible development frameworks."
-                    },
-                    questions: [
-                        {
-                            id: "q1",
-                            text: "According to the passage, which sectors have been transformed by AI?",
-                            type: "mcq",
-                            options: ["Only healthcare", "Healthcare and autonomous vehicles", "Only technology", "Finance and banking"],
-                            correctAnswer: "Healthcare and autonomous vehicles"
-                        },
-                        {
-                            id: "q2",
-                            text: "What concern is mentioned about AI development?",
-                            type: "mcq",
-                            options: ["Cost of implementation", "Job displacement and ethical implications", "Lack of research", "Poor accuracy"],
-                            correctAnswer: "Job displacement and ethical implications"
-                        },
-                        {
-                            id: "q3",
-                            text: "Complete the sentence: Organizations are investing in AI because they recognize ________.",
-                            type: "fill-in",
-                            options: ["its potential and need for responsible development"],
-                            correctAnswer: "its potential and need for responsible development"
-                        }
-                    ],
-                    createdAt: new Date().toISOString(),
-                    id: `problem_sample_reading_${Date.now()}`
+                    sets: totalPackages,
+                    helper: "Complete 4-module set"
+                },
+                {
+                    moduleId: "questions",
+                    label: "🧮 Total Questions",
+                    icon: "",
+                    sets: totalQuestions,
+                    helper: "All modules combined"
                 }
             ];
-            
-            allProblems = sampleProblems;
-            localStorage.setItem(PROBLEMS_KEY, JSON.stringify(allProblems));
-            console.log("Sample problems initialized");
+
+            host.innerHTML = items.map((item) => `
+                <article class="module-pill ${item.moduleId}">
+                    <div class="pill-head">${item.icon ? `${item.icon} ` : ""}${item.label}</div>
+                    <div class="pill-body">
+                        <small>${item.helper}</small>
+                        <strong>${item.sets}</strong>
+                    </div>
+                </article>
+            `).join("");
         }
 
-        // ============ TAB SWITCHING ============
-        function switchTab(tabName) {
-            // Hide all tabs
-            document.querySelectorAll(".tab-content").forEach((tab) => {
-                tab.classList.remove("active");
-            });
-
-            // Remove active from all buttons
-            document.querySelectorAll(".tab-btn").forEach((btn) => {
-                btn.classList.remove("active");
-            });
-
-            // Show selected tab
-            document.getElementById(tabName).classList.add("active");
-            event.target.classList.add("active");
-
-            if (tabName === "manage") {
-                renderProblemsList();
+        function renderLibrary() {
+            const host = document.getElementById("library");
+            if (mergedProblems.length === 0) {
+                host.innerHTML = '<div class="empty">No problem sets yet. Start from the Create page.</div>';
+                return;
             }
-        }
 
-        // ============ QUESTION MANAGEMENT ============
-        function addQuestion() {
-            const qIndex = questions.length;
-            const questionObj = {
-                id: `q_${Date.now()}_${qIndex}`,
-                text: "",
-                type: "mcq",
-                options: ["", ""],
-                correctAnswer: ""
-            };
-            questions.push(questionObj);
-            renderQuestions();
-        }
+            host.innerHTML = mergedProblems.map((entry) => {
+                const problem = entry.problem;
+                const moduleMeta = MODULE_CONFIG[entry.moduleId];
+                const image = problem.image && problem.image.dataUrl
+                    ? `<img src="${problem.image.dataUrl}" alt="${escapeHtml(problem.title)}">`
+                    : "";
 
-        function renderQuestions() {
-            const container = document.getElementById("questionsList");
-            container.innerHTML = "";
-
-            questions.forEach((q, idx) => {
-                const questionDiv = document.createElement("div");
-                questionDiv.style.cssText =
-                    "background: var(--bg); padding: var(--space-3); border-radius: var(--radius-md); margin-bottom: var(--space-3); border-left: 4px solid var(--accent-gold);";
-
-                let questionHTML = `
-                    <div class="form-group">
-                        <label>Question ${idx + 1}</label>
-                        <input type="text" value="${q.text}" placeholder="Question text"
-                            onchange="updateQuestion(${idx}, 'text', this.value)">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Question Type</label>
-                        <select onchange="updateQuestion(${idx}, 'type', this.value)">
-                            <option value="mcq" ${q.type === "mcq" ? "selected" : ""}>Multiple Choice</option>
-                            <option value="fill-in" ${q.type === "fill-in" ? "selected" : ""}>Fill in the Blank</option>
-                            <option value="matching" ${q.type === "matching" ? "selected" : ""}>Matching</option>
-                        </select>
-                    </div>
+                return `
+                    <article class="card">
+                        ${image}
+                        <div class="card-body">
+                            <h3>${escapeHtml(problem.icon || moduleMeta.icon || "")} ${escapeHtml(problem.title || "Untitled Set")}</h3>
+                            <div class="meta">
+                                <span>Module: ${escapeHtml(problem.moduleName || moduleMeta.label || entry.moduleId || "-")}</span>
+                                <span>Questions: ${countProblemQuestions(entry.moduleId, problem)}</span>
+                                <span>Difficulty: ${escapeHtml(problem.difficulty || "-")}</span>
+                                <span>Set Date: ${escapeHtml(problem.scheduledDate || "-")}</span>
+                            </div>
+                            <div class="actions">
+                                <a class="btn-mini edit" href="${moduleMeta.editPage}?index=${entry.index}">Edit</a>
+                                <a class="btn-mini open" href="${moduleMeta.editPage}?index=${entry.index}">Open</a>
+                                <button class="btn-mini delete" type="button" onclick="deleteSet('${entry.moduleId}', ${entry.index})">Delete</button>
+                            </div>
+                        </div>
+                    </article>
                 `;
-
-                if (q.type === "mcq" || q.type === "matching") {
-                    questionHTML += `<div class="form-group"><label>Options</label><div class="options-list" id="options_${idx}"></div></div>`;
-                    questionDiv.innerHTML += questionHTML;
-                    questionDiv.appendChild(this.createOptionsEditor(idx, q));
-                    questionHTML = "";
-                } else {
-                    questionDiv.innerHTML += questionHTML;
-                }
-
-                questionHTML += `
-                    <div class="form-group">
-                        <label>Correct Answer</label>
-                        <input type="text" value="${q.correctAnswer}" placeholder="Correct answer"
-                            onchange="updateQuestion(${idx}, 'correctAnswer', this.value)">
-                    </div>
-
-                    <button class="btn btn-danger" style="width: 100%;" onclick="removeQuestion(${idx})"> Remove Question</button>
-                `;
-                questionDiv.innerHTML += questionHTML;
-                container.appendChild(questionDiv);
-            });
+            }).join("");
         }
 
-        function createOptionsEditor(qIdx, q) {
-            const container = document.createElement("div");
-            container.className = "options-list";
+        function renderMonthCalendar() {
+            const host = document.getElementById("monthGrid");
+            if (!host) return;
 
-            if (Array.isArray(q.options)) {
-                q.options.forEach((opt, oIdx) => {
-                    const optDiv = document.createElement("div");
-                    optDiv.className = "option-input";
-                    optDiv.innerHTML = `
-                        <input type="text" value="${opt}" placeholder="Option ${oIdx + 1}"
-                            onchange="updateOption(${qIdx}, ${oIdx}, this.value)">
-                        <button onclick="removeOption(${qIdx}, ${oIdx})"></button>
-                    `;
-                    container.appendChild(optDiv);
+            const now = new Date();
+            const year = now.getFullYear();
+            const currentMonthKey = `${year}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+            host.innerHTML = MONTH_LABELS.map((monthLabel, monthIndex) => {
+                const { daysInMonth, completedDays } = getMonthCompletion(year, monthIndex);
+                const isComplete = completedDays === daysInMonth;
+                const ratio = `${String(completedDays).padStart(2, "0")}/${String(daysInMonth).padStart(2, "0")}`;
+                const statusLabel = isComplete ? "Complete" : "In Progress";
+                const cardClass = isComplete ? "month-card complete" : "month-card partial";
+                const activeClass = monthIndex === now.getMonth() ? " active" : "";
+
+                return `
+                    <button class="${cardClass}${activeClass}" type="button" data-month-index="${monthIndex}" data-year="${year}">
+                        <div class="month-head">
+                            <strong>${monthLabel}</strong>
+                            <span class="arrow">➜</span>
+                        </div>
+                        <div class="month-ratio">${ratio}</div>
+                        <div class="month-note">Package completion for ${year}</div>
+                        <div class="month-status">${statusLabel}</div>
+                    </button>
+                `;
+            }).join("");
+
+            host.querySelectorAll("[data-month-index]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    renderMonthDetail(Number(button.dataset.year), Number(button.dataset.monthIndex));
+                    host.querySelectorAll(".month-card.active").forEach((item) => item.classList.remove("active"));
+                    button.classList.add("active");
                 });
+            });
+
+            renderMonthDetail(year, now.getMonth());
+        }
+
+        function renderMonthDetail(year, monthIndex) {
+            const host = document.getElementById("monthDetail");
+            if (!host) return;
+            const resultsHost = document.getElementById("monthResults");
+            if (resultsHost) {
+                resultsHost.classList.remove("show");
+                resultsHost.innerHTML = "";
             }
 
-            const addBtn = document.createElement("button");
-            addBtn.textContent = "+ Add Option";
-            addBtn.className = "btn btn-secondary";
-            addBtn.style.cssText = "width: 100%; margin-top: var(--space-2);";
-            addBtn.onclick = () => addOption(qIdx);
-            container.appendChild(addBtn);
+            const monthLabel = MONTH_LABELS[monthIndex];
+            const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+            const firstWeekday = new Date(year, monthIndex, 1).getDay();
+            const scheduleMap = buildScheduleMap();
+            const completeDays = getMonthCompletion(year, monthIndex).completedDays;
+            const ratio = `${String(completeDays).padStart(2, "0")}/${String(daysInMonth).padStart(2, "0")}`;
 
-            return container;
-        }
+            const dayCards = [];
 
-        function addOption(qIdx) {
-            if (!questions[qIdx].options) questions[qIdx].options = [];
-            questions[qIdx].options.push("");
-            renderQuestions();
-        }
-
-        function updateOption(qIdx, oIdx, value) {
-            questions[qIdx].options[oIdx] = value;
-        }
-
-        function removeOption(qIdx, oIdx) {
-            questions[qIdx].options.splice(oIdx, 1);
-            renderQuestions();
-        }
-
-        function updateQuestion(qIdx, field, value) {
-            questions[qIdx][field] = value;
-        }
-
-        function removeQuestion(idx) {
-            questions.splice(idx, 1);
-            renderQuestions();
-        }
-
-        // ============ SAVE PROBLEM SET ============
-        function saveProblemSet() {
-            const moduleName = document.getElementById("moduleName").value;
-            const setTitle = document.getElementById("setTitle").value;
-            const passageText = document.getElementById("passageText").value;
-            const passageTitle = document.getElementById("passageTitle").value;
-            const difficulty = document.getElementById("difficultyLevel").value;
-
-            if (!moduleName || !setTitle || questions.length === 0) {
-                showAlert("error", "Please fill in all required fields and add at least one question.");
-                return;
+            for (let i = 0; i < firstWeekday; i += 1) {
+                dayCards.push('<div class="month-detail-day empty"></div>');
             }
 
-            if ((moduleName === "reading" || moduleName === "listening") && !passageText) {
-                showAlert("error", "Reading and Listening modules require a passage.");
-                return;
+            for (let day = 1; day <= daysInMonth; day += 1) {
+                const key = dateKey(year, monthIndex, day);
+                const dayComplete = isPackageComplete(key, scheduleMap);
+                const dayHasAny = MODULES.some((moduleId) => isModuleScheduled(key, moduleId, scheduleMap));
+                const moduleActions = MODULES.map((moduleId) => {
+                    const done = isModuleScheduled(key, moduleId, scheduleMap);
+                    if (!done) {
+                        return `
+                            <a class="month-action create" href="${getModuleCreatePage(moduleId)}?date=${encodeURIComponent(key)}">
+                                <span>${getModuleIcon(moduleId)} Create ${getModuleLabel(moduleId)}</span>
+                                <span>+</span>
+                            </a>
+                        `;
+                    }
+
+                    return `
+                        <button class="month-action complete" type="button" data-date="${key}" data-module="${moduleId}">
+                            <span>${getModuleIcon(moduleId)} Complete ${getModuleLabel(moduleId)}</span>
+                            <span>View</span>
+                        </button>
+                    `;
+                }).join("");
+
+                dayCards.push(`
+                    <article class="month-detail-day ${dayComplete ? "complete" : "partial"}">
+                        <div class="day-no">${day}</div>
+                        <div class="module-chip-row">
+                            ${MODULES.map((moduleId) => {
+                                const done = isModuleScheduled(key, moduleId, scheduleMap);
+                                return `<span class="module-chip${done ? " done" : ""}" title="${MODULE_CONFIG[moduleId].label}">${MODULE_CONFIG[moduleId].icon}</span>`;
+                            }).join("")}
+                        </div>
+                        <div class="month-actions">${moduleActions}</div>
+                        <div class="detail-note">${dayComplete ? "All 4 modules complete" : dayHasAny ? "Some modules still missing" : "No package scheduled"}</div>
+                    </article>
+                `);
             }
 
-            const moduleMap = {
-                reading: { icon: "", moduleName: "Reading" },
-                writing: { icon: "", moduleName: "Writing" },
-                listening: { icon: "", moduleName: "Listening" },
-                speaking: { icon: "", moduleName: "Speaking" }
-            };
-
-            const problemSet = {
-                moduleId: moduleName,
-                icon: moduleMap[moduleName].icon,
-                moduleName: moduleMap[moduleName].moduleName,
-                title: setTitle,
-                difficulty: difficulty,
-                passage: passageText
-                    ? {
-                          text: passageText,
-                          title: passageTitle || moduleMap[moduleName].moduleName
-                      }
-                    : null,
-                questions: questions,
-                createdAt: new Date().toISOString(),
-                id: `problem_${Date.now()}`
-            };
-
-            allProblems.push(problemSet);
-            localStorage.setItem(PROBLEMS_KEY, JSON.stringify(allProblems));
-
-            showAlert("success", `Problem set "${setTitle}" saved successfully!`);
-            resetForm();
-            renderProblemsList();
-        }
-
-        function resetForm() {
-            document.getElementById("moduleName").value = "";
-            document.getElementById("setTitle").value = "";
-            document.getElementById("passageText").value = "";
-            document.getElementById("passageTitle").value = "";
-            document.getElementById("difficultyLevel").value = "beginner";
-            questions = [];
-            renderQuestions();
-        }
-
-        // ============ MANAGE PROBLEMS ============
-        function renderProblemsList() {
-            const container = document.getElementById("problemsList");
-            const emptyState = document.getElementById("emptyState");
-
-            if (allProblems.length === 0) {
-                container.innerHTML = "";
-                emptyState.style.display = "block";
-                return;
-            }
-
-            emptyState.style.display = "none";
-            container.innerHTML = "";
-
-            allProblems.forEach((problem, idx) => {
-                const card = document.createElement("div");
-                card.className = "problem-card";
-                card.innerHTML = `
-                    <div class="problem-card-header">
-                        <div class="problem-card-title">${problem.icon} ${problem.title}</div>
-                    </div>
-                    <div class="problem-card-stats">
-                        <div> Module: ${problem.moduleName}</div>
-                        <div> Questions: ${problem.questions.length}</div>
-                        <div> Difficulty: ${problem.difficulty}</div>
-                        <div style="font-size: 0.8rem; margin-top: var(--space-2); color: var(--text-muted);">
-                            Created: ${new Date(problem.createdAt).toLocaleDateString()}
+            host.innerHTML = `
+                <div class="month-detail-head">
+                    <div>
+                        <h3>${monthLabel} ${year}</h3>
+                        <div class="month-detail-meta">
+                            <span>Completion ${ratio}</span>
+                            <span>${completeDays} fully complete day(s)</span>
                         </div>
                     </div>
-                    <div class="problem-card-actions">
-                        <button class="btn btn-secondary" onclick="editProblem(${idx})"> Edit</button>
-                        <button class="btn btn-danger" onclick="deleteProblem(${idx})"> Delete</button>
-                    </div>
-                `;
-                container.appendChild(card);
+                    <div class="detail-note">Click a month above to switch the schedule view.</div>
+                </div>
+                <div class="month-detail-grid">
+                    ${dayCards.join("")}
+                </div>
+            `;
+            host.classList.add("show");
+
+            host.querySelectorAll("[data-date][data-module]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    renderMonthResults(button.dataset.date, button.dataset.module);
+                });
             });
         }
 
-        function deleteProblem(idx) {
-            if (confirm("Are you sure you want to delete this problem set?")) {
-                allProblems.splice(idx, 1);
-                localStorage.setItem(PROBLEMS_KEY, JSON.stringify(allProblems));
-                showAlert("success", "Problem set deleted!");
-                renderProblemsList();
-            }
+        function deleteSet(moduleId, idx) {
+            const list = allProblemsByModule[moduleId] || [];
+            const selected = list[idx];
+            if (!selected) return;
+            if (!confirm(`Delete "${selected.title || "Untitled"}"?`)) return;
+
+            list.splice(idx, 1);
+            allProblemsByModule[moduleId] = list;
+            writeProblemsByModule(moduleId, list);
+            loadAllModuleProblems();
+            renderStats();
+            renderModuleOverview();
+            renderLibrary();
+            renderMonthCalendar();
+            toast("Problem set deleted");
         }
 
-        function editProblem(idx) {
-            const problem = allProblems[idx];
-            document.getElementById("moduleName").value = problem.moduleId;
-            document.getElementById("setTitle").value = problem.title;
-            document.getElementById("passageText").value = problem.passage?.text || "";
-            document.getElementById("passageTitle").value = problem.passage?.title || "";
-            document.getElementById("difficultyLevel").value = problem.difficulty;
-
-            questions = JSON.parse(JSON.stringify(problem.questions));
-            renderQuestions();
-
-            // Remove the old one for re-save
-            allProblems.splice(idx, 1);
-            localStorage.setItem(PROBLEMS_KEY, JSON.stringify(allProblems));
-
-            // Switch to create tab
-            document.getElementById("create").classList.add("active");
-            document.getElementById("manage").classList.remove("active");
-            document.querySelectorAll(".tab-btn")[0].classList.add("active");
-            document.querySelectorAll(".tab-btn")[1].classList.remove("active");
-
-            showAlert("success", "Problem set loaded for editing!");
-        }
-
-        // ============ UTILITIES ============
-        function showAlert(type, message) {
-            const alertDiv =
-                type === "success" ? document.getElementById("alertSuccess") : document.getElementById("alertError");
-            alertDiv.textContent = message;
-            alertDiv.classList.add("show");
-            setTimeout(() => alertDiv.classList.remove("show"), 4000);
-        }
-
-        function exportProblems() {
-            const dataStr = JSON.stringify(allProblems, null, 2);
-            const dataBlob = new Blob([dataStr], { type: "application/json" });
-            const url = URL.createObjectURL(dataBlob);
+        function exportData() {
+            const dataStr = JSON.stringify(allProblemsByModule, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
             link.href = url;
             link.download = `ielts_problems_${new Date().toISOString().split("T")[0]}.json`;
             link.click();
-            showAlert("success", "Problems exported successfully!");
+            URL.revokeObjectURL(url);
+            toast("Exported JSON successfully");
         }
 
-        function goToDashboard() {
-            window.location.href = "index.html";
+        document.getElementById("exportBtn").addEventListener("click", exportData);
+
+        const createBtn = document.getElementById("createBtn");
+        if (createBtn) {
+            createBtn.addEventListener("click", () => toggleCreateOptions());
         }
+
+        document.addEventListener("click", (event) => {
+            const picker = document.querySelector(".create-stack");
+            if (!picker) return;
+            if (!picker.contains(event.target)) {
+                toggleCreateOptions(false);
+            }
+        });
+
+        loadAllModuleProblems();
+        renderStats();
+        renderModuleOverview();
+        renderLibrary();
+        renderMonthCalendar();
     </script>
 </body>
 </html>
-
-
-

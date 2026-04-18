@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Listening Sets | IELTS Check</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#f3f8f5; --surface:#fff; --text:#182621; --muted:#5a6d66; --teal:#114b3a; --teal2:#1f745e; --border:#d8e4de; --danger:#c44444; --radius:14px; --shadow:0 14px 32px rgba(17,75,58,.09);}    
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Poppins,sans-serif;color:var(--text);background:radial-gradient(circle at 5% 0%,rgba(76,163,255,.12),transparent 34%),radial-gradient(circle at 95% 5%,rgba(17,75,58,.12),transparent 30%),var(--bg)}
+    h1,h2,h3{font-family:Sora,sans-serif;letter-spacing:-.01em}
+    .wrap{max-width:1260px;margin:0 auto;padding:22px 16px 36px;display:grid;gap:14px}
+    .topbar,.panel{background:var(--surface);border:1px solid var(--border);border-radius:20px;box-shadow:var(--shadow);padding:14px}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:linear-gradient(140deg,#fff,#edf8f2)}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand img{width:36px;height:36px;border:1px solid var(--border);border-radius:11px;padding:4px;object-fit:contain;background:#fff}
+    .brand p{color:var(--muted);font-size:.85rem;margin-top:4px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .btn{border:none;border-radius:10px;padding:10px 13px;font-size:.84rem;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;transition:transform .2s ease}
+    .btn:hover{transform:translateY(-2px)}
+    .btn-main{background:linear-gradient(135deg,var(--teal),var(--teal2));color:#fff}
+    .btn-alt{background:#fff;color:var(--teal);border:1px solid var(--border)}
+    .shell{display:grid;grid-template-columns:320px minmax(0,1fr);gap:12px;align-items:start}
+    .set-list{display:grid;gap:8px;max-height:76vh;overflow:auto;padding-right:4px}
+    .set-item{border:1px solid var(--border);border-radius:12px;background:#fff;padding:10px;cursor:pointer;transition:all .2s ease}
+    .set-item:hover{transform:translateY(-1px)} .set-item.active{border-color:var(--teal);background:#eff8f3}
+    .set-item h4{font-size:.9rem;color:var(--teal);margin-bottom:2px}.set-item p{color:var(--muted);font-size:.78rem}
+    .empty{border:1px dashed var(--border);border-radius:12px;padding:16px;color:var(--muted);text-align:center;font-size:.86rem}
+    .settings-box{border:1px solid #cfe1f7;border-radius:var(--radius);background:linear-gradient(180deg,#f4f9ff,#eef6ff);padding:12px;margin-bottom:12px}
+    .settings-box h3{color:#1f4f95}
+    .questions-box{border:1px solid #d7e7da;border-radius:var(--radius);background:linear-gradient(180deg,#f8fff9,#f2fbf4);padding:12px}
+    .questions-box h3{color:var(--teal)}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .field{margin-bottom:10px}.field label{display:block;font-size:.84rem;font-weight:700;margin-bottom:6px}
+    .field input,.field textarea,.field select{width:100%;border:1px solid var(--border);border-radius:10px;padding:10px;font-family:Poppins,sans-serif;font-size:.9rem;background:#fff}
+    .field textarea{min-height:90px;resize:vertical}
+    .group-card,.question-card{border:1px solid var(--border);border-radius:12px;background:#fff;padding:10px;margin-bottom:10px}
+    .group-card{background:linear-gradient(180deg,#fff,#f8fcfa);padding:12px}
+    .group-head,.question-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap}
+    .badge{font-size:.72rem;padding:4px 8px;border-radius:999px;font-weight:700;background:rgba(17,75,58,.1);color:var(--teal)}
+    .option-item{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;margin-bottom:6px}
+    .option-item strong{font-size:.78rem;color:var(--muted);min-width:18px}
+    .answer-options{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+    .answer-choice{border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-size:.8rem;cursor:pointer;background:#fff;user-select:none}
+    .answer-choice.active{border-color:var(--teal);background:rgba(17,75,58,.12);color:var(--teal);font-weight:700}
+    .inline-btn{border:1px solid var(--border);background:#fff;border-radius:10px;padding:7px 10px;font-size:.78rem;font-weight:700;cursor:pointer}
+    .inline-btn.danger{color:var(--danger);border-color:#ffd1d1;background:#fff5f5}
+    .sticky-actions{position:sticky;bottom:10px;margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.9);backdrop-filter:blur(9px);display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .toast{position:fixed;right:12px;bottom:12px;background:#123e32;color:#fff;border-radius:10px;padding:10px 14px;font-size:.83rem;display:none;z-index:20}
+    @media (max-width:950px){.shell{grid-template-columns:1fr}.row2{grid-template-columns:1fr}.sticky-actions{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <section class="topbar">
+    <div class="brand"><img src="logo.png" alt="IELTS Check logo"><div><h1>Edit Listening Problem Sets</h1><p>Edit page only. User view is separate in listening test page.</p></div></div>
+    <div class="actions">
+      <a class="btn btn-alt" href="developer.html">Back Dashboard</a>
+      <a class="btn btn-alt" href="developer-create-listening.html">Create New Listening Set</a>
+      <a class="btn btn-alt" href="listening-test.html?returnTo=developer-edit-listening.html" target="_blank">Open Real User View</a>
+      <button class="btn btn-main" type="button" id="updateTop">Update Current Set</button>
+    </div>
+  </section>
+
+  <section class="shell">
+    <aside class="panel"><h3 style="margin-bottom:8px;">Listening Set List</h3><div id="setList" class="set-list"></div></aside>
+    <section class="panel">
+      <div id="emptyEditor" class="empty">Select one listening set from the left panel.</div>
+      <div id="editor" style="display:none;">
+        <div class="settings-box">
+          <h3 style="margin-bottom:10px;">Listening Set Information</h3>
+          <div class="row2"><div class="field"><label>Set Title</label><input type="text" id="setTitle"></div><div class="field"><label>Set Date</label><input type="date" id="setDate"></div></div>
+          <div class="row2"><div class="field"><label>Difficulty</label><select id="difficultyLevel"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></div><div class="field"><label>Level</label><select id="setLevel"><option value="1">Level 1</option><option value="2">Level 2</option><option value="3">Level 3</option></select></div></div>
+          <div class="field"><label>Audio Title</label><input type="text" id="audioTitle"></div>
+          <div class="field"><label>Audio Description</label><textarea id="audioDescription"></textarea></div>
+          <div class="field"><label>Audio URL (mp3)</label><input type="text" id="audioUrl"></div>
+        </div>
+
+        <div class="questions-box">
+          <h3 style="margin-bottom:10px;">Question Groups</h3>
+          <div id="groupsContainer"></div>
+          <button type="button" class="inline-btn" id="addGroupBtn">+ Add Group</button>
+        </div>
+
+        <div class="sticky-actions">
+          <button class="btn btn-main" type="button" id="updateBottom">Update Current Set</button>
+          <button class="btn btn-alt" type="button" id="duplicateBtn">Duplicate as New</button>
+          <button class="btn btn-alt" type="button" id="deleteBtn" style="border-color:#ffd1d1;color: var(--danger);">Delete Current Set</button>
+        </div>
+      </div>
+    </section>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = "prephaven_problems_listening_v1";
+const QUESTION_TYPE_CONFIG = {
+  "multiple-choice": { mode: "radio", options: ["A", "B", "C", "D"], locked: false, label: "Multiple Choice" },
+  "true-false-not-given": { mode: "radio", options: ["True", "False", "Not Given"], locked: true, label: "True / False / Not Given" },
+  "yes-no-not-given": { mode: "radio", options: ["Yes", "No", "Not Given"], locked: true, label: "Yes / No / Not Given" },
+  "short-answer": { mode: "text", options: [], locked: true, label: "Short Answer" },
+  "sentence-completion": { mode: "text", options: [], locked: true, label: "Sentence Completion" }
+};
+let allProblems = [];
+let selectedIndex = null;
+
+function toast(message){const box=document.getElementById("toast");box.textContent=message;box.style.display="block";setTimeout(()=>{box.style.display="none";},2200);} 
+function readProblems(){const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return [];try{const parsed=JSON.parse(raw);return Array.isArray(parsed)?parsed:[];}catch{return [];}}
+function writeProblems(list){localStorage.setItem(STORAGE_KEY,JSON.stringify(list));}
+function escapeHtml(v){return String(v||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");}
+function escapeJs(v){return String(v||"").replaceAll("\\","\\\\").replaceAll("'","\\'");}
+function newQuestion(type){const conf=QUESTION_TYPE_CONFIG[type];return {type,text:"",options:[...conf.options],answer:"",uiMode:conf.mode};}
+function newGroup(problem){return {title:`Questions ${(problem.questionGroups||[]).length+1}`,instruction:"",questions:[newQuestion("multiple-choice")]};}
+function normalizeQuestion(raw){
+  const type = raw.type === "radio" ? (String(raw.options||"").includes("True") ? "true-false-not-given" : "multiple-choice") : "short-answer";
+  const conf = QUESTION_TYPE_CONFIG[type];
+  const source = typeof raw.options === "string" ? raw.options.split(",").map((o)=>o.trim()).filter(Boolean) : conf.options;
+  return {type,text:raw.text||"",options:source.length?source:[...conf.options],answer:raw.answer||"",uiMode:conf.mode};
+}
+
+function renderSetList(){
+  const host=document.getElementById("setList");
+  if(allProblems.length===0){host.innerHTML='<div class="empty">No listening set yet.</div>';return;}
+  host.innerHTML=allProblems.map((item,idx)=>`<article class="set-item ${selectedIndex===idx?"active":""}" onclick="selectSet(${idx})"><h4>${escapeHtml(item.icon||"🎧")} ${escapeHtml(item.title||"Untitled")}</h4><p>${escapeHtml(item.difficulty||"beginner")} • Level ${escapeHtml(item.level||1)}</p><p>Date: ${escapeHtml(item.scheduledDate||"-")}</p></article>`).join("");
+}
+
+function selectSet(index){
+  const item=allProblems[index];if(!item)return;selectedIndex=index;
+  if(!Array.isArray(item.questionGroups)||item.questionGroups.length===0){item.questionGroups=[newGroup(item)];}
+  item.questionGroups=item.questionGroups.map((g)=>({title:g.title||"Questions",instruction:g.instruction||"",questions:(g.questions||[]).length?g.questions.map(normalizeQuestion):[newQuestion("multiple-choice")]}));
+  document.getElementById("emptyEditor").style.display="none";document.getElementById("editor").style.display="block";
+  document.getElementById("setTitle").value=item.title||"";
+  document.getElementById("setDate").value=item.scheduledDate||new Date().toISOString().split("T")[0];
+  document.getElementById("difficultyLevel").value=item.difficulty||"beginner";
+  document.getElementById("setLevel").value=String(item.level||1);
+  document.getElementById("audioTitle").value=item.audioTitle||"";
+  document.getElementById("audioDescription").value=item.audioDescription||"";
+  document.getElementById("audioUrl").value=item.audioUrl||"";
+  renderSetList();renderGroups();
+}
+
+function renderGroups(){
+  const host=document.getElementById("groupsContainer");const current=allProblems[selectedIndex];if(!current)return;host.innerHTML="";
+  current.questionGroups.forEach((group,gIdx)=>{
+    const groupEl=document.createElement("section");groupEl.className="group-card";
+    groupEl.innerHTML=`<div class="group-head"><span class="badge">Group ${gIdx+1}</span><button type="button" class="inline-btn danger" onclick="removeGroup(${gIdx})">Delete Group</button></div><div class="field"><label>Group Title</label><input type="text" value="${escapeHtml(group.title)}" onchange="updateGroup(${gIdx},'title',this.value)"></div><div class="field"><label>Instruction</label><textarea onchange="updateGroup(${gIdx},'instruction',this.value)">${escapeHtml(group.instruction||"")}</textarea></div><div id="questions_${gIdx}"></div><button type="button" class="inline-btn" onclick="addQuestion(${gIdx})">+ Add Question</button>`;
+    host.appendChild(groupEl);renderQuestions(gIdx);
+  });
+}
+
+function renderQuestions(gIdx){
+  const current=allProblems[selectedIndex];if(!current)return;
+  const host=document.getElementById(`questions_${gIdx}`);const group=current.questionGroups[gIdx];if(!host||!group)return;host.innerHTML="";
+  group.questions.forEach((q,qIdx)=>{
+    const conf=QUESTION_TYPE_CONFIG[q.type];const card=document.createElement("article");card.className="question-card";
+    const typeOptions=Object.entries(QUESTION_TYPE_CONFIG).map(([k,v])=>`<option value="${k}" ${k===q.type?"selected":""}>${v.label}</option>`).join("");
+    let optionsSection="",answerSection="";
+    if(conf.mode==="radio"){
+      const items=q.options.map((opt,idx)=>`<div class="option-item"><strong>${conf.locked?"":String.fromCharCode(65+idx)}</strong><input type="text" value="${escapeHtml(opt)}" ${conf.locked?"readonly":""} onchange="updateOption(${gIdx},${qIdx},${idx},this.value)"></div>`).join("");
+      optionsSection=`<div class="field"><label>Options</label>${items}</div>`;
+      const chips=q.options.map((opt)=>`<span class="answer-choice ${q.answer===opt?"active":""}" onclick="pickAnswer(${gIdx},${qIdx},'${escapeJs(opt)}')">${escapeHtml(opt)}</span>`).join("");
+      answerSection=`<div class="field"><label>Correct Answer</label><div class="answer-options">${chips}</div></div>`;
+    } else {
+      answerSection=`<div class="field"><label>Correct Answer</label><input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx},${qIdx},'answer',this.value)"></div>`;
+    }
+    card.innerHTML=`<div class="question-head"><span class="badge">Question ${qIdx+1}</span><button type="button" class="inline-btn danger" onclick="removeQuestion(${gIdx},${qIdx})">Delete Question</button></div><div class="field"><label>Question Type</label><select onchange="changeQuestionType(${gIdx},${qIdx},this.value)">${typeOptions}</select></div><div class="field"><label>Question Text</label><input type="text" value="${escapeHtml(q.text)}" onchange="updateQuestion(${gIdx},${qIdx},'text',this.value)"></div>${optionsSection}${answerSection}`;
+    host.appendChild(card);
+  });
+}
+
+function updateGroup(gIdx,field,value){allProblems[selectedIndex].questionGroups[gIdx][field]=value;}
+function updateQuestion(gIdx,qIdx,field,value){allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx][field]=value;}
+function updateOption(gIdx,qIdx,oIdx,value){const q=allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];q.options[oIdx]=value;if(q.answer&&!q.options.includes(q.answer)){q.answer="";}renderQuestions(gIdx);}
+function pickAnswer(gIdx,qIdx,opt){allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx].answer=opt;renderQuestions(gIdx);}
+function changeQuestionType(gIdx,qIdx,nextType){const q=allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];const conf=QUESTION_TYPE_CONFIG[nextType];q.type=nextType;q.uiMode=conf.mode;q.options=[...conf.options];q.answer="";renderQuestions(gIdx);} 
+function addGroup(){allProblems[selectedIndex].questionGroups.push(newGroup(allProblems[selectedIndex]));renderGroups();}
+function removeGroup(gIdx){const groups=allProblems[selectedIndex].questionGroups;groups.splice(gIdx,1);if(groups.length===0){groups.push(newGroup(allProblems[selectedIndex]));}renderGroups();}
+function addQuestion(gIdx){allProblems[selectedIndex].questionGroups[gIdx].questions.push(newQuestion("multiple-choice"));renderQuestions(gIdx);}
+function removeQuestion(gIdx,qIdx){const list=allProblems[selectedIndex].questionGroups[gIdx].questions;list.splice(qIdx,1);if(list.length===0){list.push(newQuestion("multiple-choice"));}renderQuestions(gIdx);} 
+
+function syncFormToCurrent(){
+  const c=allProblems[selectedIndex];
+  c.title=document.getElementById("setTitle").value.trim();
+  c.scheduledDate=document.getElementById("setDate").value;
+  c.difficulty=document.getElementById("difficultyLevel").value;
+  c.level=Number(document.getElementById("setLevel").value||1);
+  c.audioTitle=document.getElementById("audioTitle").value.trim();
+  c.audioDescription=document.getElementById("audioDescription").value.trim();
+  c.audioUrl=document.getElementById("audioUrl").value.trim();
+  c.moduleId="listening";c.moduleName="Listening";c.icon="🎧";c.updatedAt=new Date().toISOString();
+  c.questionGroups=c.questionGroups.map((g)=>({title:g.title,instruction:g.instruction,questions:g.questions.map((q)=>{const conf=QUESTION_TYPE_CONFIG[q.type];return {type:conf.mode==="radio"?"radio":"text",text:q.text,options:conf.mode==="radio"?q.options.join(", "):"",answer:q.answer};})}));
+}
+
+function updateCurrentSet(){
+  if(selectedIndex===null){toast("Select a set first");return;}
+  syncFormToCurrent();const c=allProblems[selectedIndex];
+  if(!c.title||!c.scheduledDate||!c.audioTitle){toast("Title, date, and audio title are required");return;}
+  const allAnswered=c.questionGroups.every((g)=>g.questions.every((q)=>q.text&&q.answer));if(!allAnswered){toast("Every question needs text and correct answer");return;}
+  writeProblems(allProblems);toast("Listening set updated");renderSetList();selectSet(selectedIndex);
+}
+
+function duplicateAsNew(){
+  if(selectedIndex===null){toast("Select a set first");return;}
+  syncFormToCurrent();const src=allProblems[selectedIndex];const copy=JSON.parse(JSON.stringify(src));copy.id=`problem_${Date.now()}`;copy.title=`${src.title||"Untitled"} (Copy)`;copy.createdAt=new Date().toISOString();copy.updatedAt=new Date().toISOString();allProblems.unshift(copy);writeProblems(allProblems);toast("Duplicated as new listening set");renderSetList();
+}
+
+function deleteCurrentSet(){
+  if(selectedIndex===null){toast("Select a set first");return;}
+  const c=allProblems[selectedIndex];if(!confirm(`Delete \"${c.title||"Untitled"}\"?`))return;
+  allProblems.splice(selectedIndex,1);writeProblems(allProblems);selectedIndex=null;document.getElementById("editor").style.display="none";document.getElementById("emptyEditor").style.display="block";toast("Listening set deleted");renderSetList();
+}
+
+document.getElementById("updateTop").addEventListener("click",updateCurrentSet);
+document.getElementById("updateBottom").addEventListener("click",updateCurrentSet);
+document.getElementById("duplicateBtn").addEventListener("click",duplicateAsNew);
+document.getElementById("deleteBtn").addEventListener("click",deleteCurrentSet);
+document.getElementById("addGroupBtn").addEventListener("click",addGroup);
+allProblems=readProblems();renderSetList();
+const params=new URLSearchParams(window.location.search);const idx=params.get("index");if(idx!==null&&!Number.isNaN(Number(idx))){const i=Number(idx);if(i>=0&&i<allProblems.length){selectSet(i);}}
+</script>
+</body>
+</html>

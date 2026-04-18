@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IELTS Reading Practice Test - PrepHaven</title>
+    <title>IELTS Reading Practice Test - IELTS Check</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #0e6150;
-            --primary-hover: #0a4a3d;
+            --primary: #1f4f95;
+            --primary-hover: #173c6f;
             --bg-body: #f3f7f5;
             --bg-surface: #ffffff;
             --text-main: #182621;
@@ -30,6 +30,17 @@
         .text-btn { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 4px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: 600; cursor: pointer; color: var(--text-main); transition: background 0.2s; }
         .text-btn:hover { background: #e2e8f0; }
         .timer-container { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .back-dev-btn {
+            background: #eef3ff;
+            color: var(--primary);
+            border: 1px solid #ccd9f3;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .back-dev-btn:hover { background: #e5ecff; }
         #timer { background: var(--bg-body); color: var(--primary); padding: 6px 16px; border-radius: 999px; border: 1px solid var(--border-color); font-variant-numeric: tabular-nums; transition: all 0.3s ease; }
         #timer.warning { color: white; background: var(--danger); border-color: var(--danger); }
 
@@ -126,9 +137,12 @@
                 <button class="text-btn" onclick="adjustTextSize(+0.1)">A+</button>
             </div>
         </div>
-        <div class="timer-container">
-            <span>Time left:</span> 
-            <span id="timer">60:00</span>
+        <div class="header-right">
+            <button id="backToDeveloperBtn" class="back-dev-btn" type="button" onclick="goBackToDeveloper()">Back</button>
+            <div class="timer-container">
+                <span>Time left:</span> 
+                <span id="timer">60:00</span>
+            </div>
         </div>
     </header>
 
@@ -220,16 +234,96 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
         let currentProblem = null;
 
+        function normalizeQuestionType(question) {
+            const rawType = String(question.type || "").toLowerCase();
+            if (rawType === "radio" || rawType === "text") {
+                return rawType;
+            }
+            if (rawType.includes("short") || rawType.includes("sentence") || rawType.includes("completion")) {
+                return "text";
+            }
+            return "radio";
+        }
+
+        function toReadingShape(problem) {
+            if (!problem) return null;
+
+            const hasQuestionGroups = Array.isArray(problem.questionGroups) && problem.questionGroups.length > 0;
+            if (hasQuestionGroups) {
+                return {
+                    ...problem,
+                    title: problem.title || "IELTS Academic Reading",
+                    passageTitle: problem.passageTitle || "Passage",
+                    passageContent: problem.passageContent || "",
+                    questionGroups: problem.questionGroups.map((group) => ({
+                        title: group.title || "Questions",
+                        instruction: group.instruction || "",
+                        questions: (group.questions || []).map((q) => ({
+                            type: normalizeQuestionType(q),
+                            text: q.text || "",
+                            options: typeof q.options === "string" ? q.options : Array.isArray(q.options) ? q.options.join(", ") : "",
+                            answer: q.answer || q.correctAnswer || ""
+                        }))
+                    }))
+                };
+            }
+
+            const hasQuestions = Array.isArray(problem.questions) && problem.questions.length > 0;
+            if (hasQuestions) {
+                return {
+                    moduleId: "reading",
+                    icon: problem.icon || "",
+                    moduleName: "Reading",
+                    title: problem.title || "IELTS Academic Reading",
+                    passageTitle: problem.passage?.title || problem.passageTitle || "Passage",
+                    passageContent: problem.passage?.text || problem.passageContent || "",
+                    questionGroups: [
+                        {
+                            title: "Questions 1-" + problem.questions.length,
+                            instruction: "Answer the following questions based on the reading passage.",
+                            questions: problem.questions.map((q, idx) => ({
+                                type: normalizeQuestionType(q),
+                                text: q.text || `${idx + 1}. Question`,
+                                options: Array.isArray(q.options) ? q.options.join(", ") : (q.options || ""),
+                                answer: q.answer || q.correctAnswer || ""
+                            }))
+                        }
+                    ]
+                };
+            }
+
+            return null;
+        }
+
         // Load problem or use default
         function loadProblem() {
             const problems = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-            if (problems.length > 0 && problems[0].passageContent && problems[0].passageContent.trim().length > 0) {
-                currentProblem = problems[0]; // Load first problem set only if it has content
+            const readingCandidates = Array.isArray(problems)
+                ? problems.filter((item) => item && item.moduleId === "reading")
+                : [];
+
+            let selected = null;
+            for (const candidate of readingCandidates) {
+                const normalized = toReadingShape(candidate);
+                if (
+                    normalized &&
+                    normalized.passageContent &&
+                    normalized.passageContent.trim().length > 0 &&
+                    Array.isArray(normalized.questionGroups) &&
+                    normalized.questionGroups.length > 0
+                ) {
+                    selected = normalized;
+                    break;
+                }
+            }
+
+            if (selected) {
+                currentProblem = selected;
             } else {
                 currentProblem = defaultProblemSet;
-                // Save default so it appears in developer console
                 localStorage.setItem(STORAGE_KEY, JSON.stringify([defaultProblemSet]));
             }
+
             renderTest();
         }
 
@@ -554,17 +648,27 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             }
         }
 
-        function goBackToDashboard() {
-            if(confirm("Leave test? Your progress will be lost.")) {
-                window.location.href = "index.html";
+        function goBackToDeveloper() {
+            const target = RETURN_TO || "study-plan.html";
+            if(confirm("Leave test and go back?")) {
+                window.location.href = target;
             }
         }
 
+        function initializeBackToDeveloper() {
+            const btn = document.getElementById("backToDeveloperBtn");
+            if (!btn) return;
+            btn.style.display = "inline-flex";
+            btn.textContent = RETURN_TO ? "Back" : "Back to Study Plan";
+        }
+
         // Initialize
+        initializeBackToDeveloper();
         loadProblem();
         startTimer();
     </script>
 </body>
 </html>
+
 
 

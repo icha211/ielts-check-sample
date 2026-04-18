@@ -8,8 +8,8 @@
     <style>
         /* Modern CSS Reset & Variables */
         :root {
-            --primary: #0e6150;
-            --primary-hover: #0a4a3d;
+            --primary: #1f4f95;
+            --primary-hover: #173c6f;
             --bg-body: #f3f7f5;
             --bg-surface: #ffffff;
             --text-main: #182621;
@@ -28,6 +28,17 @@
         header { background-color: var(--bg-surface); padding: 16px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05); z-index: 10; }
         .header-title { font-size: 1.25rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 20px; }
         .timer-container { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+        .back-dev-btn {
+            background: #eef3ff;
+            color: var(--primary);
+            border: 1px solid #ccd9f3;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .back-dev-btn:hover { background: #e5ecff; }
         #timer { background: var(--bg-body); color: var(--primary); padding: 6px 16px; border-radius: 999px; border: 1px solid var(--border-color); font-variant-numeric: tabular-nums; transition: all 0.3s ease; }
         #timer.warning { color: white; background: var(--danger); border-color: var(--danger); }
 
@@ -94,9 +105,12 @@
         <div class="header-title">
             <span id="display-title">IELTS Academic Speaking</span>
         </div>
-        <div class="timer-container">
-            <span>Phase Time:</span> 
-            <span id="timer">02:00</span>
+        <div class="header-right">
+            <button id="backToDeveloperBtn" class="back-dev-btn" type="button" onclick="goBackToDeveloper()">Back</button>
+            <div class="timer-container">
+                <span>Phase Time:</span> 
+                <span id="timer">02:00</span>
+            </div>
         </div>
     </header>
 
@@ -331,6 +345,20 @@
             window.location.href = NEXT_URL;
         }
 
+        function goBackToDeveloper() {
+            const target = RETURN_TO || "study-plan.html";
+            if (confirm("Leave test and go back?")) {
+                window.location.href = target;
+            }
+        }
+
+        function initializeBackToDeveloper() {
+            const btn = document.getElementById("backToDeveloperBtn");
+            if (!btn) return;
+            btn.style.display = "inline-flex";
+            btn.textContent = RETURN_TO ? "Back" : "Back to Study Plan";
+        }
+
         function recordDailyModuleResult(moduleKey, scoreValue, extras) {
             if (!DAY_VALUE) {
                 return;
@@ -426,10 +454,12 @@
         }
 
         // Init
+        initializeBackToDeveloper();
         loadProblem();
         startExamTimer();
     </script>
 </body>
 </html>
+
 
 
