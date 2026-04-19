@@ -655,8 +655,15 @@
 
         async function saveReadingSet() {
             const problem = buildStoredProblem();
-            if (!problem.title || !problem.scheduledDate || !problem.passageContent) {
-                toast("Title, date, and passage are required");
+            const missingFields = [];
+
+            if (!problem.title) missingFields.push("title");
+            if (!problem.scheduledDate) missingFields.push("date");
+            if (!problem.passageTitle) missingFields.push("passage title");
+            if (!problem.passageContent) missingFields.push("passage");
+
+            if (missingFields.length > 0) {
+                toast(`Missing required field(s): ${missingFields.join(", ")}`);
                 return;
             }
 
