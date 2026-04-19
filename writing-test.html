@@ -120,6 +120,7 @@
         </div>
     </div>
 
+    <script src="storage-sync.js"></script>
     <script>
         const STORAGE_KEY = "prephaven_problems_writing_v1";
         const TEST_RESULTS_KEY = "prephaven_test_results_v1";
@@ -129,6 +130,7 @@
         const RETURN_TO = params.get("returnTo");
         const DAY_VALUE = params.get("day");
         const NEXT_URL = PACKAGE_MODE ? "speaking-test.html?package=1" : (RETURN_TO || "index.html");
+        const AI_REVIEW_ENDPOINT = "http://127.0.0.1:8787/api/ai-review";
 
         const defaultProblemSet = {
             moduleId: "writing",
@@ -160,13 +162,18 @@ Write at least 150 words.`,
 
         let currentProblem = null;
 
-        function loadProblem() {
-            const problems = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-            if (problems.length > 0 && problems[0].promptContent && problems[0].promptContent.trim().length > 0) {
-                currentProblem = problems[0];
-            } else {
+        async function loadProblem() {
+            try {
+                const problems = await storageSync.getProblemsByModule("writing");
+                if (Array.isArray(problems) && problems.length > 0 && problems[0].promptContent && problems[0].promptContent.trim().length > 0) {
+                    currentProblem = problems[0];
+                } else {
+                    currentProblem = defaultProblemSet;
+                    await storageSync.addProblem("writing", defaultProblemSet);
+                }
+            } catch (e) {
+                console.error("Error loading problem:", e);
                 currentProblem = defaultProblemSet;
-                localStorage.setItem(STORAGE_KEY, JSON.stringify([defaultProblemSet]));
             }
             renderTest();
         }
@@ -236,6 +243,50 @@ Write at least 150 words.`,
             if (!btn) return;
             btn.style.display = "inline-flex";
             btn.textContent = RETURN_TO ? "Back" : "Back to Study Plan";
+        }
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function formatAiReviewHtml(review) {
+            if (!review) {
+                return '<div style="margin-top:10px;font-size:0.9rem;">AI review unavailable.</div>';
+            }
+
+            const strengths = Array.isArray(review.strengths) ? review.strengths : [];
+            const improvements = Array.isArray(review.improvements) ? review.improvements : [];
+            const nextSteps = Array.isArray(review.nextSteps) ? review.nextSteps : [];
+
+            return `
+                <div style="margin-top:10px;padding:12px;border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4;color:#14532d;">
+                    <strong>AI Review ${review.estimatedBand ? `(Band ${escapeHtml(review.estimatedBand)})` : ""}</strong>
+                    <div style="margin-top:6px;line-height:1.5;">${escapeHtml(review.summary || "No summary returned.")}</div>
+                    ${strengths.length ? `<div style="margin-top:8px;"><strong>Strengths:</strong><ul style="margin:4px 0 0 18px;">${strengths.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+                    ${improvements.length ? `<div style="margin-top:8px;"><strong>Needs improvement:</strong><ul style="margin:4px 0 0 18px;">${improvements.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+                    ${nextSteps.length ? `<div style="margin-top:8px;"><strong>Next steps:</strong><ul style="margin:4px 0 0 18px;">${nextSteps.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+                </div>
+            `;
+        }
+
+        async function requestAiReview(payload) {
+            const response = await fetch(AI_REVIEW_ENDPOINT, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const message = await response.text();
+                throw new Error(message || `AI review failed (${response.status})`);
+            }
+
+            return response.json();
         }
 
         function recordDailyModuleResult(moduleKey, scoreValue, extras) {
@@ -321,6 +372,31 @@ Write at least 150 words.`,
                 status: wordCount >= minimumWords ? "pass" : "fail"
             });
 
+            const aiReviewBoxId = `ai-review-writing-${Date.now()}`;
+            resultDiv.insertAdjacentHTML("beforeend", `<div id="${aiReviewBoxId}" style="margin-top:10px;font-size:0.9rem;">Analyzing with AI reviewer...</div>`);
+
+            requestAiReview({
+                module: "writing",
+                promptTitle: currentProblem.taskTitle || "Writing Task",
+                prompt: (currentProblem.promptContent || "").replace(/<[^>]*>/g, " "),
+                answer: text,
+                wordCount: wordCount,
+                minimumWords: minimumWords,
+                score: writingScore
+            }).then((review) => {
+                results["writing"].aiReview = review;
+                localStorage.setItem(TEST_RESULTS_KEY, JSON.stringify(results));
+                const reviewBox = document.getElementById(aiReviewBoxId);
+                if (reviewBox) {
+                    reviewBox.outerHTML = formatAiReviewHtml(review);
+                }
+            }).catch((error) => {
+                const reviewBox = document.getElementById(aiReviewBoxId);
+                if (reviewBox) {
+                    reviewBox.textContent = `AI review unavailable: ${error.message}`;
+                }
+            });
+
             if (PACKAGE_MODE) {
                 if (isAutoContinue) {
                     setTimeout(goToNextModule, 900);
@@ -328,14 +404,16 @@ Write at least 150 words.`,
                     continueBtn.style.display = 'block';
                 }
             } else {
-                setTimeout(goToNextModule, 1200);
+                continueBtn.style.display = 'block';
             }
         }
 
         // Init
-        initializeBackToDeveloper();
-        loadProblem();
-        startTimer();
+        (async () => {
+            initializeBackToDeveloper();
+            await loadProblem();
+            startTimer();
+        })();
     </script>
 </body>
 </html>

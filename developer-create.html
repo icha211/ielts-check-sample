@@ -355,6 +355,7 @@
 
     <div class="toast" id="toast"></div>
 
+    <script src="storage-sync.js"></script>
     <script>
         const STORAGE_KEY = "prephaven_problems_v1";
         const QUESTION_TYPE_CONFIG = {
@@ -386,18 +387,19 @@
         }
 
         function readProblems() {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return [];
-            try {
-                const parsed = JSON.parse(raw);
-                return Array.isArray(parsed) ? parsed : [];
-            } catch (err) {
-                return [];
-            }
+            // This will be replaced by async version
+            return [];
         }
 
-        function writeProblems(list) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        async function writeProblems(list) {
+            await storageSync.saveAllProblems({
+                reading: list,
+                listening: [],
+                writing: [],
+                speaking: []
+            }).catch(err => {
+                console.error("Error saving problems:", err);
+            });
         }
 
         function setDefaultDate() {
@@ -651,7 +653,7 @@
             };
         }
 
-        function saveReadingSet() {
+        async function saveReadingSet() {
             const problem = buildStoredProblem();
             if (!problem.title || !problem.scheduledDate || !problem.passageContent) {
                 toast("Title, date, and passage are required");
@@ -668,7 +670,7 @@
 
             const list = readProblems();
             list.unshift(problem);
-            writeProblems(list);
+            await writeProblems(list);
             toast("Reading set saved. Open real user view to test.");
         }
 

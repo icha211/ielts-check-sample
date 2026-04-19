@@ -64,18 +64,19 @@
 </main>
 <div class="toast" id="toast"></div>
 
+<script src="storage-sync.js"></script>
 <script>
 const STORAGE_KEY = "prephaven_problems_writing_v1";
 const draft = { moduleId:"writing", icon:"✍️", moduleName:"Writing", title:"", difficulty:"beginner", level:1, scheduledDate:"", taskTitle:"", taskDescription:"", promptContent:"", minimumWords:150 };
 function toast(m){const b=document.getElementById("toast");b.textContent=m;b.style.display="block";setTimeout(()=>b.style.display="none",2200);} 
-function readProblems(){const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return [];try{const p=JSON.parse(raw);return Array.isArray(p)?p:[];}catch{return [];}}
-function writeProblems(v){localStorage.setItem(STORAGE_KEY,JSON.stringify(v));}
+function readProblems(){return [];}
+async function writeProblems(v){await storageSync.saveAllProblems({writing:v,reading:[],listening:[],speaking:[]}).catch(err=>{console.error("Error saving problems:",err);});}
 function setDefaultDate(){document.getElementById("setDate").value=new Date().toISOString().split("T")[0];}
 function setInitialDate(){const params=new URLSearchParams(window.location.search);const incoming=params.get("date");const value=incoming&&/^\d{4}-\d{2}-\d{2}$/.test(incoming)?incoming:new Date().toISOString().split("T")[0];document.getElementById("setDate").value=value;}
-function save(){
+async function save(){
   const p={...draft,title:document.getElementById("setTitle").value.trim(),scheduledDate:document.getElementById("setDate").value,difficulty:document.getElementById("difficultyLevel").value,level:Number(document.getElementById("setLevel").value||1),taskTitle:document.getElementById("taskTitle").value.trim(),taskDescription:document.getElementById("taskDescription").value.trim(),promptContent:document.getElementById("promptContent").value.trim(),minimumWords:Number(document.getElementById("minimumWords").value||150),createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),id:`problem_${Date.now()}`};
   if(!p.title||!p.scheduledDate||!p.taskTitle||!p.promptContent){toast("Title, date, task title, and prompt are required");return;}
-  const list=readProblems();list.unshift(p);writeProblems(list);toast("Writing set saved");
+  const list=readProblems();list.unshift(p);await writeProblems(list);toast("Writing set saved");
 }
 function reset(){document.getElementById("setTitle").value="";document.getElementById("difficultyLevel").value="beginner";document.getElementById("setLevel").value="1";document.getElementById("taskTitle").value="";document.getElementById("taskDescription").value="";document.getElementById("promptContent").value="";document.getElementById("minimumWords").value="150";setDefaultDate();}
 document.getElementById("saveTop").addEventListener("click",save);document.getElementById("saveBottom").addEventListener("click",save);document.getElementById("resetBtn").addEventListener("click",reset);setInitialDate();

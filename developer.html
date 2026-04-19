@@ -793,6 +793,7 @@
 
     <div id="toast" class="toast"></div>
 
+    <script src="storage-sync.js"></script>
     <script>
         const MODULE_CONFIG = {
             reading: {
@@ -833,20 +834,16 @@
         const MODULES = ["listening", "reading", "writing", "speaking"];
 
         function readProblemsByKey(key) {
-            const raw = localStorage.getItem(key);
-            if (!raw) return [];
-            try {
-                const parsed = JSON.parse(raw);
-                return Array.isArray(parsed) ? parsed : [];
-            } catch (err) {
-                return [];
-            }
+            // This will be replaced by async version
+            // Kept for compatibility
+            return [];
         }
 
         function writeProblemsByModule(moduleId, value) {
-            const config = MODULE_CONFIG[moduleId];
-            if (!config) return;
-            localStorage.setItem(config.key, JSON.stringify(value));
+            // This will be handled by StorageSync
+            storageSync.saveAllProblems(allProblemsByModule).catch(err => {
+                console.error("Error saving problems:", err);
+            });
         }
 
         function safeParse(raw, fallback) {
@@ -1014,20 +1011,28 @@
             menu.classList.toggle("show");
         }
 
-        function loadAllModuleProblems() {
-            allProblemsByModule = {
-                reading: readProblemsByKey(MODULE_CONFIG.reading.key),
-                listening: readProblemsByKey(MODULE_CONFIG.listening.key),
-                writing: readProblemsByKey(MODULE_CONFIG.writing.key),
-                speaking: readProblemsByKey(MODULE_CONFIG.speaking.key)
-            };
+        async function loadAllModuleProblems() {
+            try {
+                // Load from persistent storage (server or localStorage)
+                allProblemsByModule = await storageSync.getAllProblems();
+            } catch (e) {
+                console.error("Error loading problems:", e);
+                allProblemsByModule = {
+                    reading: [],
+                    listening: [],
+                    writing: [],
+                    speaking: []
+                };
+            }
 
             mergedProblems = [];
             Object.keys(allProblemsByModule).forEach((moduleId) => {
                 const list = allProblemsByModule[moduleId];
-                list.forEach((problem, index) => {
-                    mergedProblems.push({ moduleId, index, problem });
-                });
+                if (Array.isArray(list)) {
+                    list.forEach((problem, index) => {
+                        mergedProblems.push({ moduleId, index, problem });
+                    });
+                }
             });
         }
 
@@ -1284,7 +1289,7 @@
             });
         }
 
-        function deleteSet(moduleId, idx) {
+        async function deleteSet(moduleId, idx) {
             const list = allProblemsByModule[moduleId] || [];
             const selected = list[idx];
             if (!selected) return;
@@ -1292,8 +1297,8 @@
 
             list.splice(idx, 1);
             allProblemsByModule[moduleId] = list;
-            writeProblemsByModule(moduleId, list);
-            loadAllModuleProblems();
+            await writeProblemsByModule(moduleId, list);
+            await loadAllModuleProblems();
             renderStats();
             renderModuleOverview();
             renderLibrary();
@@ -1328,11 +1333,14 @@
             }
         });
 
-        loadAllModuleProblems();
-        renderStats();
-        renderModuleOverview();
-        renderLibrary();
-        renderMonthCalendar();
+        // Initialize dashboard
+        (async () => {
+            await loadAllModuleProblems();
+            renderStats();
+            renderModuleOverview();
+            renderLibrary();
+            renderMonthCalendar();
+        })();
     </script>
 </body>
 </html>

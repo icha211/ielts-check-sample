@@ -181,6 +181,7 @@
         </div>
     </div>
 
+    <script src="storage-sync.js"></script>
     <script>
         const STORAGE_KEY = "prephaven_problems_v1";
         const TEST_RESULTS_KEY = "prephaven_test_results_v1";
@@ -190,6 +191,7 @@
         const RETURN_TO = params.get("returnTo");
         const DAY_VALUE = params.get("day");
         const NEXT_URL = PACKAGE_MODE ? "writing-test.html?package=1" : (RETURN_TO || "index.html");
+        const AI_REVIEW_ENDPOINT = "http://127.0.0.1:8787/api/ai-review";
 
         // Default problem set
         const defaultProblemSet = {
@@ -296,32 +298,38 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
         }
 
         // Load problem or use default
-        function loadProblem() {
-            const problems = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-            const readingCandidates = Array.isArray(problems)
-                ? problems.filter((item) => item && item.moduleId === "reading")
-                : [];
+        async function loadProblem() {
+            try {
+                const problems = await storageSync.getProblemsByModule("reading");
+                const readingCandidates = Array.isArray(problems)
+                    ? problems.filter((item) => item && item.moduleId === "reading")
+                    : [];
 
-            let selected = null;
-            for (const candidate of readingCandidates) {
-                const normalized = toReadingShape(candidate);
-                if (
-                    normalized &&
-                    normalized.passageContent &&
-                    normalized.passageContent.trim().length > 0 &&
-                    Array.isArray(normalized.questionGroups) &&
-                    normalized.questionGroups.length > 0
-                ) {
-                    selected = normalized;
-                    break;
+                let selected = null;
+                for (const candidate of readingCandidates) {
+                    const normalized = toReadingShape(candidate);
+                    if (
+                        normalized &&
+                        normalized.passageContent &&
+                        normalized.passageContent.trim().length > 0 &&
+                        Array.isArray(normalized.questionGroups) &&
+                        normalized.questionGroups.length > 0
+                    ) {
+                        selected = normalized;
+                        break;
+                    }
                 }
-            }
 
-            if (selected) {
-                currentProblem = selected;
-            } else {
+                if (selected) {
+                    currentProblem = selected;
+                } else {
+                    currentProblem = defaultProblemSet;
+                    // Save default to storage as well
+                    await storageSync.addProblem("reading", defaultProblemSet);
+                }
+            } catch (e) {
+                console.error("Error loading problem:", e);
                 currentProblem = defaultProblemSet;
-                localStorage.setItem(STORAGE_KEY, JSON.stringify([defaultProblemSet]));
             }
 
             renderTest();
@@ -569,14 +577,21 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             clearInterval(timerInterval);
 
             const correctAnswers = {};
+            const questionMeta = {};
             currentProblem.questionGroups.forEach((group, gIndex) => {
                 group.questions.forEach((q, qIndex) => {
-                    correctAnswers[`q_${gIndex}_${qIndex}`] = q.answer.trim().toLowerCase();
+                    const key = `q_${gIndex}_${qIndex}`;
+                    correctAnswers[key] = q.answer.trim().toLowerCase();
+                    questionMeta[key] = {
+                        text: q.text || `Question ${qIndex + 1}`,
+                        correctAnswer: q.answer || ""
+                    };
                 });
             });
 
             let score = 0;
             const totalQuestions = Object.keys(correctAnswers).length;
+            const answerDetails = [];
 
             for (const [inputName, answerLowerCase] of Object.entries(correctAnswers)) {
                 let userValue = null;
@@ -594,6 +609,13 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 if (userValue === answerLowerCase) {
                     score++;
                 }
+
+                answerDetails.push({
+                    question: questionMeta[inputName]?.text || inputName,
+                    userAnswer: userValue || "",
+                    correctAnswer: questionMeta[inputName]?.correctAnswer || "",
+                    isCorrect: userValue === answerLowerCase
+                });
             }
 
             const scorePercentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
@@ -618,6 +640,32 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 questions: totalQuestions,
                 timeSpent: timerElement.textContent
             };
+
+            const aiReviewBoxId = `ai-review-reading-${Date.now()}`;
+            resultDiv.insertAdjacentHTML("beforeend", `<div id="${aiReviewBoxId}" style="margin-top:10px;font-size:0.9rem;">Analyzing with AI reviewer...</div>`);
+
+            requestAiReview({
+                module: "reading",
+                promptTitle: currentProblem.title || "Reading Test",
+                passageTitle: currentProblem.passageTitle || "",
+                passageExcerpt: String(currentProblem.passageContent || "").slice(0, 1200),
+                score: scorePercentage,
+                totalQuestions: totalQuestions,
+                correct: score,
+                answers: answerDetails
+            }).then((review) => {
+                results["reading"].aiReview = review;
+                localStorage.setItem(TEST_RESULTS_KEY, JSON.stringify(results));
+                const reviewBox = document.getElementById(aiReviewBoxId);
+                if (reviewBox) {
+                    reviewBox.outerHTML = formatAiReviewHtml(review);
+                }
+            }).catch((error) => {
+                const reviewBox = document.getElementById(aiReviewBoxId);
+                if (reviewBox) {
+                    reviewBox.textContent = `AI review unavailable: ${error.message}`;
+                }
+            });
             localStorage.setItem(TEST_RESULTS_KEY, JSON.stringify(results));
             recordDailyModuleResult("reading", scorePercentage, {
                 correct: score,
@@ -641,10 +689,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     continueBtn.style.display = 'block';
                 }
             } else {
-                setTimeout(() => {
-                    alert(" Results saved!");
-                    goToNextModule();
-                }, 2000);
+                continueBtn.style.display = 'block';
             }
         }
 
@@ -662,10 +707,56 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             btn.textContent = RETURN_TO ? "Back" : "Back to Study Plan";
         }
 
+        function escapeHtml(value) {
+            return String(value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function formatAiReviewHtml(review) {
+            if (!review) {
+                return '<div style="margin-top:10px;font-size:0.9rem;">AI review unavailable.</div>';
+            }
+
+            const strengths = Array.isArray(review.strengths) ? review.strengths : [];
+            const improvements = Array.isArray(review.improvements) ? review.improvements : [];
+            const nextSteps = Array.isArray(review.nextSteps) ? review.nextSteps : [];
+
+            return `
+                <div style="margin-top:10px;padding:12px;border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4;color:#14532d;">
+                    <strong>AI Review ${review.estimatedBand ? `(Band ${escapeHtml(review.estimatedBand)})` : ""}</strong>
+                    <div style="margin-top:6px;line-height:1.5;">${escapeHtml(review.summary || "No summary returned.")}</div>
+                    ${strengths.length ? `<div style="margin-top:8px;"><strong>Strengths:</strong><ul style="margin:4px 0 0 18px;">${strengths.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+                    ${improvements.length ? `<div style="margin-top:8px;"><strong>Needs improvement:</strong><ul style="margin:4px 0 0 18px;">${improvements.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+                    ${nextSteps.length ? `<div style="margin-top:8px;"><strong>Next steps:</strong><ul style="margin:4px 0 0 18px;">${nextSteps.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+                </div>
+            `;
+        }
+
+        async function requestAiReview(payload) {
+            const response = await fetch(AI_REVIEW_ENDPOINT, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const message = await response.text();
+                throw new Error(message || `AI review failed (${response.status})`);
+            }
+
+            return response.json();
+        }
+
         // Initialize
-        initializeBackToDeveloper();
-        loadProblem();
-        startTimer();
+        (async () => {
+            initializeBackToDeveloper();
+            await loadProblem();
+            startTimer();
+        })();
     </script>
 </body>
 </html>
