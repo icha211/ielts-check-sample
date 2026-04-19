@@ -1,88 +1,41 @@
 /*
- * Shared storage helper using Firebase Firestore + localStorage fallback.
+ * Shared storage helper using Firebase Realtime Database + localStorage fallback.
  * This allows question sets to sync across different laptops and networks.
  */
 
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBtaZOok-Kj91qzCo_6ClCZ8Lfgam7qRxg",
-  authDomain: "quickcheck-25590.firebaseapp.com",
-  projectId: "quickcheck-25590",
-  storageBucket: "quickcheck-25590.firebasestorage.app",
-  messagingSenderId: "753959270698",
-  appId: "1:753959270698:web:ec1415910d1d52a7958653",
-  measurementId: "G-MQX3QELGJL"
-};
-
-const FIRESTORE_COLLECTION = "ielts_check";
-const FIRESTORE_DOC = "problems_v1";
-
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`);
-    if (existing) {
-      if (existing.dataset.loaded === "true") {
-        resolve();
-        return;
-      }
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.onload = () => {
-      script.dataset.loaded = "true";
-      resolve();
-    };
-    script.onerror = () => reject(new Error(`Failed to load ${src}`));
-    document.head.appendChild(script);
-  });
-}
+const FIREBASE_RTDB_BASE_URL = "https://quickcheck-25590-default-rtdb.asia-southeast1.firebasedatabase.app";
+const RTDB_PROBLEMS_PATH = "ielts_check/problems_v1";
 
 class StorageSync {
   constructor() {
-    this.db = null;
-    this.isFirebaseAvailable = false;
-    this.initPromise = this.initializeFirebase();
+    this.isRemoteAvailable = true;
   }
 
-  async initializeFirebase() {
-    try {
-      if (!window.firebase) {
-        await loadScript("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js");
-        await loadScript("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js");
-      }
-
-      if (!window.firebase) {
-        throw new Error("Firebase SDK unavailable");
-      }
-
-      if (!firebase.apps.length) {
-        firebase.initializeApp(FIREBASE_CONFIG);
-      }
-
-      this.db = firebase.firestore();
-      this.isFirebaseAvailable = true;
-
-      // Ensure the shared document exists.
-      await this.db
-        .collection(FIRESTORE_COLLECTION)
-        .doc(FIRESTORE_DOC)
-        .set(this._normalizeProblems({}), { merge: true });
-    } catch (error) {
-      this.isFirebaseAvailable = false;
-      console.warn("Firebase unavailable, using localStorage fallback:", error.message);
-    }
+  _buildRtdbUrl(path) {
+    return `${FIREBASE_RTDB_BASE_URL}/${path}.json`;
   }
 
-  async awaitReady() {
-    try {
-      await this.initPromise;
-    } catch (error) {
-      // Ignore and continue with fallback.
+  async _rtdbGet(path) {
+    const response = await fetch(this._buildRtdbUrl(path), {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    });
+    if (!response.ok) {
+      throw new Error(`RTDB GET failed (${response.status})`);
     }
+    return response.json();
+  }
+
+  async _rtdbPut(path, data) {
+    const response = await fetch(this._buildRtdbUrl(path), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      throw new Error(`RTDB PUT failed (${response.status})`);
+    }
+    return response.json();
   }
 
   _normalizeProblems(problems) {
@@ -96,16 +49,15 @@ class StorageSync {
   }
 
   async getAllProblems() {
-    await this.awaitReady();
-
-    if (this.isFirebaseAvailable && this.db) {
+    if (this.isRemoteAvailable) {
       try {
-        const doc = await this.db.collection(FIRESTORE_COLLECTION).doc(FIRESTORE_DOC).get();
-        const normalized = this._normalizeProblems(doc.exists ? doc.data() : {});
+        const data = await this._rtdbGet(RTDB_PROBLEMS_PATH);
+        const normalized = this._normalizeProblems(data || {});
         this._saveProblemsToLocalStorage(normalized);
         return normalized;
       } catch (error) {
-        console.error("Error fetching from Firebase:", error);
+        this.isRemoteAvailable = false;
+        console.warn("RTDB read failed, using localStorage fallback:", error.message);
       }
     }
 
@@ -118,20 +70,17 @@ class StorageSync {
   }
 
   async saveAllProblems(problems) {
-    await this.awaitReady();
     const normalized = this._normalizeProblems(problems);
 
-    if (this.isFirebaseAvailable && this.db) {
+    if (this.isRemoteAvailable) {
       try {
-        await this.db.collection(FIRESTORE_COLLECTION).doc(FIRESTORE_DOC).set(
-          {
-            ...normalized,
-            updatedAt: new Date().toISOString()
-          },
-          { merge: true }
-        );
+        await this._rtdbPut(RTDB_PROBLEMS_PATH, {
+          ...normalized,
+          updatedAt: new Date().toISOString()
+        });
       } catch (error) {
-        console.error("Error saving to Firebase:", error);
+        this.isRemoteAvailable = false;
+        console.warn("RTDB write failed, using localStorage fallback:", error.message);
       }
     }
 
