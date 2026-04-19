@@ -760,6 +760,8 @@
                 <a class="btn btn-secondary" href="developer-edit-writing.html">Edit Writing</a>
                 <a class="btn btn-secondary" href="developer-edit-speaking.html">Edit Speaking</a>
                 <button class="btn btn-secondary" type="button" id="exportBtn">Export Data</button>
+                           <button class="btn btn-secondary" type="button" id="importBtn">Import Data</button>
+                           <input type="file" id="importFile" accept=".json" style="display: none;">
             </div>
         </section>
 
@@ -1316,9 +1318,75 @@
             link.click();
             URL.revokeObjectURL(url);
             toast("Exported JSON successfully");
+               async function importData(file) {
+                   try {
+                       const text = await file.text();
+                       const importedData = JSON.parse(text);
+               
+                       // Validate structure
+                       if (!importedData || typeof importedData !== 'object') {
+                           toast("Invalid file format. Must be JSON object.");
+                           return;
+                       }
+               
+                       // Check if it has the expected modules
+                       const hasModules = ['reading', 'listening', 'writing', 'speaking'].some(m => importedData[m]);
+                       if (!hasModules) {
+                           toast("File doesn't contain valid problem sets.");
+                           return;
+                       }
+               
+                       // Merge with existing data (or replace)
+                       const shouldMerge = confirm("Merge with existing data? (OK=merge, Cancel=replace)");
+               
+                       if (shouldMerge) {
+                           // Merge imported data with existing
+                           for (const module of ['reading', 'listening', 'writing', 'speaking']) {
+                               if (importedData[module] && Array.isArray(importedData[module])) {
+                                   const existingArray = allProblemsByModule[module] || [];
+                                   allProblemsByModule[module] = [...existingArray, ...importedData[module]];
+                               }
+                           }
+                       } else {
+                           // Replace all data
+                           allProblemsByModule = {
+                               reading: importedData.reading || [],
+                               listening: importedData.listening || [],
+                               writing: importedData.writing || [],
+                               speaking: importedData.speaking || []
+                           };
+                       }
+               
+                       // Save to persistent storage
+                       await storageSync.saveAllProblems(allProblemsByModule);
+               
+                       // Reload UI
+                       await loadAllModuleProblems();
+                       renderStats();
+                       renderModuleOverview();
+                       renderLibrary();
+                       renderMonthCalendar();
+                       toast("Data imported successfully!");
+                   } catch (err) {
+                       console.error("Import error:", err);
+                       toast("Error importing file: " + err.message);
+                   }
+               }
         }
 
         document.getElementById("exportBtn").addEventListener("click", exportData);
+       document.getElementById("importBtn").addEventListener("click", () => {
+           document.getElementById("importFile").click();
+       });
+       
+       document.getElementById("importFile").addEventListener("change", (event) => {
+           const file = event.target.files[0];
+           if (file) {
+               importData(file);
+               // Reset input so same file can be imported again
+               event.target.value = "";
+           }
+       });
 
         const createBtn = document.getElementById("createBtn");
         if (createBtn) {
