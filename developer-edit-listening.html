@@ -115,13 +115,16 @@ function readProblems(){return [];}
 async function writeProblems(list){await storageSync.saveProblemsByModule("listening",list).catch((err)=>{console.error("Error saving listening sets:",err);});}
 function escapeHtml(v){return String(v||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");}
 function escapeJs(v){return String(v||"").replaceAll("\\","\\\\").replaceAll("'","\\'");}
+function stripBlankMarkerText(v){return String(v||"").replace(/\[\[(.+?)\]\]/g,"$1");}
+function extractBlankMarkerAnswer(v){const m=String(v||"").match(/\[\[(.+?)\]\]/);return m?m[1].trim():"";}
 function newQuestion(type){const conf=QUESTION_TYPE_CONFIG[type];return {type,text:"",options:[...conf.options],answer:"",uiMode:conf.mode};}
 function newGroup(problem){return {title:`Questions ${(problem.questionGroups||[]).length+1}`,instruction:"",questions:[newQuestion("multiple-choice")]};}
 function normalizeQuestion(raw){
   const type = raw.type === "fill-in-the-blank" ? "fill-in-the-blank" : (raw.type === "radio" ? (String(raw.options||"").includes("True") ? "true-false-not-given" : "multiple-choice") : "short-answer");
   const conf = QUESTION_TYPE_CONFIG[type];
   const source = typeof raw.options === "string" ? raw.options.split(",").map((o)=>o.trim()).filter(Boolean) : conf.options;
-  return {type,text:raw.text||"",options:source.length?source:[...conf.options],answer:raw.answer||"",uiMode:conf.mode};
+  const text = String(raw.text||"");
+  return {type,text:text.replace(/\[\[(.+?)\]\]/g,"$1"),options:source.length?source:[...conf.options],answer:raw.answer||((text.match(/\[\[(.+?)\]\]/)||[])[1]||""),uiMode:conf.mode};
 }
 
 function renderSetList(){
@@ -166,17 +169,17 @@ function renderQuestions(gIdx){
       optionsSection=`<div class="field"><label>Options</label>${items}${conf.locked?"":`<button type="button" class="inline-btn" onclick="addOption(${gIdx},${qIdx})">+ Add Option</button>`}</div>`;
       const chips=q.options.map((opt)=>`<span class="answer-choice ${q.answer===opt?"active":""}" onclick="pickAnswer(${gIdx},${qIdx},'${escapeJs(opt)}')">${escapeHtml(opt)}</span>`).join("");
       answerSection=`<div class="field"><label>Correct Answer</label><div class="answer-options">${chips}</div></div>`;
-    } else {
-      } else if(conf.mode==="blank"){
+    } else if(conf.mode==="blank"){
         const textId=`question_text_${gIdx}_${qIdx}`;
-        answerSection=`<div class="field"><label>Correct Answer</label><input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx},${qIdx},'answer',this.value)"><div class="helper">Select a word in the question text and click Mark Selected Answer.</div><div class="inline-actions"><button type="button" class="inline-btn" onclick="markSelectedBlank(${gIdx},${qIdx})">Mark Selected Answer</button><button type="button" class="inline-btn" onclick="clearBlankMark(${gIdx},${qIdx})">Clear Mark</button></div></div>`;
+        const previewText=q.answer?escapeHtml(q.text).replace(escapeHtml(q.answer),`<span class="answer-choice active">${escapeHtml(q.answer)}</span>`):escapeHtml(q.text);
+        answerSection=`<div class="field"><label>Correct Answer</label><input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx},${qIdx},'answer',this.value)"><div class="helper">Select a word or phrase in the question text above, then click Mark Selected Answer.</div><div class="inline-actions"><button type="button" class="inline-btn" onclick="markSelectedBlank(${gIdx},${qIdx})">Mark Selected Answer</button><button type="button" class="inline-btn" onclick="clearBlankMark(${gIdx},${qIdx})">Clear Mark</button></div><div class="helper">Preview: ${previewText}</div></div>`;
         card.innerHTML=`<div class="question-head"><span class="badge">Question ${qIdx+1}</span><button type="button" class="inline-btn danger" onclick="removeQuestion(${gIdx},${qIdx})">Delete Question</button></div><div class="field"><label>Question Type</label><select onchange="changeQuestionType(${gIdx},${qIdx},this.value)">${typeOptions}</select></div><div class="field"><label>Question Text</label><input id="${textId}" type="text" value="${escapeHtml(q.text)}" onchange="updateQuestion(${gIdx},${qIdx},'text',this.value)"></div>${answerSection}`;
         host.appendChild(card);return;
-      } else {
+    } else {
       answerSection=`<div class="field"><label>Correct Answer</label><input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx},${qIdx},'answer',this.value)"></div>`;
     }
-    function markSelectedBlank(gIdx,qIdx){const input=document.getElementById(`question_text_${gIdx}_${qIdx}`);if(!input)return;const start=input.selectionStart;const end=input.selectionEnd;if(start===end){toast("Highlight the answer word first");return;}const selected=input.value.slice(start,end).trim();if(!selected){toast("Highlight a valid answer word");return;}const nextValue=`${input.value.slice(0,start)}[[${selected}]]${input.value.slice(end)}`;allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx].text=nextValue;allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx].answer=selected;renderQuestions(gIdx);}
-    function clearBlankMark(gIdx,qIdx){const q=allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];q.text=String(q.text||"").replace(/\[\[(.+?)\]\]/g,"$1");q.answer="";renderQuestions(gIdx);}
+    function markSelectedBlank(gIdx,qIdx){const input=document.getElementById(`question_text_${gIdx}_${qIdx}`);if(!input)return;const start=input.selectionStart;const end=input.selectionEnd;if(start===end){toast("Highlight the answer word first");return;}const selected=input.value.slice(start,end).trim();if(!selected){toast("Highlight a valid answer word");return;}const q=allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];q.text=stripBlankMarkerText(q.text);q.answer=selected;q.type="fill-in-the-blank";q.uiMode=QUESTION_TYPE_CONFIG["fill-in-the-blank"].mode;q.options=[];renderQuestions(gIdx);}
+    function clearBlankMark(gIdx,qIdx){const q=allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];q.text=stripBlankMarkerText(q.text);q.answer="";renderQuestions(gIdx);}
     card.innerHTML=`<div class="question-head"><span class="badge">Question ${qIdx+1}</span><button type="button" class="inline-btn danger" onclick="removeQuestion(${gIdx},${qIdx})">Delete Question</button></div><div class="field"><label>Question Type</label><select onchange="changeQuestionType(${gIdx},${qIdx},this.value)">${typeOptions}</select></div><div class="field"><label>Question Text</label><input type="text" value="${escapeHtml(q.text)}" onchange="updateQuestion(${gIdx},${qIdx},'text',this.value)"></div>${optionsSection}${answerSection}`;
     host.appendChild(card);
   });
@@ -203,7 +206,7 @@ function syncFormToCurrent(){
   c.audioDescription=document.getElementById("audioDescription").value.trim();
   c.audioUrl=document.getElementById("audioUrl").value.trim();
   c.moduleId="listening";c.moduleName="Listening";c.icon="🎧";c.updatedAt=new Date().toISOString();
-  c.questionGroups=c.questionGroups.map((g)=>({title:g.title,instruction:g.instruction,questions:g.questions.map((q)=>{const conf=QUESTION_TYPE_CONFIG[q.type];const storedType=q.type==="fill-in-the-blank"?"fill-in-the-blank":(conf.mode==="radio"?"radio":"text");return {type:storedType,text:q.text,options:conf.mode==="radio"?q.options.join(", "):"",answer:q.answer};})}));
+  c.questionGroups=c.questionGroups.map((g)=>({title:g.title,instruction:g.instruction,questions:g.questions.map((q)=>{const conf=QUESTION_TYPE_CONFIG[q.type];const storedType=q.type==="fill-in-the-blank"?"fill-in-the-blank":(conf.mode==="radio"?"radio":"text");return {type:storedType,text:stripBlankMarkerText(q.text),options:conf.mode==="radio"?q.options.join(", "):"",answer:q.answer||extractBlankMarkerAnswer(q.text)};})}));
 }
 
 function updateCurrentSet(){

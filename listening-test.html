@@ -282,7 +282,7 @@
                     } else if (q.type === 'text' || q.type === 'fill-in-the-blank') {
                         const hasInlineBlank = /\[\[(.+?)\]\]/.test(q.text || "");
                         if (hasInlineBlank || q.type === 'fill-in-the-blank') {
-                            html += `<p class="question-text">${renderInlineBlankText(q.text, inputName)}</p>`;
+                            html += `<p class="question-text">${renderInlineBlankText(q.text, q.answer, inputName)}</p>`;
                         } else {
                             html += `<p class="question-text">${q.text}</p>`;
                             html += `<input type="text" name="${inputName}" class="short-answer-input" placeholder="Type your answer...">`;
@@ -311,8 +311,18 @@
             return match ? match[1].trim() : "";
         }
 
-        function renderInlineBlankText(text, inputName) {
-            const escaped = escapeHtml(String(text || ""));
+        function renderInlineBlankText(text, answer, inputName) {
+            const source = String(text || "");
+            const blankAnswer = String(answer || extractBlankAnswer(text) || "").trim();
+
+            if (blankAnswer) {
+                const index = source.indexOf(blankAnswer);
+                if (index >= 0) {
+                    return `${escapeHtml(source.slice(0, index))}<input type="text" name="${inputName}" class="inline-input" placeholder="...">${escapeHtml(source.slice(index + blankAnswer.length))}`;
+                }
+            }
+
+            const escaped = escapeHtml(source);
             return escaped.replace(/\[\[(.+?)\]\]/g, () => `<input type="text" name="${inputName}" class="inline-input" placeholder="...">`);
         }
 

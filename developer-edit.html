@@ -448,6 +448,15 @@
             return String(value || "").replaceAll("\\", "\\\\").replaceAll("'", "\\'");
         }
 
+        function stripBlankMarkerText(value) {
+            return String(value || "").replace(/\[\[(.+?)\]\]/g, "$1");
+        }
+
+        function extractBlankMarkerAnswer(value) {
+            const match = String(value || "").match(/\[\[(.+?)\]\]/);
+            return match ? match[1].trim() : "";
+        }
+
         function newQuestion(type) {
             const conf = QUESTION_TYPE_CONFIG[type];
             return {
@@ -475,12 +484,13 @@
                     : "short-answer";
             const conf = QUESTION_TYPE_CONFIG[normalizedType];
             const sourceOptions = typeof raw.options === "string" ? raw.options.split(",").map((o) => o.trim()).filter(Boolean) : conf.options;
+            const text = String(raw.text || "");
 
             return {
                 type: normalizedType,
-                text: raw.text || "",
+                text: text.replace(/\[\[(.+?)\]\]/g, "$1"),
                 options: sourceOptions.length ? sourceOptions : [...conf.options],
-                answer: raw.answer || "",
+                answer: raw.answer || (text.match(/\[\[(.+?)\]\]/) || [])[1] || "",
                 uiMode: conf.mode
             };
         }
@@ -617,15 +627,19 @@
                     answerSection = `<div class="field"><label>Correct Answer</label><div class="answer-options">${answerChips}</div></div>`;
                 } else if (conf.mode === "blank") {
                     const textId = `question_text_${gIdx}_${qIdx}`;
+                    const previewText = q.answer
+                        ? escapeHtml(q.text).replace(escapeHtml(q.answer), `<span class="answer-choice active">${escapeHtml(q.answer)}</span>`)
+                        : escapeHtml(q.text);
                     answerSection = `
                         <div class="field">
                             <label>Correct Answer</label>
                             <input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx}, ${qIdx}, 'answer', this.value)">
-                            <div class="helper">Select a word in the question text and click Mark Selected Answer.</div>
+                            <div class="helper">Select a word or phrase in the question text above, then click Mark Selected Answer.</div>
                             <div class="inline-actions">
                                 <button type="button" class="inline-btn" onclick="markSelectedBlank(${gIdx}, ${qIdx})">Mark Selected Answer</button>
                                 <button type="button" class="inline-btn" onclick="clearBlankMark(${gIdx}, ${qIdx})">Clear Mark</button>
                             </div>
+                            <div class="helper">Preview: ${previewText}</div>
                         </div>
                     `;
                     card.innerHTML = `
@@ -714,15 +728,18 @@
                 return;
             }
 
-            const nextValue = `${input.value.slice(0, start)}[[${selected}]]${input.value.slice(end)}`;
-            allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx].text = nextValue;
-            allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx].answer = selected;
+            const question = allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];
+            question.text = stripBlankMarkerText(question.text);
+            question.answer = selected;
+            question.type = "fill-in-the-blank";
+            question.uiMode = QUESTION_TYPE_CONFIG["fill-in-the-blank"].mode;
+            question.options = [];
             renderQuestions(gIdx);
         }
 
         function clearBlankMark(gIdx, qIdx) {
             const question = allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];
-            question.text = String(question.text || "").replace(/\[\[(.+?)\]\]/g, "$1");
+            question.text = stripBlankMarkerText(question.text);
             question.answer = "";
             renderQuestions(gIdx);
         }
@@ -790,9 +807,9 @@
                     const conf = QUESTION_TYPE_CONFIG[q.type];
                     return {
                         type: conf.mode === "radio" ? "radio" : "text",
-                        text: q.text,
+                        text: stripBlankMarkerText(q.text),
                         options: conf.mode === "radio" ? q.options.join(", ") : "",
-                        answer: q.answer
+                        answer: q.answer || extractBlankMarkerAnswer(q.text)
                     };
                 })
             }));
