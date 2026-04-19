@@ -271,9 +271,96 @@
             z-index: 20;
         }
 
+        .rich-editor-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 8px;
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-bottom: none;
+            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            align-items: center;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 4px;
+            border-right: 1px solid var(--border);
+            padding-right: 6px;
+        }
+
+        .toolbar-group:last-child { border-right: none; }
+
+        .toolbar-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border: 1px solid var(--border);
+            background: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .toolbar-btn:hover { background: #f0f4f2; border-color: var(--teal-700); }
+        .toolbar-btn.active { background: var(--teal-700); color: #fff; border-color: var(--teal-700); }
+
+        .toolbar-select, .toolbar-color {
+            padding: 6px 8px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .rich-editor-content {
+            min-height: 80px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+            background: #fff;
+            font-family: "Poppins", sans-serif;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            outline: none;
+            overflow-y: auto;
+        }
+
+        .rich-editor-content:focus { border-color: var(--teal-700); box-shadow: 0 0 0 3px rgba(31, 116, 94, 0.1); }
+
+        .spacing-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .spacing-control input[type="range"] {
+            width: 80px;
+            height: 4px;
+            cursor: pointer;
+        }
+
+        .spacing-control input[type="number"] {
+            width: 45px;
+            padding: 4px 6px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
         @media (max-width: 900px) {
             .row2 { grid-template-columns: 1fr; }
             .sticky-actions { grid-template-columns: 1fr; }
+            .rich-editor-toolbar { flex-direction: column; align-items: flex-start; }
+            .toolbar-group { border-right: none; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 6px; margin-bottom: 6px; width: 100%; }
         }
     </style>
 </head>
@@ -336,7 +423,8 @@
 
                 <div class="field">
                     <label>Passage Content</label>
-                    <textarea id="passageContent" placeholder="Paste full reading passage..."></textarea>
+                    <div id="passageContentEditor"></div>
+                    <input type="hidden" id="passageContent" value="">
                 </div>
             </div>
 
@@ -366,6 +454,163 @@
             "fill-in-the-blank": { mode: "blank", options: [], locked: true, label: "Fill in the Blank" },
             "sentence-completion": { mode: "text", options: [], locked: true, label: "Sentence Completion" }
         };
+
+        // Rich Text Editor Functions
+        function execCommand(cmd, value = null) {
+            document.execCommand(cmd, false, value);
+        }
+
+        function updateToolbarState(editor) {
+            const toolbar = editor.previousElementSibling;
+            if (!toolbar || !toolbar.classList.contains('rich-editor-toolbar')) return;
+            
+            const btnStates = {
+                bold: document.queryCommandState('bold'),
+                italic: document.queryCommandState('italic'),
+                underline: document.queryCommandState('underline')
+            };
+            
+            ['bold', 'italic', 'underline'].forEach(cmd => {
+                const btn = toolbar.querySelector(`[data-cmd="${cmd}"]`);
+                if (btn) btn.classList.toggle('active', btnStates[cmd]);
+            });
+        }
+
+        function initRichEditor(contentEditableId, editorId) {
+            const editor = document.getElementById(contentEditableId);
+            if (!editor) return;
+
+            // Sync contenteditable to form value when blurred
+            editor.addEventListener('blur', () => {
+                const hiddenInput = document.getElementById(editorId);
+                if (hiddenInput) hiddenInput.value = editor.innerHTML;
+            });
+
+            editor.addEventListener('keyup', () => updateToolbarState(editor));
+            editor.addEventListener('mouseup', () => updateToolbarState(editor));
+        }
+
+        function createRichEditorMarkup(editorId, placeholder = "") {
+            return `
+                <div class="rich-editor-toolbar" id="${editorId}Toolbar">
+                    <div class="toolbar-group">
+                        <button type="button" class="toolbar-btn" data-cmd="bold" title="Bold"><strong>B</strong></button>
+                        <button type="button" class="toolbar-btn" data-cmd="italic" title="Italic"><em>I</em></button>
+                        <button type="button" class="toolbar-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <button type="button" class="toolbar-btn" data-cmd="formatBlock" data-value="h1" title="Heading 1">H1</button>
+                        <button type="button" class="toolbar-btn" data-cmd="formatBlock" data-value="h2" title="Heading 2">H2</button>
+                        <button type="button" class="toolbar-btn" data-cmd="formatBlock" data-value="h3" title="Heading 3">H3</button>
+                        <select class="toolbar-select" id="${editorId}FontSize" title="Font Size">
+                            <option value="">Normal</option>
+                            <option value="1">12px</option>
+                            <option value="2">14px</option>
+                            <option value="3">18px</option>
+                            <option value="4">24px</option>
+                            <option value="5">32px</option>
+                        </select>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <input type="color" class="toolbar-color" id="${editorId}TextColor" title="Text Color" value="#000000">
+                        <input type="color" class="toolbar-color" id="${editorId}BgColor" title="Highlight Color" value="#FFFF00">
+                    </div>
+
+                    <div class="toolbar-group">
+                        <button type="button" class="toolbar-btn" data-cmd="justifyLeft" title="Align Left">⬅</button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyCenter" title="Align Center">↔</button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyRight" title="Align Right">➡</button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyFull" title="Justify">⏸</button>
+                    </div>
+
+                    <div class="toolbar-group spacing-control">
+                        <label>Letter:</label>
+                        <input type="range" id="${editorId}LetterSpace" min="-2" max="10" step="0.5" value="0">
+                        <input type="number" id="${editorId}LetterSpaceNum" min="-2" max="10" step="0.5" value="0">
+                        <label style="margin-left: 12px;">Line:</label>
+                        <input type="range" id="${editorId}LineSpace" min="1" max="3" step="0.1" value="1.5">
+                        <input type="number" id="${editorId}LineSpaceNum" min="1" max="3" step="0.1" value="1.5">
+                    </div>
+                </div>
+                <div contenteditable="true" class="rich-editor-content" id="${editorId}Content" placeholder="${placeholder}"></div>
+                <input type="hidden" id="${editorId}" value="">
+            `;
+        }
+
+        function bindRichEditorToolbar(editorId) {
+            const toolbar = document.getElementById(editorId + 'Toolbar');
+            const editor = document.getElementById(editorId + 'Content');
+            if (!toolbar || !editor) return;
+
+            // Format buttons
+            toolbar.querySelectorAll('[data-cmd]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const cmd = btn.dataset.cmd;
+                    const value = btn.dataset.value || null;
+                    execCommand(cmd, value);
+                    editor.focus();
+                    updateToolbarState(editor);
+                });
+            });
+
+            // Font size
+            const fontSizeSelect = document.getElementById(editorId + 'FontSize');
+            fontSizeSelect?.addEventListener('change', (e) => {
+                if (e.target.value) execCommand('fontSize', e.target.value);
+                editor.focus();
+            });
+
+            // Colors
+            document.getElementById(editorId + 'TextColor')?.addEventListener('change', (e) => {
+                execCommand('foreColor', e.target.value);
+                editor.focus();
+            });
+
+            document.getElementById(editorId + 'BgColor')?.addEventListener('change', (e) => {
+                execCommand('backColor', e.target.value);
+                editor.focus();
+            });
+
+            // Letter spacing
+            const letterSpaceRange = document.getElementById(editorId + 'LetterSpace');
+            const letterSpaceNum = document.getElementById(editorId + 'LetterSpaceNum');
+            if (letterSpaceRange && letterSpaceNum) {
+                const updateLetterSpace = (val) => {
+                    editor.style.letterSpacing = val + 'px';
+                    letterSpaceRange.value = val;
+                    letterSpaceNum.value = val;
+                };
+                letterSpaceRange.addEventListener('input', (e) => updateLetterSpace(e.target.value));
+                letterSpaceNum.addEventListener('input', (e) => updateLetterSpace(e.target.value));
+            }
+
+            // Line spacing
+            const lineSpaceRange = document.getElementById(editorId + 'LineSpace');
+            const lineSpaceNum = document.getElementById(editorId + 'LineSpaceNum');
+            if (lineSpaceRange && lineSpaceNum) {
+                const updateLineSpace = (val) => {
+                    editor.style.lineHeight = val;
+                    lineSpaceRange.value = val;
+                    lineSpaceNum.value = val;
+                };
+                lineSpaceRange.addEventListener('input', (e) => updateLineSpace(e.target.value));
+                lineSpaceNum.addEventListener('input', (e) => updateLineSpace(e.target.value));
+            }
+
+            // Sync content to hidden input on blur/change
+            editor.addEventListener('blur', () => {
+                const hiddenInput = document.getElementById(editorId);
+                if (hiddenInput) hiddenInput.value = editor.innerHTML;
+            });
+
+            editor.addEventListener('input', () => {
+                const hiddenInput = document.getElementById(editorId);
+                if (hiddenInput) hiddenInput.value = editor.innerHTML;
+            });
+        }
 
         let draft = {
             moduleId: "reading",
@@ -788,6 +1033,19 @@
 
         setInitialDate();
         ensureAtLeastOneGroup();
+
+        // Initialize rich text editor for passage content
+        const passageEditorContainer = document.getElementById("passageContentEditor");
+        if (passageEditorContainer) {
+            passageEditorContainer.innerHTML = createRichEditorMarkup("passageContent", "Paste full reading passage...");
+            bindRichEditorToolbar("passageContent");
+            // Load existing passage content if any
+            const passageContentHidden = document.getElementById("passageContent");
+            if (passageContentHidden && passageContentHidden.value) {
+                document.getElementById("passageContentContent").innerHTML = passageContentHidden.value;
+            }
+        }
+
         renderGroups();
     </script>
 </body>

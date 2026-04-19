@@ -336,13 +336,21 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
         }
 
         function formatPassageText(text) {
-            const paragraphs = text.split(/\n+/);
+            const trimmed = String(text || "").trim();
+            
+            // If text contains HTML tags, assume it's from rich editor and return as-is
+            if (trimmed.includes('<') && trimmed.includes('>')) {
+                return trimmed;
+            }
+            
+            // Otherwise, treat as plain text and format with paragraphs
+            const paragraphs = trimmed.split(/\n+/);
             let html = '';
             paragraphs.forEach(p => {
-                let trimmed = p.trim();
-                if (trimmed) {
-                    trimmed = trimmed.replace(/^([A-Z])(?:\s|\.\s)/, '<strong>$1</strong> ');
-                    html += `<p>${trimmed}</p>\n`;
+                let para = p.trim();
+                if (para) {
+                    para = para.replace(/^([A-Z])(?:\s|\.\s)/, '<strong>$1</strong> ');
+                    html += `<p>${para}</p>\n`;
                 }
             });
             return html;
