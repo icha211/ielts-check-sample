@@ -412,7 +412,8 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                         html += `</div>`;
                     } else if (q.type === 'text' || q.type === 'fill-in-the-blank') {
                         const hasInlineBlank = /\[\[(.+?)\]\]/.test(q.text || "");
-                        if (hasInlineBlank || q.type === 'fill-in-the-blank') {
+                        const hasAnswer = String(q.answer || "").trim().length > 0;
+                        if (hasInlineBlank || q.type === 'fill-in-the-blank' || hasAnswer) {
                             html += `<p class="question-text">${renderInlineBlankText(q.text, q.answer, inputName)}</p>`;
                         } else {
                             html += `<p class="question-text">${q.text}</p>`;
