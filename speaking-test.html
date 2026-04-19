@@ -158,6 +158,14 @@
         const NEXT_URL = PACKAGE_MODE ? "index.html?packageDone=1" : (RETURN_TO || "index.html");
         const AI_REVIEW_ENDPOINT = "http://127.0.0.1:8787/api/ai-review";
 
+        function formatContentText(text) {
+            const trimmed = String(text || "").trim();
+            if (trimmed.includes('<') && trimmed.includes('>')) {
+                return trimmed;
+            }
+            return trimmed.split(/\n+/).map(line => line.trim()).filter(Boolean).map(line => `<p>${line}</p>`).join('\n');
+        }
+
         const defaultProblemSet = {
             moduleId: "speaking",
             icon: "",
@@ -238,7 +246,7 @@
                 html += `<div class="part-box">
                     <div class="part-title"> ${part.title}</div>
                     <div class="part-description"><strong>Duration:</strong> ${part.duration}</div>
-                    <div class="part-description">${part.description}</div>`;
+                    <div class="part-description">${formatContentText(part.description || "")}</div>`;
                 
                 if (part.questions) {
                     html += `<ul style="margin-top: 10px; margin-left: 20px;">`;
@@ -252,7 +260,7 @@
                     html += `<div class="cue-card">
                         <div class="cue-card-title">Cue Card</div>
                         <div class="cue-card-content">
-                            <p><strong>${part.cueCard.prompt}</strong></p>
+                            <p><strong>${formatContentText(part.cueCard.prompt || "")}</strong></p>
                             <p style="margin-top: 10px;">You should say:</p>
                             <ul>`;
                     part.cueCard.points.forEach(point => {

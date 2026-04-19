@@ -194,6 +194,14 @@
         const NEXT_URL = PACKAGE_MODE ? "reading-test.html?package=1" : (RETURN_TO || "index.html");
         const AI_REVIEW_ENDPOINT = "http://127.0.0.1:8787/api/ai-review";
 
+        function formatContentText(text) {
+            const trimmed = String(text || "").trim();
+            if (trimmed.includes('<') && trimmed.includes('>')) {
+                return trimmed;
+            }
+            return trimmed.split(/\n+/).map(line => line.trim()).filter(Boolean).map(line => `<p>${line}</p>`).join('\n');
+        }
+
         const defaultProblemSet = {
             moduleId: "listening",
             icon: "",
@@ -246,7 +254,7 @@
 
             document.getElementById('display-title').innerText = currentProblem.title || "IELTS Listening";
             document.getElementById('display-audio-title').innerText = currentProblem.audioTitle || "Audio";
-            document.getElementById('display-audio-description').innerText = currentProblem.audioDescription || "";
+            document.getElementById('display-audio-description').innerHTML = formatContentText(currentProblem.audioDescription || "");
             document.getElementById('audioPlayer').src = currentProblem.audioUrl || "";
 
             const container = document.getElementById('dynamic-questions-container');
