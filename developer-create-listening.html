@@ -94,7 +94,7 @@
 <script>
 const STORAGE_KEY = "prephaven_problems_listening_v1";
 const QUESTION_TYPE_CONFIG = {
-  "multiple-choice": { mode: "radio", options: ["A", "B", "C", "D"], locked: false, label: "Multiple Choice" },
+  "multiple-choice": { mode: "radio", options: ["A", "B", "C", "D"], locked: false, label: "Multiple Choice (A/B/C/...)" },
   "true-false-not-given": { mode: "radio", options: ["True", "False", "Not Given"], locked: true, label: "True / False / Not Given" },
   "yes-no-not-given": { mode: "radio", options: ["Yes", "No", "Not Given"], locked: true, label: "Yes / No / Not Given" },
   "short-answer": { mode: "text", options: [], locked: true, label: "Short Answer" },
@@ -105,7 +105,7 @@ let draft = { moduleId: "listening", icon: "🎧", moduleName: "Listening", titl
 
 function toast(message){const box=document.getElementById("toast");box.textContent=message;box.style.display="block";setTimeout(()=>{box.style.display="none";},2200);} 
 function readProblems(){return [];}
-async function writeProblems(list){await storageSync.saveAllProblems({listening:list,reading:[],writing:[],speaking:[]}).catch(err=>{console.error("Error saving problems:",err);});}
+async function writeProblems(list){await storageSync.saveProblemsByModule("listening",list).catch(err=>{console.error("Error saving problems:",err);});}
 function setDefaultDate(){const today=new Date().toISOString().split("T")[0];draft.scheduledDate=today;document.getElementById("setDate").value=today;}
 function setInitialDate(){const params=new URLSearchParams(window.location.search);const incoming=params.get("date");const value=incoming&&/^\d{4}-\d{2}-\d{2}$/.test(incoming)?incoming:new Date().toISOString().split("T")[0];draft.scheduledDate=value;document.getElementById("setDate").value=value;}
 function newQuestion(type){const conf=QUESTION_TYPE_CONFIG[type];return {type,text:"",options:[...conf.options],answer:"",uiMode:conf.mode};}
@@ -131,7 +131,7 @@ function renderQuestions(gIdx){
     let optionsSection="",answerSection="";
     if(conf.mode==="radio"){
       const items=q.options.map((opt,idx)=>`<div class="option-item"><strong>${conf.locked?"":String.fromCharCode(65+idx)}</strong><input type="text" value="${escapeHtml(opt)}" ${conf.locked?"readonly":""} onchange="updateOption(${gIdx},${qIdx},${idx},this.value)"></div>`).join("");
-      optionsSection=`<div class="field"><label>Options</label>${items}</div>`;
+      optionsSection=`<div class="field"><label>Options</label>${items}${conf.locked?"":`<button type="button" class="inline-btn" onclick="addOption(${gIdx},${qIdx})">+ Add Option</button>`}</div>`;
       const chips=q.options.map((opt)=>`<span class="answer-choice ${q.answer===opt?"active":""}" onclick="pickAnswer(${gIdx},${qIdx},'${escapeJs(opt)}')">${escapeHtml(opt)}</span>`).join("");
       answerSection=`<div class="field"><label>Correct Answer</label><div class="answer-options">${chips}</div></div>`;
     } else {
@@ -145,6 +145,7 @@ function renderQuestions(gIdx){
 function updateGroup(gIdx,field,value){draft.questionGroups[gIdx][field]=value;}
 function updateQuestion(gIdx,qIdx,field,value){draft.questionGroups[gIdx].questions[qIdx][field]=value;}
 function updateOption(gIdx,qIdx,oIdx,value){const q=draft.questionGroups[gIdx].questions[qIdx];q.options[oIdx]=value;if(q.answer&&!q.options.includes(q.answer)){q.answer="";}renderQuestions(gIdx);}
+function addOption(gIdx,qIdx){const q=draft.questionGroups[gIdx].questions[qIdx];q.options.push(String.fromCharCode(65+q.options.length));renderQuestions(gIdx);}
 function pickAnswer(gIdx,qIdx,opt){draft.questionGroups[gIdx].questions[qIdx].answer=opt;renderQuestions(gIdx);}
 function changeQuestionType(gIdx,qIdx,nextType){const q=draft.questionGroups[gIdx].questions[qIdx];const conf=QUESTION_TYPE_CONFIG[nextType];q.type=nextType;q.uiMode=conf.mode;q.options=[...conf.options];q.answer="";renderQuestions(gIdx);}
 function addGroup(){draft.questionGroups.push(newGroup());renderGroups();}
@@ -169,7 +170,7 @@ async function saveListeningSet(){
   if(!p.title||!p.scheduledDate||!p.audioTitle){toast("Title, date, and audio title are required");return;}
   const allAnswered=p.questionGroups.every((g)=>g.questions.every((q)=>q.text&&q.answer));
   if(!allAnswered){toast("Every question needs text and correct answer");return;}
-  const list=readProblems();list.unshift(p);await writeProblems(list);toast("Listening set saved");
+  await storageSync.addProblem("listening",p);toast("Listening set saved");
 }
 
 function resetDraft(){draft={moduleId:"listening",icon:"🎧",moduleName:"Listening",title:"",difficulty:"beginner",level:1,scheduledDate:"",audioTitle:"",audioDescription:"",audioUrl:"",questionGroups:[newGroup()]};document.getElementById("setTitle").value="";document.getElementById("difficultyLevel").value="beginner";document.getElementById("setLevel").value="1";document.getElementById("audioTitle").value="";document.getElementById("audioDescription").value="";document.getElementById("audioUrl").value="";setDefaultDate();renderGroups();}

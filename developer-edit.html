@@ -403,10 +403,11 @@
 
     <div class="toast" id="toast"></div>
 
+    <script src="storage-sync.js"></script>
     <script>
         const STORAGE_KEY = "prephaven_problems_v1";
         const QUESTION_TYPE_CONFIG = {
-            "multiple-choice": { mode: "radio", options: ["A", "B", "C", "D"], locked: false, label: "Multiple Choice (A/B/C/D)" },
+            "multiple-choice": { mode: "radio", options: ["A", "B", "C", "D"], locked: false, label: "Multiple Choice (A/B/C/...)" },
             "true-false-not-given": { mode: "radio", options: ["True", "False", "Not Given"], locked: true, label: "True / False / Not Given" },
             "yes-no-not-given": { mode: "radio", options: ["Yes", "No", "Not Given"], locked: true, label: "Yes / No / Not Given" },
             "short-answer": { mode: "text", options: [], locked: true, label: "Short Answer" },
@@ -424,18 +425,13 @@
         }
 
         function readProblems() {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return [];
-            try {
-                const parsed = JSON.parse(raw);
-                return Array.isArray(parsed) ? parsed : [];
-            } catch (err) {
-                return [];
-            }
+            return [];
         }
 
-        function writeProblems(list) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        async function writeProblems(list) {
+            await storageSync.saveProblemsByModule("reading", list).catch((err) => {
+                console.error("Error saving reading sets:", err);
+            });
         }
 
         function escapeHtml(value) {
@@ -606,6 +602,7 @@
                         <div class="field">
                             <label>Options</label>
                             ${items}
+                            ${conf.locked ? "" : `<button type="button" class="inline-btn" onclick="addOption(${gIdx}, ${qIdx})">+ Add Option</button>`}
                         </div>
                     `;
 
@@ -658,6 +655,12 @@
             if (question.answer && !question.options.includes(question.answer)) {
                 question.answer = "";
             }
+            renderQuestions(gIdx);
+        }
+
+        function addOption(gIdx, qIdx) {
+            const question = allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];
+            question.options.push(String.fromCharCode(65 + question.options.length));
             renderQuestions(gIdx);
         }
 
@@ -803,17 +806,19 @@
         document.getElementById("deleteBtn").addEventListener("click", deleteCurrentSet);
         document.getElementById("addGroupBtn").addEventListener("click", addGroup);
 
-        allProblems = readProblems();
-        renderSetList();
+        (async () => {
+            allProblems = await storageSync.getProblemsByModule("reading");
+            renderSetList();
 
-        const params = new URLSearchParams(window.location.search);
-        const idx = params.get("index");
-        if (idx !== null && !Number.isNaN(Number(idx))) {
-            const parsed = Number(idx);
-            if (parsed >= 0 && parsed < allProblems.length && allProblems[parsed].moduleId === "reading") {
-                selectSet(parsed);
+            const params = new URLSearchParams(window.location.search);
+            const idx = params.get("index");
+            if (idx !== null && !Number.isNaN(Number(idx))) {
+                const parsed = Number(idx);
+                if (parsed >= 0 && parsed < allProblems.length && allProblems[parsed].moduleId === "reading") {
+                    selectSet(parsed);
+                }
             }
-        }
+        })();
     </script>
 </body>
 </html>

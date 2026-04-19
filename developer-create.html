@@ -359,7 +359,7 @@
     <script>
         const STORAGE_KEY = "prephaven_problems_v1";
         const QUESTION_TYPE_CONFIG = {
-            "multiple-choice": { mode: "radio", options: ["A", "B", "C", "D"], locked: false, label: "Multiple Choice (A/B/C/D)" },
+            "multiple-choice": { mode: "radio", options: ["A", "B", "C", "D"], locked: false, label: "Multiple Choice (A/B/C/...)" },
             "true-false-not-given": { mode: "radio", options: ["True", "False", "Not Given"], locked: true, label: "True / False / Not Given" },
             "yes-no-not-given": { mode: "radio", options: ["Yes", "No", "Not Given"], locked: true, label: "Yes / No / Not Given" },
             "short-answer": { mode: "text", options: [], locked: true, label: "Short Answer" },
@@ -392,12 +392,7 @@
         }
 
         async function writeProblems(list) {
-            await storageSync.saveAllProblems({
-                reading: list,
-                listening: [],
-                writing: [],
-                speaking: []
-            }).catch(err => {
+            await storageSync.saveProblemsByModule("reading", list).catch(err => {
                 console.error("Error saving problems:", err);
             });
         }
@@ -505,6 +500,7 @@
                         <div class="field">
                             <label>Options</label>
                             ${items}
+                            ${conf.locked ? "" : `<button type="button" class="inline-btn" onclick="addOption(${gIdx}, ${qIdx})">+ Add Option</button>`}
                             <div class="helper">Correct answer can be selected by clicking one option chip below.</div>
                         </div>
                     `;
@@ -572,6 +568,12 @@
             if (question.answer && !question.options.includes(question.answer)) {
                 question.answer = "";
             }
+            renderQuestions(gIdx);
+        }
+
+        function addOption(gIdx, qIdx) {
+            const question = draft.questionGroups[gIdx].questions[qIdx];
+            question.options.push(String.fromCharCode(65 + question.options.length));
             renderQuestions(gIdx);
         }
 
@@ -675,9 +677,7 @@
                 return;
             }
 
-            const list = readProblems();
-            list.unshift(problem);
-            await writeProblems(list);
+            await storageSync.addProblem("reading", problem);
             toast("Reading set saved. Open real user view to test.");
         }
 

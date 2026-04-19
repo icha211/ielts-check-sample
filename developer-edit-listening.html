@@ -96,10 +96,11 @@
 </main>
 <div class="toast" id="toast"></div>
 
+<script src="storage-sync.js"></script>
 <script>
 const STORAGE_KEY = "prephaven_problems_listening_v1";
 const QUESTION_TYPE_CONFIG = {
-  "multiple-choice": { mode: "radio", options: ["A", "B", "C", "D"], locked: false, label: "Multiple Choice" },
+  "multiple-choice": { mode: "radio", options: ["A", "B", "C", "D"], locked: false, label: "Multiple Choice (A/B/C/...)" },
   "true-false-not-given": { mode: "radio", options: ["True", "False", "Not Given"], locked: true, label: "True / False / Not Given" },
   "yes-no-not-given": { mode: "radio", options: ["Yes", "No", "Not Given"], locked: true, label: "Yes / No / Not Given" },
   "short-answer": { mode: "text", options: [], locked: true, label: "Short Answer" },
@@ -109,8 +110,8 @@ let allProblems = [];
 let selectedIndex = null;
 
 function toast(message){const box=document.getElementById("toast");box.textContent=message;box.style.display="block";setTimeout(()=>{box.style.display="none";},2200);} 
-function readProblems(){const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return [];try{const parsed=JSON.parse(raw);return Array.isArray(parsed)?parsed:[];}catch{return [];}}
-function writeProblems(list){localStorage.setItem(STORAGE_KEY,JSON.stringify(list));}
+function readProblems(){return [];}
+async function writeProblems(list){await storageSync.saveProblemsByModule("listening",list).catch((err)=>{console.error("Error saving listening sets:",err);});}
 function escapeHtml(v){return String(v||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");}
 function escapeJs(v){return String(v||"").replaceAll("\\","\\\\").replaceAll("'","\\'");}
 function newQuestion(type){const conf=QUESTION_TYPE_CONFIG[type];return {type,text:"",options:[...conf.options],answer:"",uiMode:conf.mode};}
@@ -161,7 +162,7 @@ function renderQuestions(gIdx){
     let optionsSection="",answerSection="";
     if(conf.mode==="radio"){
       const items=q.options.map((opt,idx)=>`<div class="option-item"><strong>${conf.locked?"":String.fromCharCode(65+idx)}</strong><input type="text" value="${escapeHtml(opt)}" ${conf.locked?"readonly":""} onchange="updateOption(${gIdx},${qIdx},${idx},this.value)"></div>`).join("");
-      optionsSection=`<div class="field"><label>Options</label>${items}</div>`;
+      optionsSection=`<div class="field"><label>Options</label>${items}${conf.locked?"":`<button type="button" class="inline-btn" onclick="addOption(${gIdx},${qIdx})">+ Add Option</button>`}</div>`;
       const chips=q.options.map((opt)=>`<span class="answer-choice ${q.answer===opt?"active":""}" onclick="pickAnswer(${gIdx},${qIdx},'${escapeJs(opt)}')">${escapeHtml(opt)}</span>`).join("");
       answerSection=`<div class="field"><label>Correct Answer</label><div class="answer-options">${chips}</div></div>`;
     } else {
@@ -175,6 +176,7 @@ function renderQuestions(gIdx){
 function updateGroup(gIdx,field,value){allProblems[selectedIndex].questionGroups[gIdx][field]=value;}
 function updateQuestion(gIdx,qIdx,field,value){allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx][field]=value;}
 function updateOption(gIdx,qIdx,oIdx,value){const q=allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];q.options[oIdx]=value;if(q.answer&&!q.options.includes(q.answer)){q.answer="";}renderQuestions(gIdx);}
+function addOption(gIdx,qIdx){const q=allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];q.options.push(String.fromCharCode(65+q.options.length));renderQuestions(gIdx);}
 function pickAnswer(gIdx,qIdx,opt){allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx].answer=opt;renderQuestions(gIdx);}
 function changeQuestionType(gIdx,qIdx,nextType){const q=allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];const conf=QUESTION_TYPE_CONFIG[nextType];q.type=nextType;q.uiMode=conf.mode;q.options=[...conf.options];q.answer="";renderQuestions(gIdx);} 
 function addGroup(){allProblems[selectedIndex].questionGroups.push(newGroup(allProblems[selectedIndex]));renderGroups();}
@@ -219,8 +221,7 @@ document.getElementById("updateBottom").addEventListener("click",updateCurrentSe
 document.getElementById("duplicateBtn").addEventListener("click",duplicateAsNew);
 document.getElementById("deleteBtn").addEventListener("click",deleteCurrentSet);
 document.getElementById("addGroupBtn").addEventListener("click",addGroup);
-allProblems=readProblems();renderSetList();
-const params=new URLSearchParams(window.location.search);const idx=params.get("index");if(idx!==null&&!Number.isNaN(Number(idx))){const i=Number(idx);if(i>=0&&i<allProblems.length){selectSet(i);}}
+(async()=>{allProblems=await storageSync.getProblemsByModule("listening");renderSetList();const params=new URLSearchParams(window.location.search);const idx=params.get("index");if(idx!==null&&!Number.isNaN(Number(idx))){const i=Number(idx);if(i>=0&&i<allProblems.length){selectSet(i);}}})();
 </script>
 </body>
 </html>

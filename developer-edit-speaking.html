@@ -88,12 +88,13 @@
 </main>
 <div class="toast" id="toast"></div>
 
+<script src="storage-sync.js"></script>
 <script>
 const STORAGE_KEY = "prephaven_problems_speaking_v1";
 let allProblems=[];let selectedIndex=null;
 function toast(m){const b=document.getElementById("toast");b.textContent=m;b.style.display="block";setTimeout(()=>b.style.display="none",2200);} 
-function readProblems(){const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return [];try{const p=JSON.parse(raw);return Array.isArray(p)?p:[];}catch{return [];}}
-function writeProblems(v){localStorage.setItem(STORAGE_KEY,JSON.stringify(v));}
+function readProblems(){return [];}
+async function writeProblems(v){await storageSync.saveProblemsByModule("speaking",v).catch((err)=>{console.error("Error saving speaking sets:",err);});}
 function toLines(text){return String(text||"").split(/\n+/).map((v)=>v.trim()).filter(Boolean);} 
 function fromLines(arr){return Array.isArray(arr)?arr.join("\n"):"";}
 function escapeHtml(v){return String(v||"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");}
@@ -169,8 +170,7 @@ document.getElementById("updateTop").addEventListener("click",updateCurrent);
 document.getElementById("updateBottom").addEventListener("click",updateCurrent);
 document.getElementById("duplicateBtn").addEventListener("click",duplicateAsNew);
 document.getElementById("deleteBtn").addEventListener("click",deleteCurrent);
-allProblems=readProblems();renderSetList();
-const params=new URLSearchParams(window.location.search);const idx=params.get("index");if(idx!==null&&!Number.isNaN(Number(idx))){const i=Number(idx);if(i>=0&&i<allProblems.length)selectSet(i);} 
+(async()=>{allProblems=await storageSync.getProblemsByModule("speaking");renderSetList();const params=new URLSearchParams(window.location.search);const idx=params.get("index");if(idx!==null&&!Number.isNaN(Number(idx))){const i=Number(idx);if(i>=0&&i<allProblems.length)selectSet(i);}})(); 
 </script>
 </body>
 </html>

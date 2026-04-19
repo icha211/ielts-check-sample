@@ -89,7 +89,7 @@
 const STORAGE_KEY = "prephaven_problems_speaking_v1";
 function toast(m){const b=document.getElementById("toast");b.textContent=m;b.style.display="block";setTimeout(()=>b.style.display="none",2200);} 
 function readProblems(){return [];}
-async function writeProblems(v){await storageSync.saveAllProblems({speaking:v,reading:[],listening:[],writing:[]}).catch(err=>{console.error("Error saving problems:",err);});}
+async function writeProblems(v){await storageSync.saveProblemsByModule("speaking",v).catch(err=>{console.error("Error saving problems:",err);});}
 function setDefaultDate(){document.getElementById("setDate").value=new Date().toISOString().split("T")[0];}
 function setInitialDate(){const params=new URLSearchParams(window.location.search);const incoming=params.get("date");const value=incoming&&/^\d{4}-\d{2}-\d{2}$/.test(incoming)?incoming:new Date().toISOString().split("T")[0];document.getElementById("setDate").value=value;}
 function toLines(text){return String(text||"").split(/\n+/).map((v)=>v.trim()).filter(Boolean);} 
@@ -119,7 +119,7 @@ async function save(){
     createdAt:new Date().toISOString(), updatedAt:new Date().toISOString(), id:`problem_${Date.now()}`
   };
 
-  const list=readProblems();list.unshift(problem);await writeProblems(list);toast("Speaking set saved");
+  await storageSync.addProblem("speaking",problem);toast("Speaking set saved");
 }
 
 function reset(){document.getElementById("setTitle").value="";document.getElementById("difficultyLevel").value="beginner";document.getElementById("setLevel").value="1";document.getElementById("p1Desc").value="";document.getElementById("p1Questions").value="";document.getElementById("p2Desc").value="";document.getElementById("p2Prompt").value="";document.getElementById("p2Points").value="";document.getElementById("p3Desc").value="";document.getElementById("p3Questions").value="";setDefaultDate();}

@@ -1,261 +1,215 @@
-/**
- * Storage Sync Helper - Synchronizes data between browser localStorage and persistent backend storage
- * Provides automatic caching and fallback to localStorage if server is unavailable
+/*
+ * Shared storage helper using Firebase Firestore + localStorage fallback.
+ * This allows question sets to sync across different laptops and networks.
  */
 
-const STORAGE_SERVER_URL = "http://127.0.0.1:8788/api";
-const SYNC_TIMEOUT = 3000; // 3 seconds
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBtaZOok-Kj91qzCo_6ClCZ8Lfgam7qRxg",
+  authDomain: "quickcheck-25590.firebaseapp.com",
+  projectId: "quickcheck-25590",
+  storageBucket: "quickcheck-25590.firebasestorage.app",
+  messagingSenderId: "753959270698",
+  appId: "1:753959270698:web:ec1415910d1d52a7958653",
+  measurementId: "G-MQX3QELGJL"
+};
+
+const FIRESTORE_COLLECTION = "ielts_check";
+const FIRESTORE_DOC = "problems_v1";
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing) {
+      if (existing.dataset.loaded === "true") {
+        resolve();
+        return;
+      }
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = () => {
+      script.dataset.loaded = "true";
+      resolve();
+    };
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+}
 
 class StorageSync {
   constructor() {
-    this.isServerAvailable = null;
-    this.checkServerAvailability();
+    this.db = null;
+    this.isFirebaseAvailable = false;
+    this.initPromise = this.initializeFirebase();
   }
 
-  /**
-   * Check if storage server is available
-   */
-  async checkServerAvailability() {
+  async initializeFirebase() {
     try {
-      const response = await Promise.race([
-        fetch(`${STORAGE_SERVER_URL}/problems`),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("timeout")), SYNC_TIMEOUT)
-        ),
-      ]);
-      this.isServerAvailable = response.ok;
-    } catch (e) {
-      this.isServerAvailable = false;
-      console.warn(
-        "⚠️  Storage server unavailable. Using browser localStorage as fallback."
-      );
+      if (!window.firebase) {
+        await loadScript("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js");
+        await loadScript("https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js");
+      }
+
+      if (!window.firebase) {
+        throw new Error("Firebase SDK unavailable");
+      }
+
+      if (!firebase.apps.length) {
+        firebase.initializeApp(FIREBASE_CONFIG);
+      }
+
+      this.db = firebase.firestore();
+      this.isFirebaseAvailable = true;
+
+      // Ensure the shared document exists.
+      await this.db
+        .collection(FIRESTORE_COLLECTION)
+        .doc(FIRESTORE_DOC)
+        .set(this._normalizeProblems({}), { merge: true });
+    } catch (error) {
+      this.isFirebaseAvailable = false;
+      console.warn("Firebase unavailable, using localStorage fallback:", error.message);
     }
   }
 
-  /**
-   * Get all problems from server or localStorage
-   */
+  async awaitReady() {
+    try {
+      await this.initPromise;
+    } catch (error) {
+      // Ignore and continue with fallback.
+    }
+  }
+
+  _normalizeProblems(problems) {
+    const source = problems && typeof problems === "object" ? problems : {};
+    return {
+      reading: Array.isArray(source.reading) ? source.reading : [],
+      listening: Array.isArray(source.listening) ? source.listening : [],
+      writing: Array.isArray(source.writing) ? source.writing : [],
+      speaking: Array.isArray(source.speaking) ? source.speaking : []
+    };
+  }
+
   async getAllProblems() {
-    if (this.isServerAvailable) {
+    await this.awaitReady();
+
+    if (this.isFirebaseAvailable && this.db) {
       try {
-        const response = await fetch(`${STORAGE_SERVER_URL}/problems`);
-        if (response.ok) {
-          return await response.json();
-        }
-      } catch (e) {
-        console.error("Error fetching problems from server:", e);
+        const doc = await this.db.collection(FIRESTORE_COLLECTION).doc(FIRESTORE_DOC).get();
+        const normalized = this._normalizeProblems(doc.exists ? doc.data() : {});
+        this._saveProblemsToLocalStorage(normalized);
+        return normalized;
+      } catch (error) {
+        console.error("Error fetching from Firebase:", error);
       }
     }
 
-    // Fallback to localStorage
     return this._getProblemsFromLocalStorage();
   }
 
-  /**
-   * Get problems for a specific module
-   */
   async getProblemsByModule(module) {
-    if (this.isServerAvailable) {
-      try {
-        const response = await fetch(
-          `${STORAGE_SERVER_URL}/problems/${module}`
-        );
-        if (response.ok) {
-          return await response.json();
-        }
-      } catch (e) {
-        console.error(
-          `Error fetching ${module} problems from server:`,
-          e
-        );
-      }
-    }
-
-    // Fallback to localStorage
-    const problems = this._getProblemsFromLocalStorage();
-    return problems[module] || [];
+    const all = await this.getAllProblems();
+    return Array.isArray(all[module]) ? all[module] : [];
   }
 
-  /**
-   * Save all problems to server and localStorage
-   */
   async saveAllProblems(problems) {
-    let serverSuccess = false;
+    await this.awaitReady();
+    const normalized = this._normalizeProblems(problems);
 
-    if (this.isServerAvailable) {
+    if (this.isFirebaseAvailable && this.db) {
       try {
-        const response = await fetch(`${STORAGE_SERVER_URL}/problems`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "save-all-problems",
-            problems,
-          }),
-        });
-        serverSuccess = response.ok;
-      } catch (e) {
-        console.error("Error saving problems to server:", e);
+        await this.db.collection(FIRESTORE_COLLECTION).doc(FIRESTORE_DOC).set(
+          {
+            ...normalized,
+            updatedAt: new Date().toISOString()
+          },
+          { merge: true }
+        );
+      } catch (error) {
+        console.error("Error saving to Firebase:", error);
       }
     }
 
-    // Always save to localStorage as backup
-    this._saveProblemsToLocalStorage(problems);
-
-    return serverSuccess;
+    this._saveProblemsToLocalStorage(normalized);
+    return true;
   }
 
-  /**
-   * Add a single problem
-   */
+  async saveProblemsByModule(module, list) {
+    const all = await this.getAllProblems();
+    const normalized = this._normalizeProblems(all);
+    normalized[module] = Array.isArray(list) ? list : [];
+    return this.saveAllProblems(normalized);
+  }
+
   async addProblem(module, problemData) {
-    if (this.isServerAvailable) {
-      try {
-        const response = await fetch(`${STORAGE_SERVER_URL}/problems`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "save-problem",
-            module,
-            problem: problemData,
-          }),
-        });
-        if (response.ok) {
-          const result = await response.json();
-          // Also update localStorage
-          await this._addToLocalStorage(module, result.problem);
-          return result.problem;
-        }
-      } catch (e) {
-        console.error("Error adding problem to server:", e);
-      }
+    const list = await this.getProblemsByModule(module);
+    const item = { ...problemData };
+    if (!item.id) {
+      item.id = `problem_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     }
-
-    // Fallback: save locally
-    return await this._addToLocalStorage(module, problemData);
+    list.unshift(item);
+    await this.saveProblemsByModule(module, list);
+    return item;
   }
 
-  /**
-   * Delete a problem
-   */
   async deleteProblem(module, problemId) {
-    if (this.isServerAvailable) {
-      try {
-        const response = await fetch(`${STORAGE_SERVER_URL}/problems`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            module,
-            id: problemId,
-          }),
-        });
-        if (response.ok) {
-          // Also delete from localStorage
-          await this._deleteFromLocalStorage(module, problemId);
-          return true;
-        }
-      } catch (e) {
-        console.error("Error deleting problem from server:", e);
-      }
-    }
-
-    // Fallback: delete locally
-    return await this._deleteFromLocalStorage(module, problemId);
+    const list = await this.getProblemsByModule(module);
+    const filtered = list.filter((p) => p.id !== problemId);
+    await this.saveProblemsByModule(module, filtered);
+    return true;
   }
 
-  /**
-   * Update a problem
-   */
   async updateProblem(module, problemId, updatedData) {
-    if (this.isServerAvailable) {
-      try {
-        const response = await fetch(`${STORAGE_SERVER_URL}/problems`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            module,
-            id: problemId,
-            data: updatedData,
-          }),
-        });
-        if (response.ok) {
-          // Also update in localStorage
-          await this._updateInLocalStorage(module, problemId, updatedData);
-          return true;
-        }
-      } catch (e) {
-        console.error("Error updating problem on server:", e);
-      }
-    }
-
-    // Fallback: update locally
-    return await this._updateInLocalStorage(module, problemId, updatedData);
+    const list = await this.getProblemsByModule(module);
+    const index = list.findIndex((p) => p.id === problemId);
+    if (index === -1) return false;
+    list[index] = updatedData;
+    await this.saveProblemsByModule(module, list);
+    return true;
   }
 
-  /**
-   * Record daily test completion
-   */
   async recordDailyTest(module, date, completed = true) {
-    if (this.isServerAvailable) {
-      try {
-        const response = await fetch(`${STORAGE_SERVER_URL}/daily-tests`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "record-daily-test",
-            module,
-            date,
-            completed,
-          }),
-        });
-        return response.ok;
-      } catch (e) {
-        console.error("Error recording daily test on server:", e);
-      }
-    }
-
-    // Fallback: would need to implement localStorage version if needed
-    return false;
+    const key = "prephaven_daily_tests_v1";
+    const raw = localStorage.getItem(key);
+    const data = raw ? JSON.parse(raw) : {};
+    if (!data[date]) data[date] = {};
+    data[date][module] = Boolean(completed);
+    localStorage.setItem(key, JSON.stringify(data));
+    return true;
   }
 
-  /**
-   * Save test result
-   */
   async saveTestResult(resultData) {
-    if (this.isServerAvailable) {
-      try {
-        const response = await fetch(`${STORAGE_SERVER_URL}/test-results`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "save-test-result",
-            result: resultData,
-          }),
-        });
-        return response.ok;
-      } catch (e) {
-        console.error("Error saving test result to server:", e);
-      }
-    }
-
-    return false;
+    const key = "prephaven_test_results_v1";
+    const raw = localStorage.getItem(key);
+    const list = raw ? JSON.parse(raw) : [];
+    list.unshift({ ...resultData, timestamp: new Date().toISOString() });
+    localStorage.setItem(key, JSON.stringify(list));
+    return true;
   }
-
-  // ============ LocalStorage Helper Methods ============
 
   _getProblemsFromLocalStorage() {
     const keys = {
       reading: "prephaven_problems_v1",
       listening: "prephaven_problems_listening_v1",
       writing: "prephaven_problems_writing_v1",
-      speaking: "prephaven_problems_speaking_v1",
+      speaking: "prephaven_problems_speaking_v1"
     };
 
     const problems = {};
     for (const [module, key] of Object.entries(keys)) {
-      const raw = localStorage.getItem(key);
-      problems[module] = raw ? JSON.parse(raw) : [];
+      try {
+        const raw = localStorage.getItem(key);
+        problems[module] = raw ? JSON.parse(raw) : [];
+      } catch (error) {
+        problems[module] = [];
+      }
     }
-    return problems;
+    return this._normalizeProblems(problems);
   }
 
   _saveProblemsToLocalStorage(problems) {
@@ -263,74 +217,14 @@ class StorageSync {
       reading: "prephaven_problems_v1",
       listening: "prephaven_problems_listening_v1",
       writing: "prephaven_problems_writing_v1",
-      speaking: "prephaven_problems_speaking_v1",
+      speaking: "prephaven_problems_speaking_v1"
     };
 
+    const normalized = this._normalizeProblems(problems);
     for (const [module, key] of Object.entries(keys)) {
-      if (problems[module]) {
-        localStorage.setItem(key, JSON.stringify(problems[module]));
-      }
+      localStorage.setItem(key, JSON.stringify(normalized[module]));
     }
-  }
-
-  async _addToLocalStorage(module, problemData) {
-    const keys = {
-      reading: "prephaven_problems_v1",
-      listening: "prephaven_problems_listening_v1",
-      writing: "prephaven_problems_writing_v1",
-      speaking: "prephaven_problems_speaking_v1",
-    };
-
-    const key = keys[module];
-    const raw = localStorage.getItem(key);
-    const list = raw ? JSON.parse(raw) : [];
-
-    if (!problemData.id) {
-      problemData.id = list.length + 1;
-    }
-
-    list.push(problemData);
-    localStorage.setItem(key, JSON.stringify(list));
-    return problemData;
-  }
-
-  async _deleteFromLocalStorage(module, problemId) {
-    const keys = {
-      reading: "prephaven_problems_v1",
-      listening: "prephaven_problems_listening_v1",
-      writing: "prephaven_problems_writing_v1",
-      speaking: "prephaven_problems_speaking_v1",
-    };
-
-    const key = keys[module];
-    const raw = localStorage.getItem(key);
-    const list = raw ? JSON.parse(raw) : [];
-    const filtered = list.filter((p) => p.id !== problemId);
-    localStorage.setItem(key, JSON.stringify(filtered));
-    return true;
-  }
-
-  async _updateInLocalStorage(module, problemId, updatedData) {
-    const keys = {
-      reading: "prephaven_problems_v1",
-      listening: "prephaven_problems_listening_v1",
-      writing: "prephaven_problems_writing_v1",
-      speaking: "prephaven_problems_speaking_v1",
-    };
-
-    const key = keys[module];
-    const raw = localStorage.getItem(key);
-    const list = raw ? JSON.parse(raw) : [];
-
-    const index = list.findIndex((p) => p.id === problemId);
-    if (index !== -1) {
-      list[index] = updatedData;
-      localStorage.setItem(key, JSON.stringify(list));
-    }
-
-    return index !== -1;
   }
 }
 
-// Create global instance
 const storageSync = new StorageSync();
