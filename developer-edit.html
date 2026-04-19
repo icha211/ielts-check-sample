@@ -411,6 +411,7 @@
             "true-false-not-given": { mode: "radio", options: ["True", "False", "Not Given"], locked: true, label: "True / False / Not Given" },
             "yes-no-not-given": { mode: "radio", options: ["Yes", "No", "Not Given"], locked: true, label: "Yes / No / Not Given" },
             "short-answer": { mode: "text", options: [], locked: true, label: "Short Answer" },
+            "fill-in-the-blank": { mode: "blank", options: [], locked: true, label: "Fill in the Blank" },
             "sentence-completion": { mode: "text", options: [], locked: true, label: "Sentence Completion" }
         };
 
@@ -467,9 +468,11 @@
         }
 
         function normalizeQuestion(raw) {
-            const normalizedType = raw.type === "radio"
-                ? (raw.options && raw.options.includes("True") ? "true-false-not-given" : "multiple-choice")
-                : "short-answer";
+            const normalizedType = raw.type === "fill-in-the-blank"
+                ? "fill-in-the-blank"
+                : raw.type === "radio"
+                    ? (raw.options && raw.options.includes("True") ? "true-false-not-given" : "multiple-choice")
+                    : "short-answer";
             const conf = QUESTION_TYPE_CONFIG[normalizedType];
             const sourceOptions = typeof raw.options === "string" ? raw.options.split(",").map((o) => o.trim()).filter(Boolean) : conf.options;
 
@@ -612,6 +615,36 @@
                     }).join("");
 
                     answerSection = `<div class="field"><label>Correct Answer</label><div class="answer-options">${answerChips}</div></div>`;
+                } else if (conf.mode === "blank") {
+                    const textId = `question_text_${gIdx}_${qIdx}`;
+                    answerSection = `
+                        <div class="field">
+                            <label>Correct Answer</label>
+                            <input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx}, ${qIdx}, 'answer', this.value)">
+                            <div class="helper">Select a word in the question text and click Mark Selected Answer.</div>
+                            <div class="inline-actions">
+                                <button type="button" class="inline-btn" onclick="markSelectedBlank(${gIdx}, ${qIdx})">Mark Selected Answer</button>
+                                <button type="button" class="inline-btn" onclick="clearBlankMark(${gIdx}, ${qIdx})">Clear Mark</button>
+                            </div>
+                        </div>
+                    `;
+                    card.innerHTML = `
+                        <div class="question-head">
+                            <span class="badge">Question ${qIdx + 1}</span>
+                            <button type="button" class="inline-btn danger" onclick="removeQuestion(${gIdx}, ${qIdx})">Delete Question</button>
+                        </div>
+                        <div class="field">
+                            <label>Question Type</label>
+                            <select onchange="changeQuestionType(${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
+                        </div>
+                        <div class="field">
+                            <label>Question Text</label>
+                            <input id="${textId}" type="text" value="${escapeHtml(q.text)}" onchange="updateQuestion(${gIdx}, ${qIdx}, 'text', this.value)">
+                        </div>
+                        ${answerSection}
+                    `;
+                    host.appendChild(card);
+                    return;
                 } else {
                     answerSection = `
                         <div class="field">
@@ -661,6 +694,36 @@
         function addOption(gIdx, qIdx) {
             const question = allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];
             question.options.push(String.fromCharCode(65 + question.options.length));
+            renderQuestions(gIdx);
+        }
+
+        function markSelectedBlank(gIdx, qIdx) {
+            const input = document.getElementById(`question_text_${gIdx}_${qIdx}`);
+            if (!input) return;
+
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            if (start === end) {
+                toast("Highlight the answer word first");
+                return;
+            }
+
+            const selected = input.value.slice(start, end).trim();
+            if (!selected) {
+                toast("Highlight a valid answer word");
+                return;
+            }
+
+            const nextValue = `${input.value.slice(0, start)}[[${selected}]]${input.value.slice(end)}`;
+            allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx].text = nextValue;
+            allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx].answer = selected;
+            renderQuestions(gIdx);
+        }
+
+        function clearBlankMark(gIdx, qIdx) {
+            const question = allProblems[selectedIndex].questionGroups[gIdx].questions[qIdx];
+            question.text = String(question.text || "").replace(/\[\[(.+?)\]\]/g, "$1");
+            question.answer = "";
             renderQuestions(gIdx);
         }
 

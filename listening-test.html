@@ -99,6 +99,14 @@
         .short-answer-input { width: 100%; max-width: 400px; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: calc(0.95rem * var(--text-zoom)); font-family: 'Poppins', sans-serif; transition: border-color 0.2s; background: var(--bg-surface); margin-top: 10px; }
         .short-answer-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
 
+        .inline-input {
+            display: inline-block; min-width: 150px; padding: 4px 8px; margin: 0 5px;
+            border: none; border-bottom: 2px solid var(--border-color); border-radius: 0;
+            background: transparent; font-size: inherit; font-family: inherit;
+            text-align: center; color: var(--primary); font-weight: 600; transition: all 0.2s;
+        }
+        .inline-input:focus { outline: none; border-bottom-color: var(--primary); background: #eff6ff; }
+
         /* Submit Area */
         .submit-area { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color); }
         .submit-btn { background-color: var(--primary); color: white; border: none; padding: 14px 28px; font-size: 1.1rem; font-weight: 600; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.2s ease; }
@@ -271,9 +279,14 @@
                             }
                         });
                         html += `</div>`;
-                    } else if (q.type === 'text') {
-                        html += `<p class="question-text">${q.text}</p>`;
-                        html += `<input type="text" name="${inputName}" class="short-answer-input" placeholder="Type your answer...">`;
+                    } else if (q.type === 'text' || q.type === 'fill-in-the-blank') {
+                        const hasInlineBlank = /\[\[(.+?)\]\]/.test(q.text || "");
+                        if (hasInlineBlank || q.type === 'fill-in-the-blank') {
+                            html += `<p class="question-text">${renderInlineBlankText(q.text, inputName)}</p>`;
+                        } else {
+                            html += `<p class="question-text">${q.text}</p>`;
+                            html += `<input type="text" name="${inputName}" class="short-answer-input" placeholder="Type your answer...">`;
+                        }
                     }
 
                     html += `</div>`;
@@ -291,6 +304,20 @@
         function toggleNavigator() {
             const nav = document.getElementById('questionNavigator');
             nav.classList.toggle('open');
+        }
+
+        function extractBlankAnswer(text) {
+            const match = String(text || "").match(/\[\[(.+?)\]\]/);
+            return match ? match[1].trim() : "";
+        }
+
+        function renderInlineBlankText(text, inputName) {
+            const escaped = escapeHtml(String(text || ""));
+            return escaped.replace(/\[\[(.+?)\]\]/g, () => `<input type="text" name="${inputName}" class="inline-input" placeholder="...">`);
+        }
+
+        function getCorrectTextAnswer(q) {
+            return String(q.answer || extractBlankAnswer(q.text) || "").trim();
         }
 
         function attachTrackingListeners() {
@@ -496,10 +523,10 @@
             currentProblem.questionGroups.forEach((group, gIndex) => {
                 group.questions.forEach((q, qIndex) => {
                     const key = `q_${gIndex}_${qIndex}`;
-                    correctAnswers[key] = q.answer.trim().toLowerCase();
+                    correctAnswers[key] = getCorrectTextAnswer(q).toLowerCase();
                     questionMeta[key] = {
                         text: q.text || `Question ${qIndex + 1}`,
-                        correctAnswer: q.answer || ""
+                        correctAnswer: getCorrectTextAnswer(q)
                     };
                 });
             });

@@ -98,6 +98,7 @@ const QUESTION_TYPE_CONFIG = {
   "true-false-not-given": { mode: "radio", options: ["True", "False", "Not Given"], locked: true, label: "True / False / Not Given" },
   "yes-no-not-given": { mode: "radio", options: ["Yes", "No", "Not Given"], locked: true, label: "Yes / No / Not Given" },
   "short-answer": { mode: "text", options: [], locked: true, label: "Short Answer" },
+  "fill-in-the-blank": { mode: "blank", options: [], locked: true, label: "Fill in the Blank" },
   "sentence-completion": { mode: "text", options: [], locked: true, label: "Sentence Completion" }
 };
 
@@ -134,6 +135,11 @@ function renderQuestions(gIdx){
       optionsSection=`<div class="field"><label>Options</label>${items}${conf.locked?"":`<button type="button" class="inline-btn" onclick="addOption(${gIdx},${qIdx})">+ Add Option</button>`}</div>`;
       const chips=q.options.map((opt)=>`<span class="answer-choice ${q.answer===opt?"active":""}" onclick="pickAnswer(${gIdx},${qIdx},'${escapeJs(opt)}')">${escapeHtml(opt)}</span>`).join("");
       answerSection=`<div class="field"><label>Correct Answer</label><div class="answer-options">${chips}</div></div>`;
+    } else if(conf.mode==="blank"){
+      const textId=`question_text_${gIdx}_${qIdx}`;
+      answerSection=`<div class="field"><label>Correct Answer</label><input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx},${qIdx},'answer',this.value)"><div class="helper">Select a word in the question text and click Mark Selected Answer.</div><div class="inline-actions"><button type="button" class="inline-btn" onclick="markSelectedBlank(${gIdx},${qIdx})">Mark Selected Answer</button><button type="button" class="inline-btn" onclick="clearBlankMark(${gIdx},${qIdx})">Clear Mark</button></div></div>`;
+      card.innerHTML=`<div class="question-head"><span class="badge">Question ${qIdx+1}</span><button type="button" class="inline-btn danger" onclick="removeQuestion(${gIdx},${qIdx})">Delete Question</button></div><div class="field"><label>Question Type</label><select onchange="changeQuestionType(${gIdx},${qIdx},this.value)">${typeOptions}</select></div><div class="field"><label>Question Text</label><input id="${textId}" type="text" value="${escapeHtml(q.text)}" onchange="updateQuestion(${gIdx},${qIdx},'text',this.value)"></div>${answerSection}`;
+      host.appendChild(card);return;
     } else {
       answerSection=`<div class="field"><label>Correct Answer</label><input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx},${qIdx},'answer',this.value)"></div>`;
     }
@@ -146,6 +152,8 @@ function updateGroup(gIdx,field,value){draft.questionGroups[gIdx][field]=value;}
 function updateQuestion(gIdx,qIdx,field,value){draft.questionGroups[gIdx].questions[qIdx][field]=value;}
 function updateOption(gIdx,qIdx,oIdx,value){const q=draft.questionGroups[gIdx].questions[qIdx];q.options[oIdx]=value;if(q.answer&&!q.options.includes(q.answer)){q.answer="";}renderQuestions(gIdx);}
 function addOption(gIdx,qIdx){const q=draft.questionGroups[gIdx].questions[qIdx];q.options.push(String.fromCharCode(65+q.options.length));renderQuestions(gIdx);}
+function markSelectedBlank(gIdx,qIdx){const input=document.getElementById(`question_text_${gIdx}_${qIdx}`);if(!input)return;const start=input.selectionStart;const end=input.selectionEnd;if(start===end){toast("Highlight the answer word first");return;}const selected=input.value.slice(start,end).trim();if(!selected){toast("Highlight a valid answer word");return;}const nextValue=`${input.value.slice(0,start)}[[${selected}]]${input.value.slice(end)}`;draft.questionGroups[gIdx].questions[qIdx].text=nextValue;draft.questionGroups[gIdx].questions[qIdx].answer=selected;renderQuestions(gIdx);}
+function clearBlankMark(gIdx,qIdx){const q=draft.questionGroups[gIdx].questions[qIdx];q.text=String(q.text||"").replace(/\[\[(.+?)\]\]/g,"$1");q.answer="";renderQuestions(gIdx);}
 function pickAnswer(gIdx,qIdx,opt){draft.questionGroups[gIdx].questions[qIdx].answer=opt;renderQuestions(gIdx);}
 function changeQuestionType(gIdx,qIdx,nextType){const q=draft.questionGroups[gIdx].questions[qIdx];const conf=QUESTION_TYPE_CONFIG[nextType];q.type=nextType;q.uiMode=conf.mode;q.options=[...conf.options];q.answer="";renderQuestions(gIdx);}
 function addGroup(){draft.questionGroups.push(newGroup());renderGroups();}
@@ -161,7 +169,7 @@ function buildStoredProblem(){
   draft.audioTitle=document.getElementById("audioTitle").value.trim();
   draft.audioDescription=document.getElementById("audioDescription").value.trim();
   draft.audioUrl=document.getElementById("audioUrl").value.trim();
-  const groups=draft.questionGroups.map((g)=>({title:g.title,instruction:g.instruction,questions:g.questions.map((q)=>{const conf=QUESTION_TYPE_CONFIG[q.type];return {type:conf.mode==="radio"?"radio":"text",text:q.text,options:conf.mode==="radio"?q.options.join(", "):"",answer:q.answer};})}));
+  const groups=draft.questionGroups.map((g)=>({title:g.title,instruction:g.instruction,questions:g.questions.map((q)=>{const conf=QUESTION_TYPE_CONFIG[q.type];const storedType=q.type==="fill-in-the-blank"?"fill-in-the-blank":(conf.mode==="radio"?"radio":"text");return {type:storedType,text:q.text,options:conf.mode==="radio"?q.options.join(", "):"",answer:q.answer};})}));
   return {moduleId:"listening",icon:"🎧",moduleName:"Listening",title:draft.title,difficulty:draft.difficulty,level:draft.level,scheduledDate:draft.scheduledDate,audioTitle:draft.audioTitle||"Audio",audioDescription:draft.audioDescription||"",audioUrl:draft.audioUrl||"",questionGroups:groups,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),id:`problem_${Date.now()}`};
 }
 
