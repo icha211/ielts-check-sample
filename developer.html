@@ -944,6 +944,16 @@
                 .filter((entry) => String(entry.problem.scheduledDate || "").slice(0, 10) === dateKeyValue);
         }
 
+        function openMonthModuleSet(dateKeyValue, moduleId) {
+            const matchingSets = getProblemsForDateAndModule(dateKeyValue, moduleId);
+            if (matchingSets.length === 1) {
+                const editPage = MODULE_CONFIG[moduleId].editPage;
+                window.location.href = `${editPage}?index=${matchingSets[0].index}`;
+                return;
+            }
+            renderMonthResults(dateKeyValue, moduleId);
+        }
+
         function renderMonthResults(dateKeyValue, moduleId) {
             const host = document.getElementById("monthResults");
             if (!host) return;
@@ -984,6 +994,7 @@
                 </div>
             `;
             host.classList.add("show");
+            host.scrollIntoView({ behavior: "smooth", block: "start" });
         }
 
         function toast(message) {
@@ -1285,7 +1296,7 @@
 
             host.querySelectorAll("[data-date][data-module]").forEach((button) => {
                 button.addEventListener("click", () => {
-                    renderMonthResults(button.dataset.date, button.dataset.module);
+                    openMonthModuleSet(button.dataset.date, button.dataset.module);
                 });
             });
         }

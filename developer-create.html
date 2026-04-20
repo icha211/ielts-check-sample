@@ -278,9 +278,13 @@
             padding: 8px;
             background: #f9fafb;
             border: 1px solid var(--border);
-            border-bottom: none;
-            border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+            border-radius: var(--radius-sm);
             align-items: center;
+            margin: 0 0 10px;
+            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            position: sticky;
+            top: 10px;
+            z-index: 6;
         }
 
         .toolbar-group {
@@ -310,21 +314,126 @@
 
         .toolbar-btn:hover { background: #f0f4f2; border-color: var(--teal-700); }
         .toolbar-btn.active { background: var(--teal-700); color: #fff; border-color: var(--teal-700); }
+        .toolbar-btn svg, .toolbar-color-btn svg { width: 16px; height: 16px; display: block; }
 
-        .toolbar-select, .toolbar-color {
-            padding: 6px 8px;
+        .align-icon {
+            display: inline-block;
+            width: 14px;
+            font-size: 13px;
+            line-height: 1;
+            font-weight: 700;
+        }
+
+        .align-left { text-align: left; }
+        .align-center { text-align: center; }
+        .align-right { text-align: right; }
+        .align-justify { letter-spacing: -1px; }
+
+        .toolbar-select {
+            height: 32px;
+            padding: 0 10px;
             border: 1px solid var(--border);
-            border-radius: 6px;
-            font-size: 0.85rem;
+            border-radius: 8px;
+            font-size: 0.84rem;
             background: #fff;
             cursor: pointer;
+            min-width: 112px;
+        }
+
+        .toolbar-color-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+            height: 0;
+        }
+
+        .toolbar-color-btn {
+            width: 36px;
+            height: 32px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        .toolbar-color-btn:hover { background: #f0f4f2; border-color: var(--teal-700); }
+
+        .color-preview-text {
+            font-size: 22px;
+            line-height: 1;
+            font-weight: 700;
+            color: #1f1f1f;
+            border-bottom: 3px solid #1f1f1f;
+            padding: 0 2px;
+        }
+
+        .color-preview-fill {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 0, 0, 0.18);
+            background: #ffff00;
+        }
+
+        .toolbar-pop { position: relative; }
+
+        .toolbar-pop-btn {
+            height: 32px;
+            padding: 0 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.84rem;
+        }
+
+        .toolbar-pop-btn:hover { background: #f0f4f2; border-color: var(--teal-700); }
+
+        .toolbar-pop-panel {
+            position: absolute;
+            top: 38px;
+            left: 0;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+            padding: 12px;
+            min-width: 320px;
+            z-index: 15;
+            display: none;
+        }
+
+        .toolbar-pop.open .toolbar-pop-panel { display: block; }
+
+        .spacing-row {
+            display: grid;
+            grid-template-columns: 110px 1fr 56px;
+            gap: 10px;
+            align-items: center;
+            margin: 8px 0;
+        }
+
+        .spacing-row label { font-size: 0.9rem; font-weight: 700; }
+        .spacing-row input[type="range"] { width: 100%; height: 4px; cursor: pointer; }
+        .spacing-row input[type="number"] {
+            width: 56px;
+            padding: 7px 8px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.86rem;
         }
 
         .rich-editor-content {
             min-height: 80px;
             padding: 12px;
             border: 1px solid var(--border);
-            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+            border-radius: var(--radius-sm);
             background: #fff;
             font-family: "Poppins", sans-serif;
             font-size: 0.9rem;
@@ -444,6 +553,7 @@
     <div class="toast" id="toast"></div>
 
     <script src="storage-sync.js"></script>
+    <script src="rich-editor-color-palette.js"></script>
     <script>
         const STORAGE_KEY = "prephaven_problems_v1";
         const QUESTION_TYPE_CONFIG = {
@@ -467,10 +577,11 @@
             const btnStates = {
                 bold: document.queryCommandState('bold'),
                 italic: document.queryCommandState('italic'),
-                underline: document.queryCommandState('underline')
+                underline: document.queryCommandState('underline'),
+                strikeThrough: document.queryCommandState('strikeThrough')
             };
             
-            ['bold', 'italic', 'underline'].forEach(cmd => {
+            ['bold', 'italic', 'underline', 'strikeThrough'].forEach(cmd => {
                 const btn = toolbar.querySelector(`[data-cmd="${cmd}"]`);
                 if (btn) btn.classList.toggle('active', btnStates[cmd]);
             });
@@ -490,13 +601,25 @@
             editor.addEventListener('mouseup', () => updateToolbarState(editor));
         }
 
+        const TOOLBAR_ICONS = {
+            bold: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8.21 13c2.106 0 3.412-1.087 3.412-2.823 0-1.306-.984-2.283-2.324-2.386v-.055a2.176 2.176 0 0 0 1.852-2.14c0-1.51-1.162-2.46-3.014-2.46H3.843V13zM5.908 4.674h1.696c.963 0 1.517.451 1.517 1.244 0 .834-.629 1.32-1.73 1.32H5.908V4.673zm0 6.788V8.598h1.73c1.217 0 1.88.492 1.88 1.415 0 .943-.643 1.449-1.832 1.449H5.907z"/></svg>',
+            italic: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M7.991 11.674 9.53 4.455c.123-.595.246-.71 1.347-.807l.11-.52H7.211l-.11.52c1.06.096 1.128.212 1.005.807L6.57 11.674c-.123.595-.246.71-1.346.806l-.11.52h3.774l.11-.52c-1.06-.095-1.129-.211-1.006-.806z"/></svg>',
+            underline: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M5.313 3.136h-1.23V9.54c0 2.105 1.47 3.623 3.917 3.623s3.917-1.518 3.917-3.623V3.136h-1.23v6.323c0 1.49-.978 2.57-2.687 2.57s-2.687-1.08-2.687-2.57zM12.5 15h-9v-1h9z"/></svg>',
+            highlight: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.096.644a2 2 0 0 1 2.791.036l1.433 1.433a2 2 0 0 1 .035 2.791l-.413.435-8.07 8.995a.5.5 0 0 1-.372.166h-3a.5.5 0 0 1-.234-.058l-.412.412A.5.5 0 0 1 2.5 15h-2a.5.5 0 0 1-.354-.854l1.412-1.412A.5.5 0 0 1 1.5 12.5v-3a.5.5 0 0 1 .166-.372l8.995-8.07zm-.115 1.47L2.727 9.52l3.753 3.753 7.406-8.254zm3.585 2.17.064-.068a1 1 0 0 0-.017-1.396L13.18 1.387a1 1 0 0 0-1.396-.018l-.068.065zM5.293 13.5 2.5 10.707v1.586L3.707 13.5z"/></svg>',
+            alignLeft: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
+            alignCenter: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
+            alignRight: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M6 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-4-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m4-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-4-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
+            alignJustify: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>'
+        };
+
         function createRichEditorMarkup(editorId, placeholder = "") {
             return `
                 <div class="rich-editor-toolbar" id="${editorId}Toolbar">
                     <div class="toolbar-group">
-                        <button type="button" class="toolbar-btn" data-cmd="bold" title="Bold"><strong>B</strong></button>
-                        <button type="button" class="toolbar-btn" data-cmd="italic" title="Italic"><em>I</em></button>
-                        <button type="button" class="toolbar-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+                        <button type="button" class="toolbar-btn" data-cmd="bold" title="Bold">${TOOLBAR_ICONS.bold}</button>
+                        <button type="button" class="toolbar-btn" data-cmd="italic" title="Italic">${TOOLBAR_ICONS.italic}</button>
+                        <button type="button" class="toolbar-btn" data-cmd="underline" title="Underline">${TOOLBAR_ICONS.underline}</button>
+                        <button type="button" class="toolbar-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
                     </div>
 
                     <div class="toolbar-group">
@@ -504,7 +627,7 @@
                         <button type="button" class="toolbar-btn" data-cmd="formatBlock" data-value="h2" title="Heading 2">H2</button>
                         <button type="button" class="toolbar-btn" data-cmd="formatBlock" data-value="h3" title="Heading 3">H3</button>
                         <select class="toolbar-select" id="${editorId}FontSize" title="Font Size">
-                            <option value="">Normal</option>
+                            <option value="">Size</option>
                             <option value="1">12px</option>
                             <option value="2">14px</option>
                             <option value="3">18px</option>
@@ -513,25 +636,34 @@
                         </select>
                     </div>
 
-                    <div class="toolbar-group">
-                        <input type="color" class="toolbar-color" id="${editorId}TextColor" title="Text Color" value="#000000">
-                        <input type="color" class="toolbar-color" id="${editorId}BgColor" title="Highlight Color" value="#FFFF00">
+                    <div class="toolbar-group toolbar-pop">
+                        <button type="button" class="toolbar-color-btn" id="${editorId}TextColorBtn" title="Text Color"><span class="color-preview-text" id="${editorId}TextColorPreview">A</span></button>
+                        <input type="color" class="toolbar-color-input" id="${editorId}TextColor" value="#000000">
+                        <button type="button" class="toolbar-color-btn" id="${editorId}BgColorBtn" title="Highlight Color">${TOOLBAR_ICONS.highlight}<span class="color-preview-fill" id="${editorId}BgColorPreview"></span></button>
+                        <input type="color" class="toolbar-color-input" id="${editorId}BgColor" value="#ffff00">
                     </div>
 
                     <div class="toolbar-group">
-                        <button type="button" class="toolbar-btn" data-cmd="justifyLeft" title="Align Left">⬅</button>
-                        <button type="button" class="toolbar-btn" data-cmd="justifyCenter" title="Align Center">↔</button>
-                        <button type="button" class="toolbar-btn" data-cmd="justifyRight" title="Align Right">➡</button>
-                        <button type="button" class="toolbar-btn" data-cmd="justifyFull" title="Justify">⏸</button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyLeft" title="Align Left">${TOOLBAR_ICONS.alignLeft}</button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyCenter" title="Align Center">${TOOLBAR_ICONS.alignCenter}</button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyRight" title="Align Right">${TOOLBAR_ICONS.alignRight}</button>
+                        <button type="button" class="toolbar-btn" data-cmd="justifyFull" title="Justify">${TOOLBAR_ICONS.alignJustify}</button>
                     </div>
 
-                    <div class="toolbar-group spacing-control">
-                        <label>Letter:</label>
-                        <input type="range" id="${editorId}LetterSpace" min="-2" max="10" step="0.5" value="0">
-                        <input type="number" id="${editorId}LetterSpaceNum" min="-2" max="10" step="0.5" value="0">
-                        <label style="margin-left: 12px;">Line:</label>
-                        <input type="range" id="${editorId}LineSpace" min="1" max="3" step="0.1" value="1.5">
-                        <input type="number" id="${editorId}LineSpaceNum" min="1" max="3" step="0.1" value="1.5">
+                    <div class="toolbar-group toolbar-pop" id="${editorId}SpacingWrap">
+                        <button type="button" class="toolbar-pop-btn" id="${editorId}SpacingToggle">Spacing</button>
+                        <div class="toolbar-pop-panel">
+                            <div class="spacing-row">
+                                <label>Letter</label>
+                                <input type="range" id="${editorId}LetterSpace" min="-2" max="10" step="0.5" value="0">
+                                <input type="number" id="${editorId}LetterSpaceNum" min="-2" max="10" step="0.5" value="0">
+                            </div>
+                            <div class="spacing-row">
+                                <label>Line</label>
+                                <input type="range" id="${editorId}LineSpace" min="1" max="3" step="0.1" value="1.5">
+                                <input type="number" id="${editorId}LineSpaceNum" min="1" max="3" step="0.1" value="1.5">
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div contenteditable="true" class="rich-editor-content" id="${editorId}Content" placeholder="${placeholder}"></div>
@@ -561,17 +693,48 @@
             fontSizeSelect?.addEventListener('change', (e) => {
                 if (e.target.value) execCommand('fontSize', e.target.value);
                 editor.focus();
+                e.target.value = '';
             });
 
-            // Colors
-            document.getElementById(editorId + 'TextColor')?.addEventListener('change', (e) => {
+            // Alignment dropdown
+            const alignSelect = document.getElementById(editorId + 'Align');
+            alignSelect?.addEventListener('change', (e) => {
+                if (e.target.value) execCommand(e.target.value);
+                editor.focus();
+                e.target.value = '';
+            });
+
+            // Colors + previews
+            const textColorInput = document.getElementById(editorId + 'TextColor');
+            const textColorBtn = document.getElementById(editorId + 'TextColorBtn');
+            const textColorPreview = document.getElementById(editorId + 'TextColorPreview');
+            textColorBtn?.addEventListener('click', () => textColorInput?.click());
+            textColorInput?.addEventListener('change', (e) => {
                 execCommand('foreColor', e.target.value);
+                if (textColorPreview) textColorPreview.style.borderBottomColor = e.target.value;
                 editor.focus();
             });
 
-            document.getElementById(editorId + 'BgColor')?.addEventListener('change', (e) => {
+            const bgColorInput = document.getElementById(editorId + 'BgColor');
+            const bgColorBtn = document.getElementById(editorId + 'BgColorBtn');
+            const bgColorPreview = document.getElementById(editorId + 'BgColorPreview');
+            bgColorBtn?.addEventListener('click', () => bgColorInput?.click());
+            bgColorInput?.addEventListener('change', (e) => {
                 execCommand('backColor', e.target.value);
+                if (bgColorPreview) bgColorPreview.style.backgroundColor = e.target.value;
                 editor.focus();
+            });
+
+            // Spacing dropdown panel
+            const spacingWrap = document.getElementById(editorId + 'SpacingWrap');
+            const spacingToggle = document.getElementById(editorId + 'SpacingToggle');
+            spacingToggle?.addEventListener('click', (e) => {
+                e.preventDefault();
+                spacingWrap?.classList.toggle('open');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (spacingWrap && !spacingWrap.contains(e.target)) spacingWrap.classList.remove('open');
             });
 
             // Letter spacing
@@ -700,12 +863,26 @@
                     </div>
                     <div class="field">
                         <label>Instruction</label>
-                        <textarea onchange="updateGroup(${gIdx}, 'instruction', this.value)">${escapeHtml(group.instruction || "")}</textarea>
+                        <div id="groupInstructionEditor_${gIdx}"></div>
                     </div>
                     <div id="questions_${gIdx}"></div>
                     <button type="button" class="inline-btn" onclick="addQuestion(${gIdx})">+ Add Question</button>
                 `;
                 host.appendChild(groupEl);
+
+                const instructionEditorId = `groupInstruction_${gIdx}`;
+                const instructionContainer = document.getElementById(`groupInstructionEditor_${gIdx}`);
+                if (instructionContainer) {
+                    instructionContainer.innerHTML = createRichEditorMarkup(instructionEditorId, "Group instruction");
+                    bindRichEditorToolbar(instructionEditorId);
+                    const editable = document.getElementById(instructionEditorId + "Content");
+                    const hidden = document.getElementById(instructionEditorId);
+                    const initialValue = group.instruction || "";
+                    if (editable) editable.innerHTML = initialValue;
+                    if (hidden) hidden.value = initialValue;
+                    editable?.addEventListener("input", () => updateGroup(gIdx, "instruction", editable.innerHTML));
+                    editable?.addEventListener("blur", () => updateGroup(gIdx, "instruction", editable.innerHTML));
+                }
 
                 renderQuestions(gIdx);
             });
