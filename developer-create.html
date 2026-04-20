@@ -6,7 +6,7 @@
     <title>Create Reading Set | IELTS Check</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #f3f8f5;
@@ -119,6 +119,127 @@
             padding: 12px;
         }
 
+        .passages-box {
+            border: 1px solid #e1e3e6;
+            border-radius: var(--radius-md);
+            background: #ffffff;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .passage-card {
+            border: 0;
+            background: transparent;
+            margin-bottom: 10px;
+            overflow: visible;
+        }
+
+        .passage-card summary {
+            list-style: none;
+            cursor: pointer;
+            min-height: 48px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border: 1px solid #e1e3e6;
+            border-radius: 8px;
+            background: #ffffff;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .passage-card summary::-webkit-details-marker { display: none; }
+
+        .passage-card summary:hover {
+            border-color: #c3c7ce;
+        }
+
+        .passage-card summary:focus-visible {
+            outline: none;
+            border-color: #4e73f8;
+            box-shadow: 0 0 0 4px rgba(78, 115, 248, 0.2);
+        }
+
+        .passage-toggle-icon {
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #757d8a;
+            flex: 0 0 auto;
+        }
+
+        .passage-toggle-icon .icon-open { display: none; }
+        .passage-card[open] .passage-toggle-icon .icon-closed { display: none; }
+        .passage-card[open] .passage-toggle-icon .icon-open { display: inline-block; }
+
+        .passage-summary-copy .badge {
+            display: none;
+        }
+
+        .passage-summary-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .passage-summary-title {
+            font-family: "DM Sans", "Poppins", sans-serif;
+            font-size: 18px;
+            line-height: 24px;
+            font-weight: 400;
+            color: #5a6474;
+        }
+
+        .passage-summary-meta {
+            display: none;
+        }
+
+        .passage-body {
+            margin-top: 8px;
+            border: 1px solid #e1e3e6;
+            border-radius: 8px;
+            padding: 16px;
+            background: #ffffff;
+            max-height: 569px;
+            overflow-y: auto;
+        }
+
+        .passage-body::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .passage-body::-webkit-scrollbar-track {
+            background: #f8f8f8;
+            border-radius: 8px;
+        }
+
+        .passage-body::-webkit-scrollbar-thumb {
+            background: #c3c7ce;
+            border-radius: 8px;
+        }
+
+        .passage-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .passage-head .badge {
+            display: none;
+        }
+
+        .passage-groups {
+            margin-top: 8px;
+        }
+
         .questions-box h3 {
             color: var(--teal-900);
         }
@@ -148,6 +269,45 @@
             font-family: "Poppins", sans-serif;
             font-size: 0.9rem;
             background: #fff;
+        }
+
+        .field select {
+            min-height: 48px;
+            padding: 12px 44px 12px 16px;
+            border: 1px solid #e1e3e6;
+            border-radius: 8px;
+            font-family: "DM Sans", "Poppins", sans-serif;
+            font-size: 18px;
+            line-height: 24px;
+            font-weight: 400;
+            color: #5a6474;
+            background-color: #fff;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 16 16'%3E%3Cpath fill='%23757D8A' fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708' clip-rule='evenodd'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 20px 20px;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .field select:focus {
+            outline: none;
+            border-color: #4e73f8;
+            box-shadow: 0 0 0 4px rgba(78, 115, 248, 0.2);
+        }
+
+        .field select:disabled {
+            background-color: #f8f8f8;
+            color: #c3c7ce;
+            border-color: #e1e3e6;
+            cursor: not-allowed;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 16 16'%3E%3Cpath fill='%23C3C7CE' fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708' clip-rule='evenodd'/%3E%3C/svg%3E");
+        }
+
+        .field select option {
+            font-family: "DM Sans", "Poppins", sans-serif;
+            font-size: 18px;
+            color: #5a6474;
         }
 
         .field textarea { min-height: 110px; resize: vertical; }
@@ -525,22 +685,13 @@
                     </div>
                 </div>
 
-                <div class="field">
-                    <label>Passage Title</label>
-                    <input type="text" id="passageTitle" placeholder="The History of the Bicycle">
+                <div class="passages-box">
+                    <div class="passage-head" style="margin-bottom: 10px;">
+                        <h3 style="margin: 0;">Passages</h3>
+                        <button type="button" class="inline-btn" id="addPassageBtn">+ Add Passage</button>
+                    </div>
+                    <div id="passagesContainer"></div>
                 </div>
-
-                <div class="field">
-                    <label>Passage Content</label>
-                    <div id="passageContentEditor"></div>
-                    <input type="hidden" id="passageContent" value="">
-                </div>
-            </div>
-
-            <div class="questions-box">
-                <h3 style="margin-bottom: 10px;">Question Groups</h3>
-                <div id="groupsContainer"></div>
-                <button type="button" class="inline-btn" id="addGroupBtn">+ Add Group</button>
             </div>
 
             <div class="sticky-actions">
@@ -783,9 +934,7 @@
             difficulty: "beginner",
             level: 1,
             scheduledDate: "",
-            passageTitle: "",
-            passageContent: "",
-            questionGroups: []
+            passages: []
         };
 
         function toast(message) {
@@ -831,47 +980,170 @@
             };
         }
 
-        function newGroup() {
+        function newGroup(context = { questionGroups: [] }) {
+            const groups = Array.isArray(context.questionGroups) ? context.questionGroups : [];
             return {
-                title: `Questions ${draft.questionGroups.length + 1}`,
+                title: `Questions ${groups.length + 1}`,
                 instruction: "",
                 questions: [newQuestion("multiple-choice")]
             };
         }
 
-        function ensureAtLeastOneGroup() {
-            if (draft.questionGroups.length === 0) {
-                draft.questionGroups.push(newGroup());
+        function newPassage() {
+            return {
+                title: "",
+                content: "",
+                questionGroups: [newGroup({ questionGroups: [] })]
+            };
+        }
+
+        function ensureAtLeastOnePassage() {
+            if (!Array.isArray(draft.passages) || draft.passages.length === 0) {
+                draft.passages = [newPassage()];
+            }
+            if (draft.passages.length > 3) {
+                draft.passages = draft.passages.slice(0, 3);
             }
         }
 
+        function ensureAtLeastOneGroup(passageIndex) {
+            const passage = draft.passages[passageIndex];
+            if (passage && passage.questionGroups.length === 0) {
+                passage.questionGroups.push(newGroup(passage));
+            }
+        }
+
+        function updatePassageSummary(passageIndex) {
+            const passage = draft.passages[passageIndex];
+            if (!passage) return;
+
+            const titleEl = document.getElementById(`passageSummaryTitle_${passageIndex}`);
+            const metaEl = document.getElementById(`passageSummaryMeta_${passageIndex}`);
+            const title = passage.title.trim() || "Untitled passage";
+            const groupCount = passage.questionGroups.length;
+            const questionCount = passage.questionGroups.reduce((sum, group) => sum + group.questions.length, 0);
+
+            if (titleEl) titleEl.textContent = `Passage ${passageIndex + 1}: ${title}`;
+            if (metaEl) metaEl.textContent = `${groupCount} group${groupCount === 1 ? "" : "s"} • ${questionCount} question${questionCount === 1 ? "" : "s"}`;
+        }
+
+        function updatePassageField(passageIndex, field, value) {
+            const passage = draft.passages[passageIndex];
+            if (!passage) return;
+            passage[field] = value;
+            updatePassageSummary(passageIndex);
+        }
+
         function renderGroups() {
-            const host = document.getElementById("groupsContainer");
+            const host = document.getElementById("passagesContainer");
+            if (!host) return;
             host.innerHTML = "";
 
-            draft.questionGroups.forEach((group, gIdx) => {
+            draft.passages.forEach((passage, passageIndex) => {
+                const passageEl = document.createElement("details");
+                passageEl.className = "passage-card";
+                passageEl.open = passageIndex === 0;
+                passageEl.innerHTML = `
+                    <summary>
+                        <div class="passage-summary-copy">
+                            <span class="badge">Passage ${passageIndex + 1}</span>
+                            <span class="passage-summary-title" id="passageSummaryTitle_${passageIndex}"></span>
+                            <span class="passage-summary-meta" id="passageSummaryMeta_${passageIndex}"></span>
+                        </div>
+                        <span class="passage-toggle-icon" aria-hidden="true">
+                            <span class="icon-closed">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-down" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"/>
+                                </svg>
+                            </span>
+                            <span class="icon-open">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-up" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708z"/>
+                                </svg>
+                            </span>
+                        </span>
+                    </summary>
+                    <div class="passage-body">
+                        <div class="passage-head">
+                            <span class="badge">Passage ${passageIndex + 1} Editor</span>
+                            <button type="button" class="inline-btn danger" onclick="removePassage(${passageIndex})">Remove Passage</button>
+                        </div>
+                        <div class="field">
+                            <label>Passage Title</label>
+                            <input type="text" value="${escapeHtml(passage.title)}" oninput="updatePassageField(${passageIndex}, 'title', this.value)">
+                        </div>
+                        <div class="field">
+                            <label>Passage Content</label>
+                            <div id="passageContentEditor_${passageIndex}"></div>
+                            <input type="hidden" id="passageContent_${passageIndex}" value="${escapeHtml(passage.content)}">
+                        </div>
+                        <div class="passage-groups">
+                            <div class="passage-head" style="margin-bottom: 10px;">
+                                <h3 style="margin: 0;">Question Groups</h3>
+                                <button type="button" class="inline-btn" onclick="addGroup(${passageIndex})">+ Add Group</button>
+                            </div>
+                            <div id="groupsContainer_${passageIndex}"></div>
+                        </div>
+                    </div>
+                `;
+                host.appendChild(passageEl);
+
+                const passageEditorContainer = document.getElementById(`passageContentEditor_${passageIndex}`);
+                const passageEditorId = `passageContent_${passageIndex}`;
+                if (passageEditorContainer) {
+                    passageEditorContainer.innerHTML = createRichEditorMarkup(passageEditorId, "Paste full reading passage...");
+                    bindRichEditorToolbar(passageEditorId);
+                    const editable = document.getElementById(passageEditorId + "Content");
+                    const hidden = document.getElementById(passageEditorId);
+                    const initialValue = passage.content || "";
+                    if (editable) editable.innerHTML = initialValue;
+                    if (hidden) hidden.value = initialValue;
+                    editable?.addEventListener("input", () => updatePassageField(passageIndex, "content", editable.innerHTML));
+                    editable?.addEventListener("blur", () => updatePassageField(passageIndex, "content", editable.innerHTML));
+                }
+
+                ensureAtLeastOneGroup(passageIndex);
+                renderQuestions(passageIndex);
+                updatePassageSummary(passageIndex);
+            });
+
+            const addPassageBtn = document.getElementById("addPassageBtn");
+            if (addPassageBtn) {
+                addPassageBtn.disabled = draft.passages.length >= 3;
+                addPassageBtn.textContent = draft.passages.length >= 3 ? "Passage Limit Reached" : "+ Add Passage";
+            }
+        }
+
+        function renderQuestions(passageIndex) {
+            const host = document.getElementById(`groupsContainer_${passageIndex}`);
+            const passage = draft.passages[passageIndex];
+            if (!host || !passage) return;
+
+            host.innerHTML = "";
+
+            passage.questionGroups.forEach((group, gIdx) => {
                 const groupEl = document.createElement("section");
                 groupEl.className = "group-card";
                 groupEl.innerHTML = `
                     <div class="group-head">
                         <span class="badge">Group ${gIdx + 1}</span>
-                        <button type="button" class="inline-btn danger" onclick="removeGroup(${gIdx})">Delete Group</button>
+                        <button type="button" class="inline-btn danger" onclick="removeGroup(${passageIndex}, ${gIdx})">Delete Group</button>
                     </div>
                     <div class="field">
                         <label>Group Title</label>
-                        <input type="text" value="${escapeHtml(group.title)}" onchange="updateGroup(${gIdx}, 'title', this.value)">
+                        <input type="text" value="${escapeHtml(group.title)}" onchange="updateGroup(${passageIndex}, ${gIdx}, 'title', this.value)">
                     </div>
                     <div class="field">
                         <label>Instruction</label>
-                        <div id="groupInstructionEditor_${gIdx}"></div>
+                        <div id="groupInstructionEditor_${passageIndex}_${gIdx}"></div>
                     </div>
-                    <div id="questions_${gIdx}"></div>
-                    <button type="button" class="inline-btn" onclick="addQuestion(${gIdx})">+ Add Question</button>
+                    <div id="questions_${passageIndex}_${gIdx}"></div>
+                    <button type="button" class="inline-btn" onclick="addQuestion(${passageIndex}, ${gIdx})">+ Add Question</button>
                 `;
                 host.appendChild(groupEl);
 
-                const instructionEditorId = `groupInstruction_${gIdx}`;
-                const instructionContainer = document.getElementById(`groupInstructionEditor_${gIdx}`);
+                const instructionEditorId = `groupInstruction_${passageIndex}_${gIdx}`;
+                const instructionContainer = document.getElementById(`groupInstructionEditor_${passageIndex}_${gIdx}`);
                 if (instructionContainer) {
                     instructionContainer.innerHTML = createRichEditorMarkup(instructionEditorId, "Group instruction");
                     bindRichEditorToolbar(instructionEditorId);
@@ -880,25 +1152,14 @@
                     const initialValue = group.instruction || "";
                     if (editable) editable.innerHTML = initialValue;
                     if (hidden) hidden.value = initialValue;
-                    editable?.addEventListener("input", () => updateGroup(gIdx, "instruction", editable.innerHTML));
-                    editable?.addEventListener("blur", () => updateGroup(gIdx, "instruction", editable.innerHTML));
+                    editable?.addEventListener("input", () => updateGroup(passageIndex, gIdx, "instruction", editable.innerHTML));
+                    editable?.addEventListener("blur", () => updateGroup(passageIndex, gIdx, "instruction", editable.innerHTML));
                 }
 
-                renderQuestions(gIdx);
-            });
-        }
-
-        function renderQuestions(gIdx) {
-            const host = document.getElementById(`questions_${gIdx}`);
-            const group = draft.questionGroups[gIdx];
-            if (!host || !group) return;
-
-            host.innerHTML = "";
-
-            group.questions.forEach((q, qIdx) => {
-                const conf = QUESTION_TYPE_CONFIG[q.type];
-                const card = document.createElement("article");
-                card.className = "question-card";
+                group.questions.forEach((q, qIdx) => {
+                    const conf = QUESTION_TYPE_CONFIG[q.type];
+                    const card = document.createElement("article");
+                    card.className = "question-card";
 
                 const typeOptions = Object.entries(QUESTION_TYPE_CONFIG)
                     .map(([key, value]) => `<option value="${key}" ${key === q.type ? "selected" : ""}>${value.label}</option>`)
@@ -914,7 +1175,7 @@
                         return `
                             <div class="option-item">
                                 <strong>${marker}</strong>
-                                <input type="text" value="${escapeHtml(opt)}" ${disabled} onchange="updateOption(${gIdx}, ${qIdx}, ${idx}, this.value)">
+                                <input type="text" value="${escapeHtml(opt)}" ${disabled} onchange="updateOption(${passageIndex}, ${gIdx}, ${qIdx}, ${idx}, this.value)">
                             </div>
                         `;
                     }).join("");
@@ -923,30 +1184,30 @@
                         <div class="field">
                             <label>Options</label>
                             ${items}
-                            ${conf.locked ? "" : `<button type="button" class="inline-btn" onclick="addOption(${gIdx}, ${qIdx})">+ Add Option</button>`}
+                            ${conf.locked ? "" : `<button type="button" class="inline-btn" onclick="addOption(${passageIndex}, ${gIdx}, ${qIdx})">+ Add Option</button>`}
                             <div class="helper">Correct answer can be selected by clicking one option chip below.</div>
                         </div>
                     `;
 
                     const answerChips = q.options.map((opt) => {
                         const active = q.answer === opt ? "active" : "";
-                        return `<span class="answer-choice ${active}" onclick="pickAnswer(${gIdx}, ${qIdx}, '${escapeJs(opt)}')">${escapeHtml(opt)}</span>`;
+                        return `<span class="answer-choice ${active}" onclick="pickAnswer(${passageIndex}, ${gIdx}, ${qIdx}, '${escapeJs(opt)}')">${escapeHtml(opt)}</span>`;
                     }).join("");
 
                     answerSection = `<div class="field"><label>Correct Answer</label><div class="answer-options">${answerChips}</div></div>`;
                 } else if (conf.mode === "blank") {
-                    const textId = `question_text_${gIdx}_${qIdx}`;
+                    const textId = `question_text_${passageIndex}_${gIdx}_${qIdx}`;
                     const previewText = q.answer
                         ? escapeHtml(q.text).replace(escapeHtml(q.answer), `<span class="answer-choice active">${escapeHtml(q.answer)}</span>`)
                         : escapeHtml(q.text);
                     answerSection = `
                         <div class="field">
                             <label>Correct Answer</label>
-                            <input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx}, ${qIdx}, 'answer', this.value)">
+                            <input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'answer', this.value)">
                             <div class="helper">Select a word or phrase in the question text above, then click Mark Selected Answer.</div>
                             <div class="inline-actions">
-                                <button type="button" class="inline-btn" onclick="markSelectedBlank(${gIdx}, ${qIdx})">Mark Selected Answer</button>
-                                <button type="button" class="inline-btn" onclick="clearBlankMark(${gIdx}, ${qIdx})">Clear Mark</button>
+                                <button type="button" class="inline-btn" onclick="markSelectedBlank(${passageIndex}, ${gIdx}, ${qIdx})">Mark Selected Answer</button>
+                                <button type="button" class="inline-btn" onclick="clearBlankMark(${passageIndex}, ${gIdx}, ${qIdx})">Clear Mark</button>
                             </div>
                             <div class="helper">Preview: ${previewText}</div>
                         </div>
@@ -954,15 +1215,15 @@
                     card.innerHTML = `
                         <div class="question-head">
                             <span class="badge">Question ${qIdx + 1}</span>
-                            <button type="button" class="inline-btn danger" onclick="removeQuestion(${gIdx}, ${qIdx})">Delete Question</button>
+                            <button type="button" class="inline-btn danger" onclick="removeQuestion(${passageIndex}, ${gIdx}, ${qIdx})">Delete Question</button>
                         </div>
                         <div class="field">
                             <label>Question Type</label>
-                            <select onchange="changeQuestionType(${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
+                            <select onchange="changeQuestionType(${passageIndex}, ${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
                         </div>
                         <div class="field">
                             <label>Question Text</label>
-                            <input id="${textId}" type="text" value="${escapeHtml(q.text)}" onchange="updateQuestion(${gIdx}, ${qIdx}, 'text', this.value)">
+                            <input id="${textId}" type="text" value="${escapeHtml(q.text)}" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'text', this.value)">
                         </div>
                         ${answerSection}
                     `;
@@ -972,7 +1233,7 @@
                     answerSection = `
                         <div class="field">
                             <label>Correct Answer</label>
-                            <input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx}, ${qIdx}, 'answer', this.value)">
+                            <input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'answer', this.value)">
                         </div>
                     `;
                 }
@@ -980,21 +1241,22 @@
                 card.innerHTML = `
                     <div class="question-head">
                         <span class="badge">Question ${qIdx + 1}</span>
-                        <button type="button" class="inline-btn danger" onclick="removeQuestion(${gIdx}, ${qIdx})">Delete Question</button>
+                        <button type="button" class="inline-btn danger" onclick="removeQuestion(${passageIndex}, ${gIdx}, ${qIdx})">Delete Question</button>
                     </div>
                     <div class="field">
                         <label>Question Type</label>
-                        <select onchange="changeQuestionType(${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
+                        <select onchange="changeQuestionType(${passageIndex}, ${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
                     </div>
                     <div class="field">
                         <label>Question Text</label>
-                        <input type="text" value="${escapeHtml(q.text)}" onchange="updateQuestion(${gIdx}, ${qIdx}, 'text', this.value)">
+                        <input type="text" value="${escapeHtml(q.text)}" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'text', this.value)">
                     </div>
                     ${optionsSection}
                     ${answerSection}
                 `;
 
                 host.appendChild(card);
+            });
             });
         }
 
@@ -1020,31 +1282,37 @@
             return match ? match[1].trim() : "";
         }
 
-        function updateGroup(gIdx, field, value) {
-            draft.questionGroups[gIdx][field] = value;
+        function updateGroup(passageIndex, gIdx, field, value) {
+            const passage = draft.passages[passageIndex];
+            if (!passage || !passage.questionGroups[gIdx]) return;
+            passage.questionGroups[gIdx][field] = value;
         }
 
-        function updateQuestion(gIdx, qIdx, field, value) {
-            draft.questionGroups[gIdx].questions[qIdx][field] = value;
+        function updateQuestion(passageIndex, gIdx, qIdx, field, value) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
+            question[field] = value;
         }
 
-        function updateOption(gIdx, qIdx, oIdx, value) {
-            const question = draft.questionGroups[gIdx].questions[qIdx];
+        function updateOption(passageIndex, gIdx, qIdx, oIdx, value) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
             question.options[oIdx] = value;
             if (question.answer && !question.options.includes(question.answer)) {
                 question.answer = "";
             }
-            renderQuestions(gIdx);
+            renderQuestions(passageIndex);
         }
 
-        function addOption(gIdx, qIdx) {
-            const question = draft.questionGroups[gIdx].questions[qIdx];
+        function addOption(passageIndex, gIdx, qIdx) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
             question.options.push(String.fromCharCode(65 + question.options.length));
-            renderQuestions(gIdx);
+            renderQuestions(passageIndex);
         }
 
-        function markSelectedBlank(gIdx, qIdx) {
-            const input = document.getElementById(`question_text_${gIdx}_${qIdx}`);
+        function markSelectedBlank(passageIndex, gIdx, qIdx) {
+            const input = document.getElementById(`question_text_${passageIndex}_${gIdx}_${qIdx}`);
             if (!input) return;
 
             const start = input.selectionStart;
@@ -1060,59 +1328,95 @@
                 return;
             }
 
-            const question = draft.questionGroups[gIdx].questions[qIdx];
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
             question.text = stripBlankMarkerText(question.text);
             question.answer = selected;
             question.type = "fill-in-the-blank";
             question.uiMode = QUESTION_TYPE_CONFIG["fill-in-the-blank"].mode;
             question.options = [];
-            renderQuestions(gIdx);
+            renderQuestions(passageIndex);
         }
 
-        function clearBlankMark(gIdx, qIdx) {
-            const question = draft.questionGroups[gIdx].questions[qIdx];
+        function clearBlankMark(passageIndex, gIdx, qIdx) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
             question.text = stripBlankMarkerText(question.text);
             question.answer = "";
-            renderQuestions(gIdx);
+            renderQuestions(passageIndex);
         }
 
-        function pickAnswer(gIdx, qIdx, optionValue) {
-            draft.questionGroups[gIdx].questions[qIdx].answer = optionValue;
-            renderQuestions(gIdx);
+        function pickAnswer(passageIndex, gIdx, qIdx, optionValue) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
+            question.answer = optionValue;
+            renderQuestions(passageIndex);
         }
 
-        function changeQuestionType(gIdx, qIdx, nextType) {
-            const question = draft.questionGroups[gIdx].questions[qIdx];
+        function changeQuestionType(passageIndex, gIdx, qIdx, nextType) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
             const conf = QUESTION_TYPE_CONFIG[nextType];
             question.type = nextType;
             question.uiMode = conf.mode;
             question.options = [...conf.options];
             question.answer = "";
-            renderQuestions(gIdx);
+            renderQuestions(passageIndex);
         }
 
-        function addGroup() {
-            draft.questionGroups.push(newGroup());
-            renderGroups();
-        }
-
-        function removeGroup(gIdx) {
-            draft.questionGroups.splice(gIdx, 1);
-            ensureAtLeastOneGroup();
-            renderGroups();
-        }
-
-        function addQuestion(gIdx) {
-            draft.questionGroups[gIdx].questions.push(newQuestion("multiple-choice"));
-            renderQuestions(gIdx);
-        }
-
-        function removeQuestion(gIdx, qIdx) {
-            draft.questionGroups[gIdx].questions.splice(qIdx, 1);
-            if (draft.questionGroups[gIdx].questions.length === 0) {
-                draft.questionGroups[gIdx].questions.push(newQuestion("multiple-choice"));
+        function addPassage() {
+            if (draft.passages.length >= 3) {
+                toast("You can add up to 3 passages only");
+                return;
             }
-            renderQuestions(gIdx);
+            draft.passages.push(newPassage());
+            renderGroups();
+        }
+
+        function removePassage(passageIndex) {
+            if (draft.passages.length === 1) {
+                toast("Keep at least one passage");
+                return;
+            }
+            draft.passages.splice(passageIndex, 1);
+            ensureAtLeastOnePassage();
+            renderGroups();
+        }
+
+        function addGroup(passageIndex) {
+            const passage = draft.passages[passageIndex];
+            if (!passage) return;
+            passage.questionGroups.push(newGroup(passage));
+            renderQuestions(passageIndex);
+            updatePassageSummary(passageIndex);
+        }
+
+        function removeGroup(passageIndex, gIdx) {
+            const passage = draft.passages[passageIndex];
+            if (!passage) return;
+            passage.questionGroups.splice(gIdx, 1);
+            ensureAtLeastOneGroup(passageIndex);
+            renderQuestions(passageIndex);
+            updatePassageSummary(passageIndex);
+        }
+
+        function addQuestion(passageIndex, gIdx) {
+            const group = draft.passages[passageIndex]?.questionGroups[gIdx];
+            if (!group) return;
+            group.questions.push(newQuestion("multiple-choice"));
+            renderQuestions(passageIndex);
+            updatePassageSummary(passageIndex);
+        }
+
+        function removeQuestion(passageIndex, gIdx, qIdx) {
+            const group = draft.passages[passageIndex]?.questionGroups[gIdx];
+            if (!group) return;
+            group.questions.splice(qIdx, 1);
+            if (group.questions.length === 0) {
+                group.questions.push(newQuestion("multiple-choice"));
+            }
+            renderQuestions(passageIndex);
+            updatePassageSummary(passageIndex);
         }
 
         function buildStoredProblem() {
@@ -1120,22 +1424,24 @@
             draft.scheduledDate = document.getElementById("setDate").value;
             draft.difficulty = document.getElementById("difficultyLevel").value;
             draft.level = Number(document.getElementById("setLevel").value || 1);
-            draft.passageTitle = document.getElementById("passageTitle").value.trim();
-            draft.passageContent = document.getElementById("passageContent").value.trim();
 
-            const normalizedGroups = draft.questionGroups.map((group) => ({
-                title: group.title,
-                instruction: group.instruction,
-                questions: group.questions.map((q) => {
-                    const conf = QUESTION_TYPE_CONFIG[q.type];
-                    const storedType = q.type === "fill-in-the-blank" ? "fill-in-the-blank" : (conf.mode === "radio" ? "radio" : "text");
-                    return {
-                        type: storedType,
-                        text: stripBlankMarkerText(q.text),
-                        options: conf.mode === "radio" ? q.options.join(", ") : "",
-                        answer: q.answer || extractBlankMarkerAnswer(q.text)
-                    };
-                })
+            const normalizedPassages = draft.passages.map((passage) => ({
+                title: passage.title.trim(),
+                content: passage.content.trim(),
+                questionGroups: passage.questionGroups.map((group) => ({
+                    title: group.title,
+                    instruction: group.instruction,
+                    questions: group.questions.map((q) => {
+                        const conf = QUESTION_TYPE_CONFIG[q.type];
+                        const storedType = q.type === "fill-in-the-blank" ? "fill-in-the-blank" : (conf.mode === "radio" ? "radio" : "text");
+                        return {
+                            type: storedType,
+                            text: stripBlankMarkerText(q.text),
+                            options: conf.mode === "radio" ? q.options.join(", ") : "",
+                            answer: q.answer || extractBlankMarkerAnswer(q.text)
+                        };
+                    })
+                }))
             }));
 
             return {
@@ -1146,9 +1452,10 @@
                 difficulty: draft.difficulty,
                 level: draft.level,
                 scheduledDate: draft.scheduledDate,
-                passageTitle: draft.passageTitle || "Passage",
-                passageContent: draft.passageContent,
-                questionGroups: normalizedGroups,
+                passageTitle: normalizedPassages[0]?.title || "Passage",
+                passageContent: normalizedPassages[0]?.content || "",
+                passages: normalizedPassages,
+                questionGroups: normalizedPassages.flatMap((passage) => passage.questionGroups),
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 id: `problem_${Date.now()}`
@@ -1161,16 +1468,20 @@
 
             if (!problem.title) missingFields.push("title");
             if (!problem.scheduledDate) missingFields.push("date");
-            if (!problem.passageTitle) missingFields.push("passage title");
-            if (!problem.passageContent) missingFields.push("passage");
+            problem.passages.forEach((passage, passageIndex) => {
+                if (!passage.title) missingFields.push(`passage ${passageIndex + 1} title`);
+                if (!passage.content) missingFields.push(`passage ${passageIndex + 1} content`);
+            });
 
             if (missingFields.length > 0) {
                 toast(`Missing required field(s): ${missingFields.join(", ")}`);
                 return;
             }
 
-            const allAnswered = problem.questionGroups.every((group) =>
-                group.questions.every((q) => q.text && q.answer)
+            const allAnswered = problem.passages.every((passage) =>
+                passage.questionGroups.every((group) =>
+                    group.questions.every((q) => q.text && q.answer)
+                )
             );
             if (!allAnswered) {
                 toast("Every question must have text and a correct answer");
@@ -1190,39 +1501,22 @@
                 difficulty: "beginner",
                 level: 1,
                 scheduledDate: "",
-                passageTitle: "",
-                passageContent: "",
-                questionGroups: [newGroup()]
+                passages: [newPassage()]
             };
             document.getElementById("setTitle").value = "";
             document.getElementById("difficultyLevel").value = "beginner";
             document.getElementById("setLevel").value = "1";
-            document.getElementById("passageTitle").value = "";
-            document.getElementById("passageContent").value = "";
             setDefaultDate();
             renderGroups();
         }
 
-        document.getElementById("addGroupBtn").addEventListener("click", addGroup);
+        document.getElementById("addPassageBtn").addEventListener("click", addPassage);
         document.getElementById("saveTop").addEventListener("click", saveReadingSet);
         document.getElementById("saveBottom").addEventListener("click", saveReadingSet);
         document.getElementById("resetBtn").addEventListener("click", resetDraft);
 
         setInitialDate();
-        ensureAtLeastOneGroup();
-
-        // Initialize rich text editor for passage content
-        const passageEditorContainer = document.getElementById("passageContentEditor");
-        if (passageEditorContainer) {
-            passageEditorContainer.innerHTML = createRichEditorMarkup("passageContent", "Paste full reading passage...");
-            bindRichEditorToolbar("passageContent");
-            // Load existing passage content if any
-            const passageContentHidden = document.getElementById("passageContent");
-            if (passageContentHidden && passageContentHidden.value) {
-                document.getElementById("passageContentContent").innerHTML = passageContentHidden.value;
-            }
-        }
-
+        ensureAtLeastOnePassage();
         renderGroups();
     </script>
 </body>

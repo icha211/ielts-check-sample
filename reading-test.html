@@ -63,6 +63,10 @@
         .passage-section h2 { font-size: calc(1.75rem * var(--text-zoom)); font-weight: 700; margin-bottom: 24px; color: var(--text-main); border-bottom: 2px solid var(--bg-body); padding-bottom: 10px; }
         .passage-section p { margin-bottom: 20px; font-size: calc(1.05rem * var(--text-zoom)); line-height: 1.8; color: #334155; text-align: justify; }
         .passage-section p strong { font-size: calc(1.2rem * var(--text-zoom)); color: var(--primary); margin-right: 8px; }
+        .reading-passage-card { margin-bottom: 28px; }
+        .reading-passage-card:last-child { margin-bottom: 0; }
+        .reading-passage-title { font-size: calc(1.4rem * var(--text-zoom)); font-weight: 700; color: var(--text-main); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid var(--bg-body); }
+        .reading-passage-content p:last-child { margin-bottom: 0; }
 
         /* Question Navigator */
         .question-navigator { background: var(--bg-surface); border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 30px; position: sticky; top: -10px; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.3s ease; }
@@ -199,36 +203,40 @@
             icon: "",
             moduleName: "Reading",
             title: "IELTS Academic Reading",
-            passageTitle: "The History of the Bicycle",
-            passageContent: `A The bicycle is a common mode of transportation today, but its invention was not the result of a single "Eureka!" moment. Instead, it evolved over decades, with various inventors contributing to its development. The earliest precursor to the modern bicycle was the "dandy horse," invented by German Baron Karl von Drais in 1817. It had two wheels and a wooden frame, but no pedals; the rider pushed along the ground with their feet.
+            passages: [
+                {
+                    title: "The History of the Bicycle",
+                    content: `A The bicycle is a common mode of transportation today, but its invention was not the result of a single "Eureka!" moment. Instead, it evolved over decades, with various inventors contributing to its development. The earliest precursor to the modern bicycle was the "dandy horse," invented by German Baron Karl von Drais in 1817. It had two wheels and a wooden frame, but no pedals; the rider pushed along the ground with their feet.
 
 B It wasn't until the 1860s that pedals were added to the front wheel by French inventors Pierre Michaux and Pierre Lallement. This invention, known as the velocipede, was largely constructed of wood and iron, earning it the nickname "boneshaker" due to the incredibly uncomfortable ride it provided on cobblestone roads.
 
 C In the 1870s, the "Penny Farthing" emerged. This bicycle featured a massive front wheel and a tiny rear wheel, designed to allow the rider to travel faster with each pedal stroke. While faster, it was notoriously dangerous; the rider sat very high up, and any sudden stop would send them flying over the handlebars.
 
 D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicycle." It featured two wheels of equal size and a chain drive to the rear wheel. Combined with John Boyd Dunlop's invention of the pneumatic (air-filled) rubber tire in 1888, the bicycle finally became a safe, comfortable, and highly popular mode of transport.`,
-            questionGroups: [
-                {
-                    title: "Questions 1-2",
-                    instruction: "Do the following statements agree with the information given in the Reading Passage? Choose True, False, or Not Given.",
-                    questions: [
-                        { type: "radio", text: "1. Karl von Drais's invention was propelled by pedals.", options: "True, False, Not Given", answer: "False" },
-                        { type: "radio", text: "2. The velocipede was comfortable to ride on cobblestone streets.", options: "True, False, Not Given", answer: "False" }
-                    ]
-                },
-                {
-                    title: "Question 3",
-                    instruction: "Choose the correct letter, A, B, C or D.",
-                    questions: [
-                        { type: "radio", text: "3. What made the Rover safety bicycle different from the Penny Farthing?", options: "A, B, C, D", answer: "A" }
-                    ]
-                },
-                {
-                    title: "Questions 4-5",
-                    instruction: "Complete the sentences below. Choose NO MORE THAN TWO WORDS from the passage for each answer.",
-                    questions: [
-                        { type: "text", text: "4. The velocipede earned the nickname ________ due to its uncomfortable ride.", options: "", answer: "boneshaker" },
-                        { type: "text", text: "5. The pneumatic rubber tire was invented by ________ in 1888.", options: "", answer: "John Boyd Dunlop" }
+                    questionGroups: [
+                        {
+                            title: "Questions 1-2",
+                            instruction: "Do the following statements agree with the information given in the Reading Passage? Choose True, False, or Not Given.",
+                            questions: [
+                                { type: "radio", text: "1. Karl von Drais's invention was propelled by pedals.", options: "True, False, Not Given", answer: "False" },
+                                { type: "radio", text: "2. The velocipede was comfortable to ride on cobblestone streets.", options: "True, False, Not Given", answer: "False" }
+                            ]
+                        },
+                        {
+                            title: "Question 3",
+                            instruction: "Choose the correct letter, A, B, C or D.",
+                            questions: [
+                                { type: "radio", text: "3. What made the Rover safety bicycle different from the Penny Farthing?", options: "A, B, C, D", answer: "A" }
+                            ]
+                        },
+                        {
+                            title: "Questions 4-5",
+                            instruction: "Complete the sentences below. Choose NO MORE THAN TWO WORDS from the passage for each answer.",
+                            questions: [
+                                { type: "text", text: "4. The velocipede earned the nickname ________ due to its uncomfortable ride.", options: "", answer: "boneshaker" },
+                                { type: "text", text: "5. The pneumatic rubber tire was invented by ________ in 1888.", options: "", answer: "John Boyd Dunlop" }
+                            ]
+                        }
                     ]
                 }
             ]
@@ -250,28 +258,63 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
         function toReadingShape(problem) {
             if (!problem) return null;
 
+            const normalizeQuestionGroups = (groups) => (groups || []).map((group) => ({
+                title: group.title || "Questions",
+                instruction: group.instruction || "",
+                questions: (group.questions || []).map((q) => ({
+                    type: normalizeQuestionType(q),
+                    text: q.text || "",
+                    options: typeof q.options === "string" ? q.options : Array.isArray(q.options) ? q.options.join(", ") : "",
+                    answer: q.answer || q.correctAnswer || ""
+                }))
+            }));
+
+            if (Array.isArray(problem.passages) && problem.passages.length > 0) {
+                const passages = problem.passages.slice(0, 3).map((passage, index) => ({
+                    title: passage.title || passage.passageTitle || `Passage ${index + 1}`,
+                    content: passage.content || passage.passageContent || "",
+                    questionGroups: normalizeQuestionGroups(passage.questionGroups)
+                }));
+
+                return {
+                    ...problem,
+                    title: problem.title || "IELTS Academic Reading",
+                    passages,
+                    passageTitle: passages[0]?.title || "Passage",
+                    passageContent: passages[0]?.content || "",
+                    questionGroups: passages.flatMap((passage) => passage.questionGroups)
+                };
+            }
+
             const hasQuestionGroups = Array.isArray(problem.questionGroups) && problem.questionGroups.length > 0;
             if (hasQuestionGroups) {
+                const questionGroups = normalizeQuestionGroups(problem.questionGroups);
                 return {
                     ...problem,
                     title: problem.title || "IELTS Academic Reading",
                     passageTitle: problem.passageTitle || "Passage",
                     passageContent: problem.passageContent || "",
-                    questionGroups: problem.questionGroups.map((group) => ({
-                        title: group.title || "Questions",
-                        instruction: group.instruction || "",
-                        questions: (group.questions || []).map((q) => ({
-                            type: normalizeQuestionType(q),
-                            text: q.text || "",
-                            options: typeof q.options === "string" ? q.options : Array.isArray(q.options) ? q.options.join(", ") : "",
-                            answer: q.answer || q.correctAnswer || ""
-                        }))
-                    }))
+                    passages: [{
+                        title: problem.passageTitle || "Passage",
+                        content: problem.passageContent || "",
+                        questionGroups
+                    }],
+                    questionGroups
                 };
             }
 
             const hasQuestions = Array.isArray(problem.questions) && problem.questions.length > 0;
             if (hasQuestions) {
+                const questionGroups = [{
+                    title: "Questions 1-" + problem.questions.length,
+                    instruction: "Answer the following questions based on the reading passage.",
+                    questions: problem.questions.map((q, idx) => ({
+                        type: normalizeQuestionType(q),
+                        text: q.text || `${idx + 1}. Question`,
+                        options: Array.isArray(q.options) ? q.options.join(", ") : (q.options || ""),
+                        answer: q.answer || q.correctAnswer || ""
+                    }))
+                }];
                 return {
                     moduleId: "reading",
                     icon: problem.icon || "",
@@ -279,18 +322,12 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     title: problem.title || "IELTS Academic Reading",
                     passageTitle: problem.passage?.title || problem.passageTitle || "Passage",
                     passageContent: problem.passage?.text || problem.passageContent || "",
-                    questionGroups: [
-                        {
-                            title: "Questions 1-" + problem.questions.length,
-                            instruction: "Answer the following questions based on the reading passage.",
-                            questions: problem.questions.map((q, idx) => ({
-                                type: normalizeQuestionType(q),
-                                text: q.text || `${idx + 1}. Question`,
-                                options: Array.isArray(q.options) ? q.options.join(", ") : (q.options || ""),
-                                answer: q.answer || q.correctAnswer || ""
-                            }))
-                        }
-                    ]
+                    passages: [{
+                        title: problem.passage?.title || problem.passageTitle || "Passage",
+                        content: problem.passage?.text || problem.passageContent || "",
+                        questionGroups
+                    }],
+                    questionGroups
                 };
             }
 
@@ -310,8 +347,8 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     const normalized = toReadingShape(candidate);
                     if (
                         normalized &&
-                        normalized.passageContent &&
-                        normalized.passageContent.trim().length > 0 &&
+                        Array.isArray(normalized.passages) &&
+                        normalized.passages.some((passage) => String(passage.content || "").trim().length > 0) &&
                         Array.isArray(normalized.questionGroups) &&
                         normalized.questionGroups.length > 0
                     ) {
@@ -323,13 +360,13 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 if (selected) {
                     currentProblem = selected;
                 } else {
-                    currentProblem = defaultProblemSet;
+                    currentProblem = toReadingShape(defaultProblemSet) || defaultProblemSet;
                     // Save default to storage as well
-                    await storageSync.addProblem("reading", defaultProblemSet);
+                    await storageSync.addProblem("reading", currentProblem);
                 }
             } catch (e) {
                 console.error("Error loading problem:", e);
-                currentProblem = defaultProblemSet;
+                currentProblem = toReadingShape(defaultProblemSet) || defaultProblemSet;
             }
 
             renderTest();
@@ -385,8 +422,22 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             if (!currentProblem) return;
 
             document.getElementById('display-title').innerText = currentProblem.title || "IELTS Reading";
-            document.getElementById('display-passage-title').innerText = currentProblem.passageTitle || "Passage";
-            document.getElementById('display-passage-content').innerHTML = formatPassageText(currentProblem.passageContent || "");
+            document.getElementById('display-passage-title').innerText = "Passages";
+
+            const passages = Array.isArray(currentProblem.passages) && currentProblem.passages.length > 0
+                ? currentProblem.passages
+                : [{
+                    title: currentProblem.passageTitle || "Passage",
+                    content: currentProblem.passageContent || "",
+                    questionGroups: currentProblem.questionGroups || []
+                }];
+
+            document.getElementById('display-passage-content').innerHTML = passages.map((passage, passageIndex) => `
+                <section class="reading-passage-card">
+                    <h3 class="reading-passage-title">${passage.title || `Passage ${passageIndex + 1}`}</h3>
+                    <div class="reading-passage-content">${formatPassageText(passage.content || "")}</div>
+                </section>
+            `).join("");
 
             const container = document.getElementById('dynamic-questions-container');
             let navHtml = '';
