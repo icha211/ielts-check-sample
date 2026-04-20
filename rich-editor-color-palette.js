@@ -1,14 +1,11 @@
 (function () {
   const COLORS = [
-    "#000000", "#4a4a4a", "#6f6f6f", "#9a9a9a", "#b5b5b5", "#d0d0d0",
-    "#e1e1e1", "#f2f2f2", "#ffffff", "#c00000", "#ff1a1a", "#ff9f00",
-    "#f2e600", "#00e600", "#13d9d9", "#4a86e8", "#1f00ff", "#9900ff",
-    "#ff00ff", "#d9b2aa", "#ddb7b9", "#ead6b8", "#efe0b5", "#c8d9bf",
-    "#c6d7dd", "#c4d6f0", "#b9cde3", "#c7c0de", "#d7c1d0", "#df8576",
-    "#e18f8f", "#efc38c", "#f2d68a", "#abd18a", "#9ec4ca", "#97b8e8",
-    "#94bae3", "#a79ed1", "#c999ba", "#cc4125", "#d95f5f", "#e9a24a",
-    "#efc64a", "#6fb057", "#45818e", "#3c78d8", "#3d85c6", "#674ea7",
-    "#a64d79"
+    "#F8F8F8", "rgba(78,115,248,0.08)", "rgba(244,60,60,0.08)", "rgba(252,165,73,0.08)", "rgba(7,162,135,0.08)", "rgba(255,75,110,0.08)", "rgba(85,82,217,0.08)",
+    "#F1F2F3", "rgba(78,115,248,0.24)", "rgba(244,60,60,0.24)", "rgba(252,165,73,0.24)", "rgba(7,162,135,0.2)", "rgba(255,75,110,0.24)", "rgba(85,82,217,0.24)",
+    "#E1E3E6", "rgba(78,115,248,0.4)", "rgba(244,60,60,0.4)", "rgba(252,165,73,0.4)", "rgba(7,162,135,0.45)", "rgba(255,75,110,0.4)", "rgba(85,82,217,0.4)",
+    "#C3C7CE", "rgba(78,115,248,0.64)", "rgba(244,60,60,0.64)", "rgba(252,165,73,0.64)", "rgba(7,162,135,0.64)", "rgba(255,75,110,0.64)", "rgba(85,82,217,0.64)",
+    "#757D8A", "#4E73F8", "#F43C3C", "#FCA549", "#07A287", "#FF4B6E", "#5552D9",
+    "#5A6474", "#3C64F4", "#EF2C2C", "#F39531", "#0C977F", "#EC234A", "#4D4AC8"
   ];
 
   const STYLE_ID = "rich-editor-color-palette-style";
@@ -76,13 +73,13 @@
       }
       .color-swatch-grid {
         display: grid;
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(7, 1fr);
         gap: 5px;
       }
       .color-swatch {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
         border: 1px solid rgba(0, 0, 0, 0.12);
         cursor: pointer;
         transition: transform 0.15s ease;
@@ -119,7 +116,9 @@
     wrap.appendChild(panel);
 
     const updatePreview = () => {
-      const value = input.value || (iconType === "bg" ? "#ffff00" : "#000000");
+      const defaultValue = iconType === "bg" ? "#FCA549" : "#5A6474";
+      const value = COLORS.includes(input.value) ? input.value : defaultValue;
+      input.value = value;
       const previewCircle = button.querySelector(".color-preview-circle");
       if (previewCircle) previewCircle.style.backgroundColor = value;
     };
