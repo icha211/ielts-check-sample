@@ -676,6 +676,7 @@
             font-family: "Poppins", sans-serif;
             font-size: 0.9rem;
             line-height: 1.5;
+            white-space: pre-wrap;
             outline: none;
             overflow-y: auto;
         }
@@ -1151,10 +1152,22 @@
         function normalizeQuestionTextFromHtml(html) {
             const tmp = document.createElement("div");
             tmp.innerHTML = String(html || "");
-            tmp.querySelectorAll("li").forEach((li) => {
-                li.textContent = `• ${li.textContent}`;
+
+            tmp.querySelectorAll("br").forEach((br) => {
+                br.replaceWith(document.createTextNode("\n"));
             });
-            return (tmp.innerText || tmp.textContent || "")
+
+            tmp.querySelectorAll("li").forEach((li) => {
+                li.insertBefore(document.createTextNode("• "), li.firstChild);
+                li.appendChild(document.createTextNode("\n"));
+            });
+
+            tmp.querySelectorAll("p,div,section,article,h1,h2,h3,h4,h5,h6,ul,ol").forEach((el) => {
+                el.appendChild(document.createTextNode("\n"));
+            });
+
+            return (tmp.textContent || "")
+                .replace(/\u00a0/g, " ")
                 .replace(/\r/g, "")
                 .split("\n")
                 .map((line) => line.trimEnd())
