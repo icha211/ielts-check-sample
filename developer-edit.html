@@ -807,8 +807,37 @@
         };
 
         // Rich Text Editor Functions
+        function applyAlignmentFallback(alignment) {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+
+            let node = sel.anchorNode;
+            if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+            if (!node) return;
+
+            const block = node.closest?.("p,div,li,section,article,h1,h2,h3,h4,h5,h6") || node.closest?.(".rich-editor-content");
+            if (!block || !(block instanceof HTMLElement)) return;
+
+            block.style.textAlign = alignment;
+            if (alignment === "justify") {
+                block.style.textJustify = "inter-word";
+            }
+        }
+
         function execCommand(cmd, value = null) {
-            document.execCommand(cmd, false, value);
+            let ok = false;
+            try {
+                ok = document.execCommand(cmd, false, value);
+            } catch (_) {
+                ok = false;
+            }
+
+            if (cmd === "justifyLeft") applyAlignmentFallback("left");
+            if (cmd === "justifyCenter") applyAlignmentFallback("center");
+            if (cmd === "justifyRight") applyAlignmentFallback("right");
+            if (cmd === "justifyFull") applyAlignmentFallback("justify");
+
+            return ok;
         }
 
         function updateToolbarState(editor) {
@@ -1176,7 +1205,7 @@
                 .trim();
         }
 
-        function initQuestionTextEditor(passageIndex, gIdx, qIdx, initialText) {
+        function initQuestionTextEditor(passageIndex, gIdx, qIdx, initialText, initialHtml) {
             const container = document.getElementById(`questionTextEditor_${passageIndex}_${gIdx}_${qIdx}`);
             if (!container) return;
 
@@ -1188,15 +1217,17 @@
             const hidden = document.getElementById(editorId);
             if (!editable) return;
 
-            editable.textContent = String(initialText || "");
-            if (hidden) hidden.value = String(initialText || "");
+            const htmlValue = String(initialHtml || "").trim();
+            editable.innerHTML = htmlValue || escapeHtml(String(initialText || "")).replace(/\n/g, "<br>");
+            if (hidden) hidden.value = htmlValue;
 
             const syncText = () => {
                 const current = allProblems[selectedIndex];
                 const question = current?.passages?.[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
                 if (!question) return;
                 question.text = normalizeQuestionTextFromHtml(editable.innerHTML);
-                if (hidden) hidden.value = question.text;
+                question.textHtml = String(editable.innerHTML || "");
+                if (hidden) hidden.value = question.textHtml;
                 if (question.type === "fill-in-the-blank" && question.answer) {
                     if (extractNumberedBlankDefs(question.text).length > 0) return;
                     const choices = extractBlankWordChoices(question.text);
@@ -1223,6 +1254,7 @@
             return {
                 type,
                 text: "",
+                textHtml: "",
                 options: [...conf.options],
                 answer: "",
                 uiMode: conf.mode
@@ -1325,11 +1357,27 @@
         }
 
         function normalizeQuestion(raw) {
-            const normalizedType = raw.type === "fill-in-the-blank"
-                ? "fill-in-the-blank"
-                : raw.type === "radio"
-                    ? (raw.options && raw.options.includes("True") ? "true-false-not-given" : "multiple-choice")
-                    : "short-answer";
+            const rawType = String(raw.type || "").trim();
+            let normalizedType = "short-answer";
+
+            // Keep explicit question types from stored data when available.
+            if (QUESTION_TYPE_CONFIG[rawType]) {
+                normalizedType = rawType;
+            } else if (rawType === "radio") {
+                const optionText = Array.isArray(raw.options)
+                    ? raw.options.join(", ")
+                    : String(raw.options || "");
+                if (/\btrue\b/i.test(optionText) && /\bfalse\b/i.test(optionText) && /not\s+given/i.test(optionText)) {
+                    normalizedType = "true-false-not-given";
+                } else if (/\byes\b/i.test(optionText) && /\bno\b/i.test(optionText) && /not\s+given/i.test(optionText)) {
+                    normalizedType = "yes-no-not-given";
+                } else {
+                    normalizedType = "multiple-choice";
+                }
+            } else if (rawType === "fill-in-the-blank") {
+                normalizedType = "fill-in-the-blank";
+            }
+
             const conf = QUESTION_TYPE_CONFIG[normalizedType];
             const sourceOptions = typeof raw.options === "string" ? raw.options.split(",").map((o) => o.trim()).filter(Boolean) : conf.options;
             const text = String(raw.text || "");
@@ -1337,6 +1385,7 @@
             return {
                 type: normalizedType,
                 text: text.replace(/\[\[(.+?)\]\]/g, "$1"),
+                textHtml: String(raw.textHtml || ""),
                 options: sourceOptions.length ? sourceOptions : [...conf.options],
                 answer: raw.answer || (text.match(/\[\[(.+?)\]\]/) || [])[1] || "",
                 uiMode: conf.mode
@@ -1612,9 +1661,6 @@
                     answerSection = `<div class="field"><label>Correct Answer</label><div class="answer-options">${answerChips}</div></div>`;
                 } else if (conf.mode === "blank") {
                     const numberedDefs = extractNumberedBlankDefs(q.text);
-                    const previewText = q.answer
-                        ? escapeHtml(q.text).replace(escapeHtml(q.answer), `<span class="answer-choice active">${escapeHtml(q.answer)}</span>`)
-                        : escapeHtml(q.text);
 
                     const answerMap = parseNumberedBlankAnswerMap(q.answer);
                     const numberedRows = numberedDefs.map((def) => `
@@ -1634,7 +1680,6 @@
                             <div class="inline-actions">
                                 <button type="button" class="inline-btn" onclick="clearBlankMark(${passageIndex}, ${gIdx}, ${qIdx})">Clear Mark</button>
                             </div>
-                            <div class="helper">Preview: ${previewText}</div>
                         </div>
                     `;
                     card.innerHTML = `
@@ -1653,7 +1698,7 @@
                         ${answerSection}
                     `;
                     host.appendChild(card);
-                    initQuestionTextEditor(passageIndex, gIdx, qIdx, q.text);
+                    initQuestionTextEditor(passageIndex, gIdx, qIdx, q.text, q.textHtml);
                     return;
                 } else {
                     answerSection = `
@@ -1681,7 +1726,7 @@
                     ${answerSection}
                 `;
                     host.appendChild(card);
-                    initQuestionTextEditor(passageIndex, gIdx, qIdx, q.text);
+                    initQuestionTextEditor(passageIndex, gIdx, qIdx, q.text, q.textHtml);
                 });
             });
         }
@@ -1938,6 +1983,7 @@
                         return {
                             type: storedType,
                             text: stripBlankMarkerText(q.text),
+                            textHtml: q.textHtml || "",
                             options: conf.mode === "radio" ? q.options.join(", ") : "",
                             answer: q.answer || extractBlankMarkerAnswer(q.text)
                         };
