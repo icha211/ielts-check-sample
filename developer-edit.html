@@ -1221,8 +1221,52 @@
             return {
                 title: `Questions ${groups.length + 1}`,
                 instruction: "",
+                questionMode: "single",
+                questionRange: "",
                 questions: [newQuestion("multiple-choice")]
             };
+        }
+
+        function parseQuestionRange(value) {
+            const text = String(value || "").trim();
+            if (!text) return null;
+            const match = text.match(/^(\d+)\s*-\s*(\d+)$/);
+            if (!match) return null;
+            const start = Number(match[1]);
+            const end = Number(match[2]);
+            if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start) return null;
+            return { start, end, count: end - start + 1 };
+        }
+
+        function enforceGroupQuestionConstraints(group) {
+            if (!group) return;
+
+            if (group.questionMode !== "multiple") {
+                group.questionMode = "single";
+                group.questionRange = "";
+                group.questions = Array.isArray(group.questions) ? group.questions.slice(0, 1) : [];
+                if (group.questions.length === 0) group.questions.push(newQuestion("multiple-choice"));
+                return;
+            }
+
+            const range = parseQuestionRange(group.questionRange);
+            if (range) {
+                const nextQuestions = Array.isArray(group.questions) ? group.questions.slice(0, range.count) : [];
+                while (nextQuestions.length < range.count) {
+                    nextQuestions.push(newQuestion("multiple-choice"));
+                }
+                group.questions = nextQuestions;
+            } else if (!Array.isArray(group.questions) || group.questions.length === 0) {
+                group.questions = [newQuestion("multiple-choice")];
+            }
+        }
+
+        function getGroupQuestionLabel(group, qIdx) {
+            const range = parseQuestionRange(group?.questionRange);
+            if (group?.questionMode === "multiple" && range) {
+                return range.start + qIdx;
+            }
+            return qIdx + 1;
         }
 
         function newPassage() {
@@ -1242,6 +1286,8 @@
                     ? passage.questionGroups.map((group) => ({
                         title: group.title || "Questions",
                         instruction: group.instruction || "",
+                        questionMode: group.questionMode || ((group.questions || []).length > 1 ? "multiple" : "single"),
+                        questionRange: group.questionRange || "",
                         questions: (group.questions || []).length ? group.questions.map(normalizeQuestion) : [newQuestion("multiple-choice")]
                     }))
                     : [newGroup({ questionGroups: [] })]
@@ -1460,6 +1506,9 @@
             host.innerHTML = "";
 
             passage.questionGroups.forEach((group, gIdx) => {
+                enforceGroupQuestionConstraints(group);
+                const isMultiple = group.questionMode === "multiple";
+                const hasValidRange = !!parseQuestionRange(group.questionRange);
                 const groupEl = document.createElement("section");
                 groupEl.className = "group-card";
                 groupEl.innerHTML = `
@@ -1478,8 +1527,20 @@
                         </div>
                         <div id="groupInstructionEditor_${passageIndex}_${gIdx}"></div>
                     </div>
+                    <div class="field">
+                        <label>Question Group Mode</label>
+                        <select onchange="updateGroupQuestionMode(${passageIndex}, ${gIdx}, this.value)">
+                            <option value="single" ${group.questionMode === "single" ? "selected" : ""}>Single Question</option>
+                            <option value="multiple" ${group.questionMode === "multiple" ? "selected" : ""}>Multiple Questions</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Question Number Range</label>
+                        <input type="text" value="${escapeHtml(group.questionRange || "")}" placeholder="e.g. 1-7" ${isMultiple ? "" : "disabled"} oninput="updateGroupQuestionRange(${passageIndex}, ${gIdx}, this.value)">
+                        <div class="helper">Use format like 1-7 for multiple questions. Leave blank to add questions manually.</div>
+                    </div>
                     <div id="questions_${passageIndex}_${gIdx}"></div>
-                    <button type="button" class="inline-btn" onclick="addQuestion(${passageIndex}, ${gIdx})">+ Add Question</button>
+                    ${(isMultiple && !hasValidRange) ? `<button type="button" class="inline-btn" onclick="addQuestion(${passageIndex}, ${gIdx})">+ Add Question</button>` : ""}
                 `;
                 host.appendChild(groupEl);
 
@@ -1501,6 +1562,7 @@
                     const conf = QUESTION_TYPE_CONFIG[q.type];
                     const card = document.createElement("article");
                     card.className = "question-card";
+                    const questionLabel = getGroupQuestionLabel(group, qIdx);
 
                 const typeOptions = Object.entries(QUESTION_TYPE_CONFIG)
                     .map(([key, value]) => `<option value="${key}" ${key === q.type ? "selected" : ""}>${value.label}</option>`)
@@ -1564,7 +1626,7 @@
                     `;
                     card.innerHTML = `
                         <div class="question-head">
-                            <span class="badge">Question ${qIdx + 1}</span>
+                            <span class="badge">Question ${questionLabel}</span>
                             <button type="button" class="inline-btn danger" onclick="removeQuestion(${passageIndex}, ${gIdx}, ${qIdx})">Delete Question</button>
                         </div>
                         <div class="field">
@@ -1591,7 +1653,7 @@
 
                 card.innerHTML = `
                     <div class="question-head">
-                        <span class="badge">Question ${qIdx + 1}</span>
+                        <span class="badge">Question ${questionLabel}</span>
                         <button type="button" class="inline-btn danger" onclick="removeQuestion(${passageIndex}, ${gIdx}, ${qIdx})">Delete Question</button>
                     </div>
                     <div class="field">
@@ -1616,6 +1678,30 @@
             const passage = current?.passages?.[passageIndex];
             if (!passage || !passage.questionGroups[gIdx]) return;
             passage.questionGroups[gIdx][field] = value;
+        }
+
+        function updateGroupQuestionMode(passageIndex, gIdx, value) {
+            const current = allProblems[selectedIndex];
+            const group = current?.passages?.[passageIndex]?.questionGroups?.[gIdx];
+            if (!group) return;
+            group.questionMode = value === "multiple" ? "multiple" : "single";
+            if (group.questionMode === "single") {
+                group.questionRange = "";
+            }
+            enforceGroupQuestionConstraints(group);
+            renderQuestions(passageIndex);
+            updatePassageSummary(passageIndex);
+        }
+
+        function updateGroupQuestionRange(passageIndex, gIdx, value) {
+            const current = allProblems[selectedIndex];
+            const group = current?.passages?.[passageIndex]?.questionGroups?.[gIdx];
+            if (!group) return;
+            group.questionRange = value;
+            if (group.questionMode !== "multiple") return;
+            enforceGroupQuestionConstraints(group);
+            renderQuestions(passageIndex);
+            updatePassageSummary(passageIndex);
         }
 
         function applyInstructionToAllGroups(passageIndex, gIdx) {
@@ -1791,6 +1877,14 @@
             const current = allProblems[selectedIndex];
             const group = current?.passages?.[passageIndex]?.questionGroups[gIdx];
             if (!group) return;
+            if (group.questionMode !== "multiple") {
+                toast("Single question mode allows only one question");
+                return;
+            }
+            if (parseQuestionRange(group.questionRange)) {
+                toast("Question count is controlled by range");
+                return;
+            }
             group.questions.push(newQuestion("multiple-choice"));
             renderQuestions(passageIndex);
             updatePassageSummary(passageIndex);
@@ -1801,9 +1895,7 @@
             const group = current?.passages?.[passageIndex]?.questionGroups[gIdx];
             if (!group) return;
             group.questions.splice(qIdx, 1);
-            if (group.questions.length === 0) {
-                group.questions.push(newQuestion("multiple-choice"));
-            }
+            enforceGroupQuestionConstraints(group);
             renderQuestions(passageIndex);
             updatePassageSummary(passageIndex);
         }
@@ -1825,6 +1917,8 @@
                 questionGroups: passage.questionGroups.map((group) => ({
                     title: group.title,
                     instruction: group.instruction,
+                    questionMode: group.questionMode || "single",
+                    questionRange: group.questionRange || "",
                     questions: group.questions.map((q) => {
                         const conf = QUESTION_TYPE_CONFIG[q.type];
                         const storedType = q.type === "fill-in-the-blank" ? "fill-in-the-blank" : (conf.mode === "radio" ? "radio" : "text");

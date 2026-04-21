@@ -273,8 +273,17 @@
                 group.questions.forEach((q, qIndex) => {
                     const inputName = `q_${gIndex}_${qIndex}`;
                     const blockId = `block_${inputName}`;
+                    const numberedDefs = extractNumberedBlankDefs(q.text);
 
-                    navHtml += `<div class="nav-item" id="nav_${inputName}" onclick="scrollToQuestion('${blockId}')">${absoluteQNum}</div>`;
+                    if ((q.type === 'text' || q.type === 'fill-in-the-blank') && numberedDefs.length > 0) {
+                        numberedDefs.forEach((def) => {
+                            const numberedInputName = `${inputName}__${def.number}`;
+                            navHtml += `<div class="nav-item" id="nav_${numberedInputName}" onclick="scrollToQuestion('${blockId}')">${escapeHtml(def.number)}</div>`;
+                        });
+                    } else {
+                        navHtml += `<div class="nav-item" id="nav_${inputName}" onclick="scrollToQuestion('${blockId}')">${absoluteQNum}</div>`;
+                        absoluteQNum++;
+                    }
 
                     html += `<div class="question-block" id="${blockId}">`;
                     
@@ -302,7 +311,6 @@
                     }
 
                     html += `</div>`;
-                    absoluteQNum++;
                 });
                 html += `</div>`;
             });
@@ -436,7 +444,7 @@
             allInputs.forEach(input => {
                 const eventType = input.type === 'radio' ? 'change' : 'input';
                 input.addEventListener(eventType, function() {
-                    updateTracker(this.dataset.questionBase || this.name);
+                    updateTracker(this.name);
                 });
             });
         }

@@ -544,8 +544,17 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 group.questions.forEach((q, qIndex) => {
                     const inputName = `q_${gIndex}_${qIndex}`;
                     const blockId = `block_${inputName}`;
+                    const numberedDefs = extractNumberedBlankDefs(q.text);
 
-                    navHtml += `<div class="nav-item" id="nav_${inputName}" onclick="scrollToQuestion('${blockId}')">${absoluteQNum}</div>`;
+                    if ((q.type === 'text' || q.type === 'fill-in-the-blank') && numberedDefs.length > 0) {
+                        numberedDefs.forEach((def) => {
+                            const numberedInputName = `${inputName}__${def.number}`;
+                            navHtml += `<div class="nav-item" id="nav_${numberedInputName}" onclick="scrollToQuestion('${blockId}')">${escapeHtml(def.number)}</div>`;
+                        });
+                    } else {
+                        navHtml += `<div class="nav-item" id="nav_${inputName}" onclick="scrollToQuestion('${blockId}')">${absoluteQNum}</div>`;
+                        absoluteQNum++;
+                    }
 
                     html += `<div class="question-block" id="${blockId}">`;
                     
@@ -573,7 +582,6 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     }
 
                     html += `</div>`;
-                    absoluteQNum++;
                 });
                 html += `</div>`;
             });
@@ -594,7 +602,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             allInputs.forEach(input => {
                 const eventType = input.type === 'radio' ? 'change' : 'input';
                 input.addEventListener(eventType, function() {
-                    updateTracker(this.dataset.questionBase || this.name);
+                    updateTracker(this.name);
                 });
             });
         }
