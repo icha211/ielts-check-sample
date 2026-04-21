@@ -92,6 +92,8 @@
         .instruction { font-style: italic; color: var(--text-muted); margin-bottom: 20px; font-size: calc(0.95rem * var(--text-zoom)); }
         .question-block { margin-bottom: 30px; line-height: 1.6; padding: 10px; border-radius: 8px; transition: background-color 0.5s ease; }
         .question-text { font-weight: 500; margin-bottom: 12px; font-size: calc(1.05rem * var(--text-zoom)); }
+        .question-text .question-bullet-list { margin: 8px 0 8px 1.25rem; padding-left: 1rem; }
+        .question-text .question-bullet-list li { margin: 4px 0; }
 
         .options { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
         .option-label { display: flex; align-items: center; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s ease; background: var(--bg-surface); font-size: calc(0.95rem * var(--text-zoom)); }
@@ -402,20 +404,48 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             return escapeHtml(String(text || "")).replace(/\r?\n/g, "<br>");
         }
 
+        function renderQuestionTextBlock(text) {
+            const lines = String(text || "").split(/\r?\n/);
+            const chunks = [];
+            let listItems = [];
+
+            const flushList = () => {
+                if (!listItems.length) return;
+                chunks.push(`<ul class="question-bullet-list">${listItems.map((item) => `<li>${item}</li>`).join("")}</ul>`);
+                listItems = [];
+            };
+
+            lines.forEach((line) => {
+                const bulletMatch = line.match(/^\s*(?:[-*•])\s+(.+)$/);
+                if (bulletMatch) {
+                    listItems.push(formatQuestionText(bulletMatch[1]));
+                    return;
+                }
+
+                flushList();
+                chunks.push(formatQuestionText(line));
+            });
+
+            flushList();
+            return chunks.join("<br>");
+        }
+
         function renderInlineBlankText(text, answer, inputName) {
             const source = String(text || "");
             const blankAnswer = String(answer || extractBlankAnswer(text) || "").trim();
             const blankId = `${inputName}_blank`;
+            const blankToken = "@@INLINE_BLANK@@";
 
             if (blankAnswer) {
                 const index = source.indexOf(blankAnswer);
                 if (index >= 0) {
-                    return `${formatQuestionText(source.slice(0, index))}<input type="text" name="${inputName}" id="${blankId}" class="inline-input" placeholder="...">${formatQuestionText(source.slice(index + blankAnswer.length))}`;
+                    const withToken = `${source.slice(0, index)}${blankToken}${source.slice(index + blankAnswer.length)}`;
+                    return renderQuestionTextBlock(withToken).split(blankToken).join(`<input type="text" name="${inputName}" id="${blankId}" class="inline-input" placeholder="...">`);
                 }
             }
 
-            const escaped = formatQuestionText(source);
-            return escaped.replace(/\[\[(.+?)\]\]/g, () => `<input type="text" name="${inputName}" id="${blankId}" class="inline-input" placeholder="...">`);
+            const withToken = source.replace(/\[\[(.+?)\]\]/g, blankToken);
+            return renderQuestionTextBlock(withToken).split(blankToken).join(`<input type="text" name="${inputName}" id="${blankId}" class="inline-input" placeholder="...">`);
         }
 
         function getCorrectTextAnswer(q) {
@@ -462,7 +492,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     html += `<div class="question-block" id="${blockId}">`;
                     
                     if (q.type === 'radio') {
-                        html += `<p class="question-text">${formatQuestionText(q.text)}</p><div class="options">`;
+                        html += `<p class="question-text">${renderQuestionTextBlock(q.text)}</p><div class="options">`;
                         const optionsArray = q.options.split(',').map(item => item.trim());
                         optionsArray.forEach(opt => {
                             if(opt) {
@@ -479,7 +509,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                         if (hasInlineBlank || q.type === 'fill-in-the-blank' || hasAnswer) {
                             html += `<p class="question-text">${renderInlineBlankText(q.text, q.answer, inputName)}</p>`;
                         } else {
-                            html += `<p class="question-text">${formatQuestionText(q.text)}</p>`;
+                            html += `<p class="question-text">${renderQuestionTextBlock(q.text)}</p>`;
                             html += `<input type="text" name="${inputName}" class="short-answer-input" placeholder="Type your answer...">`;
                         }
                     }

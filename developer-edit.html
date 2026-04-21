@@ -777,10 +777,11 @@
                 bold: document.queryCommandState('bold'),
                 italic: document.queryCommandState('italic'),
                 underline: document.queryCommandState('underline'),
-                strikeThrough: document.queryCommandState('strikeThrough')
+                strikeThrough: document.queryCommandState('strikeThrough'),
+                insertUnorderedList: document.queryCommandState('insertUnorderedList')
             };
             
-            ['bold', 'italic', 'underline', 'strikeThrough'].forEach(cmd => {
+            ['bold', 'italic', 'underline', 'strikeThrough', 'insertUnorderedList'].forEach(cmd => {
                 const btn = toolbar.querySelector(`[data-cmd="${cmd}"]`);
                 if (btn) btn.classList.toggle('active', btnStates[cmd]);
             });
@@ -808,7 +809,8 @@
             alignLeft: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
             alignCenter: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
             alignRight: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M6 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-4-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m4-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-4-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
-            alignJustify: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>'
+            alignJustify: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
+            bullets: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m2-8.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>'
         };
 
         function createRichEditorMarkup(editorId, placeholder = "") {
@@ -819,6 +821,7 @@
                         <button type="button" class="toolbar-btn" data-cmd="italic" title="Italic">${TOOLBAR_ICONS.italic}</button>
                         <button type="button" class="toolbar-btn" data-cmd="underline" title="Underline">${TOOLBAR_ICONS.underline}</button>
                         <button type="button" class="toolbar-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+                        <button type="button" class="toolbar-btn" data-cmd="insertUnorderedList" title="Bullet List">${TOOLBAR_ICONS.bullets}</button>
                     </div>
 
                     <div class="toolbar-group">
@@ -1285,6 +1288,9 @@
                     </div>
                     <div class="field">
                         <label>Instruction</label>
+                        <div class="inline-actions" style="margin-bottom:8px;">
+                            <button type="button" class="inline-btn" onclick="applyInstructionToAllGroups(${passageIndex}, ${gIdx})">Apply to All Groups</button>
+                        </div>
                         <div id="groupInstructionEditor_${passageIndex}_${gIdx}"></div>
                     </div>
                     <div id="questions_${passageIndex}_${gIdx}"></div>
@@ -1419,6 +1425,22 @@
             const passage = current?.passages?.[passageIndex];
             if (!passage || !passage.questionGroups[gIdx]) return;
             passage.questionGroups[gIdx][field] = value;
+        }
+
+        function applyInstructionToAllGroups(passageIndex, gIdx) {
+            const current = allProblems[selectedIndex];
+            const passage = current?.passages?.[passageIndex];
+            if (!passage || !Array.isArray(passage.questionGroups)) return;
+            const sourceGroup = passage.questionGroups[gIdx];
+            if (!sourceGroup) return;
+
+            const instructionHtml = String(sourceGroup.instruction || "");
+            passage.questionGroups.forEach((group) => {
+                group.instruction = instructionHtml;
+            });
+
+            renderQuestions(passageIndex);
+            toast("Instruction applied to all groups in this passage");
         }
 
         function updateQuestion(passageIndex, gIdx, qIdx, field, value) {
