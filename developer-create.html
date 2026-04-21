@@ -759,15 +759,21 @@
         };
 
         // Rich Text Editor Functions
-        function applyAlignmentFallback(alignment) {
+        function applyAlignmentFallback(alignment, editor) {
             const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return;
+            let node = null;
+            if (sel && sel.rangeCount > 0) {
+                node = sel.anchorNode;
+                if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+            }
 
-            let node = sel.anchorNode;
-            if (node && node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-            if (!node) return;
+            if (editor && node && !editor.contains(node)) {
+                node = null;
+            }
 
-            const block = node.closest?.("p,div,li,section,article,h1,h2,h3,h4,h5,h6") || node.closest?.(".rich-editor-content");
+            const block = node?.closest?.("p,div,li,section,article,h1,h2,h3,h4,h5,h6")
+                || node?.closest?.(".rich-editor-content")
+                || editor;
             if (!block || !(block instanceof HTMLElement)) return;
 
             block.style.textAlign = alignment;
@@ -776,7 +782,7 @@
             }
         }
 
-        function execCommand(cmd, value = null) {
+        function execCommand(cmd, value = null, editor = null) {
             let ok = false;
             try {
                 ok = document.execCommand(cmd, false, value);
@@ -784,10 +790,10 @@
                 ok = false;
             }
 
-            if (cmd === "justifyLeft") applyAlignmentFallback("left");
-            if (cmd === "justifyCenter") applyAlignmentFallback("center");
-            if (cmd === "justifyRight") applyAlignmentFallback("right");
-            if (cmd === "justifyFull") applyAlignmentFallback("justify");
+            if (cmd === "justifyLeft") applyAlignmentFallback("left", editor);
+            if (cmd === "justifyCenter") applyAlignmentFallback("center", editor);
+            if (cmd === "justifyRight") applyAlignmentFallback("right", editor);
+            if (cmd === "justifyFull") applyAlignmentFallback("justify", editor);
 
             return ok;
         }
@@ -956,7 +962,7 @@
                     restoreSelection();
                     const cmd = btn.dataset.cmd;
                     const value = btn.dataset.value || null;
-                    execCommand(cmd, value);
+                    execCommand(cmd, value, editor);
                     saveSelection();
                     updateToolbarState(editor);
                 });
