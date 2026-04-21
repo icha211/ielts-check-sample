@@ -86,8 +86,9 @@
         .instruction { font-style: italic; color: var(--text-muted); margin-bottom: 20px; font-size: calc(0.95rem * var(--text-zoom)); }
         .question-block { margin-bottom: 30px; line-height: 1.6; padding: 10px; border-radius: 8px; transition: background-color 0.5s ease; }
         .question-text { font-weight: 500; margin-bottom: 12px; font-size: calc(1.05rem * var(--text-zoom)); }
-        .question-text .question-bullet-list { margin: 8px 0 8px 1.25rem; padding-left: 1rem; }
-        .question-text .question-bullet-list li { margin: 4px 0; }
+        .question-text .question-bullet-list { margin: 8px 0; padding-left: 0; list-style: none; }
+        .question-text .question-bullet-list li { margin: 4px 0; padding-left: 1.1em; position: relative; }
+        .question-text .question-bullet-list li::before { content: "•"; position: absolute; left: 0; top: 0; color: currentColor; }
 
         .options { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
         .option-label { display: flex; align-items: center; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s ease; background: var(--bg-surface); font-size: calc(0.95rem * var(--text-zoom)); }
@@ -327,7 +328,12 @@
         }
 
         function renderQuestionTextBlock(text) {
-            const lines = String(text || "").split(/\r?\n/);
+            const rawText = String(text || "");
+            const inlineBulletMatches = rawText.match(/\s(?:-|\*|•)\s+[A-Z0-9]/g);
+            const normalizedText = !/\r?\n/.test(rawText) && inlineBulletMatches && inlineBulletMatches.length >= 2
+                ? rawText.replace(/\s([\-\*•])\s+/g, "\n$1 ")
+                : rawText;
+            const lines = normalizedText.split(/\r?\n/);
             const chunks = [];
             let listItems = [];
 
@@ -354,6 +360,24 @@
 
         function renderInlineBlankText(text, answer, inputName) {
             const source = String(text || "");
+            const numberedDefs = extractNumberedBlankDefs(source);
+            if (numberedDefs.length > 0) {
+                const tokens = [];
+                const withTokens = source.replace(/(\d+)\s(_{2,})/g, (_, number, underscores) => {
+                    const token = `@@NUMBERED_BLANK_${tokens.length}@@`;
+                    tokens.push({
+                        token,
+                        html: `<span class="numbered-blank"><span class="blank-number">${escapeHtml(number)}</span><input type="text" name="${inputName}__${number}" data-question-base="${inputName}" data-blank-number="${number}" class="inline-input numbered-inline-input" style="width:${Math.max(4, Math.floor(underscores.length / 2) * 4)}ch" placeholder="..."></span>`
+                    });
+                    return token;
+                });
+                let rendered = renderQuestionTextBlock(withTokens);
+                tokens.forEach(({ token, html }) => {
+                    rendered = rendered.split(token).join(html);
+                });
+                return rendered;
+            }
+
             const blankAnswer = String(answer || extractBlankAnswer(text) || "").trim();
             const blankToken = "@@INLINE_BLANK@@";
 
@@ -369,7 +393,41 @@
             return renderQuestionTextBlock(withToken).split(blankToken).join(`<input type="text" name="${inputName}" class="inline-input" placeholder="...">`);
         }
 
+        function extractNumberedBlankDefs(value) {
+            const defs = [];
+            const regex = /(\d+)\s(_{2,})/g;
+            const text = String(value || "");
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const number = match[1];
+                const underscores = match[2];
+                defs.push({
+                    number,
+                    underscores: underscores.length,
+                    maxWords: Math.max(1, Math.floor(underscores.length / 2))
+                });
+            }
+            return defs;
+        }
+
+        function parseNumberedBlankAnswerMap(raw) {
+            const text = String(raw || "").trim();
+            if (!text || !text.startsWith("{")) return {};
+            try {
+                const parsed = JSON.parse(text);
+                if (parsed && typeof parsed === "object") {
+                    if (parsed.answers && typeof parsed.answers === "object") return parsed.answers;
+                    return parsed;
+                }
+            } catch (_) {}
+            return {};
+        }
+
         function getCorrectTextAnswer(q) {
+            const numberedDefs = extractNumberedBlankDefs(q.text);
+            if (numberedDefs.length > 0) {
+                return JSON.stringify(parseNumberedBlankAnswerMap(q.answer));
+            }
             return String(q.answer || extractBlankAnswer(q.text) || "").trim();
         }
 
@@ -378,7 +436,7 @@
             allInputs.forEach(input => {
                 const eventType = input.type === 'radio' ? 'change' : 'input';
                 input.addEventListener(eventType, function() {
-                    updateTracker(this.name);
+                    updateTracker(this.dataset.questionBase || this.name);
                 });
             });
         }
@@ -388,11 +446,16 @@
             if(!navItem) return;
 
             const radioChecked = document.querySelector(`input[name="${inputName}"]:checked`);
+            const blankInputs = document.querySelectorAll(`input[data-question-base="${inputName}"]`);
             const textInput = document.querySelector(`input[type="text"][name="${inputName}"]`);
 
             let isAnswered = false;
             if(radioChecked) isAnswered = true;
-            if(textInput && textInput.value.trim() !== '') isAnswered = true;
+            if(blankInputs.length > 0) {
+                isAnswered = Array.from(blankInputs).every((input) => input.value.trim() !== '');
+            } else if(textInput && textInput.value.trim() !== '') {
+                isAnswered = true;
+            }
 
             if(isAnswered) {
                 navItem.classList.add('answered');
@@ -576,11 +639,26 @@
             currentProblem.questionGroups.forEach((group, gIndex) => {
                 group.questions.forEach((q, qIndex) => {
                     const key = `q_${gIndex}_${qIndex}`;
-                    correctAnswers[key] = getCorrectTextAnswer(q).toLowerCase();
-                    questionMeta[key] = {
-                        text: q.text || `Question ${qIndex + 1}`,
-                        correctAnswer: getCorrectTextAnswer(q)
-                    };
+                    const numberedDefs = extractNumberedBlankDefs(q.text);
+                    const numberedAnswers = parseNumberedBlankAnswerMap(q.answer);
+
+                    if (numberedDefs.length > 0) {
+                        numberedDefs.forEach((def) => {
+                            const answerKey = `${key}__${def.number}`;
+                            const correctAnswer = String(numberedAnswers[def.number] || "").trim();
+                            correctAnswers[answerKey] = correctAnswer.toLowerCase();
+                            questionMeta[answerKey] = {
+                                text: `${q.text || `Question ${qIndex + 1}`} (${def.number})`,
+                                correctAnswer
+                            };
+                        });
+                    } else {
+                        correctAnswers[key] = getCorrectTextAnswer(q).toLowerCase();
+                        questionMeta[key] = {
+                            text: q.text || `Question ${qIndex + 1}`,
+                            correctAnswer: getCorrectTextAnswer(q)
+                        };
+                    }
                 });
             });
 

@@ -412,6 +412,33 @@
             margin-top: 6px;
         }
 
+        .numbered-blank-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        .numbered-blank-table th,
+        .numbered-blank-table td {
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .numbered-blank-table th {
+            background: rgba(17, 75, 58, 0.06);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+        }
+
+        .numbered-blank-table input {
+            width: 100%;
+            min-width: 0;
+        }
+
         .answer-choice {
             border: 1px solid var(--border);
             border-radius: 999px;
@@ -889,6 +916,25 @@
             const editor = document.getElementById(editorId + 'Content');
             if (!toolbar || !editor) return;
 
+            let savedRange = null;
+
+            const saveSelection = () => {
+                const sel = window.getSelection();
+                if (!sel || sel.rangeCount === 0) return;
+                const range = sel.getRangeAt(0);
+                if (editor.contains(range.commonAncestorContainer)) {
+                    savedRange = range.cloneRange();
+                }
+            };
+
+            const restoreSelection = () => {
+                if (!savedRange) return;
+                const sel = window.getSelection();
+                if (!sel) return;
+                sel.removeAllRanges();
+                sel.addRange(savedRange);
+            };
+
             const activateToolbar = () => {
                 document.querySelectorAll('.rich-editor-toolbar.toolbar-floating').forEach((el) => {
                     if (el !== toolbar) el.classList.remove('toolbar-floating');
@@ -896,9 +942,25 @@
                 toolbar.classList.add('toolbar-floating');
             };
 
-            editor.addEventListener('focus', activateToolbar);
+            editor.addEventListener('focus', () => {
+                activateToolbar();
+                saveSelection();
+            });
             editor.addEventListener('mousedown', activateToolbar);
             toolbar.addEventListener('mousedown', activateToolbar);
+            editor.addEventListener('keyup', saveSelection);
+            editor.addEventListener('mouseup', saveSelection);
+            editor.addEventListener('input', saveSelection);
+
+            toolbar.addEventListener('mousedown', (e) => {
+                if (e.target.closest('button,select')) {
+                    e.preventDefault();
+                    activateToolbar();
+                    editor.focus();
+                    restoreSelection();
+                }
+            });
+
             if (!document.querySelector('.rich-editor-toolbar.toolbar-floating')) {
                 toolbar.classList.add('toolbar-floating');
             }
@@ -908,10 +970,12 @@
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
                     activateToolbar();
+                    editor.focus();
+                    restoreSelection();
                     const cmd = btn.dataset.cmd;
                     const value = btn.dataset.value || null;
                     execCommand(cmd, value);
-                    editor.focus();
+                    saveSelection();
                     updateToolbarState(editor);
                 });
             });
@@ -919,8 +983,10 @@
             // Font size
             const fontSizeSelect = document.getElementById(editorId + 'FontSize');
             fontSizeSelect?.addEventListener('change', (e) => {
-                if (e.target.value) execCommand('fontSize', e.target.value);
                 editor.focus();
+                restoreSelection();
+                if (e.target.value) execCommand('fontSize', e.target.value);
+                saveSelection();
                 e.target.value = '';
             });
 
@@ -938,9 +1004,11 @@
             const textColorPreview = document.getElementById(editorId + 'TextColorPreview');
             textColorBtn?.addEventListener('click', () => textColorInput?.click());
             textColorInput?.addEventListener('change', (e) => {
+                editor.focus();
+                restoreSelection();
                 execCommand('foreColor', e.target.value);
                 if (textColorPreview) textColorPreview.style.borderBottomColor = e.target.value;
-                editor.focus();
+                saveSelection();
             });
 
             const bgColorInput = document.getElementById(editorId + 'BgColor');
@@ -948,9 +1016,11 @@
             const bgColorPreview = document.getElementById(editorId + 'BgColorPreview');
             bgColorBtn?.addEventListener('click', () => bgColorInput?.click());
             bgColorInput?.addEventListener('change', (e) => {
+                editor.focus();
+                restoreSelection();
                 execCommand('backColor', e.target.value);
                 if (bgColorPreview) bgColorPreview.style.backgroundColor = e.target.value;
-                editor.focus();
+                saveSelection();
             });
 
             // Spacing dropdown panel
@@ -1044,11 +1114,45 @@
             return String(value || "").match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*/g) || [];
         }
 
+        function extractNumberedBlankDefs(value) {
+            const defs = [];
+            const regex = /(\d+)\s(_{2,})/g;
+            const text = String(value || "");
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const number = match[1];
+                const underscores = match[2];
+                defs.push({
+                    number,
+                    underscores: underscores.length,
+                    maxWords: Math.max(1, Math.floor(underscores.length / 2))
+                });
+            }
+            return defs;
+        }
+
+        function parseNumberedBlankAnswerMap(raw) {
+            const text = String(raw || "").trim();
+            if (!text || !text.startsWith("{")) return {};
+            try {
+                const parsed = JSON.parse(text);
+                if (parsed && typeof parsed === "object") {
+                    if (parsed.answers && typeof parsed.answers === "object") return parsed.answers;
+                    return parsed;
+                }
+            } catch (_) {}
+            return {};
+        }
+
+        function serializeNumberedBlankAnswerMap(map) {
+            return JSON.stringify({ answers: map || {} });
+        }
+
         function normalizeQuestionTextFromHtml(html) {
             const tmp = document.createElement("div");
             tmp.innerHTML = String(html || "");
             tmp.querySelectorAll("li").forEach((li) => {
-                li.textContent = `- ${li.textContent}`;
+                li.textContent = `• ${li.textContent}`;
             });
             return (tmp.innerText || tmp.textContent || "")
                 .replace(/\r/g, "")
@@ -1081,6 +1185,7 @@
                 question.text = normalizeQuestionTextFromHtml(editable.innerHTML);
                 if (hidden) hidden.value = question.text;
                 if (question.type === "fill-in-the-blank" && question.answer) {
+                    if (extractNumberedBlankDefs(question.text).length > 0) return;
                     const choices = extractBlankWordChoices(question.text);
                     if (!choices.includes(question.answer)) question.answer = "";
                 }
@@ -1431,22 +1536,26 @@
 
                     answerSection = `<div class="field"><label>Correct Answer</label><div class="answer-options">${answerChips}</div></div>`;
                 } else if (conf.mode === "blank") {
-                    const choices = extractBlankWordChoices(q.text);
+                    const numberedDefs = extractNumberedBlankDefs(q.text);
                     const previewText = q.answer
                         ? escapeHtml(q.text).replace(escapeHtml(q.answer), `<span class="answer-choice active">${escapeHtml(q.answer)}</span>`)
                         : escapeHtml(q.text);
-                    const wordChips = choices.length
-                        ? choices.map((word) => {
-                            const active = q.answer === word ? "active" : "";
-                            return `<span class="answer-choice ${active}" onclick="pickBlankWord(${passageIndex}, ${gIdx}, ${qIdx}, '${escapeJs(word)}')">${escapeHtml(word)}</span>`;
-                        }).join("")
-                        : `<span class="helper">Type a sentence in Question Text to generate word boxes.</span>`;
+
+                    const answerMap = parseNumberedBlankAnswerMap(q.answer);
+                    const numberedRows = numberedDefs.map((def) => `
+                        <tr>
+                            <td>${escapeHtml(def.number)}</td>
+                            <td><input type="text" value="${escapeHtml(answerMap[def.number] || "")}" oninput="updateNumberedBlankAnswer(${passageIndex}, ${gIdx}, ${qIdx}, '${def.number}', ${def.maxWords}, this.value)"></td>
+                        </tr>
+                    `).join("");
+
                     answerSection = `
                         <div class="field">
-                            <label>Correct Answer</label>
-                            <input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'answer', this.value)">
-                            <div class="helper">Click a word box below to choose the correct answer.</div>
-                            <div class="answer-options">${wordChips}</div>
+                            <label>${numberedDefs.length ? "Numbered Answers" : "Correct Answer"}</label>
+                            ${numberedDefs.length
+                                ? `<table class="numbered-blank-table"><thead><tr><th>Blank No.</th><th>Answer</th></tr></thead><tbody>${numberedRows}</tbody></table><div class="helper">Detected from patterns like 24 __, 25 ____, 26 ______.</div>`
+                                : `<input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'answer', this.value)">`
+                            }
                             <div class="inline-actions">
                                 <button type="button" class="inline-btn" onclick="clearBlankMark(${passageIndex}, ${gIdx}, ${qIdx})">Clear Mark</button>
                             </div>
@@ -1586,6 +1695,22 @@
             question.text = stripBlankMarkerText(question.text);
             question.answer = "";
             renderQuestions(passageIndex);
+        }
+
+        function updateNumberedBlankAnswer(passageIndex, gIdx, qIdx, blankNumber, maxWords, value) {
+            const current = allProblems[selectedIndex];
+            const question = current?.passages?.[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
+
+            const words = String(value || "").trim().split(/\s+/).filter(Boolean);
+            const limited = words.slice(0, maxWords).join(" ");
+            const map = parseNumberedBlankAnswerMap(question.answer);
+            if (limited) {
+                map[blankNumber] = limited;
+            } else {
+                delete map[blankNumber];
+            }
+            question.answer = serializeNumberedBlankAnswerMap(map);
         }
 
         function pickBlankWord(passageIndex, gIdx, qIdx, word) {
