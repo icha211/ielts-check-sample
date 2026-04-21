@@ -479,9 +479,14 @@
             align-items: center;
             margin: 0 0 10px;
             box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+            position: relative;
+            z-index: 3;
+        }
+
+        .rich-editor-toolbar.toolbar-floating {
             position: sticky;
             top: 10px;
-            z-index: 6;
+            z-index: 8;
         }
 
         .toolbar-group {
@@ -875,10 +880,25 @@
             const editor = document.getElementById(editorId + 'Content');
             if (!toolbar || !editor) return;
 
+            const activateToolbar = () => {
+                document.querySelectorAll('.rich-editor-toolbar.toolbar-floating').forEach((el) => {
+                    if (el !== toolbar) el.classList.remove('toolbar-floating');
+                });
+                toolbar.classList.add('toolbar-floating');
+            };
+
+            editor.addEventListener('focus', activateToolbar);
+            editor.addEventListener('mousedown', activateToolbar);
+            toolbar.addEventListener('mousedown', activateToolbar);
+            if (!document.querySelector('.rich-editor-toolbar.toolbar-floating')) {
+                toolbar.classList.add('toolbar-floating');
+            }
+
             // Format buttons
             toolbar.querySelectorAll('[data-cmd]').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
+                    activateToolbar();
                     const cmd = btn.dataset.cmd;
                     const value = btn.dataset.value || null;
                     execCommand(cmd, value);
