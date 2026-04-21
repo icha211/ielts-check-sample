@@ -1008,6 +1008,10 @@
             return String(value || "").replace(/\[\[(.+?)\]\]/g, "$1");
         }
 
+        function extractBlankWordChoices(value) {
+            return String(value || "").match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*/g) || [];
+        }
+
         function extractBlankMarkerAnswer(value) {
             const match = String(value || "").match(/\[\[(.+?)\]\]/);
             return match ? match[1].trim() : "";
@@ -1341,18 +1345,24 @@
 
                     answerSection = `<div class="field"><label>Correct Answer</label><div class="answer-options">${answerChips}</div></div>`;
                 } else if (conf.mode === "blank") {
-                    const textId = `question_text_${gIdx}_${qIdx}`;
+                    const choices = extractBlankWordChoices(q.text);
                     const previewText = q.answer
                         ? escapeHtml(q.text).replace(escapeHtml(q.answer), `<span class="answer-choice active">${escapeHtml(q.answer)}</span>`)
                         : escapeHtml(q.text);
+                    const wordChips = choices.length
+                        ? choices.map((word) => {
+                            const active = q.answer === word ? "active" : "";
+                            return `<span class="answer-choice ${active}" onclick="pickBlankWord(${passageIndex}, ${gIdx}, ${qIdx}, '${escapeJs(word)}')">${escapeHtml(word)}</span>`;
+                        }).join("")
+                        : `<span class="helper">Type a sentence in Question Text to generate word boxes.</span>`;
                     answerSection = `
                         <div class="field">
                             <label>Correct Answer</label>
-                            <input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx}, ${qIdx}, 'answer', this.value)">
-                            <div class="helper">Select a word or phrase in the question text above, then click Mark Selected Answer.</div>
+                            <input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'answer', this.value)">
+                            <div class="helper">Click a word box below to choose the correct answer.</div>
+                            <div class="answer-options">${wordChips}</div>
                             <div class="inline-actions">
-                                <button type="button" class="inline-btn" onclick="markSelectedBlank(${gIdx}, ${qIdx})">Mark Selected Answer</button>
-                                <button type="button" class="inline-btn" onclick="clearBlankMark(${gIdx}, ${qIdx})">Clear Mark</button>
+                                <button type="button" class="inline-btn" onclick="clearBlankMark(${passageIndex}, ${gIdx}, ${qIdx})">Clear Mark</button>
                             </div>
                             <div class="helper">Preview: ${previewText}</div>
                         </div>
@@ -1368,7 +1378,7 @@
                         </div>
                         <div class="field">
                             <label>Question Text</label>
-                            <input id="${textId}" type="text" value="${escapeHtml(q.text)}" onchange="updateQuestion(${gIdx}, ${qIdx}, 'text', this.value)">
+                            <textarea rows="3" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'text', this.value)">${escapeHtml(q.text)}</textarea>
                         </div>
                         ${answerSection}
                     `;
@@ -1378,7 +1388,7 @@
                     answerSection = `
                         <div class="field">
                             <label>Correct Answer</label>
-                            <input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${gIdx}, ${qIdx}, 'answer', this.value)">
+                            <input type="text" value="${escapeHtml(q.answer)}" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'answer', this.value)">
                         </div>
                     `;
                 }
@@ -1394,7 +1404,7 @@
                     </div>
                     <div class="field">
                         <label>Question Text</label>
-                        <input type="text" value="${escapeHtml(q.text)}" onchange="updateQuestion(${gIdx}, ${qIdx}, 'text', this.value)">
+                        <textarea rows="3" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'text', this.value)">${escapeHtml(q.text)}</textarea>
                     </div>
                     ${optionsSection}
                     ${answerSection}
@@ -1471,6 +1481,18 @@
             if (!question) return;
             question.text = stripBlankMarkerText(question.text);
             question.answer = "";
+            renderQuestions(passageIndex);
+        }
+
+        function pickBlankWord(passageIndex, gIdx, qIdx, word) {
+            const current = allProblems[selectedIndex];
+            const question = current?.passages?.[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
+            question.text = stripBlankMarkerText(question.text);
+            question.answer = String(word || "").trim();
+            question.type = "fill-in-the-blank";
+            question.uiMode = QUESTION_TYPE_CONFIG["fill-in-the-blank"].mode;
+            question.options = [];
             renderQuestions(passageIndex);
         }
 
