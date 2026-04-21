@@ -489,6 +489,15 @@
             z-index: 8;
         }
 
+        .question-text-editor .rich-editor-toolbar,
+        .question-text-editor .rich-editor-toolbar.toolbar-floating {
+            position: static;
+            top: auto;
+            z-index: 2;
+            box-shadow: none;
+            background: #fff;
+        }
+
         .toolbar-group {
             display: flex;
             gap: 4px;
@@ -1035,6 +1044,57 @@
             return String(value || "").match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*/g) || [];
         }
 
+        function normalizeQuestionTextFromHtml(html) {
+            const tmp = document.createElement("div");
+            tmp.innerHTML = String(html || "");
+            tmp.querySelectorAll("li").forEach((li) => {
+                li.textContent = `- ${li.textContent}`;
+            });
+            return (tmp.innerText || tmp.textContent || "")
+                .replace(/\r/g, "")
+                .split("\n")
+                .map((line) => line.trimEnd())
+                .join("\n")
+                .replace(/\n{3,}/g, "\n\n")
+                .trim();
+        }
+
+        function initQuestionTextEditor(passageIndex, gIdx, qIdx, initialText) {
+            const container = document.getElementById(`questionTextEditor_${passageIndex}_${gIdx}_${qIdx}`);
+            if (!container) return;
+
+            const editorId = `questionText_${passageIndex}_${gIdx}_${qIdx}`;
+            container.innerHTML = createRichEditorMarkup(editorId, "Question text");
+            bindRichEditorToolbar(editorId);
+
+            const editable = document.getElementById(editorId + "Content");
+            const hidden = document.getElementById(editorId);
+            if (!editable) return;
+
+            editable.textContent = String(initialText || "");
+            if (hidden) hidden.value = String(initialText || "");
+
+            const syncText = () => {
+                const current = allProblems[selectedIndex];
+                const question = current?.passages?.[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+                if (!question) return;
+                question.text = normalizeQuestionTextFromHtml(editable.innerHTML);
+                if (hidden) hidden.value = question.text;
+                if (question.type === "fill-in-the-blank" && question.answer) {
+                    const choices = extractBlankWordChoices(question.text);
+                    if (!choices.includes(question.answer)) question.answer = "";
+                }
+            };
+
+            editable.addEventListener("input", syncText);
+            editable.addEventListener("blur", () => {
+                syncText();
+                const current = allProblems[selectedIndex];
+                const question = current?.passages?.[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+                if (question?.type === "fill-in-the-blank") renderQuestions(passageIndex);
+            });
+        }
+
         function extractBlankMarkerAnswer(value) {
             const match = String(value || "").match(/\[\[(.+?)\]\]/);
             return match ? match[1].trim() : "";
@@ -1351,7 +1411,7 @@
                         return `
                             <div class="option-item">
                                 <strong>${marker}</strong>
-                                <input type="text" value="${escapeHtml(opt)}" ${disabled} onchange="updateOption(${gIdx}, ${qIdx}, ${idx}, this.value)">
+                                <input type="text" value="${escapeHtml(opt)}" ${disabled} onchange="updateOption(${passageIndex}, ${gIdx}, ${qIdx}, ${idx}, this.value)">
                             </div>
                         `;
                     }).join("");
@@ -1360,13 +1420,13 @@
                         <div class="field">
                             <label>Options</label>
                             ${items}
-                            ${conf.locked ? "" : `<button type="button" class="inline-btn" onclick="addOption(${gIdx}, ${qIdx})">+ Add Option</button>`}
+                            ${conf.locked ? "" : `<button type="button" class="inline-btn" onclick="addOption(${passageIndex}, ${gIdx}, ${qIdx})">+ Add Option</button>`}
                         </div>
                     `;
 
                     const answerChips = q.options.map((opt) => {
                         const active = q.answer === opt ? "active" : "";
-                        return `<span class="answer-choice ${active}" onclick="pickAnswer(${gIdx}, ${qIdx}, '${escapeJs(opt)}')">${escapeHtml(opt)}</span>`;
+                        return `<span class="answer-choice ${active}" onclick="pickAnswer(${passageIndex}, ${gIdx}, ${qIdx}, '${escapeJs(opt)}')">${escapeHtml(opt)}</span>`;
                     }).join("");
 
                     answerSection = `<div class="field"><label>Correct Answer</label><div class="answer-options">${answerChips}</div></div>`;
@@ -1396,19 +1456,20 @@
                     card.innerHTML = `
                         <div class="question-head">
                             <span class="badge">Question ${qIdx + 1}</span>
-                            <button type="button" class="inline-btn danger" onclick="removeQuestion(${gIdx}, ${qIdx})">Delete Question</button>
+                            <button type="button" class="inline-btn danger" onclick="removeQuestion(${passageIndex}, ${gIdx}, ${qIdx})">Delete Question</button>
                         </div>
                         <div class="field">
                             <label>Question Type</label>
-                            <select onchange="changeQuestionType(${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
+                            <select onchange="changeQuestionType(${passageIndex}, ${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
                         </div>
-                        <div class="field">
+                        <div class="field question-text-editor">
                             <label>Question Text</label>
-                            <textarea rows="3" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'text', this.value)">${escapeHtml(q.text)}</textarea>
+                            <div id="questionTextEditor_${passageIndex}_${gIdx}_${qIdx}"></div>
                         </div>
                         ${answerSection}
                     `;
                     host.appendChild(card);
+                    initQuestionTextEditor(passageIndex, gIdx, qIdx, q.text);
                     return;
                 } else {
                     answerSection = `
@@ -1422,20 +1483,21 @@
                 card.innerHTML = `
                     <div class="question-head">
                         <span class="badge">Question ${qIdx + 1}</span>
-                        <button type="button" class="inline-btn danger" onclick="removeQuestion(${gIdx}, ${qIdx})">Delete Question</button>
+                        <button type="button" class="inline-btn danger" onclick="removeQuestion(${passageIndex}, ${gIdx}, ${qIdx})">Delete Question</button>
                     </div>
                     <div class="field">
                         <label>Question Type</label>
-                        <select onchange="changeQuestionType(${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
+                        <select onchange="changeQuestionType(${passageIndex}, ${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
                     </div>
-                    <div class="field">
+                    <div class="field question-text-editor">
                         <label>Question Text</label>
-                        <textarea rows="3" onchange="updateQuestion(${passageIndex}, ${gIdx}, ${qIdx}, 'text', this.value)">${escapeHtml(q.text)}</textarea>
+                        <div id="questionTextEditor_${passageIndex}_${gIdx}_${qIdx}"></div>
                     </div>
                     ${optionsSection}
                     ${answerSection}
                 `;
                     host.appendChild(card);
+                    initQuestionTextEditor(passageIndex, gIdx, qIdx, q.text);
                 });
             });
         }
