@@ -134,6 +134,31 @@
             margin-bottom: 12px;
         }
 
+        .passage-page-tabs {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .passage-page-tab {
+            border: 1px solid #c3c7ce;
+            border-radius: 999px;
+            padding: 6px 12px;
+            background: #fff;
+            color: #5a6474;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .passage-page-tab.active {
+            border-color: #1f4f95;
+            color: #1f4f95;
+            background: #eff6ff;
+        }
+
         .passage-card {
             border: 0;
             background: transparent;
@@ -1111,6 +1136,7 @@
 
         let allProblems = [];
         let selectedIndex = null;
+        let activePassageIndex = 0;
 
         function toast(message) {
             const box = document.getElementById("toast");
@@ -1435,6 +1461,7 @@
             document.getElementById("setDate").value = current.scheduledDate || new Date().toISOString().split("T")[0];
             document.getElementById("difficultyLevel").value = current.difficulty || "beginner";
             document.getElementById("setLevel").value = String(current.level || 1);
+            activePassageIndex = 0;
 
             renderSetList();
             renderGroups();
@@ -1488,12 +1515,19 @@
             if (!current || !host) return;
 
             ensureAtLeastOnePassage();
-            host.innerHTML = "";
+            if (activePassageIndex < 0 || activePassageIndex >= current.passages.length) {
+                activePassageIndex = 0;
+            }
+
+            host.innerHTML = `<div class="passage-page-tabs" id="passagePageTabs"></div><div id="passagePages"></div>`;
+            const pagesHost = document.getElementById("passagePages");
+            const tabsHost = document.getElementById("passagePageTabs");
 
             current.passages.forEach((passage, passageIndex) => {
                 const passageEl = document.createElement("details");
                 passageEl.className = "passage-card";
-                passageEl.open = passageIndex === 0;
+                passageEl.open = true;
+                passageEl.style.display = passageIndex === activePassageIndex ? "block" : "none";
                 passageEl.innerHTML = `
                     <summary>
                         <div class="passage-summary-copy">
@@ -1537,7 +1571,7 @@
                         </div>
                     </div>
                 `;
-                host.appendChild(passageEl);
+                pagesHost.appendChild(passageEl);
 
                 const passageEditorContainer = document.getElementById(`passageContentEditor_${passageIndex}`);
                 const passageEditorId = `passageContent_${passageIndex}`;
@@ -1558,11 +1592,22 @@
                 updatePassageSummary(passageIndex);
             });
 
+            if (tabsHost) {
+                tabsHost.innerHTML = current.passages.map((_, idx) => `
+                    <button type="button" class="passage-page-tab ${idx === activePassageIndex ? "active" : ""}" onclick="selectPassagePage(${idx})">Passage ${idx + 1}</button>
+                `).join("");
+            }
+
             const addPassageBtn = document.getElementById("addPassageBtn");
             if (addPassageBtn) {
                 addPassageBtn.disabled = current.passages.length >= 3;
                 addPassageBtn.textContent = current.passages.length >= 3 ? "Passage Limit Reached" : "+ Add Passage";
             }
+        }
+
+        function selectPassagePage(passageIndex) {
+            activePassageIndex = passageIndex;
+            renderGroups();
         }
 
         function renderQuestions(passageIndex) {
@@ -1611,6 +1656,8 @@
                     ${(isMultiple && !hasValidRange) ? `<button type="button" class="inline-btn" onclick="addQuestion(${passageIndex}, ${gIdx})">+ Add Question</button>` : ""}
                 `;
                 host.appendChild(groupEl);
+                const questionsHost = document.getElementById(`questions_${passageIndex}_${gIdx}`);
+                if (!questionsHost) return;
 
                 const instructionEditorId = `groupInstruction_${passageIndex}_${gIdx}`;
                 const instructionContainer = document.getElementById(`groupInstructionEditor_${passageIndex}_${gIdx}`);
@@ -1703,7 +1750,7 @@
                         </div>
                         ${answerSection}
                     `;
-                    host.appendChild(card);
+                    questionsHost.appendChild(card);
                     initQuestionTextEditor(passageIndex, gIdx, qIdx, q.text, q.textHtml);
                     return;
                 } else {
@@ -1731,7 +1778,7 @@
                     ${optionsSection}
                     ${answerSection}
                 `;
-                    host.appendChild(card);
+                    questionsHost.appendChild(card);
                     initQuestionTextEditor(passageIndex, gIdx, qIdx, q.text, q.textHtml);
                 });
             });
@@ -1903,6 +1950,7 @@
                 return;
             }
             current.passages.push(newPassage());
+            activePassageIndex = current.passages.length - 1;
             renderGroups();
         }
 
@@ -1915,6 +1963,9 @@
             }
             current.passages.splice(passageIndex, 1);
             ensureAtLeastOnePassage();
+            if (activePassageIndex >= current.passages.length) {
+                activePassageIndex = current.passages.length - 1;
+            }
             renderGroups();
         }
 
