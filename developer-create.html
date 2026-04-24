@@ -427,6 +427,47 @@
             min-width: 0;
         }
 
+        .matching-headings-list {
+            display: grid;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .matching-headings-option {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr) auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .matching-heading-tag {
+            min-width: 38px;
+            font-weight: 700;
+            color: var(--muted);
+        }
+
+        .matching-headings-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+        }
+
+        .matching-headings-table th,
+        .matching-headings-table td {
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            text-align: left;
+            vertical-align: middle;
+        }
+
+        .matching-headings-table th {
+            background: rgba(17, 75, 58, 0.06);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+        }
+
         .answer-choice {
             border: 1px solid var(--border);
             border-radius: 999px;
@@ -780,7 +821,8 @@
             "yes-no-not-given": { mode: "radio", options: ["Yes", "No", "Not Given"], locked: true, label: "Yes / No / Not Given" },
             "short-answer": { mode: "text", options: [], locked: true, label: "Short Answer" },
             "fill-in-the-blank": { mode: "blank", options: [], locked: true, label: "Fill in the Blank" },
-            "sentence-completion": { mode: "text", options: [], locked: true, label: "Sentence Completion" }
+            "sentence-completion": { mode: "text", options: [], locked: true, label: "Sentence Completion" },
+            "matching-headings": { mode: "matching-headings", options: [], locked: true, label: "Matching Headings" }
         };
 
         // Rich Text Editor Functions
@@ -1138,8 +1180,54 @@
                 textHtml: "",
                 options: [...conf.options],
                 answer: "",
+                matchingHeadingsOptions: [
+                    { id: "mh_1", label: "i.", text: "" },
+                    { id: "mh_2", label: "ii.", text: "" },
+                    { id: "mh_3", label: "iii.", text: "" }
+                ],
+                matchingHeadingsRows: [
+                    { number: "1", prompt: "Passage A", answerOptionId: "" },
+                    { number: "2", prompt: "Passage B", answerOptionId: "" },
+                    { number: "3", prompt: "Passage C", answerOptionId: "" }
+                ],
                 uiMode: conf.mode
             };
+        }
+
+        function toRomanLabel(index) {
+            const romans = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii"];
+            return `${romans[index] || String(index + 1)}.`;
+        }
+
+        function ensureMatchingHeadingsShape(question) {
+            if (!question) return;
+            if (!Array.isArray(question.matchingHeadingsOptions) || question.matchingHeadingsOptions.length === 0) {
+                question.matchingHeadingsOptions = [
+                    { id: "mh_1", label: "i.", text: "" },
+                    { id: "mh_2", label: "ii.", text: "" },
+                    { id: "mh_3", label: "iii.", text: "" }
+                ];
+            }
+            question.matchingHeadingsOptions = question.matchingHeadingsOptions.map((opt, idx) => ({
+                id: String(opt?.id || `mh_${idx + 1}`),
+                label: toRomanLabel(idx),
+                text: String(opt?.text || "")
+            }));
+
+            if (!Array.isArray(question.matchingHeadingsRows) || question.matchingHeadingsRows.length === 0) {
+                question.matchingHeadingsRows = [
+                    { number: "1", prompt: "Passage A", answerOptionId: "" },
+                    { number: "2", prompt: "Passage B", answerOptionId: "" },
+                    { number: "3", prompt: "Passage C", answerOptionId: "" }
+                ];
+            }
+
+            const validOptionIds = new Set(question.matchingHeadingsOptions.map((opt) => opt.id));
+            question.matchingHeadingsRows = question.matchingHeadingsRows.map((row, idx) => ({
+                number: String(row?.number || idx + 1),
+                prompt: String(row?.prompt || `Passage ${String.fromCharCode(65 + idx)}`),
+                answerOptionId: validOptionIds.has(String(row?.answerOptionId || "")) ? String(row.answerOptionId) : ""
+            }));
         }
 
         function newGroup(context = { questionGroups: [] }) {
@@ -1440,6 +1528,49 @@
                     }).join("");
 
                     answerSection = `<div class="field"><label>Correct Answer</label><div class="answer-options">${answerChips}</div></div>`;
+                } else if (conf.mode === "matching-headings") {
+                    ensureMatchingHeadingsShape(q);
+                    const optionsRows = q.matchingHeadingsOptions.map((opt, optIdx) => `
+                        <div class="matching-headings-option">
+                            <span class="matching-heading-tag">${escapeHtml(opt.label)}</span>
+                            <input type="text" value="${escapeHtml(opt.text)}" placeholder="Heading text" oninput="updateMatchingHeadingOptionText(${passageIndex}, ${gIdx}, ${qIdx}, ${optIdx}, this.value)">
+                            <button type="button" class="inline-btn danger" onclick="removeMatchingHeadingOption(${passageIndex}, ${gIdx}, ${qIdx}, ${optIdx})">Delete</button>
+                        </div>
+                    `).join("");
+
+                    const rowsHtml = q.matchingHeadingsRows.map((row, rowIdx) => `
+                        <tr>
+                            <td><input type="text" value="${escapeHtml(row.number)}" oninput="updateMatchingHeadingRow(${passageIndex}, ${gIdx}, ${qIdx}, ${rowIdx}, 'number', this.value)"></td>
+                            <td><input type="text" value="${escapeHtml(row.prompt)}" oninput="updateMatchingHeadingRow(${passageIndex}, ${gIdx}, ${qIdx}, ${rowIdx}, 'prompt', this.value)"></td>
+                            <td>
+                                <select onchange="updateMatchingHeadingRow(${passageIndex}, ${gIdx}, ${qIdx}, ${rowIdx}, 'answerOptionId', this.value)">
+                                    <option value="">Select heading</option>
+                                    ${q.matchingHeadingsOptions.map((opt) => `<option value="${escapeHtml(opt.id)}" ${String(row.answerOptionId || "") === String(opt.id) ? "selected" : ""}>${escapeHtml(opt.label)} ${escapeHtml(opt.text || "")}</option>`).join("")}
+                                </select>
+                            </td>
+                            <td><button type="button" class="inline-btn danger" onclick="removeMatchingHeadingRow(${passageIndex}, ${gIdx}, ${qIdx}, ${rowIdx})">Delete</button></td>
+                        </tr>
+                    `).join("");
+
+                    answerSection = `
+                        <div class="field">
+                            <label>Heading Options (i., ii., iii.)</label>
+                            <div class="matching-headings-list">${optionsRows}</div>
+                            <div class="inline-actions" style="margin-top:8px;">
+                                <button type="button" class="inline-btn" onclick="addMatchingHeadingOption(${passageIndex}, ${gIdx}, ${qIdx})">+ Add Heading Option</button>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label>Heading Questions Table</label>
+                            <table class="matching-headings-table">
+                                <thead><tr><th>No.</th><th>Heading Question</th><th>Answer</th><th></th></tr></thead>
+                                <tbody>${rowsHtml}</tbody>
+                            </table>
+                            <div class="inline-actions" style="margin-top:8px;">
+                                <button type="button" class="inline-btn" onclick="addMatchingHeadingRow(${passageIndex}, ${gIdx}, ${qIdx})">+ Add Row</button>
+                            </div>
+                        </div>
+                    `;
                 } else if (conf.mode === "blank") {
                     const numberedDefs = extractNumberedBlankDefs(q.text);
                     const answerMap = parseNumberedBlankAnswerMap(q.answer);
@@ -1700,6 +1831,76 @@
             renderQuestions(passageIndex);
         }
 
+        function updateMatchingHeadingOptionText(passageIndex, gIdx, qIdx, optIdx, value) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
+            ensureMatchingHeadingsShape(question);
+            if (!question.matchingHeadingsOptions[optIdx]) return;
+            question.matchingHeadingsOptions[optIdx].text = value;
+        }
+
+        function addMatchingHeadingOption(passageIndex, gIdx, qIdx) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
+            ensureMatchingHeadingsShape(question);
+            const nextIndex = question.matchingHeadingsOptions.length;
+            question.matchingHeadingsOptions.push({ id: `mh_${Date.now()}_${nextIndex}`, label: toRomanLabel(nextIndex), text: "" });
+            ensureMatchingHeadingsShape(question);
+            renderQuestions(passageIndex);
+        }
+
+        function removeMatchingHeadingOption(passageIndex, gIdx, qIdx, optIdx) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
+            ensureMatchingHeadingsShape(question);
+            if (question.matchingHeadingsOptions.length <= 1) {
+                toast("Keep at least one heading option");
+                return;
+            }
+            const removed = question.matchingHeadingsOptions.splice(optIdx, 1)[0];
+            if (removed?.id) {
+                question.matchingHeadingsRows.forEach((row) => {
+                    if (row.answerOptionId === removed.id) row.answerOptionId = "";
+                });
+            }
+            ensureMatchingHeadingsShape(question);
+            renderQuestions(passageIndex);
+        }
+
+        function addMatchingHeadingRow(passageIndex, gIdx, qIdx) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
+            ensureMatchingHeadingsShape(question);
+            const next = question.matchingHeadingsRows.length + 1;
+            question.matchingHeadingsRows.push({
+                number: String(next),
+                prompt: `Passage ${String.fromCharCode(64 + Math.min(26, next))}`,
+                answerOptionId: ""
+            });
+            renderQuestions(passageIndex);
+        }
+
+        function removeMatchingHeadingRow(passageIndex, gIdx, qIdx, rowIdx) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
+            ensureMatchingHeadingsShape(question);
+            if (question.matchingHeadingsRows.length <= 1) {
+                toast("Keep at least one heading row");
+                return;
+            }
+            question.matchingHeadingsRows.splice(rowIdx, 1);
+            renderQuestions(passageIndex);
+        }
+
+        function updateMatchingHeadingRow(passageIndex, gIdx, qIdx, rowIdx, field, value) {
+            const question = draft.passages[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
+            if (!question) return;
+            ensureMatchingHeadingsShape(question);
+            const row = question.matchingHeadingsRows[rowIdx];
+            if (!row) return;
+            row[field] = value;
+        }
+
         function markSelectedBlank(passageIndex, gIdx, qIdx) {
             const input = document.getElementById(`question_text_${passageIndex}_${gIdx}_${qIdx}`);
             if (!input) return;
@@ -1776,7 +1977,41 @@
             question.uiMode = conf.mode;
             question.options = [...conf.options];
             question.answer = "";
+            if (conf.mode === "matching-headings") {
+                question.matchingHeadingsOptions = [
+                    { id: "mh_1", label: "i.", text: "" },
+                    { id: "mh_2", label: "ii.", text: "" },
+                    { id: "mh_3", label: "iii.", text: "" }
+                ];
+                question.matchingHeadingsRows = [
+                    { number: "1", prompt: "Passage A", answerOptionId: "" },
+                    { number: "2", prompt: "Passage B", answerOptionId: "" },
+                    { number: "3", prompt: "Passage C", answerOptionId: "" }
+                ];
+            }
             renderQuestions(passageIndex);
+        }
+
+        function getMatchingHeadingsAnswerValue(question) {
+            ensureMatchingHeadingsShape(question);
+            const answerMap = {};
+            question.matchingHeadingsRows.forEach((row) => {
+                if (String(row.number || "").trim()) {
+                    answerMap[String(row.number).trim()] = String(row.answerOptionId || "");
+                }
+            });
+            return JSON.stringify({ answers: answerMap });
+        }
+
+        function isQuestionAnswered(question) {
+            if (!question) return false;
+            if (question.type === "matching-headings") {
+                ensureMatchingHeadingsShape(question);
+                const optionsReady = question.matchingHeadingsOptions.every((opt) => String(opt.text || "").trim().length > 0);
+                const rowsReady = question.matchingHeadingsRows.every((row) => String(row.number || "").trim() && String(row.prompt || "").trim() && String(row.answerOptionId || "").trim());
+                return optionsReady && rowsReady;
+            }
+            return String(question.text || "").trim().length > 0 && String(question.answer || "").trim().length > 0;
         }
 
         function addPassage() {
@@ -1860,13 +2095,19 @@
                     questionRange: group.questionRange || "",
                     questions: group.questions.map((q) => {
                         const conf = QUESTION_TYPE_CONFIG[q.type];
-                        const storedType = q.type === "fill-in-the-blank" ? "fill-in-the-blank" : (conf.mode === "radio" ? "radio" : "text");
+                        const storedType = q.type === "fill-in-the-blank"
+                            ? "fill-in-the-blank"
+                            : q.type === "matching-headings"
+                                ? "matching-headings"
+                                : (conf.mode === "radio" ? "radio" : "text");
                         return {
                             type: storedType,
                             text: stripBlankMarkerText(q.text),
                             textHtml: q.textHtml || "",
                             options: conf.mode === "radio" ? q.options.join(", ") : "",
-                            answer: q.answer || extractBlankMarkerAnswer(q.text)
+                            answer: q.type === "matching-headings" ? getMatchingHeadingsAnswerValue(q) : (q.answer || extractBlankMarkerAnswer(q.text)),
+                            matchingHeadingsOptions: q.type === "matching-headings" ? q.matchingHeadingsOptions : undefined,
+                            matchingHeadingsRows: q.type === "matching-headings" ? q.matchingHeadingsRows : undefined
                         };
                     })
                 }))
@@ -1908,7 +2149,7 @@
 
             const allAnswered = problem.passages.every((passage) =>
                 passage.questionGroups.every((group) =>
-                    group.questions.every((q) => q.text && q.answer)
+                    group.questions.every((q) => isQuestionAnswered(q))
                 )
             );
             if (!allAnswered) {

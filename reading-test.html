@@ -213,6 +213,47 @@
         }
         .inline-input:focus { outline: none; border-bottom-color: var(--primary); background: #eff6ff; }
 
+        .matching-headings-legend {
+            margin-bottom: 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            background: #fafdfc;
+        }
+
+        .matching-headings-legend h4 {
+            margin-bottom: 8px;
+            font-size: calc(1rem * var(--text-zoom));
+            font-weight: 700;
+        }
+
+        .matching-headings-legend-row {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .matching-heading-label {
+            font-weight: 700;
+            color: var(--text-main);
+            min-width: 26px;
+        }
+
+        .matching-heading-row {
+            margin-bottom: 10px;
+        }
+
+        .matching-heading-row select {
+            width: 100%;
+            max-width: 320px;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--bg-surface);
+            font-size: calc(0.95rem * var(--text-zoom));
+        }
+
         /* Submit */
         .submit-area { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color); }
         .submit-btn { background-color: var(--primary); color: white; border: none; padding: 14px 28px; font-size: 1.1rem; font-weight: 600; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.2s ease; }
@@ -361,8 +402,12 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
         }
 
         function snapshotCurrentAnswers() {
-            const inputs = document.querySelectorAll('#dynamic-questions-container input');
+            const inputs = document.querySelectorAll('#dynamic-questions-container input, #dynamic-questions-container select');
             inputs.forEach((input) => {
+                if (input.tagName === 'SELECT') {
+                    answerState[input.name] = input.value || "";
+                    return;
+                }
                 if (input.type === 'radio') {
                     if (input.checked) answerState[input.name] = input.value;
                     else if (!(input.name in answerState)) answerState[input.name] = "";
@@ -373,9 +418,13 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
         }
 
         function hydrateInputsFromState() {
-            const inputs = document.querySelectorAll('#dynamic-questions-container input');
+            const inputs = document.querySelectorAll('#dynamic-questions-container input, #dynamic-questions-container select');
             inputs.forEach((input) => {
                 if (!(input.name in answerState)) return;
+                if (input.tagName === 'SELECT') {
+                    input.value = String(answerState[input.name] || "");
+                    return;
+                }
                 if (input.type === 'radio') {
                     input.checked = String(answerState[input.name] || "") === String(input.value || "");
                     return;
@@ -387,9 +436,49 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
         function countQuestionsInGroup(group) {
             const questions = Array.isArray(group?.questions) ? group.questions : [];
             return questions.reduce((sum, q) => {
+                if (q?.type === 'matching-headings') {
+                    const rows = Array.isArray(q.matchingHeadingsRows) ? q.matchingHeadingsRows : [];
+                    return sum + Math.max(1, rows.length);
+                }
                 const numberedDefs = extractNumberedBlankDefs(q?.text || "");
                 return sum + (numberedDefs.length > 0 ? numberedDefs.length : 1);
             }, 0);
+        }
+
+        function parseMatchingHeadingsAnswerMap(raw) {
+            const text = String(raw || "").trim();
+            if (!text) return {};
+            try {
+                const parsed = JSON.parse(text);
+                if (parsed && typeof parsed === "object") {
+                    if (parsed.answers && typeof parsed.answers === "object") return parsed.answers;
+                    return parsed;
+                }
+            } catch (_) {}
+            return {};
+        }
+
+        function normalizeMatchingHeadings(question) {
+            const options = Array.isArray(question?.matchingHeadingsOptions) ? question.matchingHeadingsOptions : [];
+            const rows = Array.isArray(question?.matchingHeadingsRows) ? question.matchingHeadingsRows : [];
+            const optionMap = new Map();
+            const normalizedOptions = options.map((opt, idx) => {
+                const id = String(opt?.id || `mh_${idx + 1}`);
+                const label = String(opt?.label || "").trim() || `${idx + 1}.`;
+                const text = String(opt?.text || "");
+                optionMap.set(id, { id, label, text });
+                return { id, label, text };
+            });
+
+            const answerMap = parseMatchingHeadingsAnswerMap(question?.answer);
+            const normalizedRows = (rows.length ? rows : [{ number: "1", prompt: "Passage A", answerOptionId: "" }]).map((row, idx) => {
+                const number = String(row?.number || idx + 1);
+                const prompt = String(row?.prompt || `Passage ${String.fromCharCode(65 + idx)}`);
+                const answerOptionId = String(row?.answerOptionId || answerMap[number] || "");
+                return { number, prompt, answerOptionId };
+            });
+
+            return { options: normalizedOptions, rows: normalizedRows, optionMap };
         }
 
         function countQuestionsInPassage(passage, fallbackGroups) {
@@ -406,6 +495,17 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     group.questions.forEach((q, qIdx) => {
                         const baseName = `q_${pIdx}_${gIdx}_${qIdx}`;
                         const baseBlockId = `block_${baseName}`;
+                        if (q.type === 'matching-headings') {
+                            const matching = normalizeMatchingHeadings(q);
+                            matching.rows.forEach((row) => {
+                                entries.push({
+                                    name: `${baseName}__mh__${row.number}`,
+                                    label: String(row.number),
+                                    blockId: baseBlockId
+                                });
+                            });
+                            return;
+                        }
                         const numberedDefs = extractNumberedBlankDefs(q.text);
 
                         if ((q.type === 'text' || q.type === 'fill-in-the-blank') && numberedDefs.length > 0) {
@@ -476,7 +576,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
         function normalizeQuestionType(question) {
             const rawType = String(question.type || "").toLowerCase();
-            if (rawType === "radio" || rawType === "text" || rawType === "fill-in-the-blank") {
+            if (rawType === "radio" || rawType === "text" || rawType === "fill-in-the-blank" || rawType === "matching-headings") {
                 return rawType;
             }
             if (rawType.includes("short") || rawType.includes("sentence") || rawType.includes("completion")) {
@@ -496,7 +596,9 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     text: q.text || "",
                     textHtml: q.textHtml || "",
                     options: typeof q.options === "string" ? q.options : Array.isArray(q.options) ? q.options.join(", ") : "",
-                    answer: q.answer || q.correctAnswer || ""
+                    answer: q.answer || q.correctAnswer || "",
+                    matchingHeadingsOptions: Array.isArray(q.matchingHeadingsOptions) ? q.matchingHeadingsOptions : undefined,
+                    matchingHeadingsRows: Array.isArray(q.matchingHeadingsRows) ? q.matchingHeadingsRows : undefined
                 }))
             }));
 
@@ -544,7 +646,9 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                         text: q.text || `${idx + 1}. Question`,
                         textHtml: q.textHtml || "",
                         options: Array.isArray(q.options) ? q.options.join(", ") : (q.options || ""),
-                        answer: q.answer || q.correctAnswer || ""
+                        answer: q.answer || q.correctAnswer || "",
+                        matchingHeadingsOptions: Array.isArray(q.matchingHeadingsOptions) ? q.matchingHeadingsOptions : undefined,
+                        matchingHeadingsRows: Array.isArray(q.matchingHeadingsRows) ? q.matchingHeadingsRows : undefined
                     }))
                 }];
                 return {
@@ -820,6 +924,12 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 group.questions.forEach((q, qIndex) => {
                     const inputName = `q_${currentPartIndex}_${gIndex}_${qIndex}`;
                     const blockId = `block_${inputName}`;
+                    if (q.type === 'matching-headings') {
+                        const matching = normalizeMatchingHeadings(q);
+                        matching.rows.forEach((row) => {
+                            navHtml += `<div class="nav-item" id="nav_${inputName}__mh__${escapeHtml(row.number)}" onclick="scrollToQuestion('${blockId}')">${escapeHtml(row.number)}</div>`;
+                        });
+                    } else {
                     const numberedDefs = extractNumberedBlankDefs(q.text);
 
                     if ((q.type === 'text' || q.type === 'fill-in-the-blank') && numberedDefs.length > 0) {
@@ -830,6 +940,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     } else {
                         navHtml += `<div class="nav-item" id="nav_${inputName}" onclick="scrollToQuestion('${blockId}')">${absoluteQNum}</div>`;
                         absoluteQNum++;
+                    }
                     }
 
                     html += `<div class="question-block" id="${blockId}">`;
@@ -855,6 +966,14 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                             html += `<p class="question-text">${renderQuestionTextBlock(q.text, q.textHtml)}</p>`;
                             html += `<input type="text" name="${inputName}" class="short-answer-input" placeholder="Type your answer...">`;
                         }
+                    } else if (q.type === 'matching-headings') {
+                        const matching = normalizeMatchingHeadings(q);
+                        html += `<p class="question-text">${renderQuestionTextBlock(q.text, q.textHtml)}</p>`;
+                        html += `<div class="matching-headings-legend"><h4>List of Headings</h4>${matching.options.map((opt) => `<div class="matching-headings-legend-row"><span class="matching-heading-label">${escapeHtml(opt.label)}</span><span>${escapeHtml(opt.text)}</span></div>`).join("")}</div>`;
+                        matching.rows.forEach((row) => {
+                            const rowName = `${inputName}__mh__${row.number}`;
+                            html += `<div class="matching-heading-row"><p class="question-text"><strong>${escapeHtml(row.number)}.</strong> ${escapeHtml(row.prompt)}</p><select name="${rowName}"><option value="">Select heading</option>${matching.options.map((opt) => `<option value="${escapeHtml(opt.id)}">${escapeHtml(opt.label)} ${escapeHtml(opt.text)}</option>`).join("")}</select></div>`;
+                        });
                     }
 
                     html += `</div>`;
@@ -881,9 +1000,9 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
         }
 
         function attachTrackingListeners() {
-            const allInputs = document.querySelectorAll('#dynamic-questions-container input');
+            const allInputs = document.querySelectorAll('#dynamic-questions-container input, #dynamic-questions-container select');
             allInputs.forEach(input => {
-                const eventType = input.type === 'radio' ? 'change' : 'input';
+                const eventType = input.tagName === 'SELECT' || input.type === 'radio' ? 'change' : 'input';
                 input.addEventListener(eventType, function() {
                     updateTracker(this.name);
                 });
@@ -894,6 +1013,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             const radioChecked = document.querySelector(`input[name="${inputName}"]:checked`);
             const blankInputs = document.querySelectorAll(`input[data-question-base="${inputName}"]`);
             const textInput = document.querySelector(`input[type="text"][name="${inputName}"]`);
+            const selectInput = document.querySelector(`select[name="${inputName}"]`);
 
             let isAnswered = false;
             if(radioChecked) isAnswered = true;
@@ -901,10 +1021,14 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 isAnswered = Array.from(blankInputs).every((input) => input.value.trim() !== '');
             } else if(textInput && textInput.value.trim() !== '') {
                 isAnswered = true;
+            } else if (selectInput && String(selectInput.value || '').trim() !== '') {
+                isAnswered = true;
             }
 
             if (isAnswered) {
-                answerState[inputName] = radioChecked ? String(radioChecked.value || "") : String((textInput && textInput.value) || answerState[inputName] || "");
+                if (radioChecked) answerState[inputName] = String(radioChecked.value || "");
+                else if (textInput) answerState[inputName] = String(textInput.value || "");
+                else if (selectInput) answerState[inputName] = String(selectInput.value || "");
             } else if (blankInputs.length === 0) {
                 answerState[inputName] = "";
             }
@@ -1049,6 +1173,21 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 groups.forEach((group, gIndex) => {
                     group.questions.forEach((q, qIndex) => {
                         const key = `q_${pIndex}_${gIndex}_${qIndex}`;
+                        if (q.type === 'matching-headings') {
+                            const matching = normalizeMatchingHeadings(q);
+                            const answerMap = parseMatchingHeadingsAnswerMap(q.answer);
+                            matching.rows.forEach((row) => {
+                                const answerKey = `${key}__mh__${row.number}`;
+                                const correctOptionId = String(answerMap[row.number] || row.answerOptionId || "").trim();
+                                correctAnswers[answerKey] = correctOptionId.toLowerCase();
+                                const optionMeta = matching.optionMap.get(correctOptionId);
+                                questionMeta[answerKey] = {
+                                    text: `${row.number}. ${row.prompt}`,
+                                    correctAnswer: optionMeta ? `${optionMeta.label} ${optionMeta.text}`.trim() : correctOptionId
+                                };
+                            });
+                            return;
+                        }
                         const numberedDefs = extractNumberedBlankDefs(q.text);
                         const numberedAnswers = parseNumberedBlankAnswerMap(q.answer);
 
