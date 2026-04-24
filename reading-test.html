@@ -737,11 +737,34 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
                 Array.from(el.attributes).forEach((attr) => {
                     const name = String(attr.name || "").toLowerCase();
-                    if (name.startsWith("on") || name === "style" || name === "id" || name === "class") {
+                    if (name.startsWith("on") || name === "id" || name === "class") {
                         el.removeAttribute(attr.name);
                     }
                     if ((name === "href" || name === "src") && /^\s*javascript:/i.test(String(attr.value || ""))) {
                         el.removeAttribute(attr.name);
+                    }
+                    if (name === "style") {
+                        const styleText = String(attr.value || "");
+                        const allowed = [];
+                        styleText.split(";").forEach((decl) => {
+                            const parts = decl.split(":");
+                            if (parts.length < 2) return;
+                            const prop = String(parts[0] || "").trim().toLowerCase();
+                            const val = String(parts.slice(1).join(":") || "").trim().toLowerCase();
+                            if (prop === "text-align" && /^(left|right|center|justify)$/.test(val)) {
+                                allowed.push(`text-align:${val}`);
+                                return;
+                            }
+                            if (prop === "text-justify" && /^(auto|inter-word|inter-character|none)$/.test(val)) {
+                                allowed.push(`text-justify:${val}`);
+                            }
+                        });
+
+                        if (allowed.length > 0) {
+                            el.setAttribute("style", allowed.join(";"));
+                        } else {
+                            el.removeAttribute("style");
+                        }
                     }
                 });
             });
