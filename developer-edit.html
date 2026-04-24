@@ -1220,12 +1220,12 @@
 
         function extractNumberedBlankDefs(value) {
             const defs = [];
-            const regex = /(\d+)\s(_{2,})/g;
+            const regex = /(\d+)\s((?:_\s*){2,})/g;
             const text = String(value || "");
             let match;
             while ((match = regex.exec(text)) !== null) {
                 const number = match[1];
-                const underscores = match[2];
+                const underscores = String(match[2] || "").replace(/\s+/g, "");
                 defs.push({
                     number,
                     underscores: underscores.length,

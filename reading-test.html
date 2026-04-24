@@ -820,7 +820,8 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             const numberedDefs = extractNumberedBlankDefs(plainSource || source);
             if (numberedDefs.length > 0) {
                 const tokens = [];
-                const withTokens = source.replace(/(\d+)\s(_{2,})/g, (_, number, underscores) => {
+                const withTokens = source.replace(/(\d+)\s((?:_\s*){2,})/g, (_, number, underscoresRaw) => {
+                    const underscores = String(underscoresRaw || "").replace(/\s+/g, "");
                     const token = `@@NUMBERED_BLANK_${tokens.length}@@`;
                     tokens.push({
                         token,
@@ -863,12 +864,12 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
         function extractNumberedBlankDefs(value) {
             const defs = [];
-            const regex = /(\d+)\s(_{2,})/g;
+            const regex = /(\d+)\s((?:_\s*){2,})/g;
             const text = String(value || "");
             let match;
             while ((match = regex.exec(text)) !== null) {
                 const number = match[1];
-                const underscores = match[2];
+                const underscores = String(match[2] || "").replace(/\s+/g, "");
                 defs.push({
                     number,
                     underscores: underscores.length,
