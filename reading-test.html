@@ -280,6 +280,7 @@
 </head>
 <body>
 
+
     <header>
         <div class="header-title">
             <span id="display-title">IELTS Academic Reading</span>
@@ -287,6 +288,9 @@
                 <button class="text-btn" onclick="adjustTextSize(-0.1)">A</button>
                 <button class="text-btn" onclick="adjustTextSize(+0.1)">A+</button>
             </div>
+        </div>
+        <div class="header-center">
+            <div id="headerTracker" class="header-tracker"></div>
         </div>
         <div class="header-right">
             <button id="backToDeveloperBtn" class="back-dev-btn" type="button" onclick="goBackToDeveloper()">Back</button>
@@ -317,7 +321,159 @@
             </form>
         </div>
 
-        <div class="part-strip part-strip-global" id="partStrip"></div>
+        <!-- Removed old tracker below, now handled in header -->
+        <style>
+            .header-center {
+                flex: 1;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                position: relative;
+            }
+            .header-tracker {
+                display: flex;
+                gap: 18px;
+                align-items: flex-end;
+                position: relative;
+                z-index: 30;
+            }
+            .tracker-part-box {
+                background: var(--bg-surface);
+                border: 2px solid var(--border-color);
+                border-radius: 16px 16px 10px 10px;
+                min-width: 54px;
+                min-height: 44px;
+                max-width: 120px;
+                padding: 0 18px;
+                font-family: 'Sora', sans-serif;
+                font-size: 1.1rem;
+                font-weight: 700;
+                color: var(--text-main);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+                cursor: pointer;
+                transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+                position: relative;
+            }
+            .tracker-part-box.active {
+                border-color: var(--primary);
+                background: #e6f4f1;
+                z-index: 2;
+            }
+            .tracker-part-label {
+                margin-bottom: 2px;
+                letter-spacing: 0.01em;
+            }
+            .tracker-part-progress {
+                font-size: 0.9rem;
+                color: var(--primary);
+                font-weight: 600;
+                background: #eafaf3;
+                border-radius: 8px;
+                padding: 1px 8px;
+                margin-top: 2px;
+            }
+            .tracker-popup {
+                position: absolute;
+                left: 50%;
+                top: 100%;
+                transform: translateX(-50%);
+                background: var(--bg-surface);
+                border: 2px solid var(--primary);
+                border-radius: 0 0 18px 18px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.13);
+                padding: 18px 24px 14px 24px;
+                min-width: 260px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                z-index: 100;
+                animation: trackerPopupIn 0.22s cubic-bezier(.4,1.4,.6,1) both;
+            }
+            @keyframes trackerPopupIn {
+                from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.98); }
+                to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+            }
+            .tracker-question-row {
+                display: flex;
+                gap: 8px;
+                justify-content: center;
+                align-items: center;
+                margin-top: 2px;
+            }
+            .tracker-question-chip {
+                width: 38px;
+                height: 38px;
+                border-radius: 10px;
+                background: var(--bg-body);
+                border: 2px solid var(--border-color);
+                color: var(--text-main);
+                font-size: 1.08rem;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                transition: background 0.18s, border-color 0.18s, color 0.18s;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            }
+            .tracker-question-chip.answered {
+                background: #1f9d63;
+                color: #fff;
+                border-color: #1f9d63;
+            }
+            .tracker-question-chip.current {
+                border-color: var(--primary);
+                background: #e6f4f1;
+            }
+            @media (max-width: 900px) {
+                .header-tracker { gap: 8px; }
+                .tracker-part-box { min-width: 38px; font-size: 0.98rem; padding: 0 8px; }
+                .tracker-popup { min-width: 180px; padding: 10px 6px 8px 6px; }
+                .tracker-question-chip { width: 28px; height: 28px; font-size: 0.92rem; }
+            }
+        </style>
+        <script>
+        // --- Tracker Popup Logic ---
+        function renderHeaderTracker(passages) {
+            const tracker = document.getElementById('headerTracker');
+            if (!tracker) return;
+            const parts = buildPartTrackerData(passages);
+            let html = '';
+            parts.forEach((part, idx) => {
+                const entries = part.entries || [];
+                const total = entries.length;
+                const answeredCount = entries.filter((entry) => String(answerState[entry.name] || '').trim().length > 0).length;
+                const isActive = idx === currentPartIndex;
+                html += `<div class="tracker-part-box${isActive ? ' active' : ''}" onclick="setActivePart(${idx})">`;
+                html += `<div class="tracker-part-label">${idx + 1}</div>`;
+                html += `<div class="tracker-part-progress">${answeredCount} / ${total}</div>`;
+                if (isActive) {
+                    // Centered popup for question numbers
+                    html += `<div class="tracker-popup">`;
+                    html += renderTrackerQuestionChips(entries, idx);
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            });
+            tracker.innerHTML = html;
+        }
+
+        function renderTrackerQuestionChips(entries, partIdx) {
+            // Center the chips, expand left/right as number increases
+            // If odd, center; if even, balance left/right
+            let html = '<div class="tracker-question-row">';
+            entries.forEach((entry, i) => {
+                const answered = String(answerState[entry.name] || '').trim().length > 0;
+                html += `<button type="button" class="tracker-question-chip${answered ? ' answered' : ''}${currentPartIndex === partIdx ? '' : ''}" onclick="event.stopPropagation(); jumpToPartQuestion(${partIdx}, '${entry.name}')">${escapeHtml(entry.label)}</button>`;
+            });
+            html += '</div>';
+            return html;
+        }
+        </script>
     </div>
 
     <script src="storage-sync.js"></script>
@@ -530,31 +686,9 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             });
         }
 
+        // Remove old part strip rendering, now handled in header
         function renderPartStrip(passages) {
-            const strip = document.getElementById('partStrip');
-            if (!strip) return;
-
-            const parts = buildPartTrackerData(passages);
-
-            strip.innerHTML = passages.map((passage, idx) => {
-                const entries = parts[idx]?.entries || [];
-                const total = entries.length;
-                const active = idx === currentPartIndex;
-                const answeredCount = entries.filter((entry) => String(answerState[entry.name] || '').trim().length > 0).length;
-                const chips = active
-                    ? `<div class="part-mini-nav">${entries.map((entry) => {
-                        const answered = String(answerState[entry.name] || '').trim().length > 0;
-                        return `<button type="button" class="part-mini-chip ${answered ? 'answered' : ''}" onclick="event.stopPropagation(); jumpToPartQuestion(${idx}, '${entry.name}')">${escapeHtml(entry.label)}</button>`;
-                    }).join('')}</div>`
-                    : "";
-                return `
-                    <div class="part-card ${active ? 'active' : 'inactive'}" onclick="setActivePart(${idx})">
-                        <div class="part-title">Part ${idx + 1}</div>
-                        ${active ? '' : `<div class="part-meta">${answeredCount} of ${total}</div>`}
-                        ${chips}
-                    </div>
-                `;
-            }).join('');
+            renderHeaderTracker(passages);
         }
 
         function setActivePart(index, focusInputName = null) {
