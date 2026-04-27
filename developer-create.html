@@ -497,6 +497,83 @@
 
         .inline-btn.danger { color: var(--danger); border-color: #ffd1d1; background: #fff5f5; }
 
+        .editor-mode-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f3f7f5;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 4px;
+        }
+
+        .editor-mode-btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: transparent;
+            color: #5a6474;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .editor-mode-btn.active {
+            background: #114b3a;
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(17, 75, 58, 0.16);
+        }
+
+        .auto-fill-inline {
+            border: 1px solid #d7e7da;
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #f8fff9, #f2fbf4);
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .auto-fill-inline-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .auto-fill-inline-box {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: #fff;
+            padding: 10px;
+        }
+
+        .auto-fill-inline-actions {
+            margin-top: 10px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .auto-fill-guide {
+            margin-top: 10px;
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-sm);
+            background: #fff;
+            padding: 10px 12px;
+        }
+
+        .auto-fill-guide summary {
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .auto-fill-guide-content {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 0.84rem;
+            display: grid;
+            gap: 4px;
+        }
+
         .sticky-actions {
             position: sticky;
             bottom: 10px;
@@ -738,6 +815,9 @@
             .sticky-actions { grid-template-columns: 1fr; }
             .rich-editor-toolbar { flex-direction: column; align-items: flex-start; }
             .toolbar-group { border-right: none; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 6px; margin-bottom: 6px; width: 100%; }
+            .auto-fill-inline-actions { justify-content: stretch; }
+            .auto-fill-inline-actions .btn,
+            .auto-fill-inline-actions .inline-btn { width: 100%; }
         }
     </style>
 </head>
@@ -874,10 +954,11 @@
                 italic: document.queryCommandState('italic'),
                 underline: document.queryCommandState('underline'),
                 strikeThrough: document.queryCommandState('strikeThrough'),
-                insertUnorderedList: document.queryCommandState('insertUnorderedList')
+                insertUnorderedList: document.queryCommandState('insertUnorderedList'),
+                insertOrderedList: document.queryCommandState('insertOrderedList')
             };
             
-            ['bold', 'italic', 'underline', 'strikeThrough', 'insertUnorderedList'].forEach(cmd => {
+            ['bold', 'italic', 'underline', 'strikeThrough', 'insertUnorderedList', 'insertOrderedList'].forEach(cmd => {
                 const btn = toolbar.querySelector(`[data-cmd="${cmd}"]`);
                 if (btn) btn.classList.toggle('active', btnStates[cmd]);
             });
@@ -906,7 +987,8 @@
             alignCenter: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
             alignRight: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M6 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-4-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m4-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-4-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
             alignJustify: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
-            bullets: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m2-8.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>'
+            bullets: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m2-8.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
+            numberedList: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5 11.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5"/><path d="M1.713 11.865v-.474H2c.217 0 .363-.137.363-.317 0-.185-.158-.31-.361-.31-.223 0-.367.152-.373.31h-.59c.016-.467.373-.787.986-.787.588 0 .927.33.927.767 0 .36-.21.573-.53.625v.022c.386.08.578.33.578.659 0 .518-.378.858-1.003.858-.63 0-1.008-.344-1.013-.827h.597c.01.164.174.295.393.295.225 0 .376-.135.376-.317 0-.195-.155-.325-.399-.325h-.29zm-.004-4.699h-.604v-.035c0-.408.295-.844.958-.844.583 0 .96.326.96.756 0 .389-.257.617-.476.848l-.537.572v.03h1.054V9H1.143v-.395l.957-.99c.138-.142.293-.304.293-.508 0-.18-.147-.32-.342-.32a.33.33 0 0 0-.342.338zM2.564 5h-.635V2.924h-.031l-.598.42v-.567l.629-.443h.635z"/></svg>'
         };
 
         function createRichEditorMarkup(editorId, placeholder = "") {
@@ -918,6 +1000,7 @@
                         <button type="button" class="toolbar-btn" data-cmd="underline" title="Underline">${TOOLBAR_ICONS.underline}</button>
                         <button type="button" class="toolbar-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
                         <button type="button" class="toolbar-btn" data-cmd="insertUnorderedList" title="Bullet List">${TOOLBAR_ICONS.bullets}</button>
+                        <button type="button" class="toolbar-btn" data-cmd="insertOrderedList" title="Numbered List">${TOOLBAR_ICONS.numberedList}</button>
                     </div>
 
                     <div class="toolbar-group">
@@ -1287,6 +1370,8 @@
             return {
                 title: "",
                 content: "",
+                editorMode: "auto",
+                autoFillDraft: { questionText: "", answerText: "", explanationText: "" },
                 questionGroups: [newGroup({ questionGroups: [] })]
             };
         }
@@ -1326,6 +1411,118 @@
             if (!passage) return;
             passage[field] = value;
             updatePassageSummary(passageIndex);
+        }
+
+        function htmlToPlainText(html) {
+            const div = document.createElement("div");
+            div.innerHTML = String(html || "");
+
+            // Ordered list markers are visual in contenteditable; materialize them as text.
+            div.querySelectorAll("ol").forEach((ol) => {
+                const items = Array.from(ol.children).filter((child) => child.tagName === "LI");
+                items.forEach((li, index) => {
+                    li.insertAdjacentText("afterbegin", `${index + 1}. `);
+                    li.insertAdjacentText("beforeend", "\n");
+                });
+            });
+
+            div.querySelectorAll("ul").forEach((ul) => {
+                const items = Array.from(ul.children).filter((child) => child.tagName === "LI");
+                items.forEach((li) => {
+                    li.insertAdjacentText("afterbegin", "- ");
+                    li.insertAdjacentText("beforeend", "\n");
+                });
+            });
+
+            div.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+            div.querySelectorAll("p,div,li,h1,h2,h3,h4,h5,h6,tr,section,article,blockquote").forEach((el) => {
+                el.insertAdjacentText("beforeend", "\n");
+            });
+
+            return (div.textContent || div.innerText || "")
+                .replace(/\u00a0/g, " ")
+                .replace(/[ \t]+\n/g, "\n")
+                .replace(/\n{3,}/g, "\n\n")
+                .trim();
+        }
+
+        function getAutoFillDraft(passage) {
+            if (!passage) return { questionText: "", answerText: "", explanationText: "" };
+            if (!passage.autoFillDraft || typeof passage.autoFillDraft !== "object") {
+                passage.autoFillDraft = { questionText: "", answerText: "", explanationText: "" };
+            }
+            return passage.autoFillDraft;
+        }
+
+        function saveAutoFillDraftFromEditors(passageIndex) {
+            const passage = draft.passages[passageIndex];
+            if (!passage) return;
+
+            const draftState = getAutoFillDraft(passage);
+            const qEditor = document.getElementById(`autoFillQuestion_${passageIndex}Content`);
+            const aEditor = document.getElementById(`autoFillAnswer_${passageIndex}Content`);
+            const eEditor = document.getElementById(`autoFillExplanation_${passageIndex}Content`);
+
+            draftState.questionText = qEditor ? qEditor.innerHTML : draftState.questionText;
+            draftState.answerText = aEditor ? aEditor.innerHTML : draftState.answerText;
+            draftState.explanationText = eEditor ? eEditor.innerHTML : draftState.explanationText;
+        }
+
+        function persistActiveAutoFillDraft() {
+            if (activePassageIndex === null || activePassageIndex === undefined) return;
+
+            const passage = draft.passages[activePassageIndex];
+            if (!passage || passage.editorMode !== "auto") return;
+
+            saveAutoFillDraftFromEditors(activePassageIndex);
+        }
+
+        function setPassageEditorMode(passageIndex, mode) {
+            const passage = draft.passages[passageIndex];
+            if (!passage) return;
+
+            if (passage.editorMode === "auto") {
+                saveAutoFillDraftFromEditors(passageIndex);
+            }
+
+            passage.editorMode = mode === "manual" ? "manual" : "auto";
+            renderGroups();
+        }
+
+        function renderInlineAutoFillEditors(passageIndex) {
+            const passage = draft.passages[passageIndex];
+            if (!passage) return;
+            const draftState = getAutoFillDraft(passage);
+
+            const qWrap = document.getElementById(`autoFillQuestionEditor_${passageIndex}`);
+            const aWrap = document.getElementById(`autoFillAnswerEditor_${passageIndex}`);
+            const eWrap = document.getElementById(`autoFillExplanationEditor_${passageIndex}`);
+            if (!qWrap || !aWrap || !eWrap) return;
+
+            const qId = `autoFillQuestion_${passageIndex}`;
+            const aId = `autoFillAnswer_${passageIndex}`;
+            const eId = `autoFillExplanation_${passageIndex}`;
+
+            qWrap.innerHTML = createRichEditorMarkup(qId, "Type question block here...");
+            aWrap.innerHTML = createRichEditorMarkup(aId, "Type answer key here...");
+            eWrap.innerHTML = createRichEditorMarkup(eId, "Type explanation notes here...");
+
+            bindRichEditorToolbar(qId);
+            bindRichEditorToolbar(aId);
+            bindRichEditorToolbar(eId);
+
+            const qEditor = document.getElementById(`${qId}Content`);
+            const aEditor = document.getElementById(`${aId}Content`);
+            const eEditor = document.getElementById(`${eId}Content`);
+
+            if (qEditor) qEditor.innerHTML = draftState.questionText || "";
+            if (aEditor) aEditor.innerHTML = draftState.answerText || "";
+            if (eEditor) eEditor.innerHTML = draftState.explanationText || "";
+
+            [qEditor, aEditor, eEditor].forEach((editor) => {
+                editor?.addEventListener("input", () => saveAutoFillDraftFromEditors(passageIndex));
+                editor?.addEventListener("blur", () => saveAutoFillDraftFromEditors(passageIndex));
+            });
         }
 
         function renderGroups() {
@@ -1378,12 +1575,52 @@
                             <div id="passageContentEditor_${passageIndex}"></div>
                             <input type="hidden" id="passageContent_${passageIndex}" value="${escapeHtml(passage.content)}">
                         </div>
-                        <div class="passage-groups">
+                        <div class="field">
+                            <label>Question Editor Mode</label>
+                            <div class="editor-mode-toggle">
+                                <button type="button" class="editor-mode-btn ${passage.editorMode === "auto" ? "active" : ""}" onclick="setPassageEditorMode(${passageIndex}, 'auto')">Filled Automatically</button>
+                                <button type="button" class="editor-mode-btn ${passage.editorMode !== "auto" ? "active" : ""}" onclick="setPassageEditorMode(${passageIndex}, 'manual')">Manual</button>
+                            </div>
+                        </div>
+                        <div class="passage-groups" id="manualGroupsWrap_${passageIndex}" style="display:${passage.editorMode === "auto" ? "none" : "block"};">
                             <div class="passage-head" style="margin-bottom: 10px;">
                                 <h3 style="margin: 0;">Question Groups</h3>
                                 <button type="button" class="inline-btn" onclick="addGroup(${passageIndex})">+ Add Group</button>
                             </div>
                             <div id="groupsContainer_${passageIndex}"></div>
+                        </div>
+                        <div class="auto-fill-inline" id="autoFillInlineWrap_${passageIndex}" style="display:${passage.editorMode === "auto" ? "block" : "none"};">
+                            <div class="auto-fill-inline-grid">
+                                <section class="auto-fill-inline-box">
+                                    <div class="passage-head" style="margin-bottom: 8px;"><h4 style="margin: 0;">Question</h4></div>
+                                    <div id="autoFillQuestionEditor_${passageIndex}"></div>
+                                </section>
+                                <section class="auto-fill-inline-box">
+                                    <div class="passage-head" style="margin-bottom: 8px;"><h4 style="margin: 0;">Answer Key</h4></div>
+                                    <div id="autoFillAnswerEditor_${passageIndex}"></div>
+                                </section>
+                                <section class="auto-fill-inline-box">
+                                    <div class="passage-head" style="margin-bottom: 8px;"><h4 style="margin: 0;">Explanation</h4></div>
+                                    <div id="autoFillExplanationEditor_${passageIndex}"></div>
+                                </section>
+                            </div>
+                            <details class="auto-fill-guide">
+                                <summary>Question Format Guide (Auto Detect)</summary>
+                                <div class="auto-fill-guide-content">
+                                    <p>Use lines like <strong>Questions 1 - 6</strong> to define a question range per group.</p>
+                                    <p>TRUE/FALSE/NOT GIVEN = True-False-Not Given</p>
+                                    <p>YES/NO/NOT GIVEN = Yes-No-Not Given</p>
+                                    <p>A. / B. / C. = Multiple Choice</p>
+                                    <p>Underscore blanks (____) or table style (//) = Fill in the Blank</p>
+                                    <p>Roman options (i. ii. iii.) = Matching Headings</p>
+                                    <p>Answer key format: <strong>1. answer</strong></p>
+                                    <p>Explanation format: <strong>1. explanation text</strong></p>
+                                </div>
+                            </details>
+                            <div class="auto-fill-inline-actions">
+                                <button type="button" class="inline-btn" onclick="setPassageEditorMode(${passageIndex}, 'manual')">Use Manual</button>
+                                <button type="button" class="btn btn-main" onclick="applyAutoFillToPassage(${passageIndex})">Generate and Fill Questions</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1404,7 +1641,11 @@
                 }
 
                 ensureAtLeastOneGroup(passageIndex);
-                renderQuestions(passageIndex);
+                if (passage.editorMode === "auto") {
+                    renderInlineAutoFillEditors(passageIndex);
+                } else {
+                    renderQuestions(passageIndex);
+                }
                 updatePassageSummary(passageIndex);
             });
 
@@ -1422,8 +1663,297 @@
         }
 
         function selectPassagePage(passageIndex) {
+            persistActiveAutoFillDraft();
             activePassageIndex = passageIndex;
             renderGroups();
+        }
+
+        function parseNumberedTextMap(rawText) {
+            const map = {};
+            const text = String(rawText || "").replace(/\r/g, "").replace(/\u00a0/g, " ");
+
+            const extractWithRegex = (regex) => {
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const number = String(match[1] || "").trim();
+                    const value = String(match[2] || "").replace(/\s+/g, " ").trim();
+                    if (number) {
+                        map[number] = value;
+                    }
+                }
+            };
+
+            // Preferred: one numbered entry per line.
+            extractWithRegex(/(?:^|\n)\s*(\d+)(?:\s*[\.)\:\-]\s*|\s+)([\s\S]*?)(?=(?:\n\s*\d+(?:\s*[\.)\:\-]\s*|\s+))|$)/g);
+
+            // Fallback: pasted as one paragraph, e.g. "1. ... 2. ... 3. ...".
+            if (Object.keys(map).length <= 1) {
+                extractWithRegex(/(?:^|\s)(\d+)(?:\s*[\.)\:\-]\s*|\s+)([\s\S]*?)(?=(?:\s+\d+(?:\s*[\.)\:\-]\s*|\s+))|$)/g);
+            }
+
+            return map;
+        }
+
+        function parseSequentialAnswerList(rawText) {
+            return String(rawText || "")
+                .replace(/\r/g, "")
+                .split("\n")
+                .map((line) => String(line || "").trim())
+                .filter(Boolean)
+                .map((line) => String(line).replace(/^\s*\d+(?:\s*[\.)\:\-]\s*|\s+)/, "").trim())
+                .filter(Boolean);
+        }
+
+        function extractInlineAutoAnswer(type, rawQuestionText, options) {
+            const original = String(rawQuestionText || "").trim();
+            if (!original) return { questionText: "", answer: "" };
+
+            if (type === "true-false-not-given") {
+                const match = original.match(/^(.*?)(?:\s+)(TRUE|FALSE|NOT\s+GIVEN)\s*$/i);
+                if (match) {
+                    return {
+                        questionText: String(match[1] || "").trim(),
+                        answer: String(match[2] || "").replace(/\s+/g, " ").trim()
+                    };
+                }
+            }
+
+            if (type === "yes-no-not-given") {
+                const match = original.match(/^(.*?)(?:\s+)(YES|NO|NOT\s+GIVEN)\s*$/i);
+                if (match) {
+                    return {
+                        questionText: String(match[1] || "").trim(),
+                        answer: String(match[2] || "").replace(/\s+/g, " ").trim()
+                    };
+                }
+            }
+
+            if (type === "multiple-choice") {
+                const match = original.match(/^(.*?)(?:\s+)([A-H])\s*$/i);
+                if (match) {
+                    const letter = String(match[2] || "").toUpperCase();
+                    const idx = letter.charCodeAt(0) - 65;
+                    return {
+                        questionText: String(match[1] || "").trim(),
+                        answer: (Array.isArray(options) && options[idx]) ? options[idx] : letter
+                    };
+                }
+            }
+
+            return { questionText: original, answer: "" };
+        }
+
+        function detectAutoQuestionType(sectionText) {
+            const text = String(sectionText || "");
+            if (/\bTRUE\b/i.test(text) && /\bFALSE\b/i.test(text) && /NOT\s+GIVEN/i.test(text)) return "true-false-not-given";
+            if (/\bYES\b/i.test(text) && /\bNO\b/i.test(text) && /NOT\s+GIVEN/i.test(text)) return "yes-no-not-given";
+            if (/^\s*[A-H]\.\s+/m.test(text)) return "multiple-choice";
+            if (/^\s*[ivxlcdm]+\.\s+/im.test(text)) return "matching-headings";
+            if (/\/\//.test(text) || /_{2,}/.test(text)) return "fill-in-the-blank";
+            return "short-answer";
+        }
+
+        function parseQuestionSections(questionText) {
+            const text = String(questionText || "").replace(/\r/g, "").trim();
+            if (!text) return [];
+
+            // Ultra-permissive: match any Unicode dash, hyphen, minus, tilde, or the word "to"
+            const DASH = '[\\-\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212\\uFE58\\uFE63\\uFF0D~]';
+            const markerRegex = new RegExp(`Questions?\\s*(\\d+)\\s*(?:${DASH}|\\bto\\b)\\s*(\\d+)`, 'gi');
+            const markers = [];
+            let markerMatch;
+
+            while ((markerMatch = markerRegex.exec(text)) !== null) {
+                markers.push({
+                    index: markerMatch.index,
+                    full: markerMatch[0],
+                    start: Number(markerMatch[1]),
+                    end: Number(markerMatch[2])
+                });
+            }
+
+            if (!markers.length) {
+                return [{ start: 1, end: 1, title: "Questions 1 - 1", body: text }];
+            }
+
+            const sections = [];
+            markers.forEach((marker, idx) => {
+                const next = markers[idx + 1];
+                const bodyStart = marker.index + marker.full.length;
+                const bodyEnd = next ? next.index : text.length;
+                const body = text.slice(bodyStart, bodyEnd).trim();
+                sections.push({
+                    start: marker.start,
+                    end: marker.end,
+                    title: `Questions ${marker.start} - ${marker.end}`,
+                    body
+                });
+            });
+
+            return sections.filter((section) => section.body || section.title);
+        }
+
+        function extractChoiceOptions(sectionText) {
+            const options = [];
+            const regex = /^\s*([A-H])\.\s*(.+)$/gim;
+            let match;
+            while ((match = regex.exec(sectionText)) !== null) {
+                options.push(String(match[2] || "").trim());
+            }
+            return options;
+        }
+
+        function normalizeAnswerForType(type, rawAnswer, options) {
+            const clean = String(rawAnswer || "").trim();
+            if (!clean) return "";
+
+            if (type === "multiple-choice") {
+                const letterMatch = clean.match(/^[A-H]$/i);
+                if (letterMatch) {
+                    const idx = letterMatch[0].toUpperCase().charCodeAt(0) - 65;
+                    return options[idx] || clean;
+                }
+                return clean;
+            }
+
+            const canonical = {
+                "true-false-not-given": ["True", "False", "Not Given"],
+                "yes-no-not-given": ["Yes", "No", "Not Given"]
+            };
+
+            if (canonical[type]) {
+                const found = canonical[type].find((item) => item.toLowerCase() === clean.toLowerCase());
+                return found || clean;
+            }
+
+            return clean;
+        }
+
+        function applyAutoFillToPassage(passageIndex, options = {}) {
+            const silent = !!options.silent;
+            const keepAutoMode = !!options.keepAutoMode;
+            saveAutoFillDraftFromEditors(passageIndex);
+
+            const passage = draft.passages[passageIndex];
+            if (!passage) return;
+
+            const draftState = getAutoFillDraft(passage);
+            const questionText = htmlToPlainText(draftState.questionText).trim();
+            const answerText = htmlToPlainText(draftState.answerText).trim();
+            const explanationText = htmlToPlainText(draftState.explanationText).trim();
+
+            if (!questionText) {
+                if (!silent) toast("Question box is empty");
+                return false;
+            }
+
+            const answerMap = parseNumberedTextMap(answerText);
+            const useSequentialAnswers = Object.keys(answerMap).length === 0;
+            const sequentialAnswers = useSequentialAnswers ? parseSequentialAnswerList(answerText) : [];
+            let sequentialAnswerIndex = 0;
+            const explanationMap = parseNumberedTextMap(explanationText);
+            const sections = parseQuestionSections(questionText);
+            const generatedGroups = [];
+
+            sections.forEach((section) => {
+                const start = Number(section.start || 1);
+                const end = Number(section.end || start);
+                const count = Math.max(1, end - start + 1);
+                const sectionType = detectAutoQuestionType(section.body);
+                const numberedQuestionMap = parseNumberedTextMap(section.body);
+                const hasNumberedQuestions = Object.keys(numberedQuestionMap).length > 0;
+                const optionList = sectionType === "multiple-choice" ? extractChoiceOptions(section.body) : [];
+
+                // For fill-in-the-blank: build a map of qNumber -> full sentence containing the inline blank
+                const inlineBlankMap = {};
+                if (sectionType === "fill-in-the-blank") {
+                    const bodyLines = String(section.body || "").split("\n");
+                    for (let qn = start; qn <= end; qn++) {
+                        const blankPat = new RegExp("\\b" + qn + "\\s*\\.\\s*_{2,}");
+                        const matchLine = bodyLines.find((line) => blankPat.test(line));
+                        if (matchLine) {
+                            inlineBlankMap[String(qn)] = matchLine
+                                .replace(/^[\s\u2022\-*]+/, "")
+                                .replace(new RegExp("\\b" + qn + "\\s*\\.\\s*_{2,}"), "______")
+                                .trim();
+                        }
+                    }
+                }
+
+                // Sequential lines fallback: lines that aren't multiple-choice options or empty
+                const sequentialLines = String(section.body || "")
+                    .split("\n")
+                    .map((l) => l.trim())
+                    .filter((l) => l && !/^[A-H]\./i.test(l) && !/^[-\u2022]/.test(l));
+
+                // Instruction is non-question preamble text (lines before the first numbered/sequential question)
+                const instructionText = hasNumberedQuestions
+                    ? String(section.body || "").replace(/^\s*\d+(?:\s*[\.\)\:\-]\s*|\s+).+$/gm, "").trim()
+                    : "";
+
+                const group = {
+                    title: section.title,
+                    instruction: instructionText,
+                    questionMode: count > 1 ? "multiple" : "single",
+                    questionRange: `${start}-${end}`,
+                    questions: []
+                };
+
+                for (let qNumber = start; qNumber <= end; qNumber += 1) {
+                    const question = newQuestion(sectionType);
+                    const seqIdx = qNumber - start;
+                    let rawQuestion = inlineBlankMap[String(qNumber)]
+                        || (sectionType !== "fill-in-the-blank" ? numberedQuestionMap[String(qNumber)] : null)
+                        || (count === 1 ? String(section.body || "").trim() : null)
+                        || sequentialLines[seqIdx]
+                        || `Question ${qNumber}`;
+                    question.text = rawQuestion;
+                    question.textHtml = rawQuestion;
+
+                    if (sectionType === "multiple-choice" && optionList.length) {
+                        question.options = optionList;
+                    }
+
+                    const inline = extractInlineAutoAnswer(sectionType, rawQuestion, question.options);
+                    rawQuestion = inline.questionText || rawQuestion;
+                    question.text = rawQuestion;
+                    question.textHtml = rawQuestion;
+
+                    let rawAnswer = answerMap[String(qNumber)] || "";
+                    if (!rawAnswer && useSequentialAnswers) {
+                        rawAnswer = sequentialAnswers[sequentialAnswerIndex] || "";
+                        sequentialAnswerIndex += 1;
+                    }
+                    if (!rawAnswer && inline.answer) {
+                        rawAnswer = inline.answer;
+                    }
+                    question.answer = normalizeAnswerForType(sectionType, rawAnswer, question.options);
+
+                    const explanation = explanationMap[String(qNumber)] || "";
+                    if (explanation) {
+                        question.autoExplanation = explanation;
+                    }
+
+                    group.questions.push(question);
+                }
+
+                enforceGroupQuestionConstraints(group);
+                generatedGroups.push(group);
+            });
+
+            if (!generatedGroups.length) {
+                if (!silent) toast("Cannot detect question groups. Use 'Questions 1 - 5' format.");
+                return false;
+            }
+
+            passage.questionGroups = generatedGroups;
+            passage.editorMode = keepAutoMode ? "auto" : "manual";
+            activePassageIndex = passageIndex;
+            if (!silent) {
+                renderGroups();
+                toast("Questions generated automatically");
+            }
+            return true;
         }
 
         function renderQuestions(passageIndex) {
@@ -2019,6 +2549,7 @@
                 toast("You can add up to 3 passages only");
                 return;
             }
+            persistActiveAutoFillDraft();
             draft.passages.push(newPassage());
             activePassageIndex = draft.passages.length - 1;
             renderGroups();
@@ -2029,6 +2560,7 @@
                 toast("Keep at least one passage");
                 return;
             }
+            persistActiveAutoFillDraft();
             draft.passages.splice(passageIndex, 1);
             ensureAtLeastOnePassage();
             if (activePassageIndex >= draft.passages.length) {
@@ -2080,6 +2612,7 @@
         }
 
         function buildStoredProblem() {
+            persistActiveAutoFillDraft();
             draft.title = document.getElementById("setTitle").value.trim();
             draft.scheduledDate = document.getElementById("setDate").value;
             draft.difficulty = document.getElementById("difficultyLevel").value;
@@ -2088,6 +2621,12 @@
             const normalizedPassages = draft.passages.map((passage) => ({
                 title: passage.title.trim(),
                 content: passage.content.trim(),
+                editorMode: passage.editorMode === "manual" ? "manual" : "auto",
+                autoFillDraft: {
+                    questionText: String(passage.autoFillDraft?.questionText || ""),
+                    answerText: String(passage.autoFillDraft?.answerText || ""),
+                    explanationText: String(passage.autoFillDraft?.explanationText || "")
+                },
                 questionGroups: passage.questionGroups.map((group) => ({
                     title: group.title,
                     instruction: group.instruction,
@@ -2132,6 +2671,28 @@
         }
 
         async function saveReadingSet() {
+            // Auto-generate questions for any passage still in auto mode
+            draft.passages.forEach((passage, passageIndex) => {
+                if (passage.editorMode === "auto") {
+                    saveAutoFillDraftFromEditors(passageIndex);
+                    const draftState = getAutoFillDraft(passage);
+                    const questionText = htmlToPlainText(draftState.questionText).trim();
+                    if (questionText) {
+                        applyAutoFillToPassage(passageIndex, { silent: true, keepAutoMode: true });
+                    }
+                }
+            });
+
+            // After auto-apply, any passage still in auto mode has no question text
+            const emptyAutoPassages = draft.passages
+                .map((p, i) => ({ p, i }))
+                .filter(({ p }) => p.editorMode === "auto")
+                .map(({ i }) => `passage ${i + 1}`);
+            if (emptyAutoPassages.length > 0) {
+                toast(`Please add questions for ${emptyAutoPassages.join(", ")} (auto mode), or switch to Manual.`);
+                return;
+            }
+
             const problem = buildStoredProblem();
             const missingFields = [];
 

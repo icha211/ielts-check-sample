@@ -1002,10 +1002,11 @@
                 italic: document.queryCommandState('italic'),
                 underline: document.queryCommandState('underline'),
                 strikeThrough: document.queryCommandState('strikeThrough'),
-                insertUnorderedList: document.queryCommandState('insertUnorderedList')
+                insertUnorderedList: document.queryCommandState('insertUnorderedList'),
+                insertOrderedList: document.queryCommandState('insertOrderedList')
             };
             
-            ['bold', 'italic', 'underline', 'strikeThrough', 'insertUnorderedList'].forEach(cmd => {
+            ['bold', 'italic', 'underline', 'strikeThrough', 'insertUnorderedList', 'insertOrderedList'].forEach(cmd => {
                 const btn = toolbar.querySelector(`[data-cmd="${cmd}"]`);
                 if (btn) btn.classList.toggle('active', btnStates[cmd]);
             });
@@ -1034,7 +1035,8 @@
             alignCenter: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
             alignRight: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M6 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-4-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m4-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m-4-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
             alignJustify: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
-            bullets: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m2-8.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>'
+            bullets: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m0 4a1 1 0 1 1-2 0 1 1 0 0 1 2 0m2-8.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0 4a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/></svg>',
+            numberedList: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5 11.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5"/><path d="M1.713 11.865v-.474H2c.217 0 .363-.137.363-.317 0-.185-.158-.31-.361-.31-.223 0-.367.152-.373.31h-.59c.016-.467.373-.787.986-.787.588 0 .927.33.927.767 0 .36-.21.573-.53.625v.022c.386.08.578.33.578.659 0 .518-.378.858-1.003.858-.63 0-1.008-.344-1.013-.827h.597c.01.164.174.295.393.295.225 0 .376-.135.376-.317 0-.195-.155-.325-.399-.325h-.29zm-.004-4.699h-.604v-.035c0-.408.295-.844.958-.844.583 0 .96.326.96.756 0 .389-.257.617-.476.848l-.537.572v.03h1.054V9H1.143v-.395l.957-.99c.138-.142.293-.304.293-.508 0-.18-.147-.32-.342-.32a.33.33 0 0 0-.342.338zM2.564 5h-.635V2.924h-.031l-.598.42v-.567l.629-.443h.635z"/></svg>'
         };
 
         function createRichEditorMarkup(editorId, placeholder = "") {
@@ -1046,6 +1048,7 @@
                         <button type="button" class="toolbar-btn" data-cmd="underline" title="Underline">${TOOLBAR_ICONS.underline}</button>
                         <button type="button" class="toolbar-btn" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
                         <button type="button" class="toolbar-btn" data-cmd="insertUnorderedList" title="Bullet List">${TOOLBAR_ICONS.bullets}</button>
+                        <button type="button" class="toolbar-btn" data-cmd="insertOrderedList" title="Numbered List">${TOOLBAR_ICONS.numberedList}</button>
                     </div>
 
                     <div class="toolbar-group">
@@ -1628,6 +1631,8 @@
         }
 
         function selectSet(index) {
+            persistActiveAutoFillDraft();
+
             const item = allProblems[index];
             if (!item || item.moduleId !== "reading") return;
             selectedIndex = index;
@@ -1831,6 +1836,7 @@
         }
 
         function selectPassagePage(passageIndex) {
+            persistActiveAutoFillDraft();
             activePassageIndex = passageIndex;
             renderGroups();
         }
@@ -1838,7 +1844,34 @@
         function htmlToPlainText(html) {
             const div = document.createElement("div");
             div.innerHTML = String(html || "");
-            return (div.textContent || div.innerText || "").replace(/\u00a0/g, " ");
+
+            // Ordered list markers are visual in contenteditable; materialize them as text.
+            div.querySelectorAll("ol").forEach((ol) => {
+                const items = Array.from(ol.children).filter((child) => child.tagName === "LI");
+                items.forEach((li, index) => {
+                    li.insertAdjacentText("afterbegin", `${index + 1}. `);
+                    li.insertAdjacentText("beforeend", "\n");
+                });
+            });
+
+            div.querySelectorAll("ul").forEach((ul) => {
+                const items = Array.from(ul.children).filter((child) => child.tagName === "LI");
+                items.forEach((li) => {
+                    li.insertAdjacentText("afterbegin", "- ");
+                    li.insertAdjacentText("beforeend", "\n");
+                });
+            });
+
+            div.querySelectorAll("br").forEach((br) => br.replaceWith("\n"));
+            div.querySelectorAll("p,div,li,h1,h2,h3,h4,h5,h6,tr,section,article,blockquote").forEach((el) => {
+                el.insertAdjacentText("beforeend", "\n");
+            });
+
+            return (div.textContent || div.innerText || "")
+                .replace(/\u00a0/g, " ")
+                .replace(/[ \t]+\n/g, "\n")
+                .replace(/\n{3,}/g, "\n\n")
+                .trim();
         }
 
         function getAutoFillDraft(passage) {
@@ -1862,6 +1895,16 @@
             draft.questionText = qEditor ? qEditor.innerHTML : draft.questionText;
             draft.answerText = aEditor ? aEditor.innerHTML : draft.answerText;
             draft.explanationText = eEditor ? eEditor.innerHTML : draft.explanationText;
+        }
+
+        function persistActiveAutoFillDraft() {
+            if (selectedIndex === null || activePassageIndex === null) return;
+
+            const current = allProblems[selectedIndex];
+            const passage = current?.passages?.[activePassageIndex];
+            if (!passage || passage.editorMode !== "auto") return;
+
+            saveAutoFillDraftFromEditors(activePassageIndex);
         }
 
         function setPassageEditorMode(passageIndex, mode) {
@@ -1916,23 +1959,67 @@
 
         function parseNumberedTextMap(rawText) {
             const map = {};
-            const lines = String(rawText || "").replace(/\r/g, "").split("\n");
-            let activeNumber = null;
+            const text = String(rawText || "").replace(/\r/g, "").replace(/\u00a0/g, " ");
 
-            lines.forEach((line) => {
-                const match = line.match(/^\s*(\d+)\.\s*(.*)$/);
-                if (match) {
-                    activeNumber = String(match[1]);
-                    map[activeNumber] = String(match[2] || "").trim();
-                    return;
+            const extractWithRegex = (regex) => {
+                let match;
+                while ((match = regex.exec(text)) !== null) {
+                    const number = String(match[1] || "").trim();
+                    const value = String(match[2] || "").replace(/\s+/g, " ").trim();
+                    if (number) {
+                        map[number] = value;
+                    }
                 }
+            };
 
-                if (activeNumber && line.trim()) {
-                    map[activeNumber] = `${map[activeNumber]} ${line.trim()}`.trim();
-                }
-            });
+            // Preferred: one numbered entry per line.
+            extractWithRegex(/(?:^|\n)\s*(\d+)(?:\s*[\.)\:\-]\s*|\s+)([\s\S]*?)(?=(?:\n\s*\d+(?:\s*[\.)\:\-]\s*|\s+))|$)/g);
+
+            // Fallback: pasted as one paragraph, e.g. "1. ... 2. ... 3. ...".
+            if (Object.keys(map).length <= 1) {
+                extractWithRegex(/(?:^|\s)(\d+)(?:\s*[\.)\:\-]\s*|\s+)([\s\S]*?)(?=(?:\s+\d+(?:\s*[\.)\:\-]\s*|\s+))|$)/g);
+            }
 
             return map;
+        }
+
+        function extractInlineAutoAnswer(type, rawQuestionText, options) {
+            const original = String(rawQuestionText || "").trim();
+            if (!original) return { questionText: "", answer: "" };
+
+            if (type === "true-false-not-given") {
+                const match = original.match(/^(.*?)(?:\s+)(TRUE|FALSE|NOT\s+GIVEN)\s*$/i);
+                if (match) {
+                    return {
+                        questionText: String(match[1] || "").trim(),
+                        answer: String(match[2] || "").replace(/\s+/g, " ").trim()
+                    };
+                }
+            }
+
+            if (type === "yes-no-not-given") {
+                const match = original.match(/^(.*?)(?:\s+)(YES|NO|NOT\s+GIVEN)\s*$/i);
+                if (match) {
+                    return {
+                        questionText: String(match[1] || "").trim(),
+                        answer: String(match[2] || "").replace(/\s+/g, " ").trim()
+                    };
+                }
+            }
+
+            if (type === "multiple-choice") {
+                const match = original.match(/^(.*?)(?:\s+)([A-H])\s*$/i);
+                if (match) {
+                    const letter = String(match[2] || "").toUpperCase();
+                    const idx = letter.charCodeAt(0) - 65;
+                    return {
+                        questionText: String(match[1] || "").trim(),
+                        answer: (Array.isArray(options) && options[idx]) ? options[idx] : letter
+                    };
+                }
+            }
+
+            return { questionText: original, answer: "" };
         }
 
         function detectAutoQuestionType(sectionText) {
@@ -1946,37 +2033,42 @@
         }
 
         function parseQuestionSections(questionText) {
-            const lines = String(questionText || "").replace(/\r/g, "").split("\n");
+            const text = String(questionText || "").replace(/\r/g, "").trim();
+            if (!text) return [];
+
+            // Ultra-permissive: match any Unicode dash, hyphen, minus, tilde, or the word "to"
+            const DASH = '[\\-\\u2010\\u2011\\u2012\\u2013\\u2014\\u2015\\u2212\\uFE58\\uFE63\\uFF0D~]';
+            const markerRegex = new RegExp(`Questions?\\s*(\\d+)\\s*(?:${DASH}|\\bto\\b)\\s*(\\d+)`, 'gi');
+            const markers = [];
+            let markerMatch;
+
+            while ((markerMatch = markerRegex.exec(text)) !== null) {
+                markers.push({
+                    index: markerMatch.index,
+                    full: markerMatch[0],
+                    start: Number(markerMatch[1]),
+                    end: Number(markerMatch[2])
+                });
+            }
+
+            if (!markers.length) {
+                return [{ start: 1, end: 1, title: "Questions 1 - 1", body: text }];
+            }
+
             const sections = [];
-            let currentSection = null;
-
-            const pushCurrent = () => {
-                if (!currentSection) return;
-                currentSection.body = currentSection.lines.join("\n").trim();
-                sections.push(currentSection);
-            };
-
-            lines.forEach((line) => {
-                const match = line.match(/^\s*Questions?\s*(\d+)\s*[\-\u2013]\s*(\d+)\s*$/i);
-                if (match) {
-                    pushCurrent();
-                    const start = Number(match[1]);
-                    const end = Number(match[2]);
-                    currentSection = {
-                        start,
-                        end,
-                        title: `Questions ${start} - ${end}`,
-                        lines: []
-                    };
-                } else {
-                    if (!currentSection) {
-                        currentSection = { start: 1, end: 1, title: "Questions 1 - 1", lines: [] };
-                    }
-                    currentSection.lines.push(line);
-                }
+            markers.forEach((marker, idx) => {
+                const next = markers[idx + 1];
+                const bodyStart = marker.index + marker.full.length;
+                const bodyEnd = next ? next.index : text.length;
+                const body = text.slice(bodyStart, bodyEnd).trim();
+                sections.push({
+                    start: marker.start,
+                    end: marker.end,
+                    title: `Questions ${marker.start} - ${marker.end}`,
+                    body
+                });
             });
 
-            pushCurrent();
             return sections.filter((section) => section.body || section.title);
         }
 
@@ -2049,10 +2141,35 @@
                 const count = Math.max(1, end - start + 1);
                 const sectionType = detectAutoQuestionType(section.body);
                 const numberedQuestionMap = parseNumberedTextMap(section.body);
+                const hasNumberedQuestions = Object.keys(numberedQuestionMap).length > 0;
                 const optionList = sectionType === "multiple-choice" ? extractChoiceOptions(section.body) : [];
-                const instructionText = String(section.body || "")
-                    .replace(/^\s*\d+\.\s+.*$/gm, "")
-                    .trim();
+
+                // For fill-in-the-blank: build a map of qNumber -> full sentence containing the inline blank
+                const inlineBlankMap = {};
+                if (sectionType === "fill-in-the-blank") {
+                    const bodyLines = String(section.body || "").split("\n");
+                    for (let qn = start; qn <= end; qn++) {
+                        const blankPat = new RegExp("\\b" + qn + "\\s*\\.\\s*_{2,}");
+                        const matchLine = bodyLines.find((line) => blankPat.test(line));
+                        if (matchLine) {
+                            inlineBlankMap[String(qn)] = matchLine
+                                .replace(/^[\s\u2022\-*]+/, "")
+                                .replace(new RegExp("\\b" + qn + "\\s*\\.\\s*_{2,}"), "______")
+                                .trim();
+                        }
+                    }
+                }
+
+                // Sequential lines fallback: lines that aren't MC options or empty
+                const sequentialLines = String(section.body || "")
+                    .split("\n")
+                    .map((l) => l.trim())
+                    .filter((l) => l && !/^[A-H]\./i.test(l) && !/^[-\u2022]/.test(l));
+
+                // Instruction is non-question preamble text (lines before the first numbered/sequential question)
+                const instructionText = hasNumberedQuestions
+                    ? String(section.body || "").replace(/^\s*\d+(?:\s*[\.\)\:\-]\s*|\s+).+$/gm, "").trim()
+                    : "";
 
                 const group = {
                     title: section.title,
@@ -2064,7 +2181,12 @@
 
                 for (let qNumber = start; qNumber <= end; qNumber += 1) {
                     const q = newQuestion(sectionType);
-                    const rawQuestion = numberedQuestionMap[String(qNumber)] || (count === 1 ? String(section.body || "").trim() : `Question ${qNumber}`);
+                    const seqIdx = qNumber - start;
+                    let rawQuestion = inlineBlankMap[String(qNumber)]
+                        || (sectionType !== "fill-in-the-blank" ? numberedQuestionMap[String(qNumber)] : null)
+                        || (count === 1 ? String(section.body || "").trim() : null)
+                        || sequentialLines[seqIdx]
+                        || `Question ${qNumber}`;
                     q.text = rawQuestion;
                     q.textHtml = rawQuestion;
 
@@ -2072,7 +2194,14 @@
                         q.options = optionList;
                     }
 
-                    const rawAnswer = answerMap[String(qNumber)] || "";
+                    // Extract inline trailing answer (e.g. "...text. TRUE", "...text. NOT GIVEN")
+                    const inline = extractInlineAutoAnswer(sectionType, rawQuestion, q.options);
+                    rawQuestion = inline.questionText || rawQuestion;
+                    q.text = rawQuestion;
+                    q.textHtml = rawQuestion;
+
+                    let rawAnswer = answerMap[String(qNumber)] || "";
+                    if (!rawAnswer && inline.answer) rawAnswer = inline.answer;
                     q.answer = normalizeAnswerForType(sectionType, rawAnswer, q.options);
 
                     const explanation = explanationMap[String(qNumber)] || "";
@@ -2591,6 +2720,7 @@
                 toast("You can add up to 3 passages only");
                 return;
             }
+            persistActiveAutoFillDraft();
             current.passages.push(newPassage());
             activePassageIndex = current.passages.length - 1;
             renderGroups();
@@ -2603,6 +2733,7 @@
                 toast("Keep at least one passage");
                 return;
             }
+            persistActiveAutoFillDraft();
             current.passages.splice(passageIndex, 1);
             ensureAtLeastOnePassage();
             if (activePassageIndex >= current.passages.length) {
