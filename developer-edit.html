@@ -534,6 +534,83 @@
 
         .inline-btn.danger { color: var(--danger); border-color: #ffd1d1; background: #fff5f5; }
 
+        .editor-mode-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #f3f7f5;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 4px;
+        }
+
+        .editor-mode-btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: transparent;
+            color: #5a6474;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .editor-mode-btn.active {
+            background: #114b3a;
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(17, 75, 58, 0.16);
+        }
+
+        .auto-fill-inline {
+            border: 1px solid #d7e7da;
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #f8fff9, #f2fbf4);
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .auto-fill-inline-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+        }
+
+        .auto-fill-inline-box {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: #fff;
+            padding: 10px;
+        }
+
+        .auto-fill-inline-actions {
+            margin-top: 10px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .auto-fill-guide {
+            margin-top: 10px;
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-sm);
+            background: #fff;
+            padding: 10px 12px;
+        }
+
+        .auto-fill-guide summary {
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .auto-fill-guide-content {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: 0.84rem;
+            display: grid;
+            gap: 4px;
+        }
+
         .sticky-actions {
             position: sticky;
             bottom: 10px;
@@ -776,6 +853,9 @@
             .sticky-actions { grid-template-columns: 1fr; }
             .rich-editor-toolbar { flex-direction: column; align-items: flex-start; }
             .toolbar-group { border-right: none; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 6px; margin-bottom: 6px; width: 100%; }
+            .auto-fill-inline-actions { justify-content: stretch; }
+            .auto-fill-inline-actions .btn,
+            .auto-fill-inline-actions .inline-btn { width: 100%; }
         }
     </style>
 </head>
@@ -1447,6 +1527,14 @@
             return {
                 title: passage.title || passage.passageTitle || "",
                 content: passage.content || passage.passageContent || "",
+                editorMode: passage.editorMode === "auto" ? "auto" : "manual",
+                autoFillDraft: typeof passage.autoFillDraft === "object" && passage.autoFillDraft
+                    ? {
+                        questionText: String(passage.autoFillDraft.questionText || ""),
+                        answerText: String(passage.autoFillDraft.answerText || ""),
+                        explanationText: String(passage.autoFillDraft.explanationText || "")
+                    }
+                    : { questionText: "", answerText: "", explanationText: "" },
                 questionGroups: Array.isArray(passage.questionGroups) && passage.questionGroups.length
                     ? passage.questionGroups.map((group) => ({
                         title: group.title || "Questions",
@@ -1654,12 +1742,52 @@
                             <div id="passageContentEditor_${passageIndex}"></div>
                             <input type="hidden" id="passageContent_${passageIndex}" value="${escapeHtml(passage.content)}">
                         </div>
-                        <div class="passage-groups">
+                        <div class="field">
+                            <label>Question Editor Mode</label>
+                            <div class="editor-mode-toggle">
+                                <button type="button" class="editor-mode-btn ${passage.editorMode !== "auto" ? "active" : ""}" onclick="setPassageEditorMode(${passageIndex}, 'manual')">Manual</button>
+                                <button type="button" class="editor-mode-btn ${passage.editorMode === "auto" ? "active" : ""}" onclick="setPassageEditorMode(${passageIndex}, 'auto')">Filled Automatically</button>
+                            </div>
+                        </div>
+                        <div class="passage-groups" id="manualGroupsWrap_${passageIndex}" style="display:${passage.editorMode === "auto" ? "none" : "block"};">
                             <div class="passage-head" style="margin-bottom: 10px;">
                                 <h3 style="margin: 0;">Question Groups</h3>
                                 <button type="button" class="inline-btn" onclick="addGroup(${passageIndex})">+ Add Group</button>
                             </div>
                             <div id="groupsContainer_${passageIndex}"></div>
+                        </div>
+                        <div class="auto-fill-inline" id="autoFillInlineWrap_${passageIndex}" style="display:${passage.editorMode === "auto" ? "block" : "none"};">
+                            <div class="auto-fill-inline-grid">
+                                <section class="auto-fill-inline-box">
+                                    <div class="passage-head" style="margin-bottom: 8px;"><h4 style="margin: 0;">Question</h4></div>
+                                    <div id="autoFillQuestionEditor_${passageIndex}"></div>
+                                </section>
+                                <section class="auto-fill-inline-box">
+                                    <div class="passage-head" style="margin-bottom: 8px;"><h4 style="margin: 0;">Answer Key</h4></div>
+                                    <div id="autoFillAnswerEditor_${passageIndex}"></div>
+                                </section>
+                                <section class="auto-fill-inline-box">
+                                    <div class="passage-head" style="margin-bottom: 8px;"><h4 style="margin: 0;">Explanation</h4></div>
+                                    <div id="autoFillExplanationEditor_${passageIndex}"></div>
+                                </section>
+                            </div>
+                            <details class="auto-fill-guide">
+                                <summary>Question Format Guide (Auto Detect)</summary>
+                                <div class="auto-fill-guide-content">
+                                    <p>Use lines like <strong>Questions 1 - 6</strong> to define a question range per group.</p>
+                                    <p>TRUE/FALSE/NOT GIVEN = True-False-Not Given</p>
+                                    <p>YES/NO/NOT GIVEN = Yes-No-Not Given</p>
+                                    <p>A. / B. / C. = Multiple Choice</p>
+                                    <p>Underscore blanks (____) or table style (//) = Fill in the Blank</p>
+                                    <p>Roman options (i. ii. iii.) = Matching Headings</p>
+                                    <p>Answer key format: <strong>1. answer</strong></p>
+                                    <p>Explanation format: <strong>1. explanation text</strong></p>
+                                </div>
+                            </details>
+                            <div class="auto-fill-inline-actions">
+                                <button type="button" class="inline-btn" onclick="setPassageEditorMode(${passageIndex}, 'manual')">Use Manual</button>
+                                <button type="button" class="btn btn-main" onclick="applyAutoFillToPassage(${passageIndex})">Generate and Fill Questions</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1680,7 +1808,11 @@
                 }
 
                 ensureAtLeastOneGroup(passageIndex);
-                renderQuestions(passageIndex);
+                if (passage.editorMode === "auto") {
+                    renderInlineAutoFillEditors(passageIndex);
+                } else {
+                    renderQuestions(passageIndex);
+                }
                 updatePassageSummary(passageIndex);
             });
 
@@ -1695,11 +1827,276 @@
                 addPassageBtn.disabled = current.passages.length >= 3;
                 addPassageBtn.textContent = current.passages.length >= 3 ? "Passage Limit Reached" : "+ Add Passage";
             }
+
         }
 
         function selectPassagePage(passageIndex) {
             activePassageIndex = passageIndex;
             renderGroups();
+        }
+
+        function htmlToPlainText(html) {
+            const div = document.createElement("div");
+            div.innerHTML = String(html || "");
+            return (div.textContent || div.innerText || "").replace(/\u00a0/g, " ");
+        }
+
+        function getAutoFillDraft(passage) {
+            if (!passage) return { questionText: "", answerText: "", explanationText: "" };
+            if (!passage.autoFillDraft || typeof passage.autoFillDraft !== "object") {
+                passage.autoFillDraft = { questionText: "", answerText: "", explanationText: "" };
+            }
+            return passage.autoFillDraft;
+        }
+
+        function saveAutoFillDraftFromEditors(passageIndex) {
+            const current = allProblems[selectedIndex];
+            const passage = current?.passages?.[passageIndex];
+            if (!passage) return;
+
+            const draft = getAutoFillDraft(passage);
+            const qEditor = document.getElementById(`autoFillQuestion_${passageIndex}Content`);
+            const aEditor = document.getElementById(`autoFillAnswer_${passageIndex}Content`);
+            const eEditor = document.getElementById(`autoFillExplanation_${passageIndex}Content`);
+
+            draft.questionText = qEditor ? qEditor.innerHTML : draft.questionText;
+            draft.answerText = aEditor ? aEditor.innerHTML : draft.answerText;
+            draft.explanationText = eEditor ? eEditor.innerHTML : draft.explanationText;
+        }
+
+        function setPassageEditorMode(passageIndex, mode) {
+            const current = allProblems[selectedIndex];
+            const passage = current?.passages?.[passageIndex];
+            if (!passage) return;
+
+            if (passage.editorMode === "auto") {
+                saveAutoFillDraftFromEditors(passageIndex);
+            }
+
+            passage.editorMode = mode === "auto" ? "auto" : "manual";
+            renderGroups();
+        }
+
+        function renderInlineAutoFillEditors(passageIndex) {
+            const current = allProblems[selectedIndex];
+            const passage = current?.passages?.[passageIndex];
+            if (!passage) return;
+            const draft = getAutoFillDraft(passage);
+
+            const qWrap = document.getElementById(`autoFillQuestionEditor_${passageIndex}`);
+            const aWrap = document.getElementById(`autoFillAnswerEditor_${passageIndex}`);
+            const eWrap = document.getElementById(`autoFillExplanationEditor_${passageIndex}`);
+            if (!qWrap || !aWrap || !eWrap) return;
+
+            const qId = `autoFillQuestion_${passageIndex}`;
+            const aId = `autoFillAnswer_${passageIndex}`;
+            const eId = `autoFillExplanation_${passageIndex}`;
+
+            qWrap.innerHTML = createRichEditorMarkup(qId, "Type question block here...");
+            aWrap.innerHTML = createRichEditorMarkup(aId, "Type answer key here...");
+            eWrap.innerHTML = createRichEditorMarkup(eId, "Type explanation notes here...");
+
+            bindRichEditorToolbar(qId);
+            bindRichEditorToolbar(aId);
+            bindRichEditorToolbar(eId);
+
+            const qEditor = document.getElementById(`${qId}Content`);
+            const aEditor = document.getElementById(`${aId}Content`);
+            const eEditor = document.getElementById(`${eId}Content`);
+
+            if (qEditor) qEditor.innerHTML = draft.questionText || "";
+            if (aEditor) aEditor.innerHTML = draft.answerText || "";
+            if (eEditor) eEditor.innerHTML = draft.explanationText || "";
+
+            [qEditor, aEditor, eEditor].forEach((editor) => {
+                editor?.addEventListener("input", () => saveAutoFillDraftFromEditors(passageIndex));
+                editor?.addEventListener("blur", () => saveAutoFillDraftFromEditors(passageIndex));
+            });
+        }
+
+        function parseNumberedTextMap(rawText) {
+            const map = {};
+            const lines = String(rawText || "").replace(/\r/g, "").split("\n");
+            let activeNumber = null;
+
+            lines.forEach((line) => {
+                const match = line.match(/^\s*(\d+)\.\s*(.*)$/);
+                if (match) {
+                    activeNumber = String(match[1]);
+                    map[activeNumber] = String(match[2] || "").trim();
+                    return;
+                }
+
+                if (activeNumber && line.trim()) {
+                    map[activeNumber] = `${map[activeNumber]} ${line.trim()}`.trim();
+                }
+            });
+
+            return map;
+        }
+
+        function detectAutoQuestionType(sectionText) {
+            const text = String(sectionText || "");
+            if (/\bTRUE\b/i.test(text) && /\bFALSE\b/i.test(text) && /NOT\s+GIVEN/i.test(text)) return "true-false-not-given";
+            if (/\bYES\b/i.test(text) && /\bNO\b/i.test(text) && /NOT\s+GIVEN/i.test(text)) return "yes-no-not-given";
+            if (/^\s*[A-H]\.\s+/m.test(text)) return "multiple-choice";
+            if (/^\s*[ivxlcdm]+\.\s+/im.test(text)) return "matching-headings";
+            if (/\/\//.test(text) || /_{2,}/.test(text)) return "fill-in-the-blank";
+            return "short-answer";
+        }
+
+        function parseQuestionSections(questionText) {
+            const lines = String(questionText || "").replace(/\r/g, "").split("\n");
+            const sections = [];
+            let currentSection = null;
+
+            const pushCurrent = () => {
+                if (!currentSection) return;
+                currentSection.body = currentSection.lines.join("\n").trim();
+                sections.push(currentSection);
+            };
+
+            lines.forEach((line) => {
+                const match = line.match(/^\s*Questions?\s*(\d+)\s*[\-\u2013]\s*(\d+)\s*$/i);
+                if (match) {
+                    pushCurrent();
+                    const start = Number(match[1]);
+                    const end = Number(match[2]);
+                    currentSection = {
+                        start,
+                        end,
+                        title: `Questions ${start} - ${end}`,
+                        lines: []
+                    };
+                } else {
+                    if (!currentSection) {
+                        currentSection = { start: 1, end: 1, title: "Questions 1 - 1", lines: [] };
+                    }
+                    currentSection.lines.push(line);
+                }
+            });
+
+            pushCurrent();
+            return sections.filter((section) => section.body || section.title);
+        }
+
+        function extractChoiceOptions(sectionText) {
+            const options = [];
+            const regex = /^\s*([A-H])\.\s*(.+)$/gim;
+            let match;
+            while ((match = regex.exec(sectionText)) !== null) {
+                options.push(String(match[2] || "").trim());
+            }
+            return options;
+        }
+
+        function normalizeAnswerForType(type, rawAnswer, options) {
+            const clean = String(rawAnswer || "").trim();
+            if (!clean) return "";
+
+            if (type === "multiple-choice") {
+                const letterMatch = clean.match(/^[A-H]$/i);
+                if (letterMatch) {
+                    const idx = letterMatch[0].toUpperCase().charCodeAt(0) - 65;
+                    return options[idx] || clean;
+                }
+                return clean;
+            }
+
+            const canonical = {
+                "true-false-not-given": ["True", "False", "Not Given"],
+                "yes-no-not-given": ["Yes", "No", "Not Given"]
+            };
+
+            if (canonical[type]) {
+                const found = canonical[type].find((item) => item.toLowerCase() === clean.toLowerCase());
+                return found || clean;
+            }
+
+            return clean;
+        }
+
+        function applyAutoFillToPassage(passageIndex) {
+            if (selectedIndex === null) {
+                toast("Select a set first");
+                return;
+            }
+
+            saveAutoFillDraftFromEditors(passageIndex);
+
+            const current = allProblems[selectedIndex];
+            const passage = current?.passages?.[passageIndex];
+            if (!passage) return;
+
+            const draft = getAutoFillDraft(passage);
+            const questionText = htmlToPlainText(draft.questionText).trim();
+            const answerText = htmlToPlainText(draft.answerText).trim();
+            const explanationText = htmlToPlainText(draft.explanationText).trim();
+
+            if (!questionText) {
+                toast("Question box is empty");
+                return;
+            }
+
+            const answerMap = parseNumberedTextMap(answerText);
+            const explanationMap = parseNumberedTextMap(explanationText);
+            const sections = parseQuestionSections(questionText);
+            const generatedGroups = [];
+
+            sections.forEach((section) => {
+                const start = Number(section.start || 1);
+                const end = Number(section.end || start);
+                const count = Math.max(1, end - start + 1);
+                const sectionType = detectAutoQuestionType(section.body);
+                const numberedQuestionMap = parseNumberedTextMap(section.body);
+                const optionList = sectionType === "multiple-choice" ? extractChoiceOptions(section.body) : [];
+                const instructionText = String(section.body || "")
+                    .replace(/^\s*\d+\.\s+.*$/gm, "")
+                    .trim();
+
+                const group = {
+                    title: section.title,
+                    instruction: instructionText,
+                    questionMode: count > 1 ? "multiple" : "single",
+                    questionRange: `${start}-${end}`,
+                    questions: []
+                };
+
+                for (let qNumber = start; qNumber <= end; qNumber += 1) {
+                    const q = newQuestion(sectionType);
+                    const rawQuestion = numberedQuestionMap[String(qNumber)] || (count === 1 ? String(section.body || "").trim() : `Question ${qNumber}`);
+                    q.text = rawQuestion;
+                    q.textHtml = rawQuestion;
+
+                    if (sectionType === "multiple-choice" && optionList.length) {
+                        q.options = optionList;
+                    }
+
+                    const rawAnswer = answerMap[String(qNumber)] || "";
+                    q.answer = normalizeAnswerForType(sectionType, rawAnswer, q.options);
+
+                    const explanation = explanationMap[String(qNumber)] || "";
+                    if (explanation) {
+                        q.autoExplanation = explanation;
+                    }
+
+                    group.questions.push(q);
+                }
+
+                enforceGroupQuestionConstraints(group);
+                generatedGroups.push(group);
+            });
+
+            if (!generatedGroups.length) {
+                toast("Cannot detect question groups. Use 'Questions 1 - 5' format.");
+                return;
+            }
+
+            passage.questionGroups = generatedGroups;
+            passage.editorMode = "manual";
+            activePassageIndex = passageIndex;
+            renderGroups();
+            toast("Questions generated automatically");
         }
 
         function renderQuestions(passageIndex) {
@@ -2397,4 +2794,3 @@
     </script>
 </body>
 </html>
-
