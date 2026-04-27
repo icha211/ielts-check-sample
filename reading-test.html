@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IELTS Reading Practice Test - IELTS Check</title>
+    <title>Reading Test - IELTS Check</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -23,9 +23,8 @@
         body { background-color: var(--bg-body); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
         h1, h2, h3, h4, .header-title, .question-group-title { font-family: 'Sora', sans-serif; letter-spacing: -0.01em; }
 
-        /* Header */
-        header { background-color: var(--bg-surface); padding: 16px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); box-shadow: 0 1px 3px rgba(0,0,0,0.05); z-index: 10; }
-        .header-title { font-size: 1.25rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 20px; }
+        /* Compact controls */
+        .header-title { font-size: 1rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 14px; }
         .text-controls { display: flex; gap: 5px; background: var(--bg-body); padding: 4px; border-radius: 6px; border: 1px solid var(--border-color); }
         .text-btn { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 4px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: 600; cursor: pointer; color: var(--text-main); transition: background 0.2s; }
         .text-btn:hover { background: #e2e8f0; }
@@ -45,10 +44,171 @@
         #timer.warning { color: white; background: var(--danger); border-color: var(--danger); }
 
         /* Layout */
-        .container { display: flex; flex-wrap: wrap; flex: 1; overflow: visible; padding: 20px 20px 84px; gap: 10px; max-width: 1600px; margin: 0 auto; width: 100%; min-height: 0; }
-        .panel { background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow-y: auto; max-height: calc(100vh - 186px); padding: 40px; position: relative; scroll-behavior: smooth; }
+        .container { display: flex; flex-wrap: wrap; flex: 1; overflow: visible; padding: 24px 20px; gap: 10px; max-width: 1600px; margin: 0 auto; width: 100%; min-height: 0; }
+        .panel { background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow-y: auto; max-height: calc(100vh - 154px); padding: 40px; position: relative; scroll-behavior: smooth; }
         .passage-section { width: 50%; }
         .question-section { flex: 1; }
+
+        .header-center { display: none; }
+
+        .reading-overview {
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+            padding: 10px 18px;
+            position: sticky;
+            top: 0;
+            z-index: 22;
+        }
+
+        .overview-top {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .overview-main-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-main);
+            line-height: 1.1;
+        }
+
+        .overview-title-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .overview-sub-title {
+            font-size: 0.76rem;
+            color: #8b98a5;
+            margin-top: 2px;
+        }
+
+        .passage-progress-strip {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+        }
+
+        .passage-progress-card {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: #fbfdfc;
+            padding: 6px 10px;
+            min-width: 132px;
+            cursor: pointer;
+        }
+
+        .passage-progress-card.active {
+            border-color: var(--primary);
+            background: #eef5ff;
+        }
+
+        .passage-progress-ring {
+            --pct: 0%;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: conic-gradient(var(--primary) var(--pct), #dde7e2 0);
+            flex-shrink: 0;
+        }
+
+        .passage-progress-ring::before {
+            content: "";
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--bg-surface);
+            border: 1px solid #e7efeb;
+        }
+
+        .passage-progress-value {
+            position: absolute;
+            font-size: 0.62rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .passage-progress-meta {
+            min-width: 0;
+        }
+
+        .passage-progress-name {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #334155;
+            text-transform: uppercase;
+        }
+
+        .passage-progress-count {
+            font-size: 0.72rem;
+            color: #6b7280;
+        }
+
+        .overview-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .overview-btn {
+            border: 1px solid var(--border-color);
+            background: #fff;
+            color: #334155;
+            border-radius: 8px;
+            padding: 7px 10px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .overview-btn:hover { background: #f5f9f7; }
+        .overview-btn.primary { border-color: #9ec8af; background: #ebf8f0; color: #1f745e; }
+
+        .overview-bottom {
+            margin-top: 8px;
+            border-top: 1px dashed #e2ebe6;
+            padding-top: 8px;
+        }
+
+        .question-type-strip {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+        }
+
+        .question-type-chip {
+            border: 1px solid #cdd8d2;
+            border-radius: 999px;
+            padding: 6px 10px;
+            background: #f7fbf9;
+            color: #334155;
+            font-size: 0.74rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .question-type-chip.active {
+            border-color: var(--primary);
+            background: #edf4ff;
+            color: var(--primary);
+        }
 
         .part-strip-global {
             position: fixed;
@@ -186,7 +346,7 @@
         .question-group { margin-bottom: 40px; }
         .question-group-title { font-size: calc(1.0rem * var(--text-zoom)); font-weight: 600; background: var(--bg-body); padding: 10px 15px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid var(--primary); }
         .instruction { font-style: italic; color: var(--text-muted); margin-bottom: 20px; font-size: calc(0.95rem * var(--text-zoom)); }
-        .question-block { margin-bottom: 30px; line-height: 1.6; padding: 10px; border-radius: 8px; transition: background-color 0.5s ease; }
+        .question-block { margin-bottom: 16px; line-height: 1.6; padding: 14px 14px 12px; border-radius: 10px; border: 1px solid #dde6e1; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.03); transition: background-color 0.5s ease; }
         .question-text { font-weight: 500; margin-bottom: 12px; font-size: calc(0.85rem * var(--text-zoom)); }
         .question-text .question-bullet-list { margin: 8px 0; padding-left: 0; list-style: none; }
         .question-text .question-bullet-list li { margin: 4px 0; padding-left: 1.1em; position: relative; }
@@ -264,9 +424,9 @@
         .result-bad { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
         @media (max-width: 768px) {
-            .container { flex-direction: column; padding: 12px 12px 112px; }
+            .container { flex-direction: column; padding: 16px 12px 16px; }
             .passage-section, .question-section { width: 100% !important; flex: none; }
-            .panel { max-height: calc(100vh - 198px); }
+            .panel { max-height: calc(100vh - 188px); }
             .resizer { display: none; }
             .question-navigator { top: 0; }
             .part-strip-global { left: 12px; right: 12px; bottom: 8px; }
@@ -275,31 +435,44 @@
             .part-title { font-size: 1.2rem; }
             .part-meta { font-size: 1rem; }
             .part-mini-chip { width: 30px; height: 30px; font-size: 0.95rem; }
+            .overview-top { grid-template-columns: 1fr; align-items: stretch; }
+            .overview-actions { justify-content: flex-start; }
         }
     </style>
 </head>
 <body>
 
 
-    <header>
-        <div class="header-title">
-            <span id="display-title">IELTS Academic Reading</span>
-            <div class="text-controls" title="Adjust Text Size">
-                <button class="text-btn" onclick="adjustTextSize(-0.1)">A</button>
-                <button class="text-btn" onclick="adjustTextSize(+0.1)">A+</button>
+    <section class="reading-overview" id="readingOverview">
+        <div class="overview-top">
+            <div>
+                <div class="overview-title-row">
+                    <div class="overview-main-title" id="display-title">Reading Test</div>
+                    <div class="text-controls" title="Adjust Text Size">
+                        <button class="text-btn" onclick="adjustTextSize(-0.1)">A</button>
+                        <button class="text-btn" onclick="adjustTextSize(+0.1)">A+</button>
+                    </div>
+                </div>
+                <div class="overview-sub-title" id="overviewDate">-</div>
+            </div>
+
+            <div class="passage-progress-strip" id="passageProgressStrip"></div>
+
+            <div class="overview-actions">
+                <button id="backToDeveloperBtn" class="back-dev-btn" type="button" onclick="goBackToDeveloper()">Back</button>
+                <div class="timer-container">
+                    <span>Time left:</span>
+                    <span id="timer">60:00</span>
+                </div>
+                <button type="button" class="overview-btn" id="toggleTypeTrackerBtn">Hide Tracker</button>
+                <button type="button" class="overview-btn" id="prevPassageBtn">← Home</button>
+                <button type="button" class="overview-btn" id="nextPassageBtn">Passage 2 →</button>
             </div>
         </div>
-        <div class="header-center">
-            <div id="headerTracker" class="header-tracker"></div>
+        <div class="overview-bottom" id="overviewBottom">
+            <div class="question-type-strip" id="questionTypeStrip"></div>
         </div>
-        <div class="header-right">
-            <button id="backToDeveloperBtn" class="back-dev-btn" type="button" onclick="goBackToDeveloper()">Back</button>
-            <div class="timer-container">
-                <span>Time left:</span> 
-                <span id="timer">60:00</span>
-            </div>
-        </div>
-    </header>
+    </section>
 
     <div class="container">
         <div class="panel passage-section" id="leftPanel">
@@ -438,6 +611,8 @@
         </style>
         <script>
         // --- Tracker Popup Logic ---
+        let trackerPopupPartIndex = null;
+
         function renderHeaderTracker(passages) {
             const tracker = document.getElementById('headerTracker');
             if (!tracker) return;
@@ -448,10 +623,11 @@
                 const total = entries.length;
                 const answeredCount = entries.filter((entry) => String(answerState[entry.name] || '').trim().length > 0).length;
                 const isActive = idx === currentPartIndex;
-                html += `<div class="tracker-part-box${isActive ? ' active' : ''}" onclick="setActivePart(${idx})">`;
+                const isPopupOpen = trackerPopupPartIndex === idx;
+                html += `<div class="tracker-part-box${isActive ? ' active' : ''}" onclick="onTrackerPartClick(event, ${idx})">`;
                 html += `<div class="tracker-part-label">${idx + 1}</div>`;
                 html += `<div class="tracker-part-progress">${answeredCount} / ${total}</div>`;
-                if (isActive) {
+                if (isPopupOpen) {
                     // Centered popup for question numbers
                     html += `<div class="tracker-popup">`;
                     html += renderTrackerQuestionChips(entries, idx);
@@ -473,6 +649,20 @@
             html += '</div>';
             return html;
         }
+
+        function onTrackerPartClick(event, partIndex) {
+            event.stopPropagation();
+            const isSamePart = currentPartIndex === partIndex;
+            const isOpen = trackerPopupPartIndex === partIndex;
+
+            if (isSamePart && isOpen) {
+                trackerPopupPartIndex = null;
+                renderPartStrip(getProblemPassages());
+                return;
+            }
+
+            setActivePart(partIndex, null, true);
+        }
         </script>
     </div>
 
@@ -493,7 +683,7 @@
             moduleId: "reading",
             icon: "",
             moduleName: "Reading",
-            title: "IELTS Academic Reading",
+            title: "Reading Test",
             passages: [
                 {
                     title: "The History of the Bicycle",
@@ -537,6 +727,158 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
         let currentPartIndex = 0;
         const answerState = {};
         let pendingFocusInputName = null;
+        let isTypeTrackerCollapsed = false;
+
+        function formatReadingDate(dateValue) {
+            const raw = String(dateValue || "").trim();
+            if (!raw) return "No date";
+            const parsed = new Date(raw);
+            if (Number.isNaN(parsed.getTime())) return raw;
+            return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+        }
+
+        function getQuestionTypeLabel(question) {
+            const q = question || {};
+            const type = String(q.type || "").toLowerCase();
+            if (type === "matching-headings") return "Matching Heading";
+            if (type === "fill-in-the-blank") return "Fill in the Blank";
+            if (type === "text") {
+                const hasDefs = extractNumberedBlankDefs(q.text || "").length > 0;
+                return hasDefs ? "Summary Completion" : "Short Answer";
+            }
+
+            const optionsText = String(q.options || "").toLowerCase();
+            if (optionsText.includes("true") && optionsText.includes("false") && optionsText.includes("not given")) return "True/False/Not Given";
+            if (optionsText.includes("yes") && optionsText.includes("no") && optionsText.includes("not given")) return "Yes/No/Not Given";
+            return "Multiple Choice";
+        }
+
+        function collectQuestionLabelsForQuestion(question, fallbackCounter) {
+            if (question?.type === 'matching-headings') {
+                const matching = normalizeMatchingHeadings(question);
+                return matching.rows.map((row) => String(row.number || "")).filter(Boolean);
+            }
+            const numberedDefs = extractNumberedBlankDefs(question?.text || "");
+            if ((question?.type === 'text' || question?.type === 'fill-in-the-blank') && numberedDefs.length > 0) {
+                return numberedDefs.map((def) => String(def.number));
+            }
+            return [extractQuestionDisplayNumber(question, fallbackCounter)];
+        }
+
+        function buildQuestionTypeMeta(groups) {
+            const result = [];
+            let fallbackCounter = 1;
+            groups.forEach((group, gIdx) => {
+                const labels = [];
+                (group.questions || []).forEach((q) => {
+                    const qLabels = collectQuestionLabelsForQuestion(q, fallbackCounter);
+                    labels.push(...qLabels);
+                    const numberedDefs = extractNumberedBlankDefs(q?.text || "");
+                    if (!((q?.type === 'text' || q?.type === 'fill-in-the-blank') && numberedDefs.length > 0) && q?.type !== 'matching-headings') {
+                        fallbackCounter++;
+                    }
+                });
+
+                const firstLabel = labels[0] || String(fallbackCounter);
+                const lastLabel = labels[labels.length - 1] || firstLabel;
+                const typeLabel = getQuestionTypeLabel((group.questions || [])[0] || {});
+
+                result.push({
+                    groupIndex: gIdx,
+                    typeLabel,
+                    startLabel: firstLabel,
+                    endLabel: lastLabel
+                });
+            });
+            return result;
+        }
+
+        function goToPrevPassage() {
+            if (currentPartIndex <= 0) {
+                goBackToDeveloper();
+                return;
+            }
+            setActivePart(currentPartIndex - 1);
+        }
+
+        function goToNextPassage() {
+            const passages = getProblemPassages();
+            if (currentPartIndex >= passages.length - 1) {
+                submitTest();
+                return;
+            }
+            setActivePart(currentPartIndex + 1);
+        }
+
+        function scrollToGroup(groupIndex) {
+            const target = document.getElementById(`group_${currentPartIndex}_${groupIndex}`);
+            const container = document.getElementById('rightPanel');
+            if (!target || !container) return;
+            container.scrollTo({ top: target.offsetTop - 50, behavior: 'smooth' });
+        }
+
+        function renderReadingOverview(passages, typeMeta) {
+            const dateEl = document.getElementById('overviewDate');
+            if (dateEl) {
+                dateEl.textContent = formatReadingDate(currentProblem?.scheduledDate || currentProblem?.date || currentProblem?.scheduled_at);
+            }
+
+            const parts = buildPartTrackerData(passages);
+            const strip = document.getElementById('passageProgressStrip');
+            if (strip) {
+                strip.innerHTML = parts.map((part, idx) => {
+                    const entries = part.entries || [];
+                    const total = entries.length;
+                    const answeredCount = entries.filter((entry) => String(answerState[entry.name] || '').trim().length > 0).length;
+                    const percentage = total > 0 ? Math.round((answeredCount / total) * 100) : 0;
+                    return `
+                        <article class="passage-progress-card ${idx === currentPartIndex ? 'active' : ''}" onclick="setActivePart(${idx})">
+                            <div class="passage-progress-ring" style="--pct:${percentage}%">
+                                <span class="passage-progress-value">${answeredCount}/${total}</span>
+                            </div>
+                            <div class="passage-progress-meta">
+                                <div class="passage-progress-name">PASSAGE ${idx + 1}</div>
+                                <div class="passage-progress-count">${total} questions</div>
+                            </div>
+                        </article>
+                    `;
+                }).join('');
+            }
+
+            const typeStrip = document.getElementById('questionTypeStrip');
+            if (typeStrip) {
+                typeStrip.innerHTML = (typeMeta || []).map((meta, idx) => `
+                    <button type="button" class="question-type-chip ${idx === 0 ? 'active' : ''}" onclick="scrollToGroup(${meta.groupIndex})">
+                        ${escapeHtml(meta.typeLabel)} · Question ${escapeHtml(meta.startLabel)}-${escapeHtml(meta.endLabel)}
+                    </button>
+                `).join('');
+            }
+
+            const bottom = document.getElementById('overviewBottom');
+            const toggleBtn = document.getElementById('toggleTypeTrackerBtn');
+            if (bottom && toggleBtn) {
+                bottom.style.display = isTypeTrackerCollapsed ? 'none' : '';
+                toggleBtn.textContent = isTypeTrackerCollapsed ? 'Show Tracker' : 'Hide Tracker';
+            }
+
+            const prevBtn = document.getElementById('prevPassageBtn');
+            const nextBtn = document.getElementById('nextPassageBtn');
+            if (prevBtn) {
+                prevBtn.textContent = currentPartIndex === 0 ? '← Home' : `← Passage ${currentPartIndex}`;
+            }
+            if (nextBtn) {
+                const isLast = currentPartIndex >= passages.length - 1;
+                nextBtn.textContent = isLast ? 'Submit →' : `Passage ${currentPartIndex + 2} →`;
+                nextBtn.classList.toggle('primary', isLast);
+            }
+        }
+
+        function extractQuestionDisplayNumber(question, fallback) {
+            const rawText = String(question?.text || question?.textHtml || "");
+            const plainText = rawText.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+            const match = plainText.match(/(?:^|\s)(\d+)\s*[.)]/);
+            return match ? String(match[1]) : String(fallback);
+        }
 
         function getProblemPassages() {
             if (!currentProblem) return [];
@@ -673,9 +1015,10 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                                 });
                             });
                         } else {
+                            const questionLabel = extractQuestionDisplayNumber(q, entries.length + 1);
                             entries.push({
                                 name: baseName,
-                                label: String(entries.length + 1),
+                                label: questionLabel,
                                 blockId: baseBlockId
                             });
                         }
@@ -691,10 +1034,11 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             renderHeaderTracker(passages);
         }
 
-        function setActivePart(index, focusInputName = null) {
+        function setActivePart(index, focusInputName = null, openTrackerPopup = false) {
             snapshotCurrentAnswers();
             currentPartIndex = index;
             pendingFocusInputName = focusInputName;
+            trackerPopupPartIndex = openTrackerPopup ? index : null;
             renderTest();
         }
 
@@ -745,7 +1089,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
                 return {
                     ...problem,
-                    title: problem.title || "IELTS Academic Reading",
+                    title: problem.title || "Reading Test",
                     passages,
                     passageTitle: passages[0]?.title || "Passage",
                     passageContent: passages[0]?.content || "",
@@ -758,7 +1102,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 const questionGroups = normalizeQuestionGroups(problem.questionGroups);
                 return {
                     ...problem,
-                    title: problem.title || "IELTS Academic Reading",
+                    title: problem.title || "Reading Test",
                     passageTitle: problem.passageTitle || "Passage",
                     passageContent: problem.passageContent || "",
                     passages: [{
@@ -789,7 +1133,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     moduleId: "reading",
                     icon: problem.icon || "",
                     moduleName: "Reading",
-                    title: problem.title || "IELTS Academic Reading",
+                    title: problem.title || "Reading Test",
                     passageTitle: problem.passage?.title || problem.passageTitle || "Passage",
                     passageContent: problem.passage?.text || problem.passageContent || "",
                     passages: [{
@@ -1052,7 +1396,9 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
         function renderTest() {
             if (!currentProblem) return;
 
-            document.getElementById('display-title').innerText = currentProblem.title || "IELTS Reading";
+            const OLD_DEFAULTS = ["IELTS Academic Reading", "IELTS Reading"];
+            const rawTitle = (currentProblem.title || "").trim();
+            document.getElementById('display-title').innerText = (!rawTitle || OLD_DEFAULTS.includes(rawTitle)) ? "Reading Test" : rawTitle;
             const passages = getProblemPassages();
             if (currentPartIndex < 0 || currentPartIndex >= passages.length) {
                 currentPartIndex = 0;
@@ -1070,12 +1416,13 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             `;
 
             const container = document.getElementById('dynamic-questions-container');
-            let navHtml = '';
             let absoluteQNum = 1;
             let html = '';
+            const typeMeta = [];
 
             activeGroups.forEach((group, gIndex) => {
-                html += `<div class="question-group">`;
+                const groupQuestionLabels = [];
+                html += `<div class="question-group" id="group_${currentPartIndex}_${gIndex}">`;
                 if(group.title) html += `<div class="question-group-title">${group.title}</div>`;
                 if(group.instruction) html += `<p class="instruction">${group.instruction}</p>`;
 
@@ -1085,18 +1432,18 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     if (q.type === 'matching-headings') {
                         const matching = normalizeMatchingHeadings(q);
                         matching.rows.forEach((row) => {
-                            navHtml += `<div class="nav-item" id="nav_${inputName}__mh__${escapeHtml(row.number)}" onclick="scrollToQuestion('${blockId}')">${escapeHtml(row.number)}</div>`;
+                            groupQuestionLabels.push(String(row.number));
                         });
                     } else {
                     const numberedDefs = extractNumberedBlankDefs(q.text);
 
                     if ((q.type === 'text' || q.type === 'fill-in-the-blank') && numberedDefs.length > 0) {
                         numberedDefs.forEach((def) => {
-                            const numberedInputName = `${inputName}__${def.number}`;
-                            navHtml += `<div class="nav-item" id="nav_${numberedInputName}" onclick="scrollToQuestion('${blockId}')">${escapeHtml(def.number)}</div>`;
+                            groupQuestionLabels.push(String(def.number));
                         });
                     } else {
-                        navHtml += `<div class="nav-item" id="nav_${inputName}" onclick="scrollToQuestion('${blockId}')">${absoluteQNum}</div>`;
+                        const questionLabel = extractQuestionDisplayNumber(q, absoluteQNum);
+                        groupQuestionLabels.push(String(questionLabel));
                         absoluteQNum++;
                     }
                     }
@@ -1136,11 +1483,21 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
                     html += `</div>`;
                 });
+
+                const firstLabel = groupQuestionLabels[0] || String(gIndex + 1);
+                const lastLabel = groupQuestionLabels[groupQuestionLabels.length - 1] || firstLabel;
+                const firstQuestion = (group.questions || [])[0] || {};
+                typeMeta.push({
+                    groupIndex: gIndex,
+                    typeLabel: getQuestionTypeLabel(firstQuestion),
+                    startLabel: firstLabel,
+                    endLabel: lastLabel
+                });
                 html += `</div>`;
             });
 
             container.innerHTML = html;
-            renderPartStrip(passages);
+            renderReadingOverview(passages, typeMeta);
             hydrateInputsFromState();
             attachTrackingListeners();
             updateProgressInit();
@@ -1191,7 +1548,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 answerState[inputName] = "";
             }
 
-            renderPartStrip(getProblemPassages());
+            renderReadingOverview(getProblemPassages(), buildQuestionTypeMeta(getPassageQuestionGroups(getProblemPassages()[currentPartIndex] || {}, currentProblem?.questionGroups || [])));
             updateProgressInit();
         }
 
@@ -1227,6 +1584,33 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
         const resizer = document.getElementById('dragMe');
         const leftPanel = document.getElementById('leftPanel');
         let x = 0; let leftWidth = 0;
+
+        document.addEventListener('click', function(event) {
+            const tracker = document.getElementById('headerTracker');
+            if (!tracker) return;
+            if (trackerPopupPartIndex === null) return;
+            if (tracker.contains(event.target)) return;
+            trackerPopupPartIndex = null;
+            renderPartStrip(getProblemPassages());
+        });
+
+        const toggleTypeTrackerBtn = document.getElementById('toggleTypeTrackerBtn');
+        if (toggleTypeTrackerBtn) {
+            toggleTypeTrackerBtn.addEventListener('click', function() {
+                isTypeTrackerCollapsed = !isTypeTrackerCollapsed;
+                renderReadingOverview(getProblemPassages(), buildQuestionTypeMeta(getPassageQuestionGroups(getProblemPassages()[currentPartIndex] || {}, currentProblem?.questionGroups || [])));
+            });
+        }
+
+        const prevPassageBtn = document.getElementById('prevPassageBtn');
+        if (prevPassageBtn) {
+            prevPassageBtn.addEventListener('click', goToPrevPassage);
+        }
+
+        const nextPassageBtn = document.getElementById('nextPassageBtn');
+        if (nextPassageBtn) {
+            nextPassageBtn.addEventListener('click', goToNextPassage);
+        }
 
         resizer.addEventListener('mousedown', function(e) {
             x = e.clientX; leftWidth = leftPanel.getBoundingClientRect().width;
