@@ -947,8 +947,8 @@
             "multiple-choice": { mode: "radio", options: ["A", "B", "C", "D"], locked: false, label: "Multiple Choice (A/B/C/...)" },
             "true-false-not-given": { mode: "radio", options: ["True", "False", "Not Given"], locked: true, label: "True / False / Not Given" },
             "yes-no-not-given": { mode: "radio", options: ["Yes", "No", "Not Given"], locked: true, label: "Yes / No / Not Given" },
-            "short-answer": { mode: "text", options: [], locked: true, label: "Short Answer" },
-            "fill-in-the-blank": { mode: "blank", options: [], locked: true, label: "Fill in the Blank" },
+            "short-answer": { mode: "text", options: [], locked: true, label: "Isian Singkat (Short Answer)" },
+            "fill-in-the-blank": { mode: "blank", options: [], locked: true, label: "Fill in the Blank (Passage)" },
             "sentence-completion": { mode: "text", options: [], locked: true, label: "Sentence Completion" },
             "matching-headings": { mode: "matching-headings", options: [], locked: true, label: "Matching Headings" }
         };
@@ -1301,6 +1301,10 @@
             return String(value || "").match(/[A-Za-z0-9]+(?:['-][A-Za-z0-9]+)*/g) || [];
         }
 
+        function isBlankStyleType(type) {
+            return type === "fill-in-the-blank";
+        }
+
         function extractNumberedBlankDefs(value) {
             const defs = [];
             const regex = /(\d+)\s((?:_\s*){2,})/g;
@@ -1385,7 +1389,7 @@
                 question.text = normalizeQuestionTextFromHtml(editable.innerHTML);
                 question.textHtml = String(editable.innerHTML || "");
                 if (hidden) hidden.value = question.textHtml;
-                if (question.type === "fill-in-the-blank" && question.answer) {
+                if (isBlankStyleType(question.type) && question.answer) {
                     if (extractNumberedBlankDefs(question.text).length > 0) return;
                     const choices = extractBlankWordChoices(question.text);
                     if (!choices.includes(question.answer)) question.answer = "";
@@ -1397,7 +1401,7 @@
                 syncText();
                 const current = allProblems[selectedIndex];
                 const question = current?.passages?.[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
-                if (question?.type === "fill-in-the-blank") renderQuestions(passageIndex);
+                if (isBlankStyleType(question?.type)) renderQuestions(passageIndex);
             });
         }
 
@@ -1544,6 +1548,8 @@
                         instruction: group.instruction || "",
                         questionMode: group.questionMode || ((group.questions || []).length > 1 ? "multiple" : "single"),
                         questionRange: group.questionRange || "",
+                        passageBody: group.passageBody || undefined,
+                        passageStart: group.passageStart || undefined,
                         questions: (group.questions || []).length ? group.questions.map(normalizeQuestion) : [newQuestion("multiple-choice")]
                     }))
                     : [newGroup({ questionGroups: [] })]
@@ -1783,7 +1789,7 @@
                                     <p>TRUE/FALSE/NOT GIVEN = True-False-Not Given</p>
                                     <p>YES/NO/NOT GIVEN = Yes-No-Not Given</p>
                                     <p>A. / B. / C. = Multiple Choice</p>
-                                    <p>Underscore blanks (____) or table style (//) = Fill in the Blank</p>
+                                    <p>Underscore blanks (____) or table style (//) = Isian Singkat (Short Answer)</p>
                                     <p>Roman options (i. ii. iii.) = Matching Headings</p>
                                     <p>Answer key format: <strong>1. answer</strong></p>
                                     <p>Explanation format: <strong>1. explanation text</strong></p>
@@ -2154,7 +2160,7 @@
                         if (matchLine) {
                             inlineBlankMap[String(qn)] = matchLine
                                 .replace(/^[\s\u2022\-*]+/, "")
-                                .replace(new RegExp("\\b" + qn + "\\s*\\.\\s*_{2,}"), "______")
+                                .replace(new RegExp("\\b" + qn + "\\s*\\.\\s*(_{2,})"), qn + " $1")
                                 .trim();
                         }
                     }
@@ -2179,6 +2185,12 @@
                     questions: []
                 };
 
+                // For fill-in-the-blank with inline blanks, store the full passage body for rendering
+                if (sectionType === "fill-in-the-blank" && Object.keys(inlineBlankMap).length > 0) {
+                    group.passageBody = section.body;
+                    group.passageStart = start;
+                }
+
                 for (let qNumber = start; qNumber <= end; qNumber += 1) {
                     const q = newQuestion(sectionType);
                     const seqIdx = qNumber - start;
@@ -2202,7 +2214,11 @@
 
                     let rawAnswer = answerMap[String(qNumber)] || "";
                     if (!rawAnswer && inline.answer) rawAnswer = inline.answer;
-                    q.answer = normalizeAnswerForType(sectionType, rawAnswer, q.options);
+                    if (sectionType === "fill-in-the-blank" && rawAnswer) {
+                        q.answer = serializeNumberedBlankAnswerMap({ [String(qNumber)]: normalizeAnswerForType(sectionType, rawAnswer, q.options) });
+                    } else {
+                        q.answer = normalizeAnswerForType(sectionType, rawAnswer, q.options);
+                    }
 
                     const explanation = explanationMap[String(qNumber)] || "";
                     if (explanation) {
@@ -2374,6 +2390,7 @@
                         </div>
                     `;
                 } else if (conf.mode === "blank") {
+                    // fill-in-the-blank only — question text lives in the passage body, not in a text editor
                     const numberedDefs = extractNumberedBlankDefs(q.text);
 
                     const answerMap = parseNumberedBlankAnswerMap(q.answer);
@@ -2405,14 +2422,10 @@
                             <label>Question Type</label>
                             <select onchange="changeQuestionType(${passageIndex}, ${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
                         </div>
-                        <div class="field question-text-editor">
-                            <label>Question Text</label>
-                            <div id="questionTextEditor_${passageIndex}_${gIdx}_${qIdx}"></div>
-                        </div>
+                        <div class="helper" style="margin-bottom:8px;">Question text is taken from the passage body above. Only enter the answers for each blank number below.</div>
                         ${answerSection}
                     `;
                     questionsHost.appendChild(card);
-                    initQuestionTextEditor(passageIndex, gIdx, qIdx, q.text, q.textHtml);
                     return;
                 } else {
                     answerSection = `
@@ -2616,8 +2629,8 @@
             if (!question) return;
             question.text = stripBlankMarkerText(question.text);
             question.answer = selected;
-            question.type = "fill-in-the-blank";
-            question.uiMode = QUESTION_TYPE_CONFIG["fill-in-the-blank"].mode;
+            question.type = "short-answer";
+            question.uiMode = QUESTION_TYPE_CONFIG["short-answer"].mode;
             question.options = [];
             renderQuestions(passageIndex);
         }
@@ -2653,8 +2666,8 @@
             if (!question) return;
             question.text = stripBlankMarkerText(question.text);
             question.answer = String(word || "").trim();
-            question.type = "fill-in-the-blank";
-            question.uiMode = QUESTION_TYPE_CONFIG["fill-in-the-blank"].mode;
+            question.type = "short-answer";
+            question.uiMode = QUESTION_TYPE_CONFIG["short-answer"].mode;
             question.options = [];
             renderQuestions(passageIndex);
         }
@@ -2807,13 +2820,17 @@
                     instruction: group.instruction,
                     questionMode: group.questionMode || "single",
                     questionRange: group.questionRange || "",
+                    passageBody: group.passageBody || undefined,
+                    passageStart: group.passageStart || undefined,
                     questions: group.questions.map((q) => {
                         const conf = QUESTION_TYPE_CONFIG[q.type];
                         const storedType = q.type === "fill-in-the-blank"
                             ? "fill-in-the-blank"
-                            : q.type === "matching-headings"
-                                ? "matching-headings"
-                                : (conf.mode === "radio" ? "radio" : "text");
+                            : q.type === "short-answer"
+                                ? "short-answer"
+                                : q.type === "matching-headings"
+                                    ? "matching-headings"
+                                    : (conf.mode === "radio" ? "radio" : "text");
                         return {
                             type: storedType,
                             text: stripBlankMarkerText(q.text),
