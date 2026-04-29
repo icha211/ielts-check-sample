@@ -92,6 +92,96 @@
         .btn-main { background: linear-gradient(135deg, var(--teal-900), var(--teal-700)); color: #fff; }
         .btn-alt { background: #fff; color: var(--teal-900); border: 1px solid var(--border); }
 
+        .productivity-panel {
+            background: #ffffff;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 14px;
+            display: grid;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .stat-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: linear-gradient(180deg, #ffffff, #f7fbf9);
+            padding: 10px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-family: "Sora", sans-serif;
+            font-size: 1.1rem;
+            color: var(--teal-900);
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .validation-panel {
+            border: 1px solid #f2d5d5;
+            border-radius: 12px;
+            background: #fffafa;
+            padding: 10px;
+            display: grid;
+            gap: 8px;
+        }
+
+        .validation-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .issue-list {
+            display: grid;
+            gap: 6px;
+            max-height: 160px;
+            overflow-y: auto;
+        }
+
+        .issue-item {
+            border: 1px solid #f6c7c7;
+            background: #fff;
+            color: #9f2f2f;
+            border-radius: 10px;
+            padding: 8px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .issue-item:hover {
+            border-color: #ef9d9d;
+            background: #fff5f5;
+        }
+
+        .ok-note {
+            font-size: 0.82rem;
+            color: #216145;
+            background: #ecf9f2;
+            border: 1px solid #b9e6cf;
+            border-radius: 10px;
+            padding: 8px;
+        }
+
         .shell {
             display: grid;
             grid-template-columns: 320px minmax(0, 1fr);
@@ -408,6 +498,20 @@
             padding: 10px;
             margin-bottom: 10px;
         }
+        .question-card.invalid-question {
+            border-color: #ef4444;
+            background: #fff5f5;
+            box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.14);
+        }
+        .question-card.invalid-question .badge {
+            background: rgba(239, 68, 68, 0.12);
+            color: #b91c1c;
+        }
+        .invalid-hint {
+            color: #b91c1c;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
 
         .question-head {
             display: flex;
@@ -592,23 +696,116 @@
 
         .auto-fill-guide {
             margin-top: 10px;
-            border: 1px dashed var(--border);
+            border: 1px solid #c8e0d0;
             border-radius: var(--radius-sm);
-            background: #fff;
+            background: #f4fbf6;
             padding: 10px 12px;
         }
 
-        .auto-fill-guide summary {
-            cursor: pointer;
+        .auto-fill-guide-title {
             font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--teal-900);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
-        .auto-fill-guide-content {
+        .auto-fill-guide-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .guide-block {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            padding: 8px 10px;
+        }
+
+        .guide-block-title {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--teal-700);
+            margin-bottom: 4px;
+        }
+
+        .guide-block pre {
+            font-family: 'Courier New', monospace;
+            font-size: 0.78rem;
+            color: #2d4a38;
+            white-space: pre-wrap;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .parse-preview-box {
             margin-top: 8px;
+            border: 1px solid #b8d8c8;
+            border-radius: 8px;
+            background: #edf9f2;
+            padding: 10px 12px;
+            font-size: 0.83rem;
+            color: #1a4a32;
+            display: none;
+        }
+
+        .parse-preview-box.visible { display: block; }
+
+        .parse-preview-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            padding: 4px 0;
+            border-bottom: 1px solid #cdeadb;
+        }
+
+        .parse-preview-row:last-child { border-bottom: none; }
+
+        .parse-preview-badge {
+            background: var(--teal-900);
+            color: #fff;
+            border-radius: 6px;
+            padding: 2px 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            flex: 0 0 auto;
+        }
+
+        .raw-import-textarea {
+            width: 100%;
+            min-height: 280px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            font-family: "Courier New", monospace;
+            font-size: 0.88rem;
+            line-height: 1.55;
+            resize: vertical;
+            background: #fff;
+        }
+
+        .raw-import-textarea:focus {
+            outline: none;
+            border-color: var(--teal-700);
+            box-shadow: 0 0 0 3px rgba(31, 116, 94, 0.1);
+        }
+
+        .raw-import-summary {
+            margin-top: 10px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: #f8fcfa;
+            padding: 10px 12px;
             color: var(--muted);
             font-size: 0.84rem;
-            display: grid;
-            gap: 4px;
+            line-height: 1.5;
+        }
+
+        .raw-import-summary strong {
+            color: var(--teal-900);
         }
 
         .sticky-actions {
@@ -849,6 +1046,7 @@
 
         @media (max-width: 950px) {
             .shell { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
             .row2 { grid-template-columns: 1fr; }
             .sticky-actions { grid-template-columns: 1fr; }
             .rich-editor-toolbar { flex-direction: column; align-items: flex-start; }
@@ -918,6 +1116,10 @@
                             </div>
                         </div>
 
+                        <div class="field" style="margin-bottom: 14px; color: var(--muted); font-size: 0.86rem;">
+                            Paste one full raw set directly inside each passage box below. Include passage text, questions, <strong>KUNCI JAWABAN</strong>, and <strong>PEMBAHASAN</strong> in one paste.
+                        </div>
+
                         <div class="passages-box">
                             <div class="passage-head" style="margin-bottom: 10px;">
                                 <h3 style="margin: 0;">Passages</h3>
@@ -943,6 +1145,7 @@
     <script src="rich-editor-color-palette.js"></script>
     <script>
         const STORAGE_KEY = "prephaven_problems_v1";
+        const ACTIVE_READING_SET_ID_KEY = "ielts_check_active_reading_set_id";
         const QUESTION_TYPE_CONFIG = {
             "multiple-choice": { mode: "radio", options: ["A", "B", "C", "D"], locked: false, label: "Multiple Choice (A/B/C/...)" },
             "true-false-not-given": { mode: "radio", options: ["True", "False", "Not Given"], locked: true, label: "True / False / Not Given" },
@@ -1525,7 +1728,9 @@
             return {
                 title: "",
                 content: "",
-                questionGroups: [newGroup({ questionGroups: [] })]
+                editorMode: "auto",
+                autoFillDraft: { rawText: "", questionText: "", answerText: "", explanationText: "" },
+                questionGroups: []
             };
         }
 
@@ -1534,14 +1739,15 @@
             return {
                 title: passage.title || passage.passageTitle || "",
                 content: passage.content || passage.passageContent || "",
-                editorMode: passage.editorMode === "auto" ? "auto" : "manual",
+                editorMode: "auto",
                 autoFillDraft: typeof passage.autoFillDraft === "object" && passage.autoFillDraft
                     ? {
+                        rawText: String(passage.autoFillDraft.rawText || ""),
                         questionText: String(passage.autoFillDraft.questionText || ""),
                         answerText: String(passage.autoFillDraft.answerText || ""),
                         explanationText: String(passage.autoFillDraft.explanationText || "")
                     }
-                    : { questionText: "", answerText: "", explanationText: "" },
+                    : { rawText: "", questionText: "", answerText: "", explanationText: "" },
                 questionGroups: Array.isArray(passage.questionGroups) && passage.questionGroups.length
                     ? passage.questionGroups.map((group) => ({
                         title: group.title || "Questions",
@@ -1550,9 +1756,9 @@
                         questionRange: group.questionRange || "",
                         passageBody: group.passageBody || undefined,
                         passageStart: group.passageStart || undefined,
-                        questions: (group.questions || []).length ? group.questions.map(normalizeQuestion) : [newQuestion("multiple-choice")]
+                        questions: (group.questions || []).length ? group.questions.map(normalizeQuestion) : []
                     }))
-                    : [newGroup({ questionGroups: [] })]
+                    : []
             };
         }
 
@@ -1598,7 +1804,25 @@
             }
 
             const conf = QUESTION_TYPE_CONFIG[normalizedType];
-            const sourceOptions = typeof raw.options === "string" ? raw.options.split(",").map((o) => o.trim()).filter(Boolean) : conf.options;
+            let sourceOptions = [];
+            if (Array.isArray(raw.options)) {
+                sourceOptions = raw.options.map((o) => String(o || "").trim()).filter(Boolean);
+            } else if (typeof raw.options === "string") {
+                const rawOptionsText = String(raw.options || "").trim();
+                if (rawOptionsText.startsWith("[")) {
+                    try {
+                        const parsed = JSON.parse(rawOptionsText);
+                        if (Array.isArray(parsed)) {
+                            sourceOptions = parsed.map((o) => String(o || "").trim()).filter(Boolean);
+                        }
+                    } catch (_) {}
+                }
+                if (!sourceOptions.length) {
+                    sourceOptions = rawOptionsText.split(",").map((o) => o.trim()).filter(Boolean);
+                }
+            } else {
+                sourceOptions = [...conf.options];
+            }
             const text = String(raw.text || "");
 
             return {
@@ -1611,6 +1835,119 @@
                 matchingHeadingsRows: Array.isArray(raw.matchingHeadingsRows) ? raw.matchingHeadingsRows : undefined,
                 uiMode: conf.mode
             };
+        }
+
+        function getCurrentCompletionStats() {
+            const current = allProblems[selectedIndex];
+            const passages = Array.isArray(current?.passages) ? current.passages : [];
+            let groupCount = 0;
+            let totalQuestions = 0;
+            let answeredQuestions = 0;
+
+            passages.forEach((passage) => {
+                groupCount += Array.isArray(passage.questionGroups) ? passage.questionGroups.length : 0;
+                (passage.questionGroups || []).forEach((group) => {
+                    (group.questions || []).forEach((question) => {
+                        totalQuestions += 1;
+                        if (isQuestionAnswered(question)) answeredQuestions += 1;
+                    });
+                });
+            });
+
+            return {
+                passagesCount: passages.length,
+                groupCount,
+                totalQuestions,
+                answeredRate: totalQuestions ? Math.round((answeredQuestions / totalQuestions) * 100) : 0
+            };
+        }
+
+        function collectCurrentIssues() {
+            const current = allProblems[selectedIndex];
+            const issues = [];
+            if (!current) return issues;
+
+            if (!String(current.title || "").trim()) {
+                issues.push({ message: "Set title is required", target: () => document.getElementById("setTitle")?.focus() });
+            }
+            if (!String(current.scheduledDate || "").trim()) {
+                issues.push({ message: "Set date is required", target: () => document.getElementById("setDate")?.focus() });
+            }
+
+            (current.passages || []).forEach((passage, pIdx) => {
+                if (!String(passage.title || "").trim()) {
+                    issues.push({
+                        message: `Passage ${pIdx + 1}: title is missing`,
+                        target: () => {
+                            selectPassagePage(pIdx);
+                            const input = document.querySelector(`#passagePages details:nth-of-type(${pIdx + 1}) input[type="text"]`);
+                            input?.focus();
+                        }
+                    });
+                }
+                if (!String(htmlToPlainText(passage.content || "")).trim()) {
+                    issues.push({
+                        message: `Passage ${pIdx + 1}: content is missing`,
+                        target: () => {
+                            selectPassagePage(pIdx);
+                            const editor = document.getElementById(`passageContent_${pIdx}Content`);
+                            editor?.focus();
+                        }
+                    });
+                }
+                (passage.questionGroups || []).forEach((group, gIdx) => {
+                    if (!String(group.title || "").trim()) {
+                        issues.push({
+                            message: `Passage ${pIdx + 1}, Group ${gIdx + 1}: title is missing`,
+                            target: () => { selectPassagePage(pIdx); }
+                        });
+                    }
+                    (group.questions || []).forEach((question, qIdx) => {
+                        if (!isQuestionAnswered(question)) {
+                            issues.push({
+                                message: `Passage ${pIdx + 1}, Group ${gIdx + 1}, Question ${qIdx + 1}: incomplete`,
+                                target: () => { selectPassagePage(pIdx); }
+                            });
+                        }
+                    });
+                });
+            });
+
+            return issues;
+        }
+
+        function renderEditProductivityPanel() {
+            const current = allProblems[selectedIndex];
+            if (!current) return;
+
+            const stats = getCurrentCompletionStats();
+            const issues = collectCurrentIssues();
+
+            const passagesEl = document.getElementById("statPassages");
+            const groupsEl = document.getElementById("statGroups");
+            const answeredEl = document.getElementById("statAnswered");
+            const issuesEl = document.getElementById("statIssues");
+            if (passagesEl) passagesEl.textContent = `${stats.passagesCount} / 3`;
+            if (groupsEl) groupsEl.textContent = String(stats.groupCount);
+            if (answeredEl) answeredEl.textContent = `${stats.answeredRate}%`;
+            if (issuesEl) issuesEl.textContent = String(issues.length);
+
+            const resultEl = document.getElementById("validationResult");
+            const listEl = document.getElementById("validationIssues");
+            if (resultEl) {
+                resultEl.innerHTML = issues.length === 0
+                    ? '<div class="ok-note">All required fields are complete. Ready to update.</div>'
+                    : "";
+            }
+            if (listEl) {
+                listEl.innerHTML = issues.map((issue, idx) => `<button type="button" class="issue-item" data-issue-index="${idx}">${escapeHtml(issue.message)}</button>`).join("");
+                listEl.querySelectorAll("[data-issue-index]").forEach((button) => {
+                    button.addEventListener("click", () => {
+                        const index = Number(button.getAttribute("data-issue-index"));
+                        issues[index]?.target?.();
+                    });
+                });
+            }
         }
 
         function renderSetList() {
@@ -1642,6 +1979,7 @@
             const item = allProblems[index];
             if (!item || item.moduleId !== "reading") return;
             selectedIndex = index;
+            try { localStorage.setItem(ACTIVE_READING_SET_ID_KEY, String(item.id || "")); } catch (_) {}
 
             allProblems[index] = normalizeReadingItem(item);
             const current = allProblems[index];
@@ -1656,6 +1994,7 @@
 
             renderSetList();
             renderGroups();
+            renderEditProductivityPanel();
         }
 
         function updatePassageSummary(passageIndex) {
@@ -1679,13 +2018,17 @@
             if (!passage) return;
             passage[field] = value;
             updatePassageSummary(passageIndex);
+            renderEditProductivityPanel();
         }
 
         function ensureAtLeastOnePassage() {
             const current = allProblems[selectedIndex];
             if (!current) return;
             if (!Array.isArray(current.passages) || current.passages.length === 0) {
-                current.passages = [newPassage()];
+                current.passages = [newPassage(), newPassage(), newPassage()];
+            }
+            while (current.passages.length < 3) {
+                current.passages.push(newPassage());
             }
             if (current.passages.length > 3) {
                 current.passages = current.passages.slice(0, 3);
@@ -1749,81 +2092,53 @@
                             <input type="text" value="${escapeHtml(passage.title)}" oninput="updatePassageField(${passageIndex}, 'title', this.value)">
                         </div>
                         <div class="field">
-                            <label>Passage Content</label>
-                            <div id="passageContentEditor_${passageIndex}"></div>
-                            <input type="hidden" id="passageContent_${passageIndex}" value="${escapeHtml(passage.content)}">
+                            <label>Paste Full Raw Set</label>
+                            <textarea id="rawSetInput_${passageIndex}" class="raw-import-textarea" placeholder="Paste one full raw set here. Include passage text, questions, KUNCI JAWABAN, and PEMBAHASAN in one paste.">${escapeHtml(getAutoFillDraft(passage).rawText || "")}</textarea>
+                            <div style="margin-top:8px;color:var(--muted);font-size:0.82rem;">Expected sections: passage text, Questions ..., KUNCI JAWABAN, PEMBAHASAN.</div>
                         </div>
-                        <div class="field">
-                            <label>Question Editor Mode</label>
-                            <div class="editor-mode-toggle">
-                                <button type="button" class="editor-mode-btn ${passage.editorMode !== "auto" ? "active" : ""}" onclick="setPassageEditorMode(${passageIndex}, 'manual')">Manual</button>
-                                <button type="button" class="editor-mode-btn ${passage.editorMode === "auto" ? "active" : ""}" onclick="setPassageEditorMode(${passageIndex}, 'auto')">Filled Automatically</button>
-                            </div>
-                        </div>
-                        <div class="passage-groups" id="manualGroupsWrap_${passageIndex}" style="display:${passage.editorMode === "auto" ? "none" : "block"};">
-                            <div class="passage-head" style="margin-bottom: 10px;">
-                                <h3 style="margin: 0;">Question Groups</h3>
-                                <button type="button" class="inline-btn" onclick="addGroup(${passageIndex})">+ Add Group</button>
-                            </div>
-                            <div id="groupsContainer_${passageIndex}"></div>
-                        </div>
-                        <div class="auto-fill-inline" id="autoFillInlineWrap_${passageIndex}" style="display:${passage.editorMode === "auto" ? "block" : "none"};">
-                            <div class="auto-fill-inline-grid">
-                                <section class="auto-fill-inline-box">
-                                    <div class="passage-head" style="margin-bottom: 8px;"><h4 style="margin: 0;">Question</h4></div>
-                                    <div id="autoFillQuestionEditor_${passageIndex}"></div>
-                                </section>
-                                <section class="auto-fill-inline-box">
-                                    <div class="passage-head" style="margin-bottom: 8px;"><h4 style="margin: 0;">Answer Key</h4></div>
-                                    <div id="autoFillAnswerEditor_${passageIndex}"></div>
-                                </section>
-                                <section class="auto-fill-inline-box">
-                                    <div class="passage-head" style="margin-bottom: 8px;"><h4 style="margin: 0;">Explanation</h4></div>
-                                    <div id="autoFillExplanationEditor_${passageIndex}"></div>
-                                </section>
-                            </div>
-                            <details class="auto-fill-guide">
-                                <summary>Question Format Guide (Auto Detect)</summary>
-                                <div class="auto-fill-guide-content">
-                                    <p>Use lines like <strong>Questions 1 - 6</strong> to define a question range per group.</p>
-                                    <p>TRUE/FALSE/NOT GIVEN = True-False-Not Given</p>
-                                    <p>YES/NO/NOT GIVEN = Yes-No-Not Given</p>
-                                    <p>A. / B. / C. = Multiple Choice</p>
-                                    <p>Underscore blanks (____) or table style (//) = Isian Singkat (Short Answer)</p>
-                                    <p>Roman options (i. ii. iii.) = Matching Headings</p>
-                                    <p>Answer key format: <strong>1. answer</strong></p>
-                                    <p>Explanation format: <strong>1. explanation text</strong></p>
+                        <div class="auto-fill-inline" id="autoFillInlineWrap_${passageIndex}" style="display:block;">
+                            <div class="auto-fill-guide">
+                                <div class="auto-fill-guide-title">&#9432; One paste format</div>
+                                <div class="auto-fill-guide-grid">
+                                    <div class="guide-block">
+                                        <div class="guide-block-title">Paste Everything Together</div>
+                                        <pre>READING PASSAGE 1
+Passage title
+Passage text...
+
+Questions 1 - 3
+1. Example question
+2. Another question
+3. Final question
+
+KUNCI JAWABAN
+1. answer one
+2. answer two
+3. answer three
+
+PEMBAHASAN
+1. Explanation for question 1
+2. Explanation for question 2
+3. Explanation for question 3</pre>
+                                        <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">The importer will fill passage, soal, jawaban, and pembahasan from one paste.</div>
+                                    </div>
                                 </div>
-                            </details>
+                            </div>
+                            <div class="raw-import-summary" id="rawImportSummary_${passageIndex}">${buildRawImportSummary(passage)}</div>
                             <div class="auto-fill-inline-actions">
-                                <button type="button" class="inline-btn" onclick="setPassageEditorMode(${passageIndex}, 'manual')">Use Manual</button>
-                                <button type="button" class="btn btn-main" onclick="applyAutoFillToPassage(${passageIndex})">Generate and Fill Questions</button>
+                                <button type="button" class="btn btn-main" onclick="applyRawSetToPassage(${passageIndex})">Import Raw Set</button>
                             </div>
                         </div>
                     </div>
                 `;
                 pagesHost.appendChild(passageEl);
 
-                const passageEditorContainer = document.getElementById(`passageContentEditor_${passageIndex}`);
-                const passageEditorId = `passageContent_${passageIndex}`;
-                if (passageEditorContainer) {
-                    passageEditorContainer.innerHTML = createRichEditorMarkup(passageEditorId, "Paste full reading passage...");
-                    bindRichEditorToolbar(passageEditorId);
-                    const editable = document.getElementById(passageEditorId + "Content");
-                    const hidden = document.getElementById(passageEditorId);
-                    const initialValue = passage.content || "";
-                    if (editable) editable.innerHTML = initialValue;
-                    if (hidden) hidden.value = initialValue;
-                    editable?.addEventListener("input", () => updatePassageField(passageIndex, "content", editable.innerHTML));
-                    editable?.addEventListener("blur", () => updatePassageField(passageIndex, "content", editable.innerHTML));
-                }
+                const rawInput = document.getElementById(`rawSetInput_${passageIndex}`);
+                rawInput?.addEventListener("input", () => {
+                    const draft = getAutoFillDraft(passage);
+                    draft.rawText = rawInput.value;
+                });
 
-                ensureAtLeastOneGroup(passageIndex);
-                if (passage.editorMode === "auto") {
-                    renderInlineAutoFillEditors(passageIndex);
-                } else {
-                    renderQuestions(passageIndex);
-                }
                 updatePassageSummary(passageIndex);
             });
 
@@ -1838,6 +2153,8 @@
                 addPassageBtn.disabled = current.passages.length >= 3;
                 addPassageBtn.textContent = current.passages.length >= 3 ? "Passage Limit Reached" : "+ Add Passage";
             }
+
+            renderEditProductivityPanel();
 
         }
 
@@ -1880,12 +2197,195 @@
                 .trim();
         }
 
-        function getAutoFillDraft(passage) {
-            if (!passage) return { questionText: "", answerText: "", explanationText: "" };
-            if (!passage.autoFillDraft || typeof passage.autoFillDraft !== "object") {
-                passage.autoFillDraft = { questionText: "", answerText: "", explanationText: "" };
+        function plainTextToHtml(text) {
+            return escapeHtml(String(text || "")).replace(/\n/g, "<br>");
+        }
+
+        function normalizePassageBlockText(raw) {
+            const cleaned = String(raw || "")
+                .replace(/\r/g, "\n")
+                .split("\n")
+                .map((line) => String(line || "").trim())
+                .filter(Boolean)
+                .join(" ")
+                .replace(/\s+/g, " ")
+                .trim();
+            if (!cleaned) return "";
+            return cleaned.replace(/\s+([A-Z]\.[ \t])/g, "\n\n$1").trim();
+        }
+
+        function parseUploadedTxtPayload(rawText) {
+            let raw = String(rawText || "").replace(/\r/g, "");
+            const markerRegex = /READING\s+PASSAGE\s*\d+/gi;
+            const markers = [];
+            let marker;
+            while ((marker = markerRegex.exec(raw)) !== null) {
+                markers.push(marker.index);
             }
+            if (markers.length >= 2) {
+                raw = raw.slice(markers[0], markers[1]);
+            } else if (markers.length === 1) {
+                raw = raw.slice(markers[0]);
+            }
+
+            const answerMatch = raw.match(/(?:KUNCI\s*JAWABAN|ANSWER\s*KEY)/i);
+            const explanationMatch = raw.match(/(?:PEMBAHASAN|EXPLANATION(?:S)?)/i);
+            const answerIndex = answerMatch ? answerMatch.index : -1;
+            const explanationIndex = explanationMatch ? explanationMatch.index : -1;
+
+            const body = String(
+                answerIndex >= 0 ? raw.slice(0, answerIndex) : (explanationIndex >= 0 ? raw.slice(0, explanationIndex) : raw)
+            ).trim();
+            const keyBody = String(
+                answerIndex >= 0
+                    ? raw.slice(answerIndex + answerMatch[0].length, explanationIndex >= 0 ? explanationIndex : raw.length)
+                    : ""
+            ).trim();
+            const explanationBody = String(
+                explanationIndex >= 0 ? raw.slice(explanationIndex + explanationMatch[0].length) : ""
+            ).trim();
+
+            const questionsStart = body.search(/Questions?\s*\d+/i);
+            const passagePart = questionsStart >= 0 ? body.slice(0, questionsStart).trim() : body;
+            const questionPart = questionsStart >= 0 ? body.slice(questionsStart).trim() : "";
+
+            const lines = passagePart
+                .split("\n")
+                .map((line) => String(line || "").trim())
+                .filter(Boolean)
+                .filter((line) => !/^READING\s+PASSAGE\s*\d+/i.test(line));
+
+            let title = "";
+            if (lines.length > 0 && !/^[A-Z]\.[ \t]/.test(lines[0])) {
+                title = lines.shift();
+            }
+
+            const normalizedPassage = normalizePassageBlockText(lines.join("\n"));
+
+            const answerLines = keyBody
+                .split("\n")
+                .map((line) => String(line || "").trim())
+                .filter(Boolean)
+                .map((line) => {
+                    const m = line.match(/^(\d+)\s*[\.)]\s*(.+)$/);
+                    return m ? `${m[1]}. ${m[2].trim()}` : "";
+                })
+                .filter(Boolean);
+
+            return {
+                title,
+                passageContent: normalizedPassage,
+                questionText: questionPart,
+                answerText: answerLines.join("\n"),
+                explanationText: explanationBody
+            };
+        }
+
+        async function importTxtToPassage() {
+            if (selectedIndex === null) {
+                toast("Select a set first");
+                return;
+            }
+
+            const fileInput = document.getElementById("txtImportFile");
+            const targetSelect = document.getElementById("txtImportPassage");
+            const file = fileInput?.files?.[0];
+            if (!file) {
+                toast("Select a .txt file first");
+                return;
+            }
+
+            const targetIndex = Number(targetSelect?.value || 0);
+            if (!Number.isInteger(targetIndex) || targetIndex < 0 || targetIndex > 2) {
+                toast("Invalid target passage");
+                return;
+            }
+
+            const text = await file.text();
+            const parsed = parseUploadedTxtPayload(text);
+
+            const current = allProblems[selectedIndex];
+            while (current.passages.length <= targetIndex && current.passages.length < 3) {
+                current.passages.push(newPassage());
+            }
+
+            const passage = current.passages[targetIndex];
+            if (!passage) {
+                toast("Cannot create target passage");
+                return;
+            }
+
+            if (parsed.title) passage.title = parsed.title;
+            if (parsed.passageContent) passage.content = parsed.passageContent;
+            passage.editorMode = "auto";
+
+            const autoDraft = getAutoFillDraft(passage);
+            autoDraft.rawText = text;
+            autoDraft.questionText = plainTextToHtml(parsed.questionText || "");
+            autoDraft.answerText = plainTextToHtml(parsed.answerText || "");
+            autoDraft.explanationText = plainTextToHtml(parsed.explanationText || "");
+
+            activePassageIndex = targetIndex;
+            if (String(parsed.questionText || "").trim()) {
+                applyAutoFillToPassage(targetIndex);
+            } else {
+                renderGroups();
+            }
+
+            syncFormToCurrent();
+            await writeProblems(allProblems);
+            try {
+                const savedCurrent = allProblems[selectedIndex];
+                localStorage.setItem(ACTIVE_READING_SET_ID_KEY, String(savedCurrent?.id || ""));
+            } catch (_) {}
+
+            fileInput.value = "";
+            toast(`TXT imported and auto-saved to passage ${targetIndex + 1}`);
+        }
+
+        function getAutoFillDraft(passage) {
+            if (!passage) return { rawText: "", questionText: "", answerText: "", explanationText: "" };
+            if (!passage.autoFillDraft || typeof passage.autoFillDraft !== "object") {
+                passage.autoFillDraft = { rawText: "", questionText: "", answerText: "", explanationText: "" };
+            }
+            if (typeof passage.autoFillDraft.rawText !== "string") passage.autoFillDraft.rawText = "";
             return passage.autoFillDraft;
+        }
+
+        function isPassageUsedForSave(passage) {
+            if (!passage) return false;
+            const draft = getAutoFillDraft(passage);
+            const hasCore = String(passage.title || "").trim() || String(passage.content || "").trim();
+            const hasRaw = String(draft.rawText || "").trim();
+            const hasQuestionDraft = htmlToPlainText(draft.questionText || "").trim();
+            const hasGeneratedQuestions = (passage.questionGroups || []).some((group) =>
+                (group.questions || []).some((q) => {
+                    if (!q) return false;
+                    if (q.type === "matching-headings") {
+                        const rows = Array.isArray(q.matchingHeadingsRows) ? q.matchingHeadingsRows : [];
+                        return rows.some((row) => String(row?.answerOptionId || "").trim());
+                    }
+                    return String(q.text || "").trim().length > 0 || String(q.answer || "").trim().length > 0;
+                })
+            );
+            return !!(hasCore || hasRaw || hasQuestionDraft || hasGeneratedQuestions);
+        }
+
+        function hydratePassageFromRawDraft(passage) {
+            if (!passage) return false;
+            const draft = getAutoFillDraft(passage);
+            const rawText = String(draft.rawText || "").trim();
+            const questionText = htmlToPlainText(draft.questionText || "").trim();
+            if (!rawText || questionText) return false;
+
+            const parsed = parseUploadedTxtPayload(rawText);
+            draft.questionText = plainTextToHtml(parsed.questionText || "");
+            draft.answerText = plainTextToHtml(parsed.answerText || "");
+            draft.explanationText = plainTextToHtml(parsed.explanationText || "");
+            if (parsed.title && !String(passage.title || "").trim()) passage.title = parsed.title;
+            if (parsed.passageContent && !String(passage.content || "").trim()) passage.content = parsed.passageContent;
+            passage.editorMode = "auto";
+            return !!String(parsed.questionText || "").trim();
         }
 
         function saveAutoFillDraftFromEditors(passageIndex) {
@@ -1894,13 +2394,67 @@
             if (!passage) return;
 
             const draft = getAutoFillDraft(passage);
+            const rawInput = document.getElementById(`rawSetInput_${passageIndex}`);
             const qEditor = document.getElementById(`autoFillQuestion_${passageIndex}Content`);
             const aEditor = document.getElementById(`autoFillAnswer_${passageIndex}Content`);
             const eEditor = document.getElementById(`autoFillExplanation_${passageIndex}Content`);
 
+            draft.rawText = rawInput ? rawInput.value : draft.rawText;
             draft.questionText = qEditor ? qEditor.innerHTML : draft.questionText;
             draft.answerText = aEditor ? aEditor.innerHTML : draft.answerText;
             draft.explanationText = eEditor ? eEditor.innerHTML : draft.explanationText;
+        }
+
+        function buildRawImportSummary(passage) {
+            if (!passage) return "";
+            const groupCount = Array.isArray(passage.questionGroups) ? passage.questionGroups.length : 0;
+            const questionCount = (passage.questionGroups || []).reduce((sum, group) => sum + (group.questions || []).length, 0);
+            const explanationCount = Object.keys(parseNumberedTextMap(htmlToPlainText(passage.autoFillDraft?.explanationText || ""))).length;
+            const rawText = String(passage.autoFillDraft?.rawText || "").trim();
+
+            if (!rawText) {
+                return "Paste the full raw passage block here, then click Import Raw Set.";
+            }
+
+            return `<strong>Imported.</strong> ${groupCount} group${groupCount === 1 ? "" : "s"}, ${questionCount} question${questionCount === 1 ? "" : "s"}, ${explanationCount} pembahasan entr${explanationCount === 1 ? "y" : "ies"}.`;
+        }
+
+        function applyRawSetToPassage(passageIndex) {
+            const current = allProblems[selectedIndex];
+            const passage = current?.passages?.[passageIndex];
+            if (!passage) return false;
+
+            const rawInput = document.getElementById(`rawSetInput_${passageIndex}`);
+            const rawText = String(rawInput?.value || getAutoFillDraft(passage).rawText || "").trim();
+            if (!rawText) {
+                toast("Paste the full raw set first");
+                return false;
+            }
+
+            const parsed = parseUploadedTxtPayload(rawText);
+            const draft = getAutoFillDraft(passage);
+            draft.rawText = rawText;
+            draft.questionText = plainTextToHtml(parsed.questionText || "");
+            draft.answerText = plainTextToHtml(parsed.answerText || "");
+            draft.explanationText = plainTextToHtml(parsed.explanationText || "");
+
+            if (parsed.title) passage.title = parsed.title;
+            if (parsed.passageContent) passage.content = parsed.passageContent;
+            passage.editorMode = "auto";
+
+            const ok = String(parsed.questionText || "").trim()
+                ? applyAutoFillToPassage(passageIndex, { silent: true, keepAutoMode: true })
+                : false;
+
+            if (!ok) {
+                toast("Could not parse questions from the raw set. Check the Questions / KUNCI JAWABAN / PEMBAHASAN format.");
+                return false;
+            }
+
+            activePassageIndex = passageIndex;
+            renderGroups();
+            toast(`Raw set imported to passage ${passageIndex + 1}`);
+            return true;
         }
 
         function persistActiveAutoFillDraft() {
@@ -1922,7 +2476,7 @@
                 saveAutoFillDraftFromEditors(passageIndex);
             }
 
-            passage.editorMode = mode === "auto" ? "auto" : "manual";
+            passage.editorMode = "auto";
             renderGroups();
         }
 
@@ -1989,6 +2543,16 @@
             return map;
         }
 
+        function parseSequentialAnswerList(rawText) {
+            return String(rawText || "")
+                .replace(/\r/g, "")
+                .split("\n")
+                .map((line) => String(line || "").trim())
+                .filter(Boolean)
+                .map((line) => String(line).replace(/^\s*\d+(?:\s*[\.)\:\-]\s*|\s+)/, "").trim())
+                .filter(Boolean);
+        }
+
         function extractInlineAutoAnswer(type, rawQuestionText, options) {
             const original = String(rawQuestionText || "").trim();
             if (!original) return { questionText: "", answer: "" };
@@ -2030,9 +2594,12 @@
 
         function detectAutoQuestionType(sectionText) {
             const text = String(sectionText || "");
+            const romanHeadingLines = text.match(/^\s*(?:i{1,3}|iv|v|vi{0,3}|ix|x|xi|xii)\.\s+.+$/gim) || [];
+            const paragraphPromptLines = text.match(/^\s*\d+\s*[\.)]\s*Paragraph\s+[A-Z]\b.*$/gim) || [];
             if (/\bTRUE\b/i.test(text) && /\bFALSE\b/i.test(text) && /NOT\s+GIVEN/i.test(text)) return "true-false-not-given";
             if (/\bYES\b/i.test(text) && /\bNO\b/i.test(text) && /NOT\s+GIVEN/i.test(text)) return "yes-no-not-given";
-            if (/^\s*[A-H]\.\s+/m.test(text)) return "multiple-choice";
+            if (/List\s+of\s+Headings/i.test(text) || (paragraphPromptLines.length > 0 && romanHeadingLines.length >= 2)) return "matching-headings";
+            if (/^\s*[A-H][\.)]\s+/m.test(text)) return "multiple-choice";
             if (/^\s*[ivxlcdm]+\.\s+/im.test(text)) return "matching-headings";
             if (/\/\//.test(text) || /_{2,}/.test(text)) return "fill-in-the-blank";
             return "short-answer";
@@ -2080,12 +2647,224 @@
 
         function extractChoiceOptions(sectionText) {
             const options = [];
-            const regex = /^\s*([A-H])\.\s*(.+)$/gim;
+            const regex = /^\s*([A-H])[\.)]\s*(.+)$/gim;
             let match;
             while ((match = regex.exec(sectionText)) !== null) {
                 options.push(String(match[2] || "").trim());
             }
+            if (!options.length) {
+                const fallback = /(?:^|\s)([A-H])[\.)]\s*([^\n\r]+?)(?=(?:\s+[A-H][\.)]\s)|$)/gi;
+                while ((match = fallback.exec(sectionText)) !== null) {
+                    options.push(String(match[2] || "").trim());
+                }
+            }
             return options;
+        }
+
+        function extractMultipleChoiceQuestions(sectionText, start, end) {
+            const blocks = {};
+            const text = String(sectionText || "").replace(/\r/g, "");
+
+            const qMatches = [];
+            const qLineRegex = /^\s*(\d+)\s*[\.)]\s*(.+)$/gm;
+            let qLineMatch;
+            while ((qLineMatch = qLineRegex.exec(text)) !== null) {
+                qMatches.push({ number: Number(qLineMatch[1]), index: qLineMatch.index });
+            }
+
+            qMatches.forEach((entry, idx) => {
+                const next = qMatches[idx + 1];
+                const blockStart = entry.index;
+                const blockEnd = next ? next.index : text.length;
+                const blockText = text.slice(blockStart, blockEnd).trim();
+                if (!blockText) return;
+
+                const lines = blockText.split("\n").map((line) => String(line || "").trim()).filter(Boolean);
+                if (!lines.length) return;
+
+                const first = lines[0].replace(/^\s*\d+\s*[\.)]\s*/, "").trim();
+                const stemParts = [first];
+                const options = [];
+                let inOptions = false;
+
+                lines.slice(1).forEach((line) => {
+                    const opt = line.match(/^([A-H])[\.)]\s*(.+)$/i);
+                    if (opt) {
+                        inOptions = true;
+                        options.push(String(opt[2] || "").trim());
+                        return;
+                    }
+                    if (inOptions && options.length) {
+                        options[options.length - 1] = `${options[options.length - 1]} ${line}`.replace(/\s+/g, " ").trim();
+                    } else {
+                        stemParts.push(line);
+                    }
+                });
+
+                if (!options.length) {
+                    let para;
+                    const paraRegex = /(?:^|\s)([A-H])[\.)]\s*([^\n\r]+?)(?=(?:\s+[A-H][\.)]\s)|$)/gi;
+                    while ((para = paraRegex.exec(blockText)) !== null) {
+                        options.push(String(para[2] || "").trim());
+                    }
+                }
+
+                blocks[String(entry.number)] = {
+                    questionText: stemParts.join(" ").replace(/\s+/g, " ").trim(),
+                    options: options.filter(Boolean)
+                };
+            });
+
+            const scoped = {};
+            for (let qn = Number(start || 1); qn <= Number(end || start || 1); qn += 1) {
+                if (blocks[String(qn)]) scoped[String(qn)] = blocks[String(qn)];
+            }
+            return scoped;
+        }
+
+        function romanToNumber(value) {
+            const map = {
+                i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10, xi: 11, xii: 12
+            };
+            return map[String(value || "").toLowerCase()] || null;
+        }
+
+        function extractMatchingHeadingsOptions(sectionText) {
+            const text = String(sectionText || "").replace(/\r/g, "");
+            const questionStart = text.search(/^\s*\d+\s*[\.)]/m);
+            const listArea = (questionStart >= 0 ? text.slice(0, questionStart) : text)
+                .replace(/List\s+of\s+Headings?/ig, " ")
+                .trim();
+
+            const normalizedLines = listArea
+                .split("\n")
+                .map((line) => String(line || "").trim())
+                .filter(Boolean);
+
+            const markerOnlyLines = normalizedLines.filter((line) => /^([ivxlcdm]+)\.$/i.test(line));
+            const textOnlyLines = normalizedLines.filter((line) => !/^([ivxlcdm]+)\.?$/i.test(line));
+
+            if (markerOnlyLines.length && textOnlyLines.length >= markerOnlyLines.length) {
+                return markerOnlyLines.map((line, idx) => {
+                    const roman = String(line || "").replace(/\./g, "").toLowerCase();
+                    const number = romanToNumber(roman) || idx + 1;
+                    return {
+                        id: `mh_${number}`,
+                        label: `${roman}.`,
+                        text: String(textOnlyLines[idx] || "").trim()
+                    };
+                }).filter((opt) => opt.text);
+            }
+
+            const options = [];
+            const lineRegex = /^\s*([ivxlcdm]+)\.\s*(.+)$/gim;
+            let match;
+            while ((match = lineRegex.exec(listArea)) !== null) {
+                const roman = String(match[1] || "").toLowerCase();
+                const idx = romanToNumber(roman);
+                const textValue = String(match[2] || "").trim();
+                if (idx && textValue) {
+                    options.push({ id: `mh_${idx}`, label: `${roman}.`, text: textValue });
+                }
+            }
+            if (options.length) return options.sort((a, b) => Number(a.id.split("_")[1]) - Number(b.id.split("_")[1]));
+
+            const tokenRegex = /\b(i{1,3}|iv|v|vi{0,3}|ix|x|xi|xii)\.\s*/gi;
+            const tokens = [];
+            let token;
+            while ((token = tokenRegex.exec(listArea)) !== null) {
+                tokens.push({ roman: String(token[1] || "").toLowerCase(), index: token.index, end: tokenRegex.lastIndex });
+            }
+
+            if (!tokens.length) return [];
+
+            tokens.forEach((entry, idx) => {
+                const next = tokens[idx + 1];
+                const chunk = listArea.slice(entry.end, next ? next.index : listArea.length).replace(/\s+/g, " ").trim();
+                const number = romanToNumber(entry.roman);
+                if (!number) return;
+                options.push({
+                    id: `mh_${number}`,
+                    label: `${entry.roman}.`,
+                    text: chunk
+                });
+            });
+
+            return options.filter((opt) => opt.text);
+        }
+
+        function buildMatchingHeadingsMeta(sectionText, start, end) {
+            const text = String(sectionText || "").replace(/\r/g, "");
+            const lines = text.split("\n");
+            const questionLineRegex = /^\s*(\d+)\s*[\.)]\s*(.+)$/;
+            const optionHeaderIndex = lines.findIndex((line) => /List\s+of\s+Headings?/i.test(line));
+            const firstQuestionIndex = lines.findIndex((line) => questionLineRegex.test(line));
+
+            const instructionLines = lines
+                .slice(0, optionHeaderIndex >= 0 ? optionHeaderIndex : (firstQuestionIndex >= 0 ? firstQuestionIndex : lines.length))
+                .map((line) => String(line || "").trim())
+                .filter(Boolean);
+
+            const questionLines = lines
+                .slice(firstQuestionIndex >= 0 ? firstQuestionIndex : 0)
+                .map((line) => String(line || "").trim())
+                .filter((line) => {
+                    const match = line.match(questionLineRegex);
+                    if (!match) return false;
+                    const qn = Number(match[1]);
+                    return qn >= Number(start || 1) && qn <= Number(end || start || 1);
+                });
+
+            const rows = questionLines.map((line, idx) => {
+                const match = line.match(questionLineRegex);
+                const number = String(match?.[1] || (Number(start || 1) + idx));
+                const prompt = String(match?.[2] || "")
+                    .replace(/_{2,}/g, "")
+                    .replace(/\s+/g, " ")
+                    .trim();
+                return { number, prompt, answerOptionId: "" };
+            });
+
+            return {
+                instructionText: instructionLines.join("\n").trim(),
+                questionText: questionLines.join("\n").trim(),
+                rows,
+                options: extractMatchingHeadingsOptions(sectionText)
+            };
+        }
+
+        function extractMatchingHeadingRows(sectionText, start, end) {
+            const map = parseNumberedTextMap(sectionText);
+            const rows = [];
+            for (let qn = Number(start || 1); qn <= Number(end || start || 1); qn += 1) {
+                const fallback = `Paragraph ${String.fromCharCode(65 + (qn - Number(start || 1)))}`;
+                const prompt = String(map[String(qn)] || fallback)
+                    .replace(/_{2,}/g, "")
+                    .replace(/\s+/g, " ")
+                    .trim();
+                rows.push({ number: String(qn), prompt: prompt || fallback, answerOptionId: "" });
+            }
+            return rows;
+        }
+
+        function resolveMatchingHeadingAnswerOptionId(rawAnswer, options) {
+            const clean = String(rawAnswer || "").trim();
+            if (!clean || !Array.isArray(options) || !options.length) return "";
+
+            const roman = clean.toLowerCase().replace(/[^ivxlcdm]/g, "");
+            const asRoman = romanToNumber(roman);
+            if (asRoman && options.find((opt) => opt.id === `mh_${asRoman}`)) {
+                return `mh_${asRoman}`;
+            }
+
+            const digit = clean.match(/\d+/);
+            if (digit) {
+                const idx = Number(digit[0]);
+                if (options.find((opt) => opt.id === `mh_${idx}`)) return `mh_${idx}`;
+            }
+
+            const byText = options.find((opt) => String(opt.text || "").trim().toLowerCase() === clean.toLowerCase());
+            return byText ? byText.id : "";
         }
 
         function normalizeAnswerForType(type, rawAnswer, options) {
@@ -2114,10 +2893,12 @@
             return clean;
         }
 
-        function applyAutoFillToPassage(passageIndex) {
+        function applyAutoFillToPassage(passageIndex, options = {}) {
+            const silent = !!options.silent;
+            const keepAutoMode = !!options.keepAutoMode;
             if (selectedIndex === null) {
-                toast("Select a set first");
-                return;
+                if (!silent) toast("Select a set first");
+                return false;
             }
 
             saveAutoFillDraftFromEditors(passageIndex);
@@ -2132,11 +2913,14 @@
             const explanationText = htmlToPlainText(draft.explanationText).trim();
 
             if (!questionText) {
-                toast("Question box is empty");
-                return;
+                if (!silent) toast("Question box is empty");
+                return false;
             }
 
             const answerMap = parseNumberedTextMap(answerText);
+            const useSequentialAnswers = Object.keys(answerMap).length === 0;
+            const sequentialAnswers = useSequentialAnswers ? parseSequentialAnswerList(answerText) : [];
+            let sequentialAnswerIndex = 0;
             const explanationMap = parseNumberedTextMap(explanationText);
             const sections = parseQuestionSections(questionText);
             const generatedGroups = [];
@@ -2149,6 +2933,51 @@
                 const numberedQuestionMap = parseNumberedTextMap(section.body);
                 const hasNumberedQuestions = Object.keys(numberedQuestionMap).length > 0;
                 const optionList = sectionType === "multiple-choice" ? extractChoiceOptions(section.body) : [];
+                const mcQuestionMap = sectionType === "multiple-choice"
+                    ? extractMultipleChoiceQuestions(section.body, start, end)
+                    : {};
+
+                if (sectionType === "matching-headings") {
+                    const matchingMeta = buildMatchingHeadingsMeta(section.body, start, end);
+                    const mhOptions = Array.isArray(matchingMeta.options) ? [...matchingMeta.options] : [];
+                    const mhRows = matchingMeta.rows.length ? matchingMeta.rows : extractMatchingHeadingRows(section.body, start, end);
+
+                    mhRows.forEach((row) => {
+                        let answerRaw = answerMap[row.number] || "";
+                        if (!answerRaw && useSequentialAnswers) {
+                            answerRaw = sequentialAnswers[sequentialAnswerIndex] || "";
+                            sequentialAnswerIndex += 1;
+                        }
+                        let resolved = resolveMatchingHeadingAnswerOptionId(answerRaw, mhOptions);
+                        if (!resolved) {
+                            const romanGuess = String(answerRaw || "").toLowerCase().replace(/[^ivxlcdm]/g, "");
+                            const romanNumber = romanToNumber(romanGuess);
+                            if (romanNumber) {
+                                resolved = `mh_${romanNumber}`;
+                                if (!mhOptions.find((opt) => opt.id === resolved)) {
+                                    mhOptions.push({ id: resolved, label: `${romanGuess}.`, text: romanGuess.toUpperCase() });
+                                }
+                            }
+                        }
+                        row.answerOptionId = resolved;
+                    });
+
+                    const q = newQuestion("matching-headings");
+                    q.text = matchingMeta.questionText || mhRows.map((row) => `${row.number}. ${row.prompt}`).join("\n");
+                    q.textHtml = plainTextToHtml(q.text);
+                    q.matchingHeadingsOptions = mhOptions.length ? mhOptions : q.matchingHeadingsOptions;
+                    q.matchingHeadingsRows = mhRows.length ? mhRows : q.matchingHeadingsRows;
+
+                    const group = {
+                        title: section.title,
+                        instruction: plainTextToHtml(matchingMeta.instructionText || ""),
+                        questionMode: "single",
+                        questionRange: `${start}-${end}`,
+                        questions: [q]
+                    };
+                    generatedGroups.push(group);
+                    return;
+                }
 
                 // For fill-in-the-blank: build a map of qNumber -> full sentence containing the inline blank
                 const inlineBlankMap = {};
@@ -2170,7 +2999,7 @@
                 const sequentialLines = String(section.body || "")
                     .split("\n")
                     .map((l) => l.trim())
-                    .filter((l) => l && !/^[A-H]\./i.test(l) && !/^[-\u2022]/.test(l));
+                    .filter((l) => l && !/^[A-H][\.)]/i.test(l) && !/^[-\u2022]/.test(l));
 
                 // Instruction is non-question preamble text (lines before the first numbered/sequential question)
                 const instructionText = hasNumberedQuestions
@@ -2194,7 +3023,9 @@
                 for (let qNumber = start; qNumber <= end; qNumber += 1) {
                     const q = newQuestion(sectionType);
                     const seqIdx = qNumber - start;
+                    const mcMeta = mcQuestionMap[String(qNumber)] || null;
                     let rawQuestion = inlineBlankMap[String(qNumber)]
+                        || (mcMeta && mcMeta.questionText)
                         || (sectionType !== "fill-in-the-blank" ? numberedQuestionMap[String(qNumber)] : null)
                         || (count === 1 ? String(section.body || "").trim() : null)
                         || sequentialLines[seqIdx]
@@ -2202,8 +3033,13 @@
                     q.text = rawQuestion;
                     q.textHtml = rawQuestion;
 
-                    if (sectionType === "multiple-choice" && optionList.length) {
-                        q.options = optionList;
+                    if (sectionType === "multiple-choice") {
+                        const perQuestionOptions = mcMeta && Array.isArray(mcMeta.options) && mcMeta.options.length
+                            ? mcMeta.options
+                            : optionList;
+                        if (perQuestionOptions.length) {
+                            q.options = perQuestionOptions;
+                        }
                     }
 
                     // Extract inline trailing answer (e.g. "...text. TRUE", "...text. NOT GIVEN")
@@ -2213,6 +3049,10 @@
                     q.textHtml = rawQuestion;
 
                     let rawAnswer = answerMap[String(qNumber)] || "";
+                    if (!rawAnswer && useSequentialAnswers) {
+                        rawAnswer = sequentialAnswers[sequentialAnswerIndex] || "";
+                        sequentialAnswerIndex += 1;
+                    }
                     if (!rawAnswer && inline.answer) rawAnswer = inline.answer;
                     if (sectionType === "fill-in-the-blank" && rawAnswer) {
                         q.answer = serializeNumberedBlankAnswerMap({ [String(qNumber)]: normalizeAnswerForType(sectionType, rawAnswer, q.options) });
@@ -2233,15 +3073,61 @@
             });
 
             if (!generatedGroups.length) {
-                toast("Cannot detect question groups. Use 'Questions 1 - 5' format.");
-                return;
+                if (!silent) toast("Cannot detect question groups. Use 'Questions 1 - 5' format.");
+                return false;
             }
 
             passage.questionGroups = generatedGroups;
-            passage.editorMode = "manual";
+            passage.editorMode = "auto";
             activePassageIndex = passageIndex;
             renderGroups();
-            toast("Questions generated automatically");
+            if (!silent) toast("Questions generated automatically");
+            return true;
+        }
+
+        function previewParseResult(passageIndex) {
+            saveAutoFillDraftFromEditors(passageIndex);
+            const current = allProblems[selectedIndex];
+            const passage = current?.passages?.[passageIndex];
+            if (!passage) return;
+
+            const draft = getAutoFillDraft(passage);
+            const questionText = htmlToPlainText(draft.questionText).trim();
+            const box = document.getElementById(`parsePreviewBox_${passageIndex}`);
+            if (!box) return;
+
+            if (!questionText) {
+                box.className = "parse-preview-box visible";
+                box.innerHTML = "<strong>Question box is empty.</strong> Paste your questions first.";
+                return;
+            }
+
+            const typeLabels = {
+                "true-false-not-given": "True / False / Not Given",
+                "yes-no-not-given": "Yes / No / Not Given",
+                "multiple-choice": "Multiple Choice",
+                "short-answer": "Short Answer",
+                "fill-in-the-blank": "Fill in the Blank",
+                "matching-headings": "Matching Headings",
+                "sentence-completion": "Sentence Completion"
+            };
+
+            const sections = parseQuestionSections(questionText);
+            if (!sections.length) {
+                box.className = "parse-preview-box visible";
+                box.innerHTML = "<strong>No groups detected.</strong> Add a header like <code>Questions 1 - 6</code> before each group.";
+                return;
+            }
+
+            const totalQuestions = sections.reduce((sum, section) => sum + Math.max(1, section.end - section.start + 1), 0);
+            const rows = sections.map((section) => {
+                const type = detectAutoQuestionType(section.body);
+                const count = Math.max(1, section.end - section.start + 1);
+                return `<div class="parse-preview-row"><span class="parse-preview-badge">${escapeHtml(section.title)}</span><span>${count} question${count !== 1 ? "s" : ""} - detected as <strong>${typeLabels[type] || type}</strong></span></div>`;
+            }).join("");
+
+            box.className = "parse-preview-box visible";
+            box.innerHTML = `<div style="font-weight:700;margin-bottom:6px;">Detected ${sections.length} group${sections.length !== 1 ? "s" : ""}, ${totalQuestions} total questions</div>${rows}<div style="margin-top:6px;font-size:0.8rem;color:var(--muted);">If types look correct, click <strong>Generate Questions</strong>.</div>`;
         }
 
         function renderQuestions(passageIndex) {
@@ -2310,7 +3196,8 @@
                 group.questions.forEach((q, qIdx) => {
                     const conf = QUESTION_TYPE_CONFIG[q.type];
                     const card = document.createElement("article");
-                    card.className = "question-card";
+                    const hasValidationError = !isQuestionAnswered(q);
+                    card.className = hasValidationError ? "question-card invalid-question" : "question-card";
                     const questionLabel = getGroupQuestionLabel(group, qIdx);
 
                 const typeOptions = Object.entries(QUESTION_TYPE_CONFIG)
@@ -2418,6 +3305,7 @@
                             <span class="badge">Question ${questionLabel}</span>
                             <button type="button" class="inline-btn danger" onclick="removeQuestion(${passageIndex}, ${gIdx}, ${qIdx})">Delete Question</button>
                         </div>
+                        ${hasValidationError ? `<div class="helper invalid-hint">Required: fill question text and correct answer.</div>` : ""}
                         <div class="field">
                             <label>Question Type</label>
                             <select onchange="changeQuestionType(${passageIndex}, ${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
@@ -2441,6 +3329,7 @@
                         <span class="badge">Question ${questionLabel}</span>
                         <button type="button" class="inline-btn danger" onclick="removeQuestion(${passageIndex}, ${gIdx}, ${qIdx})">Delete Question</button>
                     </div>
+                    ${hasValidationError ? `<div class="helper invalid-hint">Required: fill question text and correct answer.</div>` : ""}
                     <div class="field">
                         <label>Question Type</label>
                         <select onchange="changeQuestionType(${passageIndex}, ${gIdx}, ${qIdx}, this.value)">${typeOptions}</select>
@@ -2456,6 +3345,8 @@
                     initQuestionTextEditor(passageIndex, gIdx, qIdx, q.text, q.textHtml);
                 });
             });
+
+            renderEditProductivityPanel();
         }
 
         function updateGroup(passageIndex, gIdx, field, value) {
@@ -2463,6 +3354,7 @@
             const passage = current?.passages?.[passageIndex];
             if (!passage || !passage.questionGroups[gIdx]) return;
             passage.questionGroups[gIdx][field] = value;
+            renderEditProductivityPanel();
         }
 
         function updateGroupQuestionMode(passageIndex, gIdx, value) {
@@ -2510,6 +3402,7 @@
             const question = current?.passages?.[passageIndex]?.questionGroups[gIdx]?.questions[qIdx];
             if (!question) return;
             question[field] = value;
+            renderEditProductivityPanel();
         }
 
         function updateOption(passageIndex, gIdx, qIdx, oIdx, value) {
@@ -2726,6 +3619,34 @@
             return String(question.text || "").trim().length > 0 && String(question.answer || "").trim().length > 0;
         }
 
+        function isMeaningfulStoredQuestion(question) {
+            if (!question) return false;
+            if (question.type === "matching-headings") {
+                ensureMatchingHeadingsShape(question);
+                const hasOptionText = question.matchingHeadingsOptions.some((opt) => String(opt.text || "").trim().length > 0);
+                const hasRowAnswer = question.matchingHeadingsRows.some((row) => String(row.answerOptionId || "").trim().length > 0);
+                const hasText = String(question.text || "").trim().length > 0;
+                return hasOptionText || hasRowAnswer || hasText;
+            }
+            return String(question.text || "").trim().length > 0 || String(question.answer || "").trim().length > 0;
+        }
+
+        function listIncompleteQuestionLabels(passages) {
+            const labels = [];
+            (passages || []).forEach((passage, pIdx) => {
+                (passage.questionGroups || []).forEach((group) => {
+                    (group.questions || []).forEach((q, qIdx) => {
+                        if (!isQuestionAnswered(q)) {
+                            const match = String(q.text || "").match(/(?:^|\s)(\d+)\s*[\.)]/);
+                            const qLabel = match ? match[1] : String(qIdx + 1);
+                            labels.push(`P${pIdx + 1}Q${qLabel}`);
+                        }
+                    });
+                });
+            });
+            return labels;
+        }
+
         function addPassage() {
             const current = allProblems[selectedIndex];
             if (!current) return;
@@ -2812,9 +3733,16 @@
             current.icon = "📖";
             current.updatedAt = new Date().toISOString();
 
-            current.passages = current.passages.map((passage) => ({
+            const normalizedPassages = current.passages.map((passage) => ({
                 title: passage.title,
                 content: passage.content,
+                editorMode: "auto",
+                autoFillDraft: {
+                    rawText: String(passage.autoFillDraft?.rawText || ""),
+                    questionText: String(passage.autoFillDraft?.questionText || ""),
+                    answerText: String(passage.autoFillDraft?.answerText || ""),
+                    explanationText: String(passage.autoFillDraft?.explanationText || "")
+                },
                 questionGroups: passage.questionGroups.map((group) => ({
                     title: group.title,
                     instruction: group.instruction,
@@ -2835,31 +3763,68 @@
                             type: storedType,
                             text: stripBlankMarkerText(q.text),
                             textHtml: q.textHtml || "",
-                            options: conf.mode === "radio" ? q.options.join(", ") : "",
+                            options: conf.mode === "radio" ? JSON.stringify(q.options || []) : "",
                             answer: q.type === "matching-headings" ? getMatchingHeadingsAnswerValue(q) : (q.answer || extractBlankMarkerAnswer(q.text)),
                             matchingHeadingsOptions: q.type === "matching-headings" ? q.matchingHeadingsOptions : undefined,
                             matchingHeadingsRows: q.type === "matching-headings" ? q.matchingHeadingsRows : undefined
                         };
-                    })
-                }))
+                    }).filter(isMeaningfulStoredQuestion)
+                })).filter((group) => (group.questions || []).length > 0)
             }));
+
+            current.passages = normalizedPassages.filter(isPassageUsedForSave);
 
             current.passageTitle = current.passages[0]?.title || "Passage";
             current.passageContent = current.passages[0]?.content || "";
             current.questionGroups = current.passages.flatMap((passage) => passage.questionGroups);
         }
 
-        function updateCurrentSet() {
+        async function updateCurrentSet() {
             if (selectedIndex === null) {
                 toast("Select a set first");
                 return;
             }
 
-            syncFormToCurrent();
             const current = allProblems[selectedIndex];
+            const failedAutoPassages = [];
+            current.passages.forEach((passage, passageIndex) => {
+                saveAutoFillDraftFromEditors(passageIndex);
+                hydratePassageFromRawDraft(passage);
+                const draft = getAutoFillDraft(passage);
+                const questionText = htmlToPlainText(draft.questionText).trim();
+                if (questionText) {
+                    const ok = applyAutoFillToPassage(passageIndex, { silent: true, keepAutoMode: true });
+                    if (!ok) failedAutoPassages.push(`passage ${passageIndex + 1}`);
+                }
+            });
+
+            if (failedAutoPassages.length > 0) {
+                toast(`Cannot parse auto-fill question format for ${failedAutoPassages.join(", ")}. Use 'Questions 1 - 5' section format.`);
+                return;
+            }
+
+            const emptyAutoPassages = current.passages
+                .map((passage, index) => ({
+                    passage,
+                    index,
+                    questionText: htmlToPlainText(getAutoFillDraft(passage).questionText).trim()
+                }))
+                .filter(({ passage, questionText }) => isPassageUsedForSave(passage) && !questionText)
+                .map(({ index }) => `passage ${index + 1}`);
+            if (emptyAutoPassages.length > 0) {
+                toast(`Please complete question section for ${emptyAutoPassages.join(", ")} and import again.`);
+                return;
+            }
+
+            syncFormToCurrent();
 
             if (!current.title || !current.scheduledDate) {
                 toast("Title and date are required");
+                return;
+            }
+
+            if (!current.passages.length) {
+                toast("Add at least one passage before saving");
                 return;
             }
 
@@ -2869,18 +3834,20 @@
                 return;
             }
 
-            const allAnswered = current.passages.every((passage) =>
-                passage.questionGroups.every((group) => group.questions.every((q) => isQuestionAnswered(q)))
-            );
-            if (!allAnswered) {
-                toast("Every question must have text and correct answer");
+            const incompleteLabels = listIncompleteQuestionLabels(current.passages);
+            if (incompleteLabels.length > 0) {
+                const preview = incompleteLabels.slice(0, 8).join(", ");
+                const suffix = incompleteLabels.length > 8 ? ` +${incompleteLabels.length - 8} more` : "";
+                toast(`Incomplete questions: ${preview}${suffix}`);
                 return;
             }
 
-            writeProblems(allProblems);
-            toast("Reading set updated");
+            await writeProblems(allProblems);
+            try { localStorage.setItem(ACTIVE_READING_SET_ID_KEY, String(current.id || "")); } catch (_) {}
+            toast("Updated! Opening test view…");
             renderSetList();
             selectSet(selectedIndex);
+            setTimeout(() => window.open("reading-test.html?returnTo=developer-edit.html", "_blank"), 600);
         }
 
         function duplicateAsNew() {
@@ -2898,6 +3865,7 @@
             cloned.updatedAt = new Date().toISOString();
             allProblems.unshift(cloned);
             writeProblems(allProblems);
+            try { localStorage.setItem(ACTIVE_READING_SET_ID_KEY, String(cloned.id || "")); } catch (_) {}
             toast("Duplicated as new reading set");
             renderSetList();
         }
@@ -2913,6 +3881,12 @@
 
             allProblems.splice(selectedIndex, 1);
             writeProblems(allProblems);
+            try {
+                const activeId = localStorage.getItem(ACTIVE_READING_SET_ID_KEY);
+                if (activeId && activeId === String(current.id || "")) {
+                    localStorage.removeItem(ACTIVE_READING_SET_ID_KEY);
+                }
+            } catch (_) {}
             selectedIndex = null;
             document.getElementById("editor").style.display = "none";
             document.getElementById("emptyEditor").style.display = "block";
@@ -2925,6 +3899,14 @@
         document.getElementById("duplicateBtn").addEventListener("click", duplicateAsNew);
         document.getElementById("deleteBtn").addEventListener("click", deleteCurrentSet);
         document.getElementById("addPassageBtn").addEventListener("click", addPassage);
+        document.getElementById("txtImportBtn")?.addEventListener("click", () => {
+            importTxtToPassage().catch((error) => {
+                console.error("TXT import failed", error);
+                toast("Failed to import TXT");
+            });
+        });
+
+        
 
         (async () => {
             allProblems = await storageSync.getProblemsByModule("reading");
@@ -2937,7 +3919,15 @@
                 if (parsed >= 0 && parsed < allProblems.length && allProblems[parsed].moduleId === "reading") {
                     selectSet(parsed);
                 }
+                return;
             }
+
+            try {
+                const activeId = localStorage.getItem(ACTIVE_READING_SET_ID_KEY);
+                if (!activeId) return;
+                const activeIndex = allProblems.findIndex((item) => item.moduleId === "reading" && String(item.id || "") === activeId);
+                if (activeIndex >= 0) selectSet(activeIndex);
+            } catch (_) {}
         })();
     </script>
 </body>
