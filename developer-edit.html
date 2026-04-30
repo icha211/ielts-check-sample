@@ -1729,7 +1729,15 @@
                 title: "",
                 content: "",
                 editorMode: "auto",
-                autoFillDraft: { rawText: "", questionText: "", answerText: "", explanationText: "" },
+                autoFillDraft: {
+                    rawText: "",
+                    rawBodyText: "",
+                    rawAnswerText: "",
+                    rawExplanationText: "",
+                    questionText: "",
+                    answerText: "",
+                    explanationText: ""
+                },
                 questionGroups: []
             };
         }
@@ -1743,11 +1751,14 @@
                 autoFillDraft: typeof passage.autoFillDraft === "object" && passage.autoFillDraft
                     ? {
                         rawText: String(passage.autoFillDraft.rawText || ""),
+                        rawBodyText: String(passage.autoFillDraft.rawBodyText || ""),
+                        rawAnswerText: String(passage.autoFillDraft.rawAnswerText || ""),
+                        rawExplanationText: String(passage.autoFillDraft.rawExplanationText || ""),
                         questionText: String(passage.autoFillDraft.questionText || ""),
                         answerText: String(passage.autoFillDraft.answerText || ""),
                         explanationText: String(passage.autoFillDraft.explanationText || "")
                     }
-                    : { rawText: "", questionText: "", answerText: "", explanationText: "" },
+                    : { rawText: "", rawBodyText: "", rawAnswerText: "", rawExplanationText: "", questionText: "", answerText: "", explanationText: "" },
                 questionGroups: Array.isArray(passage.questionGroups) && passage.questionGroups.length
                     ? passage.questionGroups.map((group) => ({
                         title: group.title || "Questions",
@@ -2093,16 +2104,24 @@
                             <input type="text" value="${escapeHtml(passage.title)}" oninput="updatePassageField(${passageIndex}, 'title', this.value)">
                         </div>
                         <div class="field">
-                            <label>Paste Full Raw Set</label>
-                            <textarea id="rawSetInput_${passageIndex}" class="raw-import-textarea" placeholder="Paste one full raw set here. Include passage text, questions, KUNCI JAWABAN, and PEMBAHASAN in one paste.">${escapeHtml(getAutoFillDraft(passage).rawText || "")}</textarea>
-                            <div style="margin-top:8px;color:var(--muted);font-size:0.82rem;">Expected sections: passage text, Questions ..., KUNCI JAWABAN, PEMBAHASAN.</div>
+                            <label>Passage + Questions (Title/Passage/Questions)</label>
+                            <textarea id="rawSetBodyInput_${passageIndex}" class="raw-import-textarea" placeholder="READING PASSAGE ${passageIndex + 1}\nPassage title\nPassage text...\n\nQuestions ...">${escapeHtml(getAutoFillDraft(passage).rawBodyText || "")}</textarea>
+                        </div>
+                        <div class="field">
+                            <label>KUNCI JAWABAN</label>
+                            <textarea id="rawSetAnswerInput_${passageIndex}" class="raw-import-textarea" placeholder="1. answer one\n2. answer two\n3. answer three">${escapeHtml(getAutoFillDraft(passage).rawAnswerText || "")}</textarea>
+                        </div>
+                        <div class="field">
+                            <label>PEMBAHASAN</label>
+                            <textarea id="rawSetExplanationInput_${passageIndex}" class="raw-import-textarea" placeholder="1. Explanation for question 1\n2. Explanation for question 2\n3. Explanation for question 3">${escapeHtml(getAutoFillDraft(passage).rawExplanationText || "")}</textarea>
+                            <div style="margin-top:8px;color:var(--muted);font-size:0.82rem;">Importer keeps current features by internally composing these boxes into the same raw format.</div>
                         </div>
                         <div class="auto-fill-inline" id="autoFillInlineWrap_${passageIndex}" style="display:block;">
                             <div class="auto-fill-guide">
-                                <div class="auto-fill-guide-title">&#9432; One paste format</div>
+                                <div class="auto-fill-guide-title">&#9432; Three-box format</div>
                                 <div class="auto-fill-guide-grid">
                                     <div class="guide-block">
-                                        <div class="guide-block-title">Paste Everything Together</div>
+                                        <div class="guide-block-title">Box 1: Passage + Questions</div>
                                         <pre>READING PASSAGE 1
 Passage title
 Passage text...
@@ -2110,18 +2129,8 @@ Passage text...
 Questions 1 - 3
 1. Example question
 2. Another question
-3. Final question
-
-KUNCI JAWABAN
-1. answer one
-2. answer two
-3. answer three
-
-PEMBAHASAN
-1. Explanation for question 1
-2. Explanation for question 2
-3. Explanation for question 3</pre>
-                                        <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">The importer will fill passage, soal, jawaban, and pembahasan from one paste.</div>
+3. Final question</pre>
+                                        <div style="font-size:0.75rem;color:var(--muted);margin-top:4px;">Box 2: KUNCI JAWABAN. Box 3: PEMBAHASAN. Import keeps the same parser and auto-fill behavior.</div>
                                     </div>
                                 </div>
                             </div>
@@ -2134,10 +2143,21 @@ PEMBAHASAN
                 `;
                 pagesHost.appendChild(passageEl);
 
-                const rawInput = document.getElementById(`rawSetInput_${passageIndex}`);
-                rawInput?.addEventListener("input", () => {
-                    const draft = getAutoFillDraft(passage);
-                    draft.rawText = rawInput.value;
+                const rawBodyInput = document.getElementById(`rawSetBodyInput_${passageIndex}`);
+                const rawAnswerInput = document.getElementById(`rawSetAnswerInput_${passageIndex}`);
+                const rawExplanationInput = document.getElementById(`rawSetExplanationInput_${passageIndex}`);
+                [rawBodyInput, rawAnswerInput, rawExplanationInput].forEach((inputEl) => {
+                    inputEl?.addEventListener("input", () => {
+                        const draft = getAutoFillDraft(passage);
+                        draft.rawBodyText = rawBodyInput?.value || "";
+                        draft.rawAnswerText = rawAnswerInput?.value || "";
+                        draft.rawExplanationText = rawExplanationInput?.value || "";
+                        draft.rawText = buildRawSetFromSplitInputs(
+                            draft.rawBodyText,
+                            draft.rawAnswerText,
+                            draft.rawExplanationText
+                        );
+                    });
                 });
 
                 updatePassageSummary(passageIndex);
@@ -2369,12 +2389,70 @@ PEMBAHASAN
         }
 
         function getAutoFillDraft(passage) {
-            if (!passage) return { rawText: "", questionText: "", answerText: "", explanationText: "" };
+            if (!passage) {
+                return { rawText: "", rawBodyText: "", rawAnswerText: "", rawExplanationText: "", questionText: "", answerText: "", explanationText: "" };
+            }
             if (!passage.autoFillDraft || typeof passage.autoFillDraft !== "object") {
-                passage.autoFillDraft = { rawText: "", questionText: "", answerText: "", explanationText: "" };
+                passage.autoFillDraft = { rawText: "", rawBodyText: "", rawAnswerText: "", rawExplanationText: "", questionText: "", answerText: "", explanationText: "" };
             }
             if (typeof passage.autoFillDraft.rawText !== "string") passage.autoFillDraft.rawText = "";
+            if (typeof passage.autoFillDraft.rawBodyText !== "string") passage.autoFillDraft.rawBodyText = "";
+            if (typeof passage.autoFillDraft.rawAnswerText !== "string") passage.autoFillDraft.rawAnswerText = "";
+            if (typeof passage.autoFillDraft.rawExplanationText !== "string") passage.autoFillDraft.rawExplanationText = "";
+            if (!passage.autoFillDraft.rawBodyText && passage.autoFillDraft.rawText) {
+                const split = splitRawSetSections(passage.autoFillDraft.rawText);
+                passage.autoFillDraft.rawBodyText = split.bodyText;
+                passage.autoFillDraft.rawAnswerText = split.answerText;
+                passage.autoFillDraft.rawExplanationText = split.explanationText;
+            }
             return passage.autoFillDraft;
+        }
+
+        function splitRawSetSections(rawText) {
+            const raw = String(rawText || "").replace(/\r/g, "");
+            const answerMatch = raw.match(/(?:KUNCI\s*JAWABAN|ANSWER\s*KEY)/i);
+            const explanationMatch = raw.match(/(?:PEMBAHASAN|EXPLANATION(?:S)?)/i);
+            const answerIndex = answerMatch ? answerMatch.index : -1;
+            const explanationIndex = explanationMatch ? explanationMatch.index : -1;
+
+            const bodyText = String(
+                answerIndex >= 0 ? raw.slice(0, answerIndex) : (explanationIndex >= 0 ? raw.slice(0, explanationIndex) : raw)
+            ).trim();
+            const answerText = String(
+                answerIndex >= 0
+                    ? raw.slice(answerIndex + answerMatch[0].length, explanationIndex >= 0 ? explanationIndex : raw.length)
+                    : ""
+            ).trim();
+            const explanationText = String(
+                explanationIndex >= 0 ? raw.slice(explanationIndex + explanationMatch[0].length) : ""
+            ).trim();
+
+            return { bodyText, answerText, explanationText };
+        }
+
+        function buildRawSetFromSplitInputs(bodyText, answerText, explanationText) {
+            const body = String(bodyText || "").trim();
+            const answer = String(answerText || "").trim();
+            const explanation = String(explanationText || "").trim();
+            const blocks = [];
+
+            if (body) blocks.push(body);
+            if (answer) {
+                blocks.push(
+                    /(?:KUNCI\s*JAWABAN|ANSWER\s*KEY)/i.test(answer)
+                        ? answer
+                        : `KUNCI JAWABAN\n${answer}`
+                );
+            }
+            if (explanation) {
+                blocks.push(
+                    /(?:PEMBAHASAN|EXPLANATION(?:S)?)/i.test(explanation)
+                        ? explanation
+                        : `PEMBAHASAN\n${explanation}`
+                );
+            }
+
+            return blocks.join("\n\n").trim();
         }
 
         function isPassageUsedForSave(passage) {
@@ -2422,12 +2500,21 @@ PEMBAHASAN
             if (!passage) return;
 
             const draft = getAutoFillDraft(passage);
-            const rawInput = document.getElementById(`rawSetInput_${passageIndex}`);
+            const rawBodyInput = document.getElementById(`rawSetBodyInput_${passageIndex}`);
+            const rawAnswerInput = document.getElementById(`rawSetAnswerInput_${passageIndex}`);
+            const rawExplanationInput = document.getElementById(`rawSetExplanationInput_${passageIndex}`);
             const qEditor = document.getElementById(`autoFillQuestion_${passageIndex}Content`);
             const aEditor = document.getElementById(`autoFillAnswer_${passageIndex}Content`);
             const eEditor = document.getElementById(`autoFillExplanation_${passageIndex}Content`);
 
-            if (rawInput && rawInput.value) draft.rawText = rawInput.value;
+            if (rawBodyInput) draft.rawBodyText = rawBodyInput.value;
+            if (rawAnswerInput) draft.rawAnswerText = rawAnswerInput.value;
+            if (rawExplanationInput) draft.rawExplanationText = rawExplanationInput.value;
+            draft.rawText = buildRawSetFromSplitInputs(
+                draft.rawBodyText,
+                draft.rawAnswerText,
+                draft.rawExplanationText
+            );
             draft.questionText = qEditor ? qEditor.innerHTML : draft.questionText;
             draft.answerText = aEditor ? aEditor.innerHTML : draft.answerText;
             draft.explanationText = eEditor ? eEditor.innerHTML : draft.explanationText;
@@ -2452,15 +2539,25 @@ PEMBAHASAN
             const passage = current?.passages?.[passageIndex];
             if (!passage) return false;
 
-            const rawInput = document.getElementById(`rawSetInput_${passageIndex}`);
-            const rawText = String(rawInput?.value || getAutoFillDraft(passage).rawText || "").trim();
+            const rawBodyInput = document.getElementById(`rawSetBodyInput_${passageIndex}`);
+            const rawAnswerInput = document.getElementById(`rawSetAnswerInput_${passageIndex}`);
+            const rawExplanationInput = document.getElementById(`rawSetExplanationInput_${passageIndex}`);
+            const autoDraft = getAutoFillDraft(passage);
+
+            const bodyText = String(rawBodyInput?.value || autoDraft.rawBodyText || "").trim();
+            const answerText = String(rawAnswerInput?.value || autoDraft.rawAnswerText || "").trim();
+            const explanationText = String(rawExplanationInput?.value || autoDraft.rawExplanationText || "").trim();
+            const rawText = buildRawSetFromSplitInputs(bodyText, answerText, explanationText);
             if (!rawText) {
-                toast("Paste the full raw set first");
+                toast("Fill the passage/questions, answer key, and pembahasan boxes first");
                 return false;
             }
 
             const parsed = parseUploadedTxtPayload(rawText, passageIndex);
-            const draft = getAutoFillDraft(passage);
+            const draft = autoDraft;
+            draft.rawBodyText = bodyText;
+            draft.rawAnswerText = answerText;
+            draft.rawExplanationText = explanationText;
             draft.rawText = rawText;
             draft.questionText = plainTextToHtml(parsed.questionText || "");
             draft.answerText = plainTextToHtml(parsed.answerText || "");
