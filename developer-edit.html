@@ -2026,13 +2026,13 @@
             const current = allProblems[selectedIndex];
             if (!current) return;
             if (!Array.isArray(current.passages) || current.passages.length === 0) {
-                current.passages = [newPassage(), newPassage(), newPassage()];
-            }
-            while (current.passages.length < 3) {
-                current.passages.push(newPassage());
+                current.passages = [newPassage()];
             }
             if (current.passages.length > 3) {
                 current.passages = current.passages.slice(0, 3);
+            }
+            if (activePassageIndex < 0 || activePassageIndex >= current.passages.length) {
+                activePassageIndex = Math.max(0, current.passages.length - 1);
             }
         }
 

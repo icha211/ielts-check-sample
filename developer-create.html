@@ -1756,13 +1756,13 @@
 
         function ensureAtLeastOnePassage() {
             if (!Array.isArray(draft.passages) || draft.passages.length === 0) {
-                draft.passages = [newPassage(), newPassage(), newPassage()];
-            }
-            while (draft.passages.length < 3) {
-                draft.passages.push(newPassage());
+                draft.passages = [newPassage()];
             }
             if (draft.passages.length > 3) {
                 draft.passages = draft.passages.slice(0, 3);
+            }
+            if (activePassageIndex < 0 || activePassageIndex >= draft.passages.length) {
+                activePassageIndex = Math.max(0, draft.passages.length - 1);
             }
         }
 
