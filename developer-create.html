@@ -1994,21 +1994,23 @@
             return !!(hasCore || hasRaw || hasQuestionDraft || hasGeneratedQuestions);
         }
 
-        function hydratePassageFromRawDraft(passage) {
+        function hydratePassageFromRawDraft(passage, passageIndex = 0) {
             if (!passage) return false;
             const draftState = getAutoFillDraft(passage);
             const rawText = String(draftState.rawText || "").trim();
             const questionText = htmlToPlainText(draftState.questionText || "").trim();
-            if (!rawText || questionText) return false;
+            if (!rawText) return false;
 
-            const parsed = parseUploadedTxtPayload(rawText, activePassageIndex);
-            draftState.questionText = plainTextToHtml(parsed.questionText || "");
-            draftState.answerText = plainTextToHtml(parsed.answerText || "");
-            draftState.explanationText = plainTextToHtml(parsed.explanationText || "");
+            const parsed = parseUploadedTxtPayload(rawText, passageIndex);
+            if (!questionText) {
+                draftState.questionText = plainTextToHtml(parsed.questionText || "");
+                draftState.answerText = plainTextToHtml(parsed.answerText || "");
+                draftState.explanationText = plainTextToHtml(parsed.explanationText || "");
+            }
             if (parsed.title && !String(passage.title || "").trim()) passage.title = parsed.title;
             if (parsed.passageContent && !String(passage.content || "").trim()) passage.content = parsed.passageContent;
             passage.editorMode = "auto";
-            return !!String(parsed.questionText || "").trim();
+            return !!String(parsed.questionText || "").trim() || !!String(parsed.passageContent || "").trim();
         }
 
         function saveAutoFillDraftFromEditors(passageIndex) {
@@ -3641,7 +3643,7 @@ PEMBAHASAN
             const failedAutoPassages = [];
             draft.passages.forEach((passage, passageIndex) => {
                 saveAutoFillDraftFromEditors(passageIndex);
-                hydratePassageFromRawDraft(passage);
+                hydratePassageFromRawDraft(passage, passageIndex);
                 const draftState = getAutoFillDraft(passage);
                 const questionText = htmlToPlainText(draftState.questionText).trim();
                 if (questionText) {
