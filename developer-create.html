@@ -2403,6 +2403,11 @@ PEMBAHASAN
             let markerMatch;
 
             while ((markerMatch = markerRegex.exec(text)) !== null) {
+                // Skip mid-sentence references like "next to questions 14–19" by requiring
+                // only whitespace before "Questions" on the same line.
+                const lineStart = text.lastIndexOf('\n', markerMatch.index - 1) + 1;
+                const prefix = text.slice(lineStart, markerMatch.index);
+                if (/\S/.test(prefix)) continue;
                 markers.push({
                     index: markerMatch.index,
                     full: markerMatch[0],
