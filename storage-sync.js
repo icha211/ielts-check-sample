@@ -60,16 +60,15 @@ class StorageSync {
   }
 
   async getAllProblems() {
-    if (this.isRemoteAvailable) {
-      try {
-        const data = await this._rtdbGet(RTDB_PROBLEMS_PATH);
-        const normalized = this._normalizeProblems(data || {});
-        this._saveProblemsToLocalStorage(normalized);
-        return normalized;
-      } catch (error) {
-        this.isRemoteAvailable = false;
-        console.warn("RTDB read failed, using localStorage fallback:", error.message);
-      }
+    try {
+      const data = await this._rtdbGet(RTDB_PROBLEMS_PATH);
+      const normalized = this._normalizeProblems(data || {});
+      this._saveProblemsToLocalStorage(normalized);
+      this.isRemoteAvailable = true;
+      return normalized;
+    } catch (error) {
+      this.isRemoteAvailable = false;
+      console.warn("RTDB read failed, using localStorage fallback:", error.message);
     }
 
     return this._getProblemsFromLocalStorage();
@@ -83,16 +82,15 @@ class StorageSync {
   async saveAllProblems(problems) {
     const normalized = this._normalizeProblems(problems);
 
-    if (this.isRemoteAvailable) {
-      try {
-        await this._rtdbPut(RTDB_PROBLEMS_PATH, {
-          ...normalized,
-          updatedAt: new Date().toISOString()
-        });
-      } catch (error) {
-        this.isRemoteAvailable = false;
-        console.warn("RTDB write failed, using localStorage fallback:", error.message);
-      }
+    try {
+      await this._rtdbPut(RTDB_PROBLEMS_PATH, {
+        ...normalized,
+        updatedAt: new Date().toISOString()
+      });
+      this.isRemoteAvailable = true;
+    } catch (error) {
+      this.isRemoteAvailable = false;
+      console.warn("RTDB write failed, using localStorage fallback:", error.message);
     }
 
     this._saveProblemsToLocalStorage(normalized);
