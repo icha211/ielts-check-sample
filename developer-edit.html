@@ -3947,10 +3947,27 @@ PEMBAHASAN
 
             try {
                 const activeId = localStorage.getItem(ACTIVE_READING_SET_ID_KEY);
-                if (!activeId) return;
-                const activeIndex = allProblems.findIndex((item) => item.moduleId === "reading" && String(item.id || "") === activeId);
-                if (activeIndex >= 0) selectSet(activeIndex);
+                if (activeId) {
+                    const activeIndex = allProblems.findIndex((item) => item.moduleId === "reading" && String(item.id || "") === activeId);
+                    if (activeIndex >= 0) {
+                        selectSet(activeIndex);
+                        return;
+                    }
+                }
             } catch (_) {}
+
+            const readingIndexes = allProblems
+                .map((item, idx) => ({ item, idx }))
+                .filter(({ item }) => item && item.moduleId === "reading");
+            if (!readingIndexes.length) return;
+
+            readingIndexes.sort((a, b) => {
+                const aTime = new Date(a.item?.updatedAt || a.item?.createdAt || 0).getTime() || 0;
+                const bTime = new Date(b.item?.updatedAt || b.item?.createdAt || 0).getTime() || 0;
+                return bTime - aTime;
+            });
+
+            selectSet(readingIndexes[0].idx);
         })();
     </script>
 </body>

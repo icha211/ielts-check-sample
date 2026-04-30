@@ -1224,8 +1224,12 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     }
                 } catch (_) {}
 
-                // Prefer the most complete set (more passages/groups), then most recently updated.
+                // Prefer the most recently updated set first, then use completeness as tie-breaker.
                 normalizedCandidates.sort((a, b) => {
+                    const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime() || 0;
+                    const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime() || 0;
+                    if (aTime !== bTime) return bTime - aTime;
+
                     const aPassages = Array.isArray(a.passages) ? a.passages.length : 0;
                     const bPassages = Array.isArray(b.passages) ? b.passages.length : 0;
                     if (aPassages !== bPassages) return bPassages - aPassages;
@@ -1233,10 +1237,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     const aGroups = Array.isArray(a.questionGroups) ? a.questionGroups.length : 0;
                     const bGroups = Array.isArray(b.questionGroups) ? b.questionGroups.length : 0;
                     if (aGroups !== bGroups) return bGroups - aGroups;
-
-                    const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime() || 0;
-                    const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime() || 0;
-                    return bTime - aTime;
+                    return 0;
                 });
 
                 const selected = selectedByActiveId || normalizedCandidates[0] || null;
