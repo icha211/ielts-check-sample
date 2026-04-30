@@ -1638,6 +1638,10 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 const firstQ = (group.questions || [])[0] || {};
                 const isInlineFillPassage = group.passageBody
                     && (firstQ.type === 'fill-in-the-blank' || firstQ.type === 'text' || firstQ.type === 'short-answer');
+                const isSentenceCompletion = !isInlineFillPassage
+                    && group.questions.length > 0
+                    && group.questions.every(q => q.type === 'radio')
+                    && /complete\s+(each\s+)?sentence|correct\s+ending/i.test(group.instruction || "");
 
                 html += `<div class="question-group" id="group_${currentPartIndex}_${gIndex}">`;
                 if(group.title) html += `<div class="question-group-title">${group.title}</div>`;
@@ -1660,6 +1664,30 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                         groupQuestionLabels.push(String(qNumber));
                     });
                     html += renderFillPassageGroup(group, gIndex, currentPartIndex);
+                } else if (isSentenceCompletion) {
+                    // Render like matching-headings: shared legend + dropdown per sentence stem
+                    const sharedOptions = parseStoredOptions(group.questions[0].options);
+                    const stripAlpha = (str) => str.replace(/^[A-H][\.)]\s+/i, '').trim();
+                    const hasAlphaPrefix = (str) => /^[A-H][\.)]\s+/i.test(String(str || "").trim());
+                    html += `<div class="matching-headings-legend"><h4>List of Endings</h4>${sharedOptions.map((opt, oIdx) => {
+                        const letter = String.fromCharCode(65 + oIdx);
+                        const displayText = hasAlphaPrefix(opt) ? stripAlpha(opt) : opt;
+                        return `<div class="matching-headings-legend-row"><span class="matching-heading-label">${letter}.</span><span>${escapeHtml(displayText)}</span></div>`;
+                    }).join("")}</div>`;
+                    group.questions.forEach((q, qIndex) => {
+                        const inputName = `q_${currentPartIndex}_${gIndex}_${qIndex}`;
+                        const questionLabel = extractQuestionDisplayNumber(q, absoluteQNum);
+                        groupQuestionLabels.push(String(questionLabel));
+                        absoluteQNum++;
+                        html += `<div class="question-block matching-heading-row" id="block_${inputName}">`;
+                        html += `<p class="question-text"><strong>${escapeHtml(String(questionLabel))}.</strong> ${escapeHtml(stripLeadingQuestionNumber(q.text))}</p>`;
+                        html += `<select name="${inputName}"><option value="">Select ending</option>${sharedOptions.map((opt, oIdx) => {
+                            const letter = String.fromCharCode(65 + oIdx);
+                            const displayText = hasAlphaPrefix(opt) ? stripAlpha(opt) : opt;
+                            return `<option value="${letter}">${letter}. ${escapeHtml(displayText)}</option>`;
+                        }).join("")}</select>`;
+                        html += `</div>`;
+                    });
                 } else {
                 group.questions.forEach((q, qIndex) => {
                     const inputName = `q_${currentPartIndex}_${gIndex}_${qIndex}`;
