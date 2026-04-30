@@ -1875,6 +1875,7 @@
             }
 
             (current.passages || []).forEach((passage, pIdx) => {
+                if (!isPassageUsedForSave(passage)) return;
                 if (!String(passage.title || "").trim()) {
                     issues.push({
                         message: `Passage ${pIdx + 1}: title is missing`,
@@ -2375,7 +2376,8 @@ PEMBAHASAN
                 })
             );
             const hasAnchoredDraft = !!hasQuestionDraft && !!(hasCore || hasRaw);
-            return !!(hasCore || hasRaw || hasAnchoredDraft || hasGeneratedQuestions);
+            const hasAnchoredGenerated = !!hasGeneratedQuestions && !!(hasCore || hasRaw || hasQuestionDraft);
+            return !!(hasCore || hasRaw || hasAnchoredDraft || hasAnchoredGenerated);
         }
 
         function hydratePassageFromRawDraft(passage, passageIndex = 0) {
