@@ -2666,7 +2666,14 @@ PEMBAHASAN
                 return false;
             }
 
-            const answerMap = parseNumberedTextMap(answerText);
+            let answerMap = parseNumberedTextMap(answerText);
+            if (Object.keys(answerMap).length === 0) {
+                const rawText = String(draftState.rawText || "").trim();
+                if (rawText) {
+                    const parsedFallback = parseUploadedTxtPayload(rawText, passageIndex);
+                    answerMap = parseNumberedTextMap(parsedFallback.answerText || "");
+                }
+            }
             const useSequentialAnswers = Object.keys(answerMap).length === 0;
             const sequentialAnswers = useSequentialAnswers ? parseSequentialAnswerList(answerText) : [];
             let sequentialAnswerIndex = 0;
@@ -2837,6 +2844,43 @@ PEMBAHASAN
                 toast("Questions generated automatically");
             }
             return true;
+        }
+
+        function backfillMissingAnswersFromRawDraft(passage, passageIndex) {
+            if (!passage) return;
+            const draftState = getAutoFillDraft(passage);
+            const rawText = String(draftState.rawText || "").trim();
+            if (!rawText) return;
+
+            const parsed = parseUploadedTxtPayload(rawText, passageIndex);
+            const answerMap = parseNumberedTextMap(parsed.answerText || "");
+            if (Object.keys(answerMap).length === 0) return;
+
+            (passage.questionGroups || []).forEach((group) => {
+                const range = parseQuestionRange(group.questionRange || "");
+                (group.questions || []).forEach((q, qIdx) => {
+                    if (!q || String(q.answer || "").trim()) return;
+                    if (q.type === "matching-headings") return;
+
+                    let qNumber = "";
+                    if (range) {
+                        qNumber = String(range.start + qIdx);
+                    } else {
+                        const match = String(q.text || "").match(/^\s*(\d+)\s*[\.)]/);
+                        qNumber = match ? String(match[1]) : "";
+                    }
+                    if (!qNumber) return;
+
+                    const rawAnswer = String(answerMap[qNumber] || "").trim();
+                    if (!rawAnswer) return;
+
+                    if (q.type === "fill-in-the-blank") {
+                        q.answer = serializeNumberedBlankAnswerMap({ [qNumber]: normalizeAnswerForType(q.type, rawAnswer, q.options || []) });
+                    } else {
+                        q.answer = normalizeAnswerForType(q.type, rawAnswer, q.options || []);
+                    }
+                });
+            });
         }
 
         function previewParseResult(passageIndex) {
@@ -3653,6 +3697,8 @@ PEMBAHASAN
                         failedAutoPassages.push(`passage ${passageIndex + 1}`);
                     }
                 }
+
+                backfillMissingAnswersFromRawDraft(passage, passageIndex);
             });
 
             if (failedAutoPassages.length > 0) {
