@@ -1,4 +1,4 @@
-ï»¿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -88,7 +88,7 @@
         .question-text { font-weight: 500; margin-bottom: 12px; font-size: calc(1.05rem * var(--text-zoom)); }
         .question-text .question-bullet-list { margin: 8px 0; padding-left: 0; list-style: none; }
         .question-text .question-bullet-list li { margin: 4px 0; padding-left: 1.1em; position: relative; }
-        .question-text .question-bullet-list li::before { content: "â€¢"; position: absolute; left: 0; top: 0; color: currentColor; }
+        .question-text .question-bullet-list li::before { content: "•"; position: absolute; left: 0; top: 0; color: currentColor; }
 
         .options { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
         .option-label { display: flex; align-items: center; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s ease; background: var(--bg-surface); font-size: calc(0.95rem * var(--text-zoom)); }
@@ -185,7 +185,7 @@
         </div>
     </div>
 
-    <script src="storage-sync.js"></script>
+    <script src="../storage-sync.js"></script>
     <script>
         const STORAGE_KEY = "prephaven_problems_listening_v1";
         const TEST_RESULTS_KEY = "prephaven_test_results_v1";
@@ -194,7 +194,7 @@
         const PACKAGE_MODE = params.get("package") === "1";
         const RETURN_TO = params.get("returnTo");
         const DAY_VALUE = params.get("day");
-        const NEXT_URL = PACKAGE_MODE ? "reading-test.html?package=1" : (RETURN_TO || "index.html");
+        const NEXT_URL = PACKAGE_MODE ? "reading-test.html?package=1" : (RETURN_TO || "../main/index.html");
         const AI_REVIEW_ENDPOINT = "http://127.0.0.1:8787/api/ai-review";
 
         function formatContentText(text) {
@@ -337,9 +337,9 @@
 
         function renderQuestionTextBlock(text) {
             const rawText = String(text || "");
-            const inlineBulletMatches = rawText.match(/\s(?:-|\*|â€¢)\s+[A-Z0-9]/g);
+            const inlineBulletMatches = rawText.match(/\s(?:-|\*|•)\s+[A-Z0-9]/g);
             const normalizedText = !/\r?\n/.test(rawText) && inlineBulletMatches && inlineBulletMatches.length >= 2
-                ? rawText.replace(/\s([\-\*â€¢])\s+/g, "\n$1 ")
+                ? rawText.replace(/\s([\-\*•])\s+/g, "\n$1 ")
                 : rawText;
             const lines = normalizedText.split(/\r?\n/);
             const chunks = [];
@@ -352,7 +352,7 @@
             };
 
             lines.forEach((line) => {
-                const bulletMatch = line.match(/^\s*(?:[-*â€¢])\s+(.+)$/);
+                const bulletMatch = line.match(/^\s*(?:[-*•])\s+(.+)$/);
                 if (bulletMatch) {
                     listItems.push(formatQuestionText(bulletMatch[1]));
                     return;
@@ -541,7 +541,7 @@
         }
 
         function goBackToDeveloper() {
-            const target = RETURN_TO || "study-plan.html";
+            const target = RETURN_TO || "../study/study-plan.html";
             if (confirm("Leave test and go back?")) {
                 window.location.href = target;
             }
