@@ -11,6 +11,17 @@ class StorageSync {
     this.isRemoteAvailable = true;
   }
 
+  _coerceModuleList(value) {
+    if (Array.isArray(value)) return value;
+    if (!value || typeof value !== "object") return [];
+
+    // RTDB may return arrays as plain objects with numeric keys.
+    return Object.keys(value)
+      .sort((a, b) => Number(a) - Number(b))
+      .map((key) => value[key])
+      .filter((item) => item && typeof item === "object");
+  }
+
   _buildRtdbUrl(path) {
     return `${FIREBASE_RTDB_BASE_URL}/${path}.json`;
   }
@@ -41,10 +52,10 @@ class StorageSync {
   _normalizeProblems(problems) {
     const source = problems && typeof problems === "object" ? problems : {};
     return {
-      reading: Array.isArray(source.reading) ? source.reading : [],
-      listening: Array.isArray(source.listening) ? source.listening : [],
-      writing: Array.isArray(source.writing) ? source.writing : [],
-      speaking: Array.isArray(source.speaking) ? source.speaking : []
+      reading: this._coerceModuleList(source.reading),
+      listening: this._coerceModuleList(source.listening),
+      writing: this._coerceModuleList(source.writing),
+      speaking: this._coerceModuleList(source.speaking)
     };
   }
 
