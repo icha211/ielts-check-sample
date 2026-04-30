@@ -1077,7 +1077,7 @@
                 <div class="passages-box">
                     <div class="passage-head" style="margin-bottom: 10px;">
                         <h3 style="margin: 0;">Passages</h3>
-                        <button type="button" class="inline-btn" id="addPassageBtn">+ Add Passage</button>
+                        <span class="badge">Fixed: Passage 1, 2, 3</span>
                     </div>
                     <div id="passagesContainer"></div>
                 </div>
@@ -1755,15 +1755,10 @@
         }
 
         function ensureAtLeastOnePassage() {
-            if (!Array.isArray(draft.passages) || draft.passages.length === 0) {
-                draft.passages = [newPassage()];
-            }
-            if (draft.passages.length > 3) {
-                draft.passages = draft.passages.slice(0, 3);
-            }
-            if (activePassageIndex < 0 || activePassageIndex >= draft.passages.length) {
-                activePassageIndex = Math.max(0, draft.passages.length - 1);
-            }
+            if (!Array.isArray(draft.passages)) draft.passages = [];
+            if (draft.passages.length > 3) draft.passages = draft.passages.slice(0, 3);
+            while (draft.passages.length < 3) draft.passages.push(newPassage());
+            if (activePassageIndex < 0 || activePassageIndex >= 3) activePassageIndex = 0;
         }
 
         function ensureAtLeastOneGroup(passageIndex) {
@@ -1847,7 +1842,7 @@
 
         function parseUploadedTxtPayload(rawText, passageBlockIndex = 0) {
             const source = String(rawText || "").replace(/\r/g, "");
-            const markerRegex = /READING\s+PASSAGE\s*\d+/gi;
+            const markerRegex = /^\s*READING\s+PASSAGE\s*\d+\s*$/gim;
             const markers = [];
             let marker;
             while ((marker = markerRegex.exec(source)) !== null) {
@@ -1893,11 +1888,29 @@
                 .filter((line) => !/^READING\s+PASSAGE\s*\d+/i.test(line));
 
             let title = "";
-            if (lines.length > 0 && !/^[A-Z]\.[ \t]/.test(lines[0])) {
+            const looksLikeBodyLine = (line) => {
+                const txt = String(line || "").trim();
+                if (!txt) return false;
+                if (/^[A-Z]\.[ \t]/.test(txt)) return true;
+                if (/^[A-Z][ \t]+/.test(txt) && txt.length > 80) return true;
+                if (/[.!?]$/.test(txt) && txt.length > 55) return true;
+                if (txt.length > 120) return true;
+                return false;
+            };
+
+            if (lines.length > 1 && !looksLikeBodyLine(lines[0])) {
+                title = lines.shift();
+            } else if (lines.length === 1 && !looksLikeBodyLine(lines[0])) {
                 title = lines.shift();
             }
 
-            const normalizedPassage = normalizePassageBlockText(lines.join("\n"));
+            let normalizedPassage = normalizePassageBlockText(lines.join("\n"));
+
+            // Fallback: if no passage content was detected, keep single-line passage as content.
+            if (!normalizedPassage && !lines.length && title && looksLikeBodyLine(title)) {
+                normalizedPassage = normalizePassageBlockText(title);
+                title = "";
+            }
 
             const answerLines = keyBody
                 .split("\n")
@@ -2083,6 +2096,41 @@
             return true;
         }
 
+        function rebuildPassageFromRawDraft(passageIndex, options = {}) {
+            const silent = !!options.silent;
+            const passage = draft.passages[passageIndex];
+            if (!passage) return true;
+
+            saveAutoFillDraftFromEditors(passageIndex);
+            const draftState = getAutoFillDraft(passage);
+            const rawText = String(draftState.rawText || "").trim();
+            if (!rawText) return true;
+
+            const parsed = parseUploadedTxtPayload(rawText, passageIndex);
+            draftState.questionText = plainTextToHtml(parsed.questionText || "");
+            draftState.answerText = plainTextToHtml(parsed.answerText || "");
+            draftState.explanationText = plainTextToHtml(parsed.explanationText || "");
+
+            if (parsed.title) passage.title = parsed.title;
+            if (parsed.passageContent) passage.content = parsed.passageContent;
+            passage.editorMode = "auto";
+
+            const questionText = String(parsed.questionText || "").trim();
+            if (!questionText) {
+                if (!silent) toast(`Passage ${passageIndex + 1}: question section not detected from raw set`);
+                return false;
+            }
+
+            const ok = applyAutoFillToPassage(passageIndex, { silent: true, keepAutoMode: true });
+            if (!ok) {
+                if (!silent) toast(`Passage ${passageIndex + 1}: failed to auto-generate questions`);
+                return false;
+            }
+
+            backfillMissingAnswersFromRawDraft(passage, passageIndex);
+            return true;
+        }
+
         function persistActiveAutoFillDraft() {
             if (activePassageIndex === null || activePassageIndex === undefined) return;
 
@@ -2179,7 +2227,7 @@
                     <div class="passage-body">
                         <div class="passage-head">
                             <span class="badge">Passage ${passageIndex + 1} Editor</span>
-                            <button type="button" class="inline-btn danger" onclick="removePassage(${passageIndex})">Remove Passage</button>
+                            <span class="badge">Required</span>
                         </div>
                         <div class="field">
                             <label>Passage Title</label>
@@ -2241,12 +2289,6 @@ PEMBAHASAN
                 tabsHost.innerHTML = draft.passages.map((_, idx) => `
                     <button type="button" class="passage-page-tab ${idx === activePassageIndex ? "active" : ""}" onclick="selectPassagePage(${idx})">Passage ${idx + 1}</button>
                 `).join("");
-            }
-
-            const addPassageBtn = document.getElementById("addPassageBtn");
-            if (addPassageBtn) {
-                addPassageBtn.disabled = draft.passages.length >= 3;
-                addPassageBtn.textContent = draft.passages.length >= 3 ? "Passage Limit Reached" : "+ Add Passage";
             }
         }
 
@@ -3550,31 +3592,6 @@ PEMBAHASAN
             return labels;
         }
 
-        function addPassage() {
-            if (draft.passages.length >= 3) {
-                toast("You can add up to 3 passages only");
-                return;
-            }
-            persistActiveAutoFillDraft();
-            draft.passages.push(newPassage());
-            activePassageIndex = draft.passages.length - 1;
-            renderGroups();
-        }
-
-        function removePassage(passageIndex) {
-            if (draft.passages.length === 1) {
-                toast("Keep at least one passage");
-                return;
-            }
-            persistActiveAutoFillDraft();
-            draft.passages.splice(passageIndex, 1);
-            ensureAtLeastOnePassage();
-            if (activePassageIndex >= draft.passages.length) {
-                activePassageIndex = draft.passages.length - 1;
-            }
-            renderGroups();
-        }
-
         function addGroup(passageIndex) {
             const passage = draft.passages[passageIndex];
             if (!passage) return;
@@ -3687,18 +3704,8 @@ PEMBAHASAN
             // Auto-generate questions for any passage still in auto mode
             const failedAutoPassages = [];
             draft.passages.forEach((passage, passageIndex) => {
-                saveAutoFillDraftFromEditors(passageIndex);
-                hydratePassageFromRawDraft(passage, passageIndex);
-                const draftState = getAutoFillDraft(passage);
-                const questionText = htmlToPlainText(draftState.questionText).trim();
-                if (questionText) {
-                    const ok = applyAutoFillToPassage(passageIndex, { silent: true, keepAutoMode: true });
-                    if (!ok) {
-                        failedAutoPassages.push(`passage ${passageIndex + 1}`);
-                    }
-                }
-
-                backfillMissingAnswersFromRawDraft(passage, passageIndex);
+                const ok = rebuildPassageFromRawDraft(passageIndex, { silent: true });
+                if (!ok) failedAutoPassages.push(`passage ${passageIndex + 1}`);
             });
 
             if (failedAutoPassages.length > 0) {
@@ -3787,7 +3794,7 @@ PEMBAHASAN
                 difficulty: "beginner",
                 level: 1,
                 scheduledDate: "",
-                passages: [newPassage()]
+                passages: [newPassage(), newPassage(), newPassage()]
             };
             activePassageIndex = 0;
             document.getElementById("setTitle").value = "";
@@ -3798,7 +3805,6 @@ PEMBAHASAN
             renderGroups();
         }
 
-        document.getElementById("addPassageBtn").addEventListener("click", addPassage);
         document.getElementById("saveTop").addEventListener("click", saveReadingSet);
         document.getElementById("saveBottom").addEventListener("click", saveReadingSet);
         document.getElementById("resetBtn").addEventListener("click", resetDraft);

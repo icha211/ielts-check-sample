@@ -2217,7 +2217,7 @@ PEMBAHASAN
 
         function parseUploadedTxtPayload(rawText, passageBlockIndex = 0) {
             const source = String(rawText || "").replace(/\r/g, "");
-            const markerRegex = /READING\s+PASSAGE\s*\d+/gi;
+            const markerRegex = /^\s*READING\s+PASSAGE\s*\d+\s*$/gim;
             const markers = [];
             let marker;
             while ((marker = markerRegex.exec(source)) !== null) {
@@ -2263,11 +2263,29 @@ PEMBAHASAN
                 .filter((line) => !/^READING\s+PASSAGE\s*\d+/i.test(line));
 
             let title = "";
-            if (lines.length > 0 && !/^[A-Z]\.[ \t]/.test(lines[0])) {
+            const looksLikeBodyLine = (line) => {
+                const txt = String(line || "").trim();
+                if (!txt) return false;
+                if (/^[A-Z]\.[ \t]/.test(txt)) return true;
+                if (/^[A-Z][ \t]+/.test(txt) && txt.length > 80) return true;
+                if (/[.!?]$/.test(txt) && txt.length > 55) return true;
+                if (txt.length > 120) return true;
+                return false;
+            };
+
+            if (lines.length > 1 && !looksLikeBodyLine(lines[0])) {
+                title = lines.shift();
+            } else if (lines.length === 1 && !looksLikeBodyLine(lines[0])) {
                 title = lines.shift();
             }
 
-            const normalizedPassage = normalizePassageBlockText(lines.join("\n"));
+            let normalizedPassage = normalizePassageBlockText(lines.join("\n"));
+
+            // Fallback: if no passage content was detected, keep single-line passage as content.
+            if (!normalizedPassage && !lines.length && title && looksLikeBodyLine(title)) {
+                normalizedPassage = normalizePassageBlockText(title);
+                title = "";
+            }
 
             const answerLines = keyBody
                 .split("\n")
@@ -2464,6 +2482,42 @@ PEMBAHASAN
             activePassageIndex = passageIndex;
             renderGroups();
             toast(`Raw set imported to passage ${passageIndex + 1}`);
+            return true;
+        }
+
+        function rebuildPassageFromRawDraft(passageIndex, options = {}) {
+            const silent = !!options.silent;
+            const current = allProblems[selectedIndex];
+            const passage = current?.passages?.[passageIndex];
+            if (!passage) return true;
+
+            saveAutoFillDraftFromEditors(passageIndex);
+            const draft = getAutoFillDraft(passage);
+            const rawText = String(draft.rawText || "").trim();
+            if (!rawText) return true;
+
+            const parsed = parseUploadedTxtPayload(rawText, passageIndex);
+            draft.questionText = plainTextToHtml(parsed.questionText || "");
+            draft.answerText = plainTextToHtml(parsed.answerText || "");
+            draft.explanationText = plainTextToHtml(parsed.explanationText || "");
+
+            if (parsed.title) passage.title = parsed.title;
+            if (parsed.passageContent) passage.content = parsed.passageContent;
+            passage.editorMode = "auto";
+
+            const questionText = String(parsed.questionText || "").trim();
+            if (!questionText) {
+                if (!silent) toast(`Passage ${passageIndex + 1}: question section not detected from raw set`);
+                return false;
+            }
+
+            const ok = applyAutoFillToPassage(passageIndex, { silent: true, keepAutoMode: true });
+            if (!ok) {
+                if (!silent) toast(`Passage ${passageIndex + 1}: failed to auto-generate questions`);
+                return false;
+            }
+
+            backfillMissingAnswersFromRawDraft(passage, passageIndex);
             return true;
         }
 
@@ -3855,16 +3909,9 @@ PEMBAHASAN
 
             const current = allProblems[selectedIndex];
             const failedAutoPassages = [];
-            current.passages.forEach((passage, passageIndex) => {
-                saveAutoFillDraftFromEditors(passageIndex);
-                hydratePassageFromRawDraft(passage, passageIndex);
-                const draft = getAutoFillDraft(passage);
-                const questionText = htmlToPlainText(draft.questionText).trim();
-                if (questionText) {
-                    const ok = applyAutoFillToPassage(passageIndex, { silent: true, keepAutoMode: true });
-                    if (!ok) failedAutoPassages.push(`passage ${passageIndex + 1}`);
-                }
-                backfillMissingAnswersFromRawDraft(passage, passageIndex);
+            current.passages.forEach((_, passageIndex) => {
+                const ok = rebuildPassageFromRawDraft(passageIndex, { silent: true });
+                if (!ok) failedAutoPassages.push(`passage ${passageIndex + 1}`);
             });
 
             if (failedAutoPassages.length > 0) {
