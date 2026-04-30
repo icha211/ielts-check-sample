@@ -3067,12 +3067,12 @@ PEMBAHASAN
                 if (sectionType === "fill-in-the-blank") {
                     const bodyLines = String(section.body || "").split("\n");
                     for (let qn = start; qn <= end; qn++) {
-                        const blankPat = new RegExp("\\b" + qn + "\\s*\\.\\s*_{2,}");
+                        const blankPat = new RegExp("\\b" + qn + "(?:\\s*\\.\\s*|\\s+)_{2,}");
                         const matchLine = bodyLines.find((line) => blankPat.test(line));
                         if (matchLine) {
                             inlineBlankMap[String(qn)] = matchLine
                                 .replace(/^[\s\u2022\-*]+/, "")
-                                .replace(new RegExp("\\b" + qn + "\\s*\\.\\s*(_{2,})"), qn + " $1")
+                                .replace(new RegExp("\\b" + qn + "(?:\\s*\\.\\s*|\\s+)(_{2,})"), qn + " $1")
                                 .trim();
                         }
                     }

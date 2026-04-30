@@ -2385,6 +2385,8 @@ PEMBAHASAN
             if (/\/\//.test(text)) return "fill-in-the-blank";
             // Numbered inline blank: digit(s) then period then text then underscores on same line
             if (/^\s*\d+\..*_{2,}/m.test(text)) return "fill-in-the-blank";
+            // Notes-completion style: number then space then underscores mid-sentence (e.g. "did not have 7 ___")
+            if (/\b\d+\s+_{2,}/.test(text)) return "fill-in-the-blank";
             // Standalone underscore in question text = short answer
             if (/_{2,}/.test(text)) return "short-answer";
             return "short-answer";
@@ -2782,12 +2784,12 @@ PEMBAHASAN
                 if (sectionType === "fill-in-the-blank") {
                     const bodyLines = String(section.body || "").split("\n");
                     for (let qn = start; qn <= end; qn++) {
-                        const blankPat = new RegExp("\\b" + qn + "\\s*\\.\\s*_{2,}");
+                        const blankPat = new RegExp("\\b" + qn + "(?:\\s*\\.\\s*|\\s+)_{2,}");
                         const matchLine = bodyLines.find((line) => blankPat.test(line));
                         if (matchLine) {
                             inlineBlankMap[String(qn)] = matchLine
                                 .replace(/^[\s\u2022\-*]+/, "")
-                                .replace(new RegExp("\\b" + qn + "\\s*\\.\\s*(_{2,})"), qn + " $1")
+                                .replace(new RegExp("\\b" + qn + "(?:\\s*\\.\\s*|\\s+)(_{2,})"), qn + " $1")
                                 .trim();
                         }
                     }
