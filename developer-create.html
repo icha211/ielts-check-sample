@@ -2532,10 +2532,14 @@ PEMBAHASAN
             const lines = text.split("\n");
             const questionLineRegex = /^\s*(\d+)\s*[\.)]\s*(.+)$/;
             const optionHeaderIndex = lines.findIndex((line) => /List\s+of\s+Headings?/i.test(line));
+            const firstRomanOptionIndex = lines.findIndex((line) => /^\s*(?:i{1,3}|iv|v|vi{0,3}|ix|x|xi|xii)\.\s+.+$/i.test(String(line || "")));
             const firstQuestionIndex = lines.findIndex((line) => questionLineRegex.test(line));
+            const instructionStopIndex = [optionHeaderIndex, firstRomanOptionIndex, firstQuestionIndex]
+                .filter((idx) => idx >= 0)
+                .sort((a, b) => a - b)[0];
 
             const instructionLines = lines
-                .slice(0, optionHeaderIndex >= 0 ? optionHeaderIndex : (firstQuestionIndex >= 0 ? firstQuestionIndex : lines.length))
+                .slice(0, instructionStopIndex >= 0 ? instructionStopIndex : lines.length)
                 .map((line) => String(line || "").trim())
                 .filter(Boolean);
 
@@ -2729,9 +2733,11 @@ PEMBAHASAN
                     .map((l) => l.trim())
                     .filter((l) => l && !/^[A-H][\.)]/i.test(l) && !/^[-\u2022]/.test(l));
 
-                // Instruction is non-question preamble text (lines before the first numbered/sequential question)
-                const instructionText = hasNumberedQuestions
-                    ? String(section.body || "").replace(/^\s*\d+(?:\s*[\.\)\:\-]\s*|\s+).+$/gm, "").trim()
+                // Instruction is only the preamble before the first numbered question line.
+                const sectionLines = String(section.body || "").split("\n");
+                const firstQuestionLineIndex = sectionLines.findIndex((line) => /^\s*\d+\s*[\.)]/.test(String(line || "")));
+                const instructionText = firstQuestionLineIndex > 0
+                    ? sectionLines.slice(0, firstQuestionLineIndex).join("\n").trim()
                     : "";
 
                 const group = {
