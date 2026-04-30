@@ -2214,18 +2214,24 @@ PEMBAHASAN
             return cleaned.replace(/\s+([A-Z]\.[ \t])/g, "\n\n$1").trim();
         }
 
-        function parseUploadedTxtPayload(rawText) {
-            let raw = String(rawText || "").replace(/\r/g, "");
+        function parseUploadedTxtPayload(rawText, passageBlockIndex = 0) {
+            const source = String(rawText || "").replace(/\r/g, "");
             const markerRegex = /READING\s+PASSAGE\s*\d+/gi;
             const markers = [];
             let marker;
-            while ((marker = markerRegex.exec(raw)) !== null) {
+            while ((marker = markerRegex.exec(source)) !== null) {
                 markers.push(marker.index);
             }
-            if (markers.length >= 2) {
-                raw = raw.slice(markers[0], markers[1]);
-            } else if (markers.length === 1) {
-                raw = raw.slice(markers[0]);
+
+            let raw = source;
+            if (markers.length > 0) {
+                const safeIndex = Math.min(
+                    Math.max(0, Number(passageBlockIndex) || 0),
+                    markers.length - 1
+                );
+                const blockStart = markers[safeIndex];
+                const blockEnd = safeIndex < markers.length - 1 ? markers[safeIndex + 1] : source.length;
+                raw = source.slice(blockStart, blockEnd);
             }
 
             const answerMatch = raw.match(/(?:KUNCI\s*JAWABAN|ANSWER\s*KEY)/i);
@@ -2302,7 +2308,7 @@ PEMBAHASAN
             }
 
             const text = await file.text();
-            const parsed = parseUploadedTxtPayload(text);
+            const parsed = parseUploadedTxtPayload(text, targetIndex);
 
             const current = allProblems[selectedIndex];
             while (current.passages.length <= targetIndex && current.passages.length < 3) {
@@ -2378,7 +2384,7 @@ PEMBAHASAN
             const questionText = htmlToPlainText(draft.questionText || "").trim();
             if (!rawText || questionText) return false;
 
-            const parsed = parseUploadedTxtPayload(rawText);
+            const parsed = parseUploadedTxtPayload(rawText, activePassageIndex);
             draft.questionText = plainTextToHtml(parsed.questionText || "");
             draft.answerText = plainTextToHtml(parsed.answerText || "");
             draft.explanationText = plainTextToHtml(parsed.explanationText || "");
@@ -2431,7 +2437,7 @@ PEMBAHASAN
                 return false;
             }
 
-            const parsed = parseUploadedTxtPayload(rawText);
+            const parsed = parseUploadedTxtPayload(rawText, passageIndex);
             const draft = getAutoFillDraft(passage);
             draft.rawText = rawText;
             draft.questionText = plainTextToHtml(parsed.questionText || "");
@@ -2890,6 +2896,14 @@ PEMBAHASAN
             };
 
             if (canonical[type]) {
+                if (type === "true-false-not-given") {
+                    if (/^yes$/i.test(clean)) return "True";
+                    if (/^no$/i.test(clean)) return "False";
+                }
+                if (type === "yes-no-not-given") {
+                    if (/^true$/i.test(clean)) return "Yes";
+                    if (/^false$/i.test(clean)) return "No";
+                }
                 const found = canonical[type].find((item) => item.toLowerCase() === clean.toLowerCase());
                 return found || clean;
             }
