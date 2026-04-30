@@ -2393,8 +2393,8 @@ PEMBAHASAN
                 draft.answerText = plainTextToHtml(parsed.answerText || "");
                 draft.explanationText = plainTextToHtml(parsed.explanationText || "");
             }
-            if (parsed.title && !String(passage.title || "").trim()) passage.title = parsed.title;
-            if (parsed.passageContent && !String(passage.content || "").trim()) passage.content = parsed.passageContent;
+            if (parsed.title) passage.title = parsed.title;
+            if (parsed.passageContent) passage.content = parsed.passageContent;
             passage.editorMode = "auto";
             return !!String(parsed.questionText || "").trim() || !!String(parsed.passageContent || "").trim();
         }
@@ -2410,7 +2410,7 @@ PEMBAHASAN
             const aEditor = document.getElementById(`autoFillAnswer_${passageIndex}Content`);
             const eEditor = document.getElementById(`autoFillExplanation_${passageIndex}Content`);
 
-            draft.rawText = rawInput ? rawInput.value : draft.rawText;
+            if (rawInput && rawInput.value) draft.rawText = rawInput.value;
             draft.questionText = qEditor ? qEditor.innerHTML : draft.questionText;
             draft.answerText = aEditor ? aEditor.innerHTML : draft.answerText;
             draft.explanationText = eEditor ? eEditor.innerHTML : draft.explanationText;
