@@ -1979,7 +1979,6 @@
             if (!passage) return false;
             const draftState = getAutoFillDraft(passage);
             const hasCore = String(passage.title || "").trim() || String(passage.content || "").trim();
-            const hasRaw = String(draftState.rawText || "").trim();
             const hasQuestionDraft = htmlToPlainText(draftState.questionText || "").trim();
             const hasGeneratedQuestions = (passage.questionGroups || []).some((group) =>
                 (group.questions || []).some((q) => {
@@ -1991,9 +1990,9 @@
                     return String(q.text || "").trim().length > 0 || String(q.answer || "").trim().length > 0;
                 })
             );
-            const hasAnchoredDraft = !!hasQuestionDraft && !!(hasCore || hasRaw);
-            const hasAnchoredGenerated = !!hasGeneratedQuestions && !!(hasCore || hasRaw || hasQuestionDraft);
-            return !!(hasCore || hasRaw || hasAnchoredDraft || hasAnchoredGenerated);
+            const hasAnchoredDraft = !!hasQuestionDraft && !!hasCore;
+            const hasAnchoredGenerated = !!hasGeneratedQuestions && !!(hasCore || hasQuestionDraft);
+            return !!(hasCore || hasAnchoredDraft || hasAnchoredGenerated);
         }
 
         function hydratePassageFromRawDraft(passage, passageIndex = 0) {
@@ -3773,13 +3772,16 @@ PEMBAHASAN
             el?.addEventListener("change", renderProductivityPanel);
         });
 
-        const restoredDraft = restoreCreateDraftCache();
+        const params = new URLSearchParams(window.location.search);
+        const shouldRestoreDraft = params.get("resumeDraft") === "1";
+        const restoredDraft = shouldRestoreDraft ? restoreCreateDraftCache() : false;
         if (restoredDraft) {
             document.getElementById("setTitle").value = draft.title || "";
             document.getElementById("difficultyLevel").value = draft.difficulty || "beginner";
             document.getElementById("setLevel").value = String(draft.level || 1);
             document.getElementById("setDate").value = draft.scheduledDate || new Date().toISOString().split("T")[0];
         } else {
+            removeCreateDraftCache();
             setInitialDate();
         }
         ensureAtLeastOnePassage();

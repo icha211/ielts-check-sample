@@ -2363,7 +2363,6 @@ PEMBAHASAN
             if (!passage) return false;
             const draft = getAutoFillDraft(passage);
             const hasCore = String(passage.title || "").trim() || String(passage.content || "").trim();
-            const hasRaw = String(draft.rawText || "").trim();
             const hasQuestionDraft = htmlToPlainText(draft.questionText || "").trim();
             const hasGeneratedQuestions = (passage.questionGroups || []).some((group) =>
                 (group.questions || []).some((q) => {
@@ -2375,9 +2374,9 @@ PEMBAHASAN
                     return String(q.text || "").trim().length > 0 || String(q.answer || "").trim().length > 0;
                 })
             );
-            const hasAnchoredDraft = !!hasQuestionDraft && !!(hasCore || hasRaw);
-            const hasAnchoredGenerated = !!hasGeneratedQuestions && !!(hasCore || hasRaw || hasQuestionDraft);
-            return !!(hasCore || hasRaw || hasAnchoredDraft || hasAnchoredGenerated);
+            const hasAnchoredDraft = !!hasQuestionDraft && !!hasCore;
+            const hasAnchoredGenerated = !!hasGeneratedQuestions && !!(hasCore || hasQuestionDraft);
+            return !!(hasCore || hasAnchoredDraft || hasAnchoredGenerated);
         }
 
         function hydratePassageFromRawDraft(passage, passageIndex = 0) {
