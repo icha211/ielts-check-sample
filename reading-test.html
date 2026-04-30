@@ -1117,6 +1117,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             const normalizeQuestionGroups = (groups) => (groups || []).map((group) => ({
                 title: group.title || "Questions",
                 instruction: group.instruction || "",
+                questionRange: group.questionRange || "",
                 passageBody: group.passageBody || undefined,
                 passageStart: group.passageStart || undefined,
                 questions: (group.questions || []).map((q) => ({
@@ -1631,6 +1632,9 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
             activeGroups.forEach((group, gIndex) => {
                 const groupQuestionLabels = [];
+                // Sync absoluteQNum with this group's stated question range start if available
+                const _rangeStartMatch = String(group.questionRange || "").match(/(\d+)/);
+                if (_rangeStartMatch) absoluteQNum = Number(_rangeStartMatch[1]);
                 const firstQ = (group.questions || [])[0] || {};
                 const isInlineFillPassage = group.passageBody
                     && (firstQ.type === 'fill-in-the-blank' || firstQ.type === 'text' || firstQ.type === 'short-answer');
