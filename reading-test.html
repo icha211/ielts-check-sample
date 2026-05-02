@@ -958,6 +958,17 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             setActivePart(currentPartIndex + 1);
         }
 
+        function syncSubmitAreaPrimaryButton(passages) {
+            const submitBtn = document.getElementById('submitBtn');
+            if (!submitBtn) return;
+
+            const total = Array.isArray(passages) ? passages.length : 0;
+            const isLastPassage = total <= 1 || currentPartIndex >= total - 1;
+
+            submitBtn.textContent = isLastPassage ? 'Submit Answers' : 'Next Passage';
+            submitBtn.onclick = isLastPassage ? () => submitTest() : () => goToNextPassage();
+        }
+
         function scrollToGroup(groupIndex) {
             const target = document.getElementById(`group_${currentPartIndex}_${groupIndex}`);
             const container = document.getElementById('rightPanel');
@@ -1138,6 +1149,15 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             return passages.map((passage, pIdx) => {
                 const groups = getPassageQuestionGroups(passage, currentProblem.questionGroups || []);
                 const entries = [];
+                const seenLabels = new Set();
+
+                const pushEntry = (entry) => {
+                    const label = String(entry?.label || "").trim();
+                    if (!label) return;
+                    if (seenLabels.has(label)) return;
+                    seenLabels.add(label);
+                    entries.push(entry);
+                };
 
                 groups.forEach((group, gIdx) => {
                     group.questions.forEach((q, qIdx) => {
@@ -1146,7 +1166,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                         if (q.type === 'matching-headings') {
                             const matching = normalizeMatchingHeadings(q);
                             matching.rows.forEach((row) => {
-                                entries.push({
+                                pushEntry({
                                     name: `${baseName}__mh__${row.number}`,
                                     label: String(row.number),
                                     blockId: baseBlockId
@@ -1158,7 +1178,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
                         if ((q.type === 'text' || q.type === 'fill-in-the-blank' || q.type === 'short-answer') && numberedDefs.length > 0) {
                             numberedDefs.forEach((def) => {
-                                entries.push({
+                                pushEntry({
                                     name: `${baseName}__${def.number}`,
                                     label: String(def.number),
                                     blockId: baseBlockId
@@ -1166,7 +1186,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                             });
                         } else {
                             const questionLabel = extractQuestionDisplayNumber(q, entries.length + 1);
-                            entries.push({
+                            pushEntry({
                                 name: baseName,
                                 label: questionLabel,
                                 blockId: baseBlockId
@@ -2203,6 +2223,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
             container.innerHTML = html;
             renderReadingOverview(passages, typeMeta);
+            syncSubmitAreaPrimaryButton(passages);
             hydrateInputsFromState();
             attachTrackingListeners();
             bindWordListInteractions();
@@ -2559,45 +2580,156 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 passages: passages.map((passage, pIdx) => {
                     const groups = getPassageQuestionGroups(passage, currentProblem.questionGroups || []);
                     const questionsMap = new Map();
-                    let absoluteQNum = 1;
+                    const expectedNumbers = new Set();
+                    const explanationMap = parseNumberedTextMap(
+                        htmlToPlainText(String(passage?.autoFillDraft?.explanationText || ""))
+                    );
+
+                    const resolveGroupRange = (group) => {
+                        const direct = parseQuestionRange(group?.questionRange || "");
+                        if (direct && Number.isFinite(direct.start) && Number.isFinite(direct.end) && direct.end >= direct.start) {
+                            return { start: Number(direct.start), end: Number(direct.end) };
+                        }
+
+                        const sourcePool = [
+                            String(group?.questionRange || ""),
+                            String(group?.title || ""),
+                            htmlToPlainText(String(group?.instruction || ""))
+                        ];
+
+                        const numbers = [];
+                        sourcePool.forEach((source) => {
+                            const normalized = String(source || "").replace(/[–—−]/g, "-");
+                            const matches = normalized.match(/\d+/g) || [];
+                            matches.forEach((m) => numbers.push(Number(m)));
+                        });
+
+                        const filtered = numbers.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
+                        if (filtered.length >= 2) {
+                            return { start: filtered[0], end: filtered[filtered.length - 1] };
+                        }
+                        if (filtered.length === 1) {
+                            const start = filtered[0];
+                            const count = Math.max(1, Number(group?.questions?.length || 1));
+                            return { start, end: start + count - 1 };
+                        }
+                        return null;
+                    };
+
+                    const putQuestion = (num, payload = {}) => {
+                        const n = Number(num);
+                        if (!Number.isFinite(n) || n <= 0) return;
+
+                        const prev = questionsMap.get(n) || {};
+                        const mergedOptions = (payload.options && Object.keys(payload.options).length)
+                            ? payload.options
+                            : (prev.options || {});
+
+                        const merged = {
+                            number: n,
+                            question: String(payload.question || prev.question || `Question ${n}`),
+                            options: mergedOptions,
+                            correctAnswer: String(payload.correctAnswer || prev.correctAnswer || ""),
+                            explanation: String(
+                                payload.explanation
+                                || prev.explanation
+                                || explanationMap[String(n)]
+                                || "No explanation provided."
+                            )
+                        };
+
+                        questionsMap.set(n, merged);
+                    };
                     
                     groups.forEach((group, gIdx) => {
-                        const _rangeStartMatch = String(group.questionRange || "").match(/(\d+)/);
-                        if (_rangeStartMatch) absoluteQNum = Number(_rangeStartMatch[1]);
+                        const range = resolveGroupRange(group);
+                        if (range) {
+                            for (let n = range.start; n <= range.end; n++) {
+                                expectedNumbers.add(n);
+                            }
+                        }
+                        let absoluteQNum = range ? Number(range.start || 1) : 1;
                         
                         group.questions.forEach((q, qIdx) => {
-                            const inputName = `q_${pIdx}_${gIdx}_${qIdx}`;
                             const numberedDefs = extractNumberedBlankDefs(q.text);
-                            const qNumber = extractQuestionDisplayNumber(q, absoluteQNum);
+                            const explanation = q.explanation || q.autoExplanation || q.pembahasan || q.discussion || q.notes || "";
                             
                             const opts = parseStoredOptions(q.options);
                             const optionsMap = ['A', 'B', 'C', 'D'].reduce((acc, letter, idx) => {
                                 if (opts[idx]) acc[letter] = opts[idx];
                                 return acc;
                             }, {});
+
+                            if (q.type === 'matching-headings') {
+                                const matching = normalizeMatchingHeadings(q);
+                                const answerMap = parseMatchingHeadingsAnswerMap(q.answer);
+                                matching.rows.forEach((row) => {
+                                    const correctOptionId = String(answerMap[row.number] || row.answerOptionId || "").trim();
+                                    const optionMeta = matching.optionMap.get(correctOptionId);
+                                    putQuestion(row.number, {
+                                        question: String(row.prompt || `Question ${row.number}`),
+                                        options: {},
+                                        correctAnswer: optionMeta ? `${optionMeta.label} ${optionMeta.text}`.trim() : correctOptionId,
+                                        explanation: explanation || explanationMap[String(row.number)] || ""
+                                    });
+                                });
+                                return;
+                            }
+
+                            if (numberedDefs.length > 0) {
+                                const numberedAnswers = parseNumberedBlankAnswerMap(q.answer);
+                                numberedDefs.forEach((def) => {
+                                    putQuestion(def.number, {
+                                        question: stripLeadingQuestionNumber(q.text) || `Question ${def.number}`,
+                                        options: optionsMap,
+                                        correctAnswer: String(numberedAnswers[def.number] || "").trim(),
+                                        explanation: explanation || explanationMap[String(def.number)] || ""
+                                    });
+                                });
+                                return;
+                            }
+
+                            const qNumber = Number(extractQuestionDisplayNumber(q, absoluteQNum));
                             
-                            questionsMap.set(qNumber, {
-                                number: qNumber,
-                                question: stripLeadingQuestionNumber(q.text),
+                            putQuestion(qNumber, {
+                                question: stripLeadingQuestionNumber(q.text) || `Question ${qNumber}`,
                                 options: optionsMap,
                                 correctAnswer: getCorrectTextAnswer(q),
-                                explanation: q.explanation || q.autoExplanation || q.pembahasan || q.discussion || q.notes || "No explanation provided."
+                                explanation: explanation || explanationMap[String(qNumber)] || ""
                             });
                             
                             if (!numberedDefs || numberedDefs.length === 0) {
                                 absoluteQNum++;
                             }
                         });
+
                     });
+
+                    // Ensure every expected number exists, even when parser grouped content unusually.
+                    Array.from(expectedNumbers).sort((a, b) => a - b).forEach((n) => {
+                        if (!questionsMap.has(n)) {
+                            putQuestion(n, {
+                                question: `Question ${n}`,
+                                options: {},
+                                correctAnswer: "",
+                                explanation: explanationMap[String(n)] || "No explanation provided."
+                            });
+                        }
+                    });
+
+                    const sortedQuestions = Array.from(questionsMap.values()).sort((a, b) => a.number - b.number);
+                    const expectedSorted = Array.from(expectedNumbers).sort((a, b) => a - b);
+                    const rangeStart = expectedSorted[0] || sortedQuestions[0]?.number || 1;
+                    const rangeEnd = expectedSorted[expectedSorted.length - 1] || sortedQuestions[sortedQuestions.length - 1]?.number || rangeStart;
                     
                     return {
                         title: passage.title || `Passage ${pIdx + 1}`,
                         content: passage.content,
                         questionRange: [
-                            Math.min(...Array.from(questionsMap.keys())),
-                            Math.max(...Array.from(questionsMap.keys()))
+                            rangeStart,
+                            rangeEnd
                         ],
-                        questions: Array.from(questionsMap.values())
+                        questions: sortedQuestions
                     };
                 })
             };
@@ -2616,10 +2748,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             continueBtn.textContent = 'Show The Result';
             continueBtn.style.display = 'block';
             continueBtn.onclick = () => window.location.href = 'reading-test-answered.html';
-
-            if (isAutoContinue) {
-                setTimeout(() => window.location.href = 'reading-test-answered.html', 900);
-            }
+            setTimeout(() => window.location.href = 'reading-test-answered.html', 450);
         }
 
         function goBackToDeveloper() {
@@ -2643,6 +2772,66 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 .replaceAll(">", "&gt;")
                 .replaceAll('"', "&quot;")
                 .replaceAll("'", "&#39;");
+        }
+
+        function htmlToPlainText(value) {
+            const temp = document.createElement("div");
+            temp.innerHTML = String(value || "");
+            return String(temp.textContent || temp.innerText || "").replace(/\u00a0/g, " ");
+        }
+
+        function parseQuestionRange(value) {
+            const raw = String(value || "").replace(/[–—−]/g, "-").trim();
+            if (!raw) return null;
+
+            const pair = raw.match(/(\d+)\s*-\s*(\d+)/);
+            if (pair) {
+                const start = Number(pair[1]);
+                const end = Number(pair[2]);
+                if (Number.isFinite(start) && Number.isFinite(end) && end >= start) {
+                    return { start, end };
+                }
+            }
+
+            const single = raw.match(/(\d+)/);
+            if (single) {
+                const n = Number(single[1]);
+                if (Number.isFinite(n)) return { start: n, end: n };
+            }
+
+            return null;
+        }
+
+        function parseNumberedTextMap(value) {
+            const text = String(value || "").replace(/\r/g, "");
+            const map = {};
+            if (!text.trim()) return map;
+
+            const lines = text.split("\n");
+            let currentKey = "";
+            let buffer = [];
+
+            const flush = () => {
+                if (!currentKey) return;
+                const merged = buffer.join(" ").replace(/\s+/g, " ").trim();
+                if (merged) map[currentKey] = merged;
+            };
+
+            lines.forEach((line) => {
+                const rawLine = String(line || "").trim();
+                if (!rawLine) return;
+                const match = rawLine.match(/^(\d+)\s*[.):-]?\s*(.*)$/);
+                if (match) {
+                    flush();
+                    currentKey = String(match[1]);
+                    buffer = [String(match[2] || "").trim()];
+                } else if (currentKey) {
+                    buffer.push(rawLine);
+                }
+            });
+
+            flush();
+            return map;
         }
 
         function formatAiReviewHtml(review) {

@@ -536,9 +536,30 @@
         function buildFlatQuestions() {
             flatQuestions = [];
             state.passages.forEach((passage, pIdx) => {
+                const byNumber = new Map();
                 (passage.questions || []).forEach((q) => {
                     const number = Number(q.number);
                     if (!Number.isFinite(number)) return;
+                    byNumber.set(number, q);
+                });
+
+                const range = Array.isArray(passage.questionRange) ? passage.questionRange : [];
+                const start = Number(range[0]);
+                const end = Number(range[1]);
+
+                const numbers = (Number.isFinite(start) && Number.isFinite(end) && end >= start)
+                    ? Array.from({ length: end - start + 1 }, (_, i) => start + i)
+                    : Array.from(byNumber.keys()).sort((a, b) => a - b);
+
+                numbers.forEach((number) => {
+                    const q = byNumber.get(number) || {
+                        number,
+                        question: `Question ${number}`,
+                        options: {},
+                        correctAnswer: "",
+                        explanation: "No explanation provided."
+                    };
+
                     flatQuestions.push({
                         number,
                         passageIndex: pIdx,
@@ -578,10 +599,21 @@
                 const row = document.createElement("div");
                 row.className = "circle-row";
 
-                const sorted = (passage.questions || []).slice().sort((a, b) => Number(a.number) - Number(b.number));
-                sorted.forEach((q) => {
+                const questionByNumber = new Map();
+                (passage.questions || []).forEach((q) => {
                     const qNum = Number(q.number);
-                    if (!Number.isFinite(qNum)) return;
+                    if (Number.isFinite(qNum)) questionByNumber.set(qNum, q);
+                });
+
+                const range = Array.isArray(passage.questionRange) ? passage.questionRange : [];
+                const start = Number(range[0]);
+                const end = Number(range[1]);
+                const numberList = (Number.isFinite(start) && Number.isFinite(end) && end >= start)
+                    ? Array.from({ length: end - start + 1 }, (_, i) => start + i)
+                    : Array.from(questionByNumber.keys()).sort((a, b) => a - b);
+
+                numberList.forEach((qNum) => {
+                    const q = questionByNumber.get(qNum) || null;
 
                     const btn = document.createElement("button");
                     btn.type = "button";
@@ -589,12 +621,14 @@
                     btn.textContent = String(qNum);
 
                     const answer = answerMapByQuestion.get(qNum);
-                    const correctLetter = inferLetter(q.correctAnswer, q.options || {});
-                    const userLetter = inferLetter(answer?.userAnswer || "", q.options || {});
+                    const correctLetter = inferLetter(q?.correctAnswer || "", q?.options || {});
+                    const userLetter = inferLetter(answer?.userAnswer || "", q?.options || {});
 
                     if (answer) {
                         if (userLetter && correctLetter && userLetter === correctLetter) btn.classList.add("correct");
                         else btn.classList.add("incorrect");
+                    } else {
+                        btn.classList.add("incorrect");
                     }
 
                     btn.addEventListener("click", () => goToQuestionNumber(qNum));
