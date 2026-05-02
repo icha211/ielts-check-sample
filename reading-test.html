@@ -422,6 +422,14 @@
             gap: 8px;
         }
 
+        .wordlist-slot {
+            min-height: 44px;
+            border: 1px dashed #d4dfd8;
+            border-radius: 8px;
+            padding: 2px;
+            background: #f6fbf9;
+        }
+
         .wordlist-chip {
             display: flex;
             align-items: center;
@@ -433,6 +441,11 @@
             cursor: grab;
             user-select: none;
             font-size: calc(0.9rem * var(--text-zoom));
+        }
+
+        .wordlist-chip.dragging {
+            opacity: 0.65;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
         }
 
         .wordlist-chip:active {
@@ -455,22 +468,39 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 140px;
-            max-width: 260px;
+            min-width: 120px;
+            max-width: 220px;
             min-height: 34px;
-            padding: 4px 8px;
+            padding: 2px 6px;
             border: 1px dashed #93a79d;
             border-radius: 8px;
             background: #fff;
             color: #556a60;
             font-size: calc(0.9rem * var(--text-zoom));
             vertical-align: middle;
+            box-sizing: border-box;
+        }
+
+        .wordlist-dropzone .wordlist-chip {
+            width: auto;
+            margin: 0;
+            justify-content: flex-start;
+            padding: 4px 8px;
+            min-height: 28px;
+            box-sizing: border-box;
+        }
+
+        .wordlist-drop-placeholder {
+            color: #6c8479;
         }
 
         .wordlist-dropzone.filled {
-            border-style: solid;
-            border-color: var(--primary);
-            background: #edf8f2;
+            border-style: dashed;
+            border-color: #93a79d;
+            background: #fff;
+        }
+
+        .wordlist-dropzone.filled .wordlist-chip {
             color: var(--primary);
             font-weight: 600;
         }
@@ -595,7 +625,7 @@
 
                 <div class="submit-area">
                     <button type="button" class="submit-btn" id="submitBtn" onclick="submitTest()">Submit Answers</button>
-                    <button type="button" class="submit-btn" id="continueBtn" onclick="goToNextModule()" style="display: none; margin-top: 10px;">Continue To Writing</button>
+                    <button type="button" class="submit-btn" id="continueBtn" onclick="window.location.href='reading-test-answered.html'" style="display: none; margin-top: 10px;">Show The Result</button>
                     <div id="result"></div>
                 </div>
             </form>
@@ -1198,6 +1228,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     textHtml: q.textHtml || "",
                     options: typeof q.options === "string" ? q.options : Array.isArray(q.options) ? q.options.join(", ") : "",
                     answer: q.answer || q.correctAnswer || "",
+                    explanation: q.explanation || q.autoExplanation || q.pembahasan || q.discussion || q.notes || "",
                     matchingHeadingsOptions: Array.isArray(q.matchingHeadingsOptions) ? q.matchingHeadingsOptions : undefined,
                     matchingHeadingsRows: Array.isArray(q.matchingHeadingsRows) ? q.matchingHeadingsRows : undefined
                 }))
@@ -1248,6 +1279,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                         textHtml: q.textHtml || "",
                         options: Array.isArray(q.options) ? q.options.join(", ") : (q.options || ""),
                         answer: q.answer || q.correctAnswer || "",
+                        explanation: q.explanation || q.autoExplanation || q.pembahasan || q.discussion || q.notes || "",
                         matchingHeadingsOptions: Array.isArray(q.matchingHeadingsOptions) ? q.matchingHeadingsOptions : undefined,
                         matchingHeadingsRows: Array.isArray(q.matchingHeadingsRows) ? q.matchingHeadingsRows : undefined
                     }))
@@ -1642,9 +1674,11 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     <h4 style="margin:0 0 10px 0;font-size:0.95rem;">Word List</h4>
                     <div class="wordlist-option-grid">
                         ${options.map((opt) => `
-                            <div class="wordlist-chip" draggable="true" data-pool-id="${poolId}" data-value="${escapeHtml(opt.value)}" data-text="${escapeHtml(opt.text)}">
-                                <span class="wordlist-chip-label">${escapeHtml(opt.label)}</span>
-                                <span>${escapeHtml(opt.text)}</span>
+                            <div class="wordlist-slot" data-pool-id="${poolId}" data-value="${escapeHtml(opt.value)}">
+                                <div class="wordlist-chip" draggable="true" data-pool-id="${poolId}" data-value="${escapeHtml(opt.value)}" data-text="${escapeHtml(opt.text)}">
+                                    <span class="wordlist-chip-label">${escapeHtml(opt.label)}</span>
+                                    <span>${escapeHtml(opt.text)}</span>
+                                </div>
                             </div>
                         `).join("")}
                     </div>
@@ -1667,7 +1701,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 const token = `@@WORDLIST_BLANK_${tokens.length}@@`;
                 tokens.push({
                     token,
-                    html: `<span class="numbered-blank"><span class="blank-number">${escapeHtml(number)}</span><span class="wordlist-dropzone" data-input-name="${targetName}" data-pool-id="${escapeHtml(poolId)}">Drop answer</span><input type="hidden" name="${targetName}" data-wordlist-hidden="1"></span>`
+                    html: `<span class="numbered-blank"><span class="blank-number">${escapeHtml(number)}</span><span class="wordlist-dropzone" data-input-name="${targetName}" data-pool-id="${escapeHtml(poolId)}"><span class="wordlist-drop-placeholder">Drop answer</span></span><input type="hidden" name="${targetName}" data-wordlist-hidden="1"></span>`
                 });
                 return token;
             });
@@ -1683,25 +1717,116 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
         function syncWordListDropzonesFromState() {
             const zones = document.querySelectorAll('.wordlist-dropzone[data-input-name]');
+
+            const ensurePlaceholder = (zone) => {
+                if (!zone.querySelector('.wordlist-drop-placeholder')) {
+                    zone.innerHTML = '<span class="wordlist-drop-placeholder">Drop answer</span>';
+                }
+            };
+
+            // First, return every chip to its original slot.
+            document.querySelectorAll('.wordlist-chip[data-pool-id][data-value]').forEach((chip) => {
+                const poolId = chip.getAttribute('data-pool-id');
+                const value = chip.getAttribute('data-value');
+                const slot = document.querySelector(`.wordlist-slot[data-pool-id="${poolId}"][data-value="${value}"]`);
+                if (slot && chip.parentElement !== slot) {
+                    slot.appendChild(chip);
+                }
+            });
+
+            zones.forEach((zone) => {
+                zone.classList.remove('filled');
+                ensurePlaceholder(zone);
+            });
+
+            // Then place chips according to stored hidden values.
             zones.forEach((zone) => {
                 const inputName = zone.getAttribute('data-input-name');
                 const poolId = zone.getAttribute('data-pool-id');
                 const hidden = document.querySelector(`input[type="hidden"][name="${inputName}"]`);
                 const value = String(hidden?.value || "").trim().toUpperCase();
-                if (!value) {
-                    zone.textContent = 'Drop answer';
-                    zone.classList.remove('filled');
-                    return;
-                }
+                if (!value) return;
                 const chip = document.querySelector(`.wordlist-chip[data-pool-id="${poolId}"][data-value="${value}"]`);
-                const text = chip?.getAttribute('data-text') || value;
-                zone.textContent = `${value}. ${text}`;
+                if (!chip) return;
+                zone.innerHTML = '';
+                zone.appendChild(chip);
                 zone.classList.add('filled');
             });
         }
 
         function bindWordListInteractions() {
             let selectedChip = null;
+
+            const ensurePlaceholder = (zone) => {
+                if (!zone.querySelector('.wordlist-drop-placeholder')) {
+                    zone.innerHTML = '<span class="wordlist-drop-placeholder">Drop answer</span>';
+                }
+            };
+
+            const clearZone = (zone) => {
+                if (!zone) return;
+                zone.classList.remove('filled');
+                ensurePlaceholder(zone);
+            };
+
+            const getZoneHidden = (zone) => {
+                const inputName = zone?.getAttribute('data-input-name');
+                if (!inputName) return null;
+                return document.querySelector(`input[type="hidden"][name="${inputName}"]`);
+            };
+
+            const sendChipToPool = (chip) => {
+                if (!chip) return;
+                const fromZone = chip.closest('.wordlist-dropzone');
+                if (fromZone) {
+                    const hidden = getZoneHidden(fromZone);
+                    if (hidden) {
+                        hidden.value = '';
+                        updateTracker(hidden.name);
+                    }
+                    clearZone(fromZone);
+                }
+                const poolId = chip.getAttribute('data-pool-id');
+                const value = chip.getAttribute('data-value');
+                const slot = document.querySelector(`.wordlist-slot[data-pool-id="${poolId}"][data-value="${value}"]`);
+                if (slot) slot.appendChild(chip);
+            };
+
+            const placeChipInZone = (chip, zone) => {
+                if (!chip || !zone) return;
+                const poolId = zone.getAttribute('data-pool-id');
+                if (chip.getAttribute('data-pool-id') !== poolId) return;
+
+                const existing = zone.querySelector('.wordlist-chip');
+                if (existing && existing !== chip) {
+                    sendChipToPool(existing);
+                }
+
+                const fromZone = chip.closest('.wordlist-dropzone');
+                if (fromZone && fromZone !== zone) {
+                    const fromHidden = getZoneHidden(fromZone);
+                    if (fromHidden) {
+                        fromHidden.value = '';
+                        updateTracker(fromHidden.name);
+                    }
+                    clearZone(fromZone);
+                }
+
+                zone.innerHTML = '';
+                zone.appendChild(chip);
+                zone.classList.add('filled');
+
+                const hidden = getZoneHidden(zone);
+                if (hidden) {
+                    hidden.value = String(chip.getAttribute('data-value') || '').toUpperCase();
+                    updateTracker(hidden.name);
+                }
+            };
+
+            const getChipFromPayload = (payload) => {
+                if (!payload || !payload.value || !payload.poolId) return null;
+                return document.querySelector(`.wordlist-chip[data-pool-id="${payload.poolId}"][data-value="${payload.value}"]`);
+            };
 
             document.querySelectorAll('.wordlist-chip').forEach((chip) => {
                 chip.addEventListener('click', () => {
@@ -1713,19 +1838,15 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 chip.addEventListener('dragstart', (event) => {
                     const value = chip.getAttribute('data-value') || '';
                     const text = chip.getAttribute('data-text') || '';
-                    event.dataTransfer?.setData('text/plain', JSON.stringify({ value, text }));
+                    const poolId = chip.getAttribute('data-pool-id') || '';
+                    chip.classList.add('dragging');
+                    event.dataTransfer?.setData('text/plain', JSON.stringify({ value, text, poolId }));
+                });
+
+                chip.addEventListener('dragend', () => {
+                    chip.classList.remove('dragging');
                 });
             });
-
-            const applyToZone = (zone, value, text) => {
-                const inputName = zone.getAttribute('data-input-name');
-                const hidden = document.querySelector(`input[type="hidden"][name="${inputName}"]`);
-                if (!hidden) return;
-                hidden.value = String(value || '').trim().toUpperCase();
-                zone.textContent = `${hidden.value}. ${text}`;
-                zone.classList.add('filled');
-                updateTracker(inputName);
-            };
 
             document.querySelectorAll('.wordlist-dropzone[data-input-name]').forEach((zone) => {
                 zone.addEventListener('dragover', (event) => {
@@ -1746,15 +1867,51 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     } catch (_) {
                         payload = null;
                     }
-                    if (!payload || !payload.value) return;
-                    applyToZone(zone, payload.value, payload.text || payload.value);
+                    const chip = getChipFromPayload(payload);
+                    if (!chip) return;
+                    placeChipInZone(chip, zone);
                 });
 
                 zone.addEventListener('click', () => {
                     if (!selectedChip) return;
-                    const value = selectedChip.getAttribute('data-value') || '';
-                    const text = selectedChip.getAttribute('data-text') || value;
-                    applyToZone(zone, value, text);
+                    placeChipInZone(selectedChip, zone);
+                });
+            });
+
+            document.querySelectorAll('.wordlist-slot[data-pool-id][data-value]').forEach((slot) => {
+                slot.addEventListener('dragover', (event) => {
+                    event.preventDefault();
+                });
+
+                slot.addEventListener('drop', (event) => {
+                    event.preventDefault();
+                    let payload = null;
+                    try {
+                        payload = JSON.parse(event.dataTransfer?.getData('text/plain') || '{}');
+                    } catch (_) {
+                        payload = null;
+                    }
+                    const chip = getChipFromPayload(payload);
+                    if (!chip) return;
+                    sendChipToPool(chip);
+                });
+            });
+
+            document.querySelectorAll('[data-wordlist-pool="1"]').forEach((pool) => {
+                pool.addEventListener('dragover', (event) => {
+                    event.preventDefault();
+                });
+                pool.addEventListener('drop', (event) => {
+                    event.preventDefault();
+                    let payload = null;
+                    try {
+                        payload = JSON.parse(event.dataTransfer?.getData('text/plain') || '{}');
+                    } catch (_) {
+                        payload = null;
+                    }
+                    const chip = getChipFromPayload(payload);
+                    if (!chip) return;
+                    sendChipToPool(chip);
                 });
             });
 
@@ -2393,14 +2550,75 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 input.disabled = true;
             });
 
-            if (PACKAGE_MODE) {
-                if (isAutoContinue) {
-                    setTimeout(goToNextModule, 900);
-                } else {
-                    continueBtn.style.display = 'block';
-                }
-            } else {
-                continueBtn.style.display = 'block';
+            // Save data for reading-test-answered page
+            const answeredPageState = {
+                testTitle: currentProblem.title || "Reading Test",
+                testDate: currentProblem.scheduledDate || currentProblem.date || currentProblem.scheduled_at || new Date().toISOString(),
+                rawScore: score,
+                totalQuestions: totalQuestions,
+                passages: passages.map((passage, pIdx) => {
+                    const groups = getPassageQuestionGroups(passage, currentProblem.questionGroups || []);
+                    const questionsMap = new Map();
+                    let absoluteQNum = 1;
+                    
+                    groups.forEach((group, gIdx) => {
+                        const _rangeStartMatch = String(group.questionRange || "").match(/(\d+)/);
+                        if (_rangeStartMatch) absoluteQNum = Number(_rangeStartMatch[1]);
+                        
+                        group.questions.forEach((q, qIdx) => {
+                            const inputName = `q_${pIdx}_${gIdx}_${qIdx}`;
+                            const numberedDefs = extractNumberedBlankDefs(q.text);
+                            const qNumber = extractQuestionDisplayNumber(q, absoluteQNum);
+                            
+                            const opts = parseStoredOptions(q.options);
+                            const optionsMap = ['A', 'B', 'C', 'D'].reduce((acc, letter, idx) => {
+                                if (opts[idx]) acc[letter] = opts[idx];
+                                return acc;
+                            }, {});
+                            
+                            questionsMap.set(qNumber, {
+                                number: qNumber,
+                                question: stripLeadingQuestionNumber(q.text),
+                                options: optionsMap,
+                                correctAnswer: getCorrectTextAnswer(q),
+                                explanation: q.explanation || q.autoExplanation || q.pembahasan || q.discussion || q.notes || "No explanation provided."
+                            });
+                            
+                            if (!numberedDefs || numberedDefs.length === 0) {
+                                absoluteQNum++;
+                            }
+                        });
+                    });
+                    
+                    return {
+                        title: passage.title || `Passage ${pIdx + 1}`,
+                        content: passage.content,
+                        questionRange: [
+                            Math.min(...Array.from(questionsMap.keys())),
+                            Math.max(...Array.from(questionsMap.keys()))
+                        ],
+                        questions: Array.from(questionsMap.values())
+                    };
+                })
+            };
+            
+            const answeredPageAnswers = answerDetails.map((detail) => {
+                const numberMatch = String(detail.question || "").match(/\b(\d+)\b/);
+                return {
+                    ...detail,
+                    questionNumber: numberMatch ? Number(numberMatch[1]) : null
+                };
+            });
+
+            localStorage.setItem('readingTestState', JSON.stringify(answeredPageState));
+            localStorage.setItem('readingTestAnswers', JSON.stringify(answeredPageAnswers));
+
+            continueBtn.textContent = 'Show The Result';
+            continueBtn.style.display = 'block';
+            continueBtn.onclick = () => window.location.href = 'reading-test-answered.html';
+
+            if (isAutoContinue) {
+                setTimeout(() => window.location.href = 'reading-test-answered.html', 900);
             }
         }
 

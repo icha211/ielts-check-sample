@@ -2489,11 +2489,9 @@ Questions 1 - 3
             const text = String(sectionText || "");
             const romanHeadingLines = text.match(/^\s*(?:i{1,3}|iv|v|vi{0,3}|ix|x|xi|xii)\.\s+.+$/gim) || [];
             const paragraphPromptLines = text.match(/^\s*\d+\s*[\.)]\s*Paragraph\s+[A-Z]\b.*$/gim) || [];
-            const hasWordList = /\bWord\s+List\s*:?/i.test(text) || /complete\s+the\s+summary\s+using\s+the\s+list\s+of\s+words/i.test(text);
             if (/\bTRUE\b/i.test(text) && /\bFALSE\b/i.test(text) && /NOT\s+GIVEN/i.test(text)) return "true-false-not-given";
             if (/\bYES\b/i.test(text) && /\bNO\b/i.test(text) && /NOT\s+GIVEN/i.test(text)) return "yes-no-not-given";
             if (/List\s+of\s+Headings/i.test(text) || (paragraphPromptLines.length > 0 && romanHeadingLines.length >= 2)) return "matching-headings";
-            if (hasWordList && /_{2,}/.test(text)) return "fill-in-the-blank";
             if (/^\s*[A-H][\.)]\s+/m.test(text)) return "multiple-choice";
             if (/^\s*[ivxlcdm]+\.\s+/im.test(text)) return "matching-headings";
             if (/\/\//.test(text)) return "fill-in-the-blank";
@@ -3017,7 +3015,7 @@ Questions 1 - 3
 
                     const explanation = explanationMap[String(qNumber)] || "";
                     if (explanation) {
-                        question.autoExplanation = explanation;
+                        question.explanation = explanation;
                     }
 
                     group.questions.push(question);
@@ -3829,6 +3827,7 @@ Questions 1 - 3
                                 ? JSON.stringify(q.options || [])
                                 : "",
                             answer: q.type === "matching-headings" ? getMatchingHeadingsAnswerValue(q) : (q.answer || extractBlankMarkerAnswer(q.text)),
+                            explanation: q.explanation || q.autoExplanation || "",
                             matchingHeadingsOptions: q.type === "matching-headings" ? q.matchingHeadingsOptions : undefined,
                             matchingHeadingsRows: q.type === "matching-headings" ? q.matchingHeadingsRows : undefined
                         };

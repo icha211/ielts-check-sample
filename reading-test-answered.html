@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reading Test Answered - IELTS Check</title>
+    <style>
+        :root {
+            --primary: #1f745e;
+            --bg-body: #f3f7f5;
+            --bg-surface: #ffffff;
+            --text-main: #182621;
+            --text-muted: #5a6d66;
+            --border-color: #d8e4de;
+            --danger: #c44444;
+            --success: #1f9d63;
+            --review-header-height: 118px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body {
+            background: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            gap: 12px;
+            padding: 22px 20px calc(var(--review-header-height) + 22px);
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            flex: 1;
+        }
+
+        .panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            padding: 28px;
+            overflow-y: auto;
+            max-height: calc(100vh - var(--review-header-height) - 44px);
+        }
+
+        .passage-panel { width: 36%; flex-shrink: 0; }
+        .answer-panel { flex: 1; min-width: 0; }
+
+        .resizer {
+            width: 8px;
+            border-radius: 6px;
+            background: transparent;
+            cursor: col-resize;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .resizer::after {
+            content: "";
+            width: 2px;
+            height: 46px;
+            border-radius: 2px;
+            background: #9fb2a9;
+        }
+
+        .resizer:hover,
+        .resizer.resizing {
+            background: #d5e2db;
+        }
+
+        .passage-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--bg-body);
+        }
+
+        .passage-date {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 18px;
+        }
+
+        .passage-content { line-height: 1.7; color: #334155; font-size: 0.9rem; }
+        .passage-content p { margin-bottom: 14px; text-align: justify; }
+
+        .answer-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--bg-body);
+        }
+
+        .box {
+            background: #f8fbfa;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .question-no {
+            font-size: 0.88rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .question-text {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .answer-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid transparent;
+        }
+
+        .answer-option:last-child { margin-bottom: 0; }
+
+        .answer-option.correct {
+            background: rgba(31, 157, 99, 0.08);
+            border-color: rgba(31, 157, 99, 0.2);
+        }
+
+        .answer-option.incorrect {
+            background: rgba(196, 68, 68, 0.08);
+            border-color: rgba(196, 68, 68, 0.2);
+        }
+
+        .answer-option.neutral {
+            background: #ffffff;
+            border-color: #e8efec;
+        }
+
+        .opt-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            border: 2px solid #cfdcd6;
+            background: #fff;
+            color: var(--text-main);
+        }
+
+        .answer-option.correct .opt-circle {
+            background: var(--success);
+            border-color: var(--success);
+            color: #fff;
+        }
+
+        .answer-option.incorrect .opt-circle {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: #fff;
+        }
+
+        .opt-text { flex: 1; line-height: 1.5; font-size: 0.94rem; }
+
+        .opt-meta {
+            font-size: 0.72rem;
+            font-weight: 700;
+            border-radius: 999px;
+            padding: 3px 8px;
+            align-self: center;
+            white-space: nowrap;
+        }
+
+        .opt-meta.user { background: #e7f3ed; color: #1e6d57; }
+        .opt-meta.correct { background: #e7f7ef; color: #1f9d63; }
+
+        .explanation-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .explanation-text { line-height: 1.6; color: #334155; }
+
+        .review-header {
+            position: sticky;
+            bottom: 0;
+            z-index: 20;
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border-color);
+            box-shadow: 0 -8px 24px rgba(0,0,0,0.08);
+        }
+
+        .review-header-wrap {
+            width: 100%;
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 6px 16px;
+            display: grid;
+            grid-template-columns: 230px 1fr 250px;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .summary-col {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .summary-meta h1 {
+            font-size: 0.98rem;
+            font-weight: 700;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 120px;
+        }
+
+        .summary-meta p {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+        }
+
+        .score-ring {
+            --pct: 0%;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: conic-gradient(var(--primary) var(--pct), #dbe8e1 0);
+            display: grid;
+            place-items: center;
+        }
+
+        .score-ring::before {
+            content: "";
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #fff;
+            border: 1px solid #dce7e1;
+            position: absolute;
+        }
+
+        .score-value {
+            position: relative;
+            z-index: 1;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1;
+        }
+
+        .score-band {
+            position: relative;
+            z-index: 1;
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+
+        .tracker {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .passage-card {
+            border: 1px solid var(--border-color);
+            background: #fbfdfc;
+            border-radius: 10px;
+            padding: 6px;
+            min-height: 74px;
+        }
+
+        .passage-card-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: #31443d;
+            text-transform: uppercase;
+        }
+
+        .circle-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .q-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #cfdcd6;
+            background: #fff;
+            color: #2f3f38;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .q-circle.correct {
+            background: #dff4e9;
+            border-color: #8fd6b3;
+            color: #1f745e;
+        }
+
+        .q-circle.incorrect {
+            background: #f7dfdf;
+            border-color: #e5a8a8;
+            color: #9f2f2f;
+        }
+
+        .q-circle.active {
+            box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--primary);
+        }
+
+        .nav-col {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .nav-small {
+            width: 42px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: #fff;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .nav-small:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .next-btn {
+            min-width: 150px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid #b7d8c8;
+            background: #ebf8f0;
+            color: var(--primary);
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .next-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        @media (max-width: 1180px) {
+            .container { flex-direction: column; padding-bottom: calc(var(--review-header-height) + 160px); }
+            .passage-panel { width: 100%; }
+            .resizer { display: none; }
+            .panel { max-height: none; }
+            .review-header-wrap {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            .summary-col, .nav-col { justify-content: center; }
+            .summary-meta h1 { max-width: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <section class="panel passage-panel">
+            <h2 class="passage-title" id="passageTitle">Passage</h2>
+            <div class="passage-date" id="passageDate">-</div>
+            <div class="passage-content" id="passageContent"><p>Loading passage...</p></div>
+        </section>
+
+        <div class="resizer" id="dragMe" aria-hidden="true"></div>
+
+        <section class="panel answer-panel">
+            <h2 class="answer-title">Answer</h2>
+
+            <div class="box">
+                <div class="question-no" id="questionNumberLabel">Question</div>
+                <div class="question-text" id="questionText">-</div>
+            </div>
+
+            <div class="box" id="optionsBox"></div>
+
+            <div class="box">
+                <div class="explanation-title">Explanation</div>
+                <div class="explanation-text" id="explanationText">No explanation provided.</div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="review-header">
+        <div class="review-header-wrap">
+            <div class="summary-col">
+                <div class="summary-meta">
+                    <h1 id="testTitle">Reading Test</h1>
+                    <p id="testDate">-</p>
+                </div>
+                <div class="score-ring" id="scoreRing">
+                    <div>
+                        <div class="score-value" id="bandScore">0.0</div>
+                        <div class="score-band">Band</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tracker" id="tracker"></div>
+
+            <div class="nav-col">
+                <button class="nav-small" id="prevBtn" type="button" aria-label="Previous question">&#8592;</button>
+                <div id="questionCounter" style="min-width:90px;text-align:center;font-weight:700;">Q 1 / 40</div>
+                <button class="next-btn" id="nextBtn" type="button">Next question &#8594;</button>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let state = {
+            testTitle: "Reading Test",
+            testDate: "-",
+            rawScore: 0,
+            totalQuestions: 40,
+            passages: []
+        };
+
+        const answerMapByQuestion = new Map();
+        let flatQuestions = [];
+        let currentFlatIndex = 0;
+
+        function normalizeText(value) {
+            return String(value || "")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/^[A-H][\.)]\s*/i, "")
+                .replace(/\s+/g, " ")
+                .trim()
+                .toLowerCase();
+        }
+
+        function formatDate(value) {
+            const raw = String(value || "").trim();
+            if (!raw) return "-";
+            const d = new Date(raw);
+            if (Number.isNaN(d.getTime())) return raw;
+            return d.toISOString().slice(0, 10);
+        }
+
+        function calculateBand(correctCount) {
+            if (correctCount >= 39) return 9.0;
+            if (correctCount >= 37) return 8.0;
+            if (correctCount >= 34) return 7.0;
+            if (correctCount >= 30) return 6.0;
+            if (correctCount >= 23) return 5.0;
+            if (correctCount >= 15) return 4.0;
+            return 3.0;
+        }
+
+        function parseStored() {
+            try {
+                const rawState = localStorage.getItem("readingTestState");
+                if (rawState) {
+                    const parsed = JSON.parse(rawState);
+                    if (parsed && Array.isArray(parsed.passages)) {
+                        state = parsed;
+                    }
+                }
+            } catch (_) {}
+
+            let answers = [];
+            try {
+                answers = JSON.parse(localStorage.getItem("readingTestAnswers") || "[]");
+                if (!Array.isArray(answers)) answers = [];
+            } catch (_) {
+                answers = [];
+            }
+
+            // Primary mapping: explicit questionNumber
+            answers.forEach((a) => {
+                const qn = Number(a?.questionNumber);
+                if (Number.isFinite(qn) && qn > 0) {
+                    answerMapByQuestion.set(qn, a);
+                }
+            });
+
+            // Fallback mapping by sequence for any missing question numbers
+            if (answerMapByQuestion.size < answers.length) {
+                let idx = 0;
+                state.passages.forEach((p, pIdx) => {
+                    (p.questions || []).forEach((q) => {
+                        if (!answerMapByQuestion.has(Number(q.number)) && idx < answers.length) {
+                            answerMapByQuestion.set(Number(q.number), answers[idx]);
+                        }
+                        idx++;
+                    });
+                });
+            }
+        }
+
+        function inferLetter(answerValue, options) {
+            const entries = Object.entries(options || {});
+            const raw = String(answerValue || "").trim();
+            const upper = raw.toUpperCase();
+            if (/^[A-H]$/.test(upper) && options[upper]) return upper;
+            const pref = upper.match(/^([A-H])[\.)\s]/);
+            if (pref && options[pref[1]]) return pref[1];
+
+            const normRaw = normalizeText(raw);
+            for (const [letter, text] of entries) {
+                if (normalizeText(text) === normRaw) return letter;
+            }
+            return "";
+        }
+
+        function buildFlatQuestions() {
+            flatQuestions = [];
+            state.passages.forEach((passage, pIdx) => {
+                (passage.questions || []).forEach((q) => {
+                    const number = Number(q.number);
+                    if (!Number.isFinite(number)) return;
+                    flatQuestions.push({
+                        number,
+                        passageIndex: pIdx,
+                        passage,
+                        question: q
+                    });
+                });
+            });
+            flatQuestions.sort((a, b) => a.number - b.number);
+        }
+
+        function renderHeaderSummary() {
+            document.getElementById("testTitle").textContent = state.testTitle || "Reading Test";
+            document.getElementById("testDate").textContent = formatDate(state.testDate || state.date || "");
+
+            const rawScore = Number(state.rawScore || 0);
+            const total = Math.max(1, Number(state.totalQuestions || flatQuestions.length || 40));
+            const band = calculateBand(rawScore);
+            const pct = Math.max(0, Math.min(100, Math.round((rawScore / total) * 100)));
+
+            document.getElementById("bandScore").textContent = band.toFixed(1);
+            document.getElementById("scoreRing").style.setProperty("--pct", pct + "%");
+        }
+
+        function renderTracker() {
+            const tracker = document.getElementById("tracker");
+            tracker.innerHTML = "";
+
+            state.passages.forEach((passage, pIdx) => {
+                const card = document.createElement("section");
+                card.className = "passage-card";
+
+                const title = document.createElement("div");
+                title.className = "passage-card-title";
+                title.textContent = `Passage ${pIdx + 1}`;
+
+                const row = document.createElement("div");
+                row.className = "circle-row";
+
+                const sorted = (passage.questions || []).slice().sort((a, b) => Number(a.number) - Number(b.number));
+                sorted.forEach((q) => {
+                    const qNum = Number(q.number);
+                    if (!Number.isFinite(qNum)) return;
+
+                    const btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "q-circle";
+                    btn.textContent = String(qNum);
+
+                    const answer = answerMapByQuestion.get(qNum);
+                    const correctLetter = inferLetter(q.correctAnswer, q.options || {});
+                    const userLetter = inferLetter(answer?.userAnswer || "", q.options || {});
+
+                    if (answer) {
+                        if (userLetter && correctLetter && userLetter === correctLetter) btn.classList.add("correct");
+                        else btn.classList.add("incorrect");
+                    }
+
+                    btn.addEventListener("click", () => goToQuestionNumber(qNum));
+                    row.appendChild(btn);
+                });
+
+                card.appendChild(title);
+                card.appendChild(row);
+                tracker.appendChild(card);
+            });
+        }
+
+        function setActiveCircle(questionNumber) {
+            document.querySelectorAll(".q-circle.active").forEach((el) => el.classList.remove("active"));
+            const target = Array.from(document.querySelectorAll(".q-circle")).find((el) => Number(el.textContent) === questionNumber);
+            if (target) target.classList.add("active");
+        }
+
+        function renderOptions(question, answer) {
+            const box = document.getElementById("optionsBox");
+            box.innerHTML = "";
+
+            const options = question.options || {};
+            const letters = Object.keys(options).sort();
+            const correctLetter = inferLetter(question.correctAnswer, options);
+            const userLetter = inferLetter(answer?.userAnswer || "", options);
+
+            letters.forEach((letter) => {
+                const row = document.createElement("div");
+                const isCorrect = letter === correctLetter;
+                const isIncorrect = !isCorrect;
+                row.className = "answer-option " + (isCorrect ? "correct" : (isIncorrect ? "incorrect" : "neutral"));
+
+                const circle = document.createElement("div");
+                circle.className = "opt-circle";
+                circle.textContent = letter;
+
+                const text = document.createElement("div");
+                text.className = "opt-text";
+                text.textContent = options[letter];
+
+                row.appendChild(circle);
+                row.appendChild(text);
+
+                if (userLetter && userLetter === letter) {
+                    const tag = document.createElement("span");
+                    tag.className = "opt-meta user";
+                    tag.textContent = "Your answer";
+                    row.appendChild(tag);
+                }
+
+                if (isCorrect) {
+                    const tag = document.createElement("span");
+                    tag.className = "opt-meta correct";
+                    tag.textContent = "Correct";
+                    row.appendChild(tag);
+                }
+
+                box.appendChild(row);
+            });
+        }
+
+        function showQuestionByFlatIndex(index) {
+            if (!flatQuestions.length) return;
+            if (index < 0) index = 0;
+            if (index > flatQuestions.length - 1) index = flatQuestions.length - 1;
+            currentFlatIndex = index;
+
+            const item = flatQuestions[currentFlatIndex];
+            const answer = answerMapByQuestion.get(item.number);
+
+            document.getElementById("passageTitle").textContent = item.passage.title || `Passage ${item.passageIndex + 1}`;
+            document.getElementById("passageDate").textContent = formatDate(state.testDate || state.date || "");
+            document.getElementById("passageContent").innerHTML = item.passage.content || "<p>No passage content.</p>";
+
+            document.getElementById("questionNumberLabel").textContent = `Question ${item.number}`;
+            document.getElementById("questionText").textContent = item.question.question || "No question text.";
+            document.getElementById("explanationText").textContent = item.question.explanation || item.question.pembahasan || item.question.discussion || item.question.notes || "No explanation provided.";
+
+            renderOptions(item.question, answer);
+
+            const total = Number(state.totalQuestions || flatQuestions.length || 0);
+            document.getElementById("questionCounter").textContent = `Q ${item.number} / ${total}`;
+
+            const prevBtn = document.getElementById("prevBtn");
+            const nextBtn = document.getElementById("nextBtn");
+            prevBtn.disabled = currentFlatIndex === 0;
+            nextBtn.disabled = currentFlatIndex === flatQuestions.length - 1;
+
+            setActiveCircle(item.number);
+        }
+
+        function goToQuestionNumber(questionNumber) {
+            const idx = flatQuestions.findIndex((q) => q.number === questionNumber);
+            if (idx >= 0) showQuestionByFlatIndex(idx);
+        }
+
+        function previousQuestion() {
+            showQuestionByFlatIndex(currentFlatIndex - 1);
+        }
+
+        function nextQuestion() {
+            showQuestionByFlatIndex(currentFlatIndex + 1);
+        }
+
+        function setupPanelResizer() {
+            const resizer = document.getElementById("dragMe");
+            const leftPanel = document.querySelector(".passage-panel");
+            const container = document.querySelector(".container");
+            if (!resizer || !leftPanel || !container) return;
+
+            let startX = 0;
+            let startWidth = 0;
+
+            const onMove = (event) => {
+                const containerWidth = container.getBoundingClientRect().width;
+                const deltaX = event.clientX - startX;
+                const newWidthPx = startWidth + deltaX;
+                const newPercent = (newWidthPx / containerWidth) * 100;
+
+                if (newPercent >= 25 && newPercent <= 70) {
+                    leftPanel.style.width = `${newPercent}%`;
+                }
+            };
+
+            const onUp = () => {
+                document.removeEventListener("mousemove", onMove);
+                document.removeEventListener("mouseup", onUp);
+                resizer.classList.remove("resizing");
+                document.body.style.userSelect = "";
+            };
+
+            resizer.addEventListener("mousedown", (event) => {
+                startX = event.clientX;
+                startWidth = leftPanel.getBoundingClientRect().width;
+                resizer.classList.add("resizing");
+                document.body.style.userSelect = "none";
+                document.addEventListener("mousemove", onMove);
+                document.addEventListener("mouseup", onUp);
+            });
+        }
+
+        function init() {
+            parseStored();
+            buildFlatQuestions();
+            renderHeaderSummary();
+            renderTracker();
+            setupPanelResizer();
+
+            if (!flatQuestions.length) {
+                document.getElementById("questionText").textContent = "No answered data found yet. Submit a reading test first.";
+                document.getElementById("passageContent").innerHTML = "<p>No passage available.</p>";
+                document.getElementById("prevBtn").disabled = true;
+                document.getElementById("nextBtn").disabled = true;
+                return;
+            }
+
+            document.getElementById("prevBtn").addEventListener("click", previousQuestion);
+            document.getElementById("nextBtn").addEventListener("click", nextQuestion);
+            showQuestionByFlatIndex(0);
+        }
+
+        window.addEventListener("DOMContentLoaded", init);
+    </script>
+</body>
+</html>
