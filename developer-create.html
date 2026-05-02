@@ -3871,36 +3871,12 @@ Questions 1 - 3
                 return;
             }
 
-            let saved = null;
-            let wasUpdate = false;
-            try {
-                const activeId = String(localStorage.getItem(ACTIVE_READING_SET_ID_KEY) || "").trim();
-                if (activeId) {
-                    const existing = await storageSync.getProblemsByModule("reading");
-                    const list = Array.isArray(existing) ? [...existing] : [];
-                    const idx = list.findIndex((item) => String(item?.id || "") === activeId);
-                    if (idx >= 0) {
-                        const prev = list[idx] || {};
-                        saved = {
-                            ...problem,
-                            id: String(prev.id || activeId),
-                            createdAt: prev.createdAt || problem.createdAt,
-                            updatedAt: new Date().toISOString()
-                        };
-                        list[idx] = saved;
-                        await storageSync.saveProblemsByModule("reading", list);
-                        wasUpdate = true;
-                    }
-                }
-            } catch (_) {}
-
-            if (!saved) {
-                saved = await storageSync.addProblem("reading", problem);
-            }
+            // Create page should always create a new set and never overwrite prior saves.
+            const saved = await storageSync.addProblem("reading", problem);
 
             try { localStorage.setItem(ACTIVE_READING_SET_ID_KEY, String(saved?.id || problem.id || "")); } catch (_) {}
             removeCreateDraftCache();
-            toast(wasUpdate ? "Updated successfully! Opening test view…" : "Saved successfully! Opening test view…");
+            toast("Saved successfully! Opening test view…");
             setTimeout(() => window.open("reading-test.html?returnTo=developer-create.html", "_blank"), 600);
         }
 
