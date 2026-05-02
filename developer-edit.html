@@ -2757,9 +2757,11 @@ Questions 1 - 3
             const text = String(sectionText || "");
             const romanHeadingLines = text.match(/^\s*(?:i{1,3}|iv|v|vi{0,3}|ix|x|xi|xii)\.\s+.+$/gim) || [];
             const paragraphPromptLines = text.match(/^\s*\d+\s*[\.)]\s*Paragraph\s+[A-Z]\b.*$/gim) || [];
+            const hasWordList = /\bWord\s+List\s*:?/i.test(text) || /complete\s+the\s+summary\s+using\s+the\s+list\s+of\s+words/i.test(text);
             if (/\bTRUE\b/i.test(text) && /\bFALSE\b/i.test(text) && /NOT\s+GIVEN/i.test(text)) return "true-false-not-given";
             if (/\bYES\b/i.test(text) && /\bNO\b/i.test(text) && /NOT\s+GIVEN/i.test(text)) return "yes-no-not-given";
             if (/List\s+of\s+Headings/i.test(text) || (paragraphPromptLines.length > 0 && romanHeadingLines.length >= 2)) return "matching-headings";
+            if (hasWordList && /_{2,}/.test(text)) return "fill-in-the-blank";
             if (/^\s*[A-H][\.)]\s+/m.test(text)) return "multiple-choice";
             if (/^\s*[ivxlcdm]+\.\s+/im.test(text)) return "matching-headings";
             if (/\/\//.test(text) || /_{2,}/.test(text)) return "fill-in-the-blank";
@@ -2825,6 +2827,32 @@ Questions 1 - 3
                 }
             }
             return options;
+        }
+
+        function extractWordListOptions(sectionText) {
+            const text = String(sectionText || "").replace(/\r/g, "");
+            const marker = text.match(/\bWord\s+List\s*:?/i);
+            const scope = marker ? text.slice((marker.index || 0) + marker[0].length) : text;
+            const options = [];
+            const lineRegex = /^\s*([A-I])[\.)]\s*(.+)$/gim;
+            let match;
+            while ((match = lineRegex.exec(scope)) !== null) {
+                const value = String(match[2] || "").replace(/\s+/g, " ").replace(/,\s*$/, "").trim();
+                if (value) options.push(value);
+            }
+            return options;
+        }
+
+        function normalizeWordListAnswer(rawAnswer, options) {
+            const clean = String(rawAnswer || "").trim();
+            if (!clean) return "";
+            const letter = clean.match(/^[A-I]$/i);
+            if (letter) return String(letter[0]).toUpperCase();
+            const normalized = clean.toLowerCase().replace(/[\s,.;:!?]+$/g, "").trim();
+            if (!normalized || !Array.isArray(options) || !options.length) return clean;
+            const idx = options.findIndex((opt) => String(opt || "").toLowerCase().replace(/[\s,.;:!?]+$/g, "").trim() === normalized);
+            if (idx >= 0) return String.fromCharCode(65 + idx);
+            return clean;
         }
 
         function extractMultipleChoiceQuestions(sectionText, start, end) {
@@ -3118,6 +3146,7 @@ Questions 1 - 3
                 const numberedQuestionMap = parseNumberedTextMap(section.body);
                 const hasNumberedQuestions = Object.keys(numberedQuestionMap).length > 0;
                 const optionList = sectionType === "multiple-choice" ? extractChoiceOptions(section.body) : [];
+                const wordListOptions = sectionType === "fill-in-the-blank" ? extractWordListOptions(section.body) : [];
                 const mcQuestionMap = sectionType === "multiple-choice"
                     ? extractMultipleChoiceQuestions(section.body, start, end)
                     : {};
@@ -3228,6 +3257,9 @@ Questions 1 - 3
                             q.options = perQuestionOptions;
                         }
                     }
+                    if (sectionType === "fill-in-the-blank" && wordListOptions.length) {
+                        q.options = [...wordListOptions];
+                    }
 
                     // Extract inline trailing answer (e.g. "...text. TRUE", "...text. NOT GIVEN")
                     const inline = extractInlineAutoAnswer(sectionType, rawQuestion, q.options);
@@ -3241,6 +3273,9 @@ Questions 1 - 3
                         sequentialAnswerIndex += 1;
                     }
                     if (!rawAnswer && inline.answer) rawAnswer = inline.answer;
+                    if (sectionType === "fill-in-the-blank" && wordListOptions.length) {
+                        rawAnswer = normalizeWordListAnswer(rawAnswer, wordListOptions);
+                    }
                     if (sectionType === "fill-in-the-blank" && rawAnswer) {
                         q.answer = serializeNumberedBlankAnswerMap({ [String(qNumber)]: normalizeAnswerForType(sectionType, rawAnswer, q.options) });
                     } else {
@@ -3987,7 +4022,9 @@ Questions 1 - 3
                             type: storedType,
                             text: stripBlankMarkerText(q.text),
                             textHtml: q.textHtml || "",
-                            options: conf.mode === "radio" ? JSON.stringify(q.options || []) : "",
+                            options: (conf.mode === "radio" || (q.type === "fill-in-the-blank" && Array.isArray(q.options) && q.options.length))
+                                ? JSON.stringify(q.options || [])
+                                : "",
                             answer: q.type === "matching-headings" ? getMatchingHeadingsAnswerValue(q) : (q.answer || extractBlankMarkerAnswer(q.text)),
                             matchingHeadingsOptions: q.type === "matching-headings" ? q.matchingHeadingsOptions : undefined,
                             matchingHeadingsRows: q.type === "matching-headings" ? q.matchingHeadingsRows : undefined

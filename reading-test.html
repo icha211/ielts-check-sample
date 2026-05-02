@@ -361,7 +361,7 @@
         .question-text-row .question-text { flex: 1; margin-bottom: 0; }
         .question-text .question-bullet-list { margin: 8px 0; padding-left: 0; list-style: none; }
         .question-text .question-bullet-list li { margin: 4px 0; padding-left: 1.1em; position: relative; }
-        .question-text .question-bullet-list li::before { content: "•"; position: absolute; left: 0; top: 0; color: currentColor; }
+        .question-text .question-bullet-list li::before { content: "ï¿½"; position: absolute; left: 0; top: 0; color: currentColor; }
         .question-text ol, .question-text ul { padding-left: 1.8em; margin: 6px 0; }
         .question-text ol li, .question-text ul li { margin: 3px 0; }
         .reading-passage-content ol, .reading-passage-content ul { padding-left: 1.8em; margin: 8px 0 16px; }
@@ -406,6 +406,78 @@
         }
         .numbered-inline-input {
             min-width: 100px; max-width: 160px;
+        }
+
+        .wordlist-option-box {
+            margin-top: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px;
+            background: #f9fcfb;
+        }
+
+        .wordlist-option-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .wordlist-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border: 1px solid #cad7cf;
+            border-radius: 8px;
+            background: #fff;
+            cursor: grab;
+            user-select: none;
+            font-size: calc(0.9rem * var(--text-zoom));
+        }
+
+        .wordlist-chip:active {
+            cursor: grabbing;
+        }
+
+        .wordlist-chip.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(17, 75, 58, 0.12);
+            background: #edf8f2;
+        }
+
+        .wordlist-chip-label {
+            font-weight: 700;
+            color: var(--primary);
+            min-width: 24px;
+        }
+
+        .wordlist-dropzone {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 140px;
+            max-width: 260px;
+            min-height: 34px;
+            padding: 4px 8px;
+            border: 1px dashed #93a79d;
+            border-radius: 8px;
+            background: #fff;
+            color: #556a60;
+            font-size: calc(0.9rem * var(--text-zoom));
+            vertical-align: middle;
+        }
+
+        .wordlist-dropzone.filled {
+            border-style: solid;
+            border-color: var(--primary);
+            background: #edf8f2;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .wordlist-dropzone.drag-over {
+            border-color: var(--primary);
+            background: #eef8f3;
         }
 
         .matching-headings-legend {
@@ -895,7 +967,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             if (typeStrip) {
                 typeStrip.innerHTML = (typeMeta || []).map((meta, idx) => `
                     <button type="button" class="question-type-chip ${idx === 0 ? 'active' : ''}" onclick="scrollToGroup(${meta.groupIndex})">
-                        ${escapeHtml(meta.typeLabel)} · Question ${escapeHtml(meta.startLabel)}-${escapeHtml(meta.endLabel)}
+                        ${escapeHtml(meta.typeLabel)} ï¿½ Question ${escapeHtml(meta.startLabel)}-${escapeHtml(meta.endLabel)}
                     </button>
                 `).join('');
             }
@@ -1344,7 +1416,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     flushList();
                     return; // blank line = end current block
                 }
-                const bulletMatch = l.match(/^[•\-\*]\s+(.+)$/);
+                const bulletMatch = l.match(/^[ï¿½\-\*]\s+(.+)$/);
                 if (bulletMatch) {
                     listItems.push(escapeHtml(bulletMatch[1]));
                 } else {
@@ -1379,9 +1451,9 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             }
 
             const rawText = String(text || "");
-            const inlineBulletMatches = rawText.match(/\s(?:-|\*|•)\s+[A-Z0-9]/g);
+            const inlineBulletMatches = rawText.match(/\s(?:-|\*|ï¿½)\s+[A-Z0-9]/g);
             const normalizedText = !/\r?\n/.test(rawText) && inlineBulletMatches && inlineBulletMatches.length >= 2
-                ? rawText.replace(/\s([\-\*•])\s+/g, "\n$1 ")
+                ? rawText.replace(/\s([\-\*ï¿½])\s+/g, "\n$1 ")
                 : rawText;
             const lines = normalizedText.split(/\r?\n/);
             const chunks = [];
@@ -1394,7 +1466,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             };
 
             lines.forEach((line) => {
-                const bulletMatch = line.match(/^\s*(?:[-*•])\s+(.+)$/);
+                const bulletMatch = line.match(/^\s*(?:[-*ï¿½])\s+(.+)$/);
                 if (bulletMatch) {
                     listItems.push(formatQuestionText(bulletMatch[1]));
                     return;
@@ -1549,11 +1621,156 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             return text.split(",").map((item) => item.trim()).filter(Boolean);
         }
 
-        function renderFillPassageGroup(group, gIndex, passageIndex) {
+        function parseLabeledWordListOptions(value) {
+            const options = parseStoredOptions(value);
+            return options.map((opt, idx) => {
+                const letter = String.fromCharCode(65 + idx);
+                const raw = String(opt || "").trim();
+                const stripped = raw.replace(/^[A-I][\.)]\s+/i, "").trim();
+                return {
+                    value: letter,
+                    label: `${letter}.`,
+                    text: stripped || raw
+                };
+            }).filter((item) => String(item.text || "").trim());
+        }
+
+        function renderWordListOptionPool(options, poolId) {
+            if (!Array.isArray(options) || options.length === 0) return "";
+            return `
+                <div class="wordlist-option-box" id="${poolId}" data-wordlist-pool="1">
+                    <h4 style="margin:0 0 10px 0;font-size:0.95rem;">Word List</h4>
+                    <div class="wordlist-option-grid">
+                        ${options.map((opt) => `
+                            <div class="wordlist-chip" draggable="true" data-pool-id="${poolId}" data-value="${escapeHtml(opt.value)}" data-text="${escapeHtml(opt.text)}">
+                                <span class="wordlist-chip-label">${escapeHtml(opt.label)}</span>
+                                <span>${escapeHtml(opt.text)}</span>
+                            </div>
+                        `).join("")}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderWordListBlankText(text, inputName, textHtml = "", poolId = "") {
+            const plainSource = String(text || "");
+            const richSource = String(textHtml || "").trim();
+            const source = richSource || plainSource;
+            const numberedDefs = extractNumberedBlankDefs(plainSource || source);
+            if (!numberedDefs.length) {
+                return renderQuestionTextBlock(plainSource, richSource);
+            }
+
+            const tokens = [];
+            const withTokens = source.replace(/(\d+)\s((?:_\s*){2,})/g, (_, number) => {
+                const targetName = `${inputName}__${number}`;
+                const token = `@@WORDLIST_BLANK_${tokens.length}@@`;
+                tokens.push({
+                    token,
+                    html: `<span class="numbered-blank"><span class="blank-number">${escapeHtml(number)}</span><span class="wordlist-dropzone" data-input-name="${targetName}" data-pool-id="${escapeHtml(poolId)}">Drop answer</span><input type="hidden" name="${targetName}" data-wordlist-hidden="1"></span>`
+                });
+                return token;
+            });
+
+            let rendered = richSource && isRichText(withTokens)
+                ? sanitizeRichHtml(withTokens)
+                : renderQuestionTextBlock(withTokens);
+            tokens.forEach(({ token, html }) => {
+                rendered = rendered.split(token).join(html);
+            });
+            return rendered;
+        }
+
+        function syncWordListDropzonesFromState() {
+            const zones = document.querySelectorAll('.wordlist-dropzone[data-input-name]');
+            zones.forEach((zone) => {
+                const inputName = zone.getAttribute('data-input-name');
+                const poolId = zone.getAttribute('data-pool-id');
+                const hidden = document.querySelector(`input[type="hidden"][name="${inputName}"]`);
+                const value = String(hidden?.value || "").trim().toUpperCase();
+                if (!value) {
+                    zone.textContent = 'Drop answer';
+                    zone.classList.remove('filled');
+                    return;
+                }
+                const chip = document.querySelector(`.wordlist-chip[data-pool-id="${poolId}"][data-value="${value}"]`);
+                const text = chip?.getAttribute('data-text') || value;
+                zone.textContent = `${value}. ${text}`;
+                zone.classList.add('filled');
+            });
+        }
+
+        function bindWordListInteractions() {
+            let selectedChip = null;
+
+            document.querySelectorAll('.wordlist-chip').forEach((chip) => {
+                chip.addEventListener('click', () => {
+                    document.querySelectorAll('.wordlist-chip.selected').forEach((el) => el.classList.remove('selected'));
+                    selectedChip = chip;
+                    chip.classList.add('selected');
+                });
+
+                chip.addEventListener('dragstart', (event) => {
+                    const value = chip.getAttribute('data-value') || '';
+                    const text = chip.getAttribute('data-text') || '';
+                    event.dataTransfer?.setData('text/plain', JSON.stringify({ value, text }));
+                });
+            });
+
+            const applyToZone = (zone, value, text) => {
+                const inputName = zone.getAttribute('data-input-name');
+                const hidden = document.querySelector(`input[type="hidden"][name="${inputName}"]`);
+                if (!hidden) return;
+                hidden.value = String(value || '').trim().toUpperCase();
+                zone.textContent = `${hidden.value}. ${text}`;
+                zone.classList.add('filled');
+                updateTracker(inputName);
+            };
+
+            document.querySelectorAll('.wordlist-dropzone[data-input-name]').forEach((zone) => {
+                zone.addEventListener('dragover', (event) => {
+                    event.preventDefault();
+                    zone.classList.add('drag-over');
+                });
+
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('drag-over');
+                });
+
+                zone.addEventListener('drop', (event) => {
+                    event.preventDefault();
+                    zone.classList.remove('drag-over');
+                    let payload = null;
+                    try {
+                        payload = JSON.parse(event.dataTransfer?.getData('text/plain') || '{}');
+                    } catch (_) {
+                        payload = null;
+                    }
+                    if (!payload || !payload.value) return;
+                    applyToZone(zone, payload.value, payload.text || payload.value);
+                });
+
+                zone.addEventListener('click', () => {
+                    if (!selectedChip) return;
+                    const value = selectedChip.getAttribute('data-value') || '';
+                    const text = selectedChip.getAttribute('data-text') || value;
+                    applyToZone(zone, value, text);
+                });
+            });
+
+            syncWordListDropzonesFromState();
+        }
+
+        function renderFillPassageGroup(group, gIndex, passageIndex, poolId = "") {
             const bodyText = String(group.passageBody || "");
             const passageStart = Number(group.passageStart || 1);
             const qCount = (group.questions || []).length;
-            const lines = bodyText.split(/\r?\n/);
+            const wordListOptions = parseLabeledWordListOptions((group.questions || [])[0]?.options || "");
+            const hasWordListOptions = wordListOptions.length > 0;
+            const renderBodyText = hasWordListOptions
+                ? bodyText.replace(/\n\s*Word\s+List\s*:[\s\S]*$/i, "")
+                : bodyText;
+            const lines = renderBodyText.split(/\r?\n/);
             let html = '<div class="fill-passage-body">';
             let listItems = [];
 
@@ -1571,6 +1788,9 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     // Name must match what submitTest expects: base__num
                     const baseKey = `q_${passageIndex}_${gIndex}_${qIdx}`;
                     const inputName = `${baseKey}__${num}`;
+                    if (hasWordListOptions) {
+                        return `<span class="numbered-blank"><span class="blank-number">${num}</span><span class="wordlist-dropzone" data-input-name="${inputName}" data-pool-id="${escapeHtml(poolId)}">Drop answer</span><input type="hidden" name="${inputName}" data-wordlist-hidden="1"></span>`;
+                    }
                     return `<span class="numbered-blank"><span class="blank-number">${num}</span><input type="text" name="${inputName}" data-question-base="${baseKey}" data-blank-number="${num}" class="inline-input numbered-inline-input" style="width:${Math.max(80, blanks.length * 10)}px" placeholder="..."></span>`;
                 });
             };
@@ -1578,7 +1798,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             lines.forEach(line => {
                 const l = line.trim();
                 if (!l) { flushList(); return; }
-                const bulletMatch = l.match(/^[•\-\*]\s+(.+)$/);
+                const bulletMatch = l.match(/^[ï¿½\-\*]\s+(.+)$/);
                 if (bulletMatch) {
                     listItems.push(replaceInlineBlanks(bulletMatch[1]));
                 } else {
@@ -1594,6 +1814,9 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
             flushList();
             html += '</div>';
+            if (hasWordListOptions) {
+                html += renderWordListOptionPool(wordListOptions, poolId);
+            }
             return html;
         }
 
@@ -1613,8 +1836,12 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
             document.getElementById('display-passage-title').innerText = `Part ${currentPartIndex + 1}`;
             // If all groups are fill-passage groups (have passageBody), the reading content
-            // is already embedded in those groups — skip the main passage content card.
-            const allFillPassage = activeGroups.length > 0 && activeGroups.every(g => !!g.passageBody);
+            // is already embedded in those groups ï¿½ skip the main passage content card.
+            const allFillPassage = activeGroups.length > 0 && activeGroups.every((g) => {
+                if (!g?.passageBody) return false;
+                const hasWordListOptions = (g.questions || []).some((q) => parseStoredOptions(q?.options).length > 0);
+                return !hasWordListOptions;
+            });
             document.getElementById('display-passage-content').innerHTML = allFillPassage ? '' : `
                 <section class="reading-passage-card">
                     <h3 class="reading-passage-title">${activePassage.title || `Passage ${currentPartIndex + 1}`}</h3>
@@ -1642,10 +1869,20 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                     && group.questions.length > 0
                     && group.questions.every(q => q.type === 'radio')
                     && /complete\s+(each\s+)?sentence|correct\s+ending/i.test(group.instruction || "");
+                const wordListPoolId = `wordListPool_${currentPartIndex}_${gIndex}`;
+                const groupWordListOptions = (() => {
+                    const q = (group.questions || []).find((item) =>
+                        (item.type === 'fill-in-the-blank' || item.type === 'text')
+                        && extractNumberedBlankDefs(item.text || '').length > 0
+                        && parseStoredOptions(item.options).length > 0
+                    );
+                    return q ? parseLabeledWordListOptions(q.options) : [];
+                })();
+                const hasWordListFillGroup = groupWordListOptions.length > 0;
 
                 html += `<div class="question-group" id="group_${currentPartIndex}_${gIndex}">`;
                 if(group.title) html += `<div class="question-group-title">${group.title}</div>`;
-                // Skip instruction for fill-passage groups — the passageBody already contains the full text
+                // Skip instruction for fill-passage groups ï¿½ the passageBody already contains the full text
                 if(group.instruction && !isInlineFillPassage) {
                     const isMatchingGroup = firstQ.type === 'matching-headings';
                     const instructionSource = isMatchingGroup
@@ -1663,7 +1900,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                         const qNumber = passageStart + qIdx;
                         groupQuestionLabels.push(String(qNumber));
                     });
-                    html += renderFillPassageGroup(group, gIndex, currentPartIndex);
+                    html += renderFillPassageGroup(group, gIndex, currentPartIndex, wordListPoolId);
                 } else if (isSentenceCompletion) {
                     // Render like matching-headings: shared legend + dropdown per sentence stem
                     const sharedOptions = parseStoredOptions(group.questions[0].options);
@@ -1736,6 +1973,17 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                         });
                         html += `</div>`;
                     } else if (q.type === 'fill-in-the-blank' || q.type === 'text') {
+                        const hasWordListOptions = parseStoredOptions(q.options).length > 0;
+                        const hasNumberedDefs = extractNumberedBlankDefs(q.text).length > 0;
+                        if (hasWordListOptions && hasNumberedDefs) {
+                            const dragHtml = renderWordListBlankText(
+                                q.text,
+                                inputName,
+                                q.textHtml,
+                                wordListPoolId
+                            );
+                            html += `<p class="question-text">${dragHtml}</p>`;
+                        } else {
                         const hasInlineBlank = /\[\[(.+?)\]\]/.test(q.text || "");
                         const hasAnswer = String(q.answer || "").trim().length > 0;
                         const isStandaloneFillBlank = (q.type === 'fill-in-the-blank' || q.type === 'text')
@@ -1760,6 +2008,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                             );
                             html += `<input type="text" name="${inputName}" class="short-answer-input" placeholder="Type your answer...">`;
                         }
+                        }
                     } else if (q.type === 'short-answer') {
                         // Standalone short-answer: question text + separate input box below
                         html += renderQuestionTextWithBadge(
@@ -1778,6 +2027,9 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
 
                     html += `</div>`;
                 });
+                if (hasWordListFillGroup) {
+                    html += renderWordListOptionPool(groupWordListOptions, wordListPoolId);
+                }
                 } // end else (non-fill-passage)
 
                 const firstLabel = groupQuestionLabels[0] || String(gIndex + 1);
@@ -1796,6 +2048,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             renderReadingOverview(passages, typeMeta);
             hydrateInputsFromState();
             attachTrackingListeners();
+            bindWordListInteractions();
             updateProgressInit();
 
             if (pendingFocusInputName) {
@@ -1824,6 +2077,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             const radioChecked = document.querySelector(`input[name="${inputName}"]:checked`);
             const blankInputs = document.querySelectorAll(`input[data-question-base="${inputName}"]`);
             const textInput = document.querySelector(`input[type="text"][name="${inputName}"]`);
+            const hiddenInput = document.querySelector(`input[type="hidden"][name="${inputName}"]`);
             const selectInput = document.querySelector(`select[name="${inputName}"]`);
 
             let isAnswered = false;
@@ -1832,6 +2086,8 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 isAnswered = Array.from(blankInputs).every((input) => input.value.trim() !== '');
             } else if(textInput && textInput.value.trim() !== '') {
                 isAnswered = true;
+            } else if (hiddenInput && String(hiddenInput.value || '').trim() !== '') {
+                isAnswered = true;
             } else if (selectInput && String(selectInput.value || '').trim() !== '') {
                 isAnswered = true;
             }
@@ -1839,6 +2095,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
             if (isAnswered) {
                 if (radioChecked) answerState[inputName] = String(radioChecked.value || "");
                 else if (textInput) answerState[inputName] = String(textInput.value || "");
+                else if (hiddenInput) answerState[inputName] = String(hiddenInput.value || "");
                 else if (selectInput) answerState[inputName] = String(selectInput.value || "");
             } else if (blankInputs.length === 0) {
                 answerState[inputName] = "";
