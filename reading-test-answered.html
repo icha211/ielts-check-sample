@@ -196,6 +196,14 @@
 
         .explanation-text { line-height: 1.6; color: #334155; }
 
+        .passage-highlight {
+            background-color: #bbf7d0;
+            color: #14532d;
+            border-radius: 3px;
+            padding: 0 2px;
+            font-weight: 700;
+        }
+
         .review-header {
             position: sticky;
             bottom: 0;
@@ -450,6 +458,58 @@
         let flatQuestions = [];
         let currentFlatIndex = 0;
 
+        function escapeRegex(str) {
+            return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function extractQuotedPhrases(text) {
+            const phrases = [];
+            const regex = /"([^"]{2,})"/g;
+            let match;
+            while ((match = regex.exec(String(text || ""))) !== null) {
+                phrases.push(match[1]);
+            }
+            return phrases;
+        }
+
+        function highlightPassageText(passageEl, phrases) {
+            // Remove existing highlights
+            passageEl.querySelectorAll(".passage-highlight").forEach((el) => {
+                el.replaceWith(document.createTextNode(el.textContent));
+            });
+            passageEl.normalize();
+
+            if (!phrases.length) return;
+
+            const walk = (node) => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    let html = node.textContent.replace(/[&<>"]/g, (c) =>
+                        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+                    let changed = false;
+                    phrases.forEach((phrase) => {
+                        const escaped = escapeRegex(phrase);
+                        const replaced = html.replace(
+                            new RegExp(escaped, 'gi'),
+                            (m) => { changed = true; return `<mark class="passage-highlight">${m}</mark>`; }
+                        );
+                        if (changed) html = replaced;
+                    });
+                    if (changed) {
+                        const span = document.createElement('span');
+                        span.innerHTML = html;
+                        node.replaceWith(...span.childNodes);
+                    }
+                } else if (node.nodeType === Node.ELEMENT_NODE && node.nodeName !== 'SCRIPT' && node.nodeName !== 'STYLE') {
+                    Array.from(node.childNodes).forEach(walk);
+                }
+            };
+
+            walk(passageEl);
+
+            const first = passageEl.querySelector(".passage-highlight");
+            if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
         function normalizeText(value) {
             return String(value || "")
                 .replace(/<[^>]+>/g, " ")
@@ -702,11 +762,14 @@
 
             document.getElementById("passageTitle").textContent = item.passage.title || `Passage ${item.passageIndex + 1}`;
             document.getElementById("passageDate").textContent = formatDate(state.testDate || state.date || "");
-            document.getElementById("passageContent").innerHTML = item.passage.content || "<p>No passage content.</p>";
+            const passageContentEl = document.getElementById("passageContent");
+            passageContentEl.innerHTML = item.passage.content || "<p>No passage content.</p>";
 
             document.getElementById("questionNumberLabel").textContent = `Question ${item.number}`;
             document.getElementById("questionText").textContent = item.question.question || "No question text.";
-            document.getElementById("explanationText").textContent = item.question.explanation || item.question.pembahasan || item.question.discussion || item.question.notes || "No explanation provided.";
+            const explanationValue = item.question.explanation || item.question.pembahasan || item.question.discussion || item.question.notes || "No explanation provided.";
+            document.getElementById("explanationText").textContent = explanationValue;
+            highlightPassageText(passageContentEl, extractQuotedPhrases(explanationValue));
 
             renderOptions(item.question, answer);
 

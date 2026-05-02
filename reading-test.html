@@ -1258,6 +1258,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                 const passages = problem.passages.slice(0, 3).map((passage, index) => ({
                     title: passage.title || passage.passageTitle || `Passage ${index + 1}`,
                     content: passage.content || passage.passageContent || "",
+                    autoFillDraft: passage.autoFillDraft || {},
                     questionGroups: normalizeQuestionGroups(passage.questionGroups)
                 }));
 
@@ -2663,6 +2664,9 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                             if (q.type === 'matching-headings') {
                                 const matching = normalizeMatchingHeadings(q);
                                 const answerMap = parseMatchingHeadingsAnswerMap(q.answer);
+                                // Build a group-level fallback: use any available row explanation or q.explanation
+                                const groupFallback = explanation ||
+                                    matching.rows.reduce((found, r) => found || explanationMap[String(r.number)] || "", "");
                                 matching.rows.forEach((row) => {
                                     const correctOptionId = String(answerMap[row.number] || row.answerOptionId || "").trim();
                                     const optionMeta = matching.optionMap.get(correctOptionId);
@@ -2670,7 +2674,7 @@ D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicy
                                         question: String(row.prompt || `Question ${row.number}`),
                                         options: {},
                                         correctAnswer: optionMeta ? `${optionMeta.label} ${optionMeta.text}`.trim() : correctOptionId,
-                                        explanation: explanation || explanationMap[String(row.number)] || ""
+                                        explanation: explanationMap[String(row.number)] || groupFallback || ""
                                     });
                                 });
                                 return;
