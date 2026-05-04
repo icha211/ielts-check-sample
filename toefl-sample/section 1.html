@@ -170,6 +170,7 @@
         <div id="dev-panels-container"></div>
     </div>
 
+    <script src="toefl-storage-sync.js"></script>
     <script>
         const PARTS = [
             { id: 1, name: "Part A: Short Dialogues", range: "Questions 1-30", instr: "<strong>Directions:</strong> In Part A, you will hear short conversations between two people. After each conversation, you will hear a question about the conversation. The conversations and questions will not be repeated. After you hear a question, read the four possible answers in your test book and choose the best answer." },
@@ -202,6 +203,9 @@
 
         function persistStoredSetMap(map) {
             localStorage.setItem(SETS_KEY, JSON.stringify(map));
+            if (window.toeflStorage) {
+                toeflStorage.saveSetsMap(map).catch((e) => console.warn("[ToeflSync] sets save failed:", e));
+            }
         }
 
         function saveSectionDraft() {
@@ -215,10 +219,19 @@
                 };
             });
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+            if (window.toeflStorage) {
+                toeflStorage.saveDraft(MODULE_ID, draft).catch((e) => console.warn("[ToeflSync] draft save failed:", e));
+            }
         }
 
-        function loadSectionDraft() {
-            const draft = safeParse(localStorage.getItem(DRAFT_KEY), {});
+        async function loadSectionDraft() {
+            let draft = {};
+            if (window.toeflStorage) {
+                try { draft = await toeflStorage.getDraft(MODULE_ID); } catch { /* fallback below */ }
+            }
+            if (!draft || !draft.parts) {
+                draft = safeParse(localStorage.getItem(DRAFT_KEY), {});
+            }
             if (!draft || typeof draft !== "object" || !draft.parts) return;
 
             PARTS.forEach((part) => {
@@ -233,14 +246,22 @@
             });
         }
 
-        function loadSectionMeta() {
+        async function loadSectionMeta() {
             const dateInput = document.getElementById("set-date");
             const difficultyInput = document.getElementById("set-difficulty");
             const params = new URLSearchParams(window.location.search);
             const requestedDate = params.get("setDate");
-            const stored = getStoredSetMap()[MODULE_ID] || {};
+            let stored = {};
+            if (window.toeflStorage) {
+                try {
+                    const map = await toeflStorage.getSetsMap();
+                    stored = (map && map[MODULE_ID]) ? map[MODULE_ID] : {};
+                } catch { /* fallback below */ }
+            }
+            if (!stored.setDate) {
+                stored = getStoredSetMap()[MODULE_ID] || {};
+            }
             const today = new Date().toISOString().split("T")[0];
-
             dateInput.value = requestedDate || stored.setDate || today;
             difficultyInput.value = stored.difficulty || "intermediate";
         }
@@ -594,10 +615,10 @@ Narrator: What does the woman mean?
             }, 1000);
         }
 
-        window.onload = () => {
+        window.onload = async () => {
             initStructure();
-            loadSectionMeta();
-            loadSectionDraft();
+            await loadSectionMeta();
+            await loadSectionDraft();
             updateUserView();
             applyViewMode();
             activateInitialTab();

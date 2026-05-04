@@ -843,7 +843,9 @@
     </div>
 
     <div id="toast" class="toast"></div>
+    <div id="syncStatus" style="position:fixed;bottom:16px;right:16px;padding:6px 14px;border-radius:20px;font-size:0.78rem;font-weight:600;z-index:9999;display:none;"></div>
 
+    <script src="toefl-storage-sync.js"></script>
     <script>
         const SETS_KEY = "toefl_developer_sets_v1";
         const MODULE_CONFIG = {
@@ -930,16 +932,31 @@
             };
         }
 
-        function getStoredSets() {
-            const parsed = safeParse(localStorage.getItem(SETS_KEY), {});
-            const items = Array.isArray(parsed)
-                ? parsed
-                : Object.entries(parsed || {}).map(([moduleId, value]) => ({ ...value, module: value?.module || moduleId }));
-
+        function normalizeSetsMapToList(raw) {
+            const items = Array.isArray(raw)
+                ? raw
+                : Object.entries(raw || {}).map(([moduleId, value]) => ({ ...value, module: value?.module || moduleId }));
             return items
+                .filter((item) => item && item.module && MODULE_CONFIG[item.module])
                 .map((item) => normalizeSet(item, item?.module))
                 .filter(Boolean)
                 .sort((left, right) => left.label.localeCompare(right.label));
+        }
+
+        function getStoredSets() {
+            const parsed = safeParse(localStorage.getItem(SETS_KEY), {});
+            return normalizeSetsMapToList(parsed);
+        }
+
+        async function loadSetsFromFirebase() {
+            try {
+                const map = await toeflStorage.getSetsMap();
+                updateSyncStatus(toeflStorage.online);
+                return normalizeSetsMapToList(map);
+            } catch (e) {
+                updateSyncStatus(false);
+                return getStoredSets();
+            }
         }
 
         function persistSets(records) {
@@ -953,6 +970,31 @@
                 };
             });
             localStorage.setItem(SETS_KEY, JSON.stringify(payload));
+            toeflStorage.saveSetsMap(payload).then(() => updateSyncStatus(toeflStorage.online));
+        }
+
+        function updateSyncStatus(online) {
+            const el = document.getElementById("syncStatus");
+            if (!el) return;
+            el.style.display = "block";
+            el.textContent = online ? "☁ Synced" : "⚡ Offline – local only";
+            el.style.background = online ? "#1764aa" : "#a05800";
+            el.style.color = "#fff";
+            clearTimeout(el._hideTimer);
+            el._hideTimer = setTimeout(() => { el.style.display = "none"; }, 3000);
+        }
+
+        async function deleteSet(module) {
+            if (!confirm(`Delete the saved ${MODULE_CONFIG[module]?.label || module} set? This cannot be undone.`)) return;
+            const map = safeParse(localStorage.getItem(SETS_KEY), {});
+            delete map[module];
+            localStorage.setItem(SETS_KEY, JSON.stringify(map));
+            await toeflStorage.saveSetsMap(map);
+            // Also clear the draft from Firebase
+            await toeflStorage.saveDraft(module, {});
+            updateSyncStatus(toeflStorage.online);
+            toast(`${MODULE_CONFIG[module]?.label || module} set deleted`);
+            await renderAll();
         }
 
         function toggleCreateOptions(force) {
@@ -1064,6 +1106,7 @@
                         <div class="actions">
                             <a class="btn-mini edit" href="${buildEditorUrl(item.module, item.setDate)}">Open Editor</a>
                             <a class="btn-mini open" href="study-plan.html?year=${item.year ?? new Date().getFullYear()}&month=${item.monthIndex ?? new Date().getMonth()}">Schedule</a>
+                            <button class="btn-mini" style="background:#d64545;color:#fff;border:none;cursor:pointer;" onclick="deleteSet('${item.module}')">Delete</button>
                         </div>
                     </div>
                 </article>
@@ -1216,8 +1259,8 @@
             }
         }
 
-        function renderAll() {
-            sectionSets = getStoredSets();
+        async function renderAll() {
+            sectionSets = await loadSetsFromFirebase();
             renderStats();
             renderModuleOverview();
             renderLibrary();
@@ -1244,7 +1287,7 @@
             if (!document.hidden) renderAll();
         });
 
-        renderAll();
+        renderAll().catch(console.error);
     </script>
 </body>
 </html>
