@@ -170,13 +170,15 @@
         <div id="dev-panels-container"></div>
     </div>
 
-    <script src="toefl-storage-sync.js?v=20260505"></script>
+    <script src="toefl-storage-sync.js?v=20260506"></script>
     <script>
         const TOTAL_PASSAGES = 5; 
         const SETS_KEY = "toefl_developer_sets_v1";
+        const SETS_KEY_V2 = "toefl_developer_sets_v2";
         const MODULE_ID = "reading";
         const MODULE_LABEL = "Reading";
         const DRAFT_KEY = "toefl_section3_dev_draft_v1";
+        let currentSetId = "";
 
         function safeParse(raw, fallback) {
             try {
@@ -187,10 +189,13 @@
         }
 
         function getStoredSetMap() {
-            const parsed = safeParse(localStorage.getItem(SETS_KEY), {});
+            const parsedV2 = safeParse(localStorage.getItem(SETS_KEY_V2), {});
+            const hasV2 = parsedV2 && typeof parsedV2 === "object" && Object.keys(parsedV2).length > 0;
+            const parsed = hasV2 ? parsedV2 : safeParse(localStorage.getItem(SETS_KEY), {});
             if (Array.isArray(parsed)) {
                 return parsed.reduce((accumulator, item) => {
-                    if (item && item.module) accumulator[item.module] = item;
+                    const key = item?.setId || item?.module;
+                    if (item && key) accumulator[key] = item;
                     return accumulator;
                 }, {});
             }
@@ -198,11 +203,32 @@
         }
 
         function persistStoredSetMap(map) {
-            localStorage.setItem(SETS_KEY, JSON.stringify(map));
-            if (window.toeflStorage) {
-                // Use saveSetForModule — only writes THIS module's key, never touches others
-                toeflStorage.saveSetForModule(MODULE_ID, map[MODULE_ID]).catch((e) => console.warn("[ToeflSync] set save failed:", e));
+            localStorage.setItem(SETS_KEY_V2, JSON.stringify(map));
+        }
+
+        function upsertLocalRecord(record) {
+            const map = getStoredSetMap();
+            map[record.setId] = record;
+            persistStoredSetMap(map);
+        }
+
+        function updateEditorUrl(setId, setDate) {
+            const params = new URLSearchParams(window.location.search);
+            params.set("setId", setId);
+            if (setDate) params.set("setDate", setDate);
+            const query = params.toString();
+            const hash = window.location.hash || "#dev-view";
+            window.history.replaceState({}, "", `${window.location.pathname}?${query}${hash}`);
+        }
+
+        function ensureCurrentSetId(setDate) {
+            if (currentSetId) return currentSetId;
+            if (window.toeflStorage && typeof toeflStorage.createSetId === "function") {
+                currentSetId = toeflStorage.createSetId(MODULE_ID, setDate);
+            } else {
+                currentSetId = `${MODULE_ID}_${Date.now()}`;
             }
+            return currentSetId;
         }
 
         function saveSectionDraft() {
@@ -218,17 +244,24 @@
             }
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
             if (window.toeflStorage) {
-                toeflStorage.saveDraft(MODULE_ID, draft).catch((e) => console.warn("[ToeflSync] draft save failed:", e));
+                const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
+                const setId = ensureCurrentSetId(setDate);
+                toeflStorage.saveDraftBySetId(setId, MODULE_ID, draft).catch((e) => console.warn("[ToeflSync] draft save failed:", e));
             }
         }
 
         async function loadSectionDraft() {
+            if (!currentSetId) {
+                // New set flow should always start blank.
+                return;
+            }
             let draft = {};
             if (window.toeflStorage) {
-                try { draft = await toeflStorage.getDraft(MODULE_ID); } catch { /* fallback below */ }
-            }
-            if (!draft || !draft.passages) {
-                draft = safeParse(localStorage.getItem(DRAFT_KEY), {});
+                try {
+                    if (currentSetId) {
+                        draft = await toeflStorage.getDraftBySetId(currentSetId);
+                    }
+                } catch { /* fallback below */ }
             }
             if (!draft || typeof draft !== "object" || !draft.passages) return;
 
@@ -253,35 +286,53 @@
             const difficultyInput = document.getElementById("set-difficulty");
             const params = new URLSearchParams(window.location.search);
             const requestedDate = params.get("setDate");
+            currentSetId = params.get("setId") || "";
+            const isCreateMode = !currentSetId;
             let stored = {};
             if (window.toeflStorage) {
                 try {
-                    const map = await toeflStorage.getSetsMap();
-                    stored = (map && map[MODULE_ID]) ? map[MODULE_ID] : {};
+                    if (currentSetId && typeof toeflStorage.getSetRecordById === "function") {
+                        stored = await toeflStorage.getSetRecordById(currentSetId) || {};
+                    }
                 } catch { /* fallback below */ }
             }
             if (!stored.setDate) {
-                stored = getStoredSetMap()[MODULE_ID] || {};
+                if (isCreateMode) {
+                    stored = {};
+                } else {
+                    const local = getStoredSetMap();
+                    if (currentSetId && local[currentSetId]) {
+                        stored = local[currentSetId];
+                    }
+                }
             }
             const today = new Date().toISOString().split("T")[0];
             dateInput.value = requestedDate || stored.setDate || today;
             difficultyInput.value = stored.difficulty || "intermediate";
         }
 
-        function saveSectionMeta() {
+        async function saveSectionMeta() {
             const dateInput = document.getElementById("set-date");
             const difficultyInput = document.getElementById("set-difficulty");
-            const map = getStoredSetMap();
-
-            map[MODULE_ID] = {
+            const setDate = dateInput.value || new Date().toISOString().split("T")[0];
+            const setId = ensureCurrentSetId(setDate);
+            const record = {
+                setId,
                 module: MODULE_ID,
                 label: MODULE_LABEL,
-                setDate: dateInput.value || new Date().toISOString().split("T")[0],
+                setDate,
                 difficulty: difficultyInput.value || "intermediate",
                 updatedAt: new Date().toISOString()
             };
-
-            persistStoredSetMap(map);
+            upsertLocalRecord(record);
+            updateEditorUrl(setId, setDate);
+            if (window.toeflStorage && typeof toeflStorage.upsertSetRecord === "function") {
+                try {
+                    await toeflStorage.upsertSetRecord(record);
+                } catch (error) {
+                    console.warn("[ToeflSync] set save failed:", error);
+                }
+            }
         }
 
         function initStructure() {

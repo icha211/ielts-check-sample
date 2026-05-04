@@ -845,9 +845,10 @@
     <div id="toast" class="toast"></div>
     <div id="syncStatus" style="position:fixed;bottom:16px;right:16px;padding:6px 14px;border-radius:20px;font-size:0.78rem;font-weight:600;z-index:9999;display:none;"></div>
 
-    <script src="toefl-storage-sync.js?v=20260505"></script>
+    <script src="toefl-storage-sync.js?v=20260506"></script>
     <script>
         const SETS_KEY = "toefl_developer_sets_v1";
+        const SETS_KEY_V2 = "toefl_developer_sets_v2";
         const MODULE_CONFIG = {
             listening: {
                 editorPage: "section 1.html",
@@ -916,6 +917,7 @@
                 : "intermediate";
 
             return {
+                setId: String(item?.setId || ""),
                 module: moduleId,
                 label: MODULE_CONFIG[moduleId].label,
                 icon: MODULE_CONFIG[moduleId].icon,
@@ -935,24 +937,32 @@
         function normalizeSetsMapToList(raw) {
             const items = Array.isArray(raw)
                 ? raw
-                : Object.entries(raw || {}).map(([moduleId, value]) => ({ ...value, module: value?.module || moduleId }));
+                : Object.entries(raw || {})
+                    .filter(([key]) => key !== "_updatedAt")
+                    .map(([moduleOrSetId, value]) => ({ ...value, setId: value?.setId || moduleOrSetId, module: value?.module || moduleOrSetId }));
             return items
                 .filter((item) => item && item.module && MODULE_CONFIG[item.module])
                 .map((item) => normalizeSet(item, item?.module))
                 .filter(Boolean)
-                .sort((left, right) => left.label.localeCompare(right.label));
+                .sort((left, right) => {
+                    const tLeft = new Date(left.updatedAt || 0).getTime();
+                    const tRight = new Date(right.updatedAt || 0).getTime();
+                    return tRight - tLeft;
+                });
         }
 
         function getStoredSets() {
-            const parsed = safeParse(localStorage.getItem(SETS_KEY), {});
+            const parsedV2 = safeParse(localStorage.getItem(SETS_KEY_V2), {});
+            const hasV2 = parsedV2 && typeof parsedV2 === "object" && Object.keys(parsedV2).length > 0;
+            const parsed = hasV2 ? parsedV2 : safeParse(localStorage.getItem(SETS_KEY), {});
             return normalizeSetsMapToList(parsed);
         }
 
         async function loadSetsFromFirebase() {
             try {
-                const map = await toeflStorage.getSetsMap();
+                const records = await toeflStorage.getSetRecords();
                 updateSyncStatus(toeflStorage.online);
-                return normalizeSetsMapToList(map);
+                return normalizeSetsMapToList(records);
             } catch (e) {
                 updateSyncStatus(false);
                 return getStoredSets();
@@ -962,15 +972,18 @@
         function persistSets(records) {
             const payload = {};
             records.forEach((item) => {
-                payload[item.module] = {
+                const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate);
+                payload[setId] = {
+                    setId,
                     module: item.module,
+                    label: item.label || MODULE_CONFIG[item.module]?.label || item.module,
                     setDate: item.setDate,
                     difficulty: item.difficulty,
                     updatedAt: item.updatedAt || new Date().toISOString()
                 };
             });
-            localStorage.setItem(SETS_KEY, JSON.stringify(payload));
-            toeflStorage.saveSetsMap(payload).then(() => updateSyncStatus(toeflStorage.online));
+            localStorage.setItem(SETS_KEY_V2, JSON.stringify(payload));
+            toeflStorage.saveSetRecords(Object.values(payload)).then(() => updateSyncStatus(toeflStorage.online));
         }
 
         function updateSyncStatus(online) {
@@ -984,9 +997,9 @@
             el._hideTimer = setTimeout(() => { el.style.display = "none"; }, 3000);
         }
 
-        async function deleteSet(module) {
-            if (!confirm(`Delete the saved ${MODULE_CONFIG[module]?.label || module} set? This cannot be undone.`)) return;
-            await toeflStorage.deleteSetForModule(module);
+        async function deleteSet(setId, module) {
+            if (!confirm(`Delete this ${MODULE_CONFIG[module]?.label || module} set? This cannot be undone.`)) return;
+            await toeflStorage.deleteSetRecord(setId);
             updateSyncStatus(toeflStorage.online);
             toast(`${MODULE_CONFIG[module]?.label || module} set deleted`);
             await renderAll();
@@ -1002,9 +1015,13 @@
             menu.classList.toggle("show");
         }
 
-        function buildEditorUrl(moduleId, setDate) {
-            if (!setDate) return MODULE_CONFIG[moduleId].createPage;
-            return `${MODULE_CONFIG[moduleId].editorPage}?setDate=${encodeURIComponent(setDate)}#dev-view`;
+        function buildEditorUrl(moduleId, setDate, setId) {
+            const params = new URLSearchParams();
+            if (setDate) params.set("setDate", setDate);
+            if (setId) params.set("setId", setId);
+            const query = params.toString();
+            if (!query) return MODULE_CONFIG[moduleId].createPage;
+            return `${MODULE_CONFIG[moduleId].editorPage}?${query}#dev-view`;
         }
 
         function dateKey(year, monthIndex, day) {
@@ -1069,13 +1086,14 @@
         function renderModuleOverview() {
             const host = document.getElementById("moduleOverview");
             host.innerHTML = MODULES.map((moduleId) => {
-                const savedSet = sectionSets.find((item) => item.module === moduleId);
+                const moduleSets = sectionSets.filter((item) => item.module === moduleId);
+                const savedSet = moduleSets[0] || null;
                 return `
                     <article class="module-pill ${moduleId}">
                         <div class="pill-head">${MODULE_CONFIG[moduleId].icon} ${MODULE_CONFIG[moduleId].label}</div>
                         <div class="pill-body">
                             <small>${savedSet ? `${savedSet.difficultyLabel} · ${savedSet.displayDate}` : "No set metadata yet"}</small>
-                            <strong>${savedSet ? "Ready" : "Draft"}</strong>
+                            <strong>${moduleSets.length > 0 ? `${moduleSets.length} Set(s)` : "Draft"}</strong>
                         </div>
                     </article>
                 `;
@@ -1096,12 +1114,13 @@
                         <div class="meta">
                             <span>Set Date: ${escapeHtml(item.displayDate)}</span>
                             <span>Difficulty: ${escapeHtml(item.difficultyLabel)}</span>
+                            <span>ID: ${escapeHtml(item.setId || "-")}</span>
                             <span>Updated: ${escapeHtml(item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "Not saved")}</span>
                         </div>
                         <div class="actions">
-                            <a class="btn-mini edit" href="${buildEditorUrl(item.module, item.setDate)}">Open Editor</a>
+                            <a class="btn-mini edit" href="${buildEditorUrl(item.module, item.setDate, item.setId)}">Open Editor</a>
                             <a class="btn-mini open" href="study-plan.html?year=${item.year ?? new Date().getFullYear()}&month=${item.monthIndex ?? new Date().getMonth()}">Schedule</a>
-                            <button class="btn-mini" style="background:#d64545;color:#fff;border:none;cursor:pointer;" onclick="deleteSet('${item.module}')">Delete</button>
+                            <button class="btn-mini" style="background:#d64545;color:#fff;border:none;cursor:pointer;" onclick="deleteSet('${item.setId}', '${item.module}')">Delete</button>
                         </div>
                     </div>
                 </article>
@@ -1168,7 +1187,7 @@
                 const moduleActions = hasAny
                     ? `
                         ${items.map((item) => `
-                            <a class="month-action complete" href="${buildEditorUrl(item.module, key)}">
+                            <a class="month-action complete" href="${buildEditorUrl(item.module, key, item.setId)}">
                                 <span>${item.icon} ${item.label}</span>
                                 <span>${item.difficultyLabel}</span>
                             </a>
@@ -1245,8 +1264,13 @@
                     toast("No valid section metadata found in file");
                     return;
                 }
-                const merged = getStoredSets().filter((item) => !normalized.some((incoming) => incoming.module === item.module));
-                persistSets([...merged, ...normalized]);
+                const existing = getStoredSets();
+                const mergedMap = {};
+                [...existing, ...normalized].forEach((item) => {
+                    const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate);
+                    mergedMap[setId] = { ...item, setId };
+                });
+                persistSets(Object.values(mergedMap));
                 renderAll();
                 toast("Imported section metadata");
             } catch (error) {
