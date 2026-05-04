@@ -6,7 +6,7 @@
     <title>TOEFL ITP Study Plan | IELTS Check</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cal+Sans&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --blue-950: #06223d;
@@ -34,7 +34,7 @@
         body {
             margin: 0;
             min-height: 100vh;
-            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            font-family: "Space Grotesk", "Cal Sans", sans-serif;
             color: var(--text);
             background:
                 radial-gradient(circle at 16% -10%, rgba(115, 186, 255, 0.6) 0%, transparent 30%),
@@ -166,8 +166,8 @@
             transition: transform 0.2s ease;
         }
 
-        .schedule-card.collapsed .month-chevron {
-            transform: rotate(-90deg);
+        .schedule-card.expanded .month-chevron {
+            transform: rotate(180deg);
         }
 
         .month-caption {
@@ -181,15 +181,12 @@
             display: grid;
             gap: 14px;
             overflow: hidden;
-            transition: max-height 0.25s ease, opacity 0.25s ease, margin-top 0.25s ease;
-            max-height: 260px;
-            opacity: 1;
+            max-height: 210px;
+            transition: max-height 0.28s ease;
         }
 
-        .schedule-card.collapsed .date-strip-wrap {
-            max-height: 0;
-            opacity: 0;
-            margin-top: 0;
+        .schedule-card.expanded .date-strip-wrap {
+            max-height: 620px;
         }
 
         .date-strip {
@@ -520,16 +517,16 @@
                 <section class="schedule-card" id="scheduleCard">
                     <div class="schedule-toolbar">
                         <button class="nav-arrow" type="button" id="prevDateBtn" aria-label="Previous date">‹</button>
-                        <button class="month-toggle" type="button" id="monthToggle" aria-expanded="true">
+                        <button class="month-toggle" type="button" id="monthToggle" aria-expanded="false">
                             <span class="month-label"><span id="monthHeading">Februari, 2026</span><span class="month-chevron">▾</span></span>
-                            <div class="month-caption">Click to collapse or expand the schedule row</div>
+                            <div class="month-caption" id="monthCaption">Click to expand from centered row into full month calendar</div>
                         </button>
                         <button class="nav-arrow" type="button" id="nextDateBtn" aria-label="Next date">›</button>
                     </div>
 
                     <div class="date-strip-wrap" id="dateStripWrap">
                         <div class="date-strip" id="dateStrip"></div>
-                        <div class="date-helper">Selected day controls the mock test content below.</div>
+                        <div class="date-helper" id="dateHelper">Centered row view: selected date stays in the middle when possible.</div>
                     </div>
                 </section>
 
@@ -570,6 +567,7 @@
         const initialMonth = Number(params.get("month"));
         const safeMonth = Number.isFinite(initialMonth) && initialMonth >= 0 && initialMonth <= 11 ? initialMonth : 1;
         let selectedDate = new Date(initialYear, safeMonth, 19);
+        let isCalendarExpanded = false;
 
         function getMonthStore(year, month) {
             const key = `${STORAGE_KEY}_${year}_${month}`;
@@ -640,6 +638,19 @@
             return tiles;
         }
 
+        function getMonthDates(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const tiles = [];
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                tiles.push(new Date(year, month, day));
+            }
+
+            return tiles;
+        }
+
         function getSectionState(dayData, sectionId, dayNumber) {
             const base = questionBlueprint[sectionId];
             const difficulty = difficultyCycle[(dayNumber + base.difficultyBase) % difficultyCycle.length];
@@ -651,10 +662,9 @@
         }
 
         function renderDateTiles() {
-            const strip = document.getElementById("dateStrip");
-            strip.innerHTML = "";
-            const tiles = getDayWindow(selectedDate);
-
+            const host = document.getElementById("dateStrip");
+            host.innerHTML = "";
+            const tiles = isCalendarExpanded ? getMonthDates(selectedDate) : getDayWindow(selectedDate);
             tiles.forEach((dateItem) => {
                 const tile = document.createElement("button");
                 tile.type = "button";
@@ -667,8 +677,12 @@
                     selectedDate = new Date(dateItem.getFullYear(), dateItem.getMonth(), dateItem.getDate());
                     renderSchedule();
                 });
-                strip.appendChild(tile);
+                host.appendChild(tile);
             });
+
+            document.getElementById("dateHelper").textContent = isCalendarExpanded
+                ? "Expanded month view: showing dates 1 to end of month."
+                : "Centered row view: selected date stays in the middle when possible.";
         }
 
         function renderMockPanel() {
@@ -748,9 +762,13 @@
 
         document.getElementById("monthToggle").addEventListener("click", () => {
             const scheduleCard = document.getElementById("scheduleCard");
-            scheduleCard.classList.toggle("collapsed");
-            const expanded = !scheduleCard.classList.contains("collapsed");
-            document.getElementById("monthToggle").setAttribute("aria-expanded", String(expanded));
+            isCalendarExpanded = !isCalendarExpanded;
+            scheduleCard.classList.toggle("expanded", isCalendarExpanded);
+            document.getElementById("monthToggle").setAttribute("aria-expanded", String(isCalendarExpanded));
+            document.getElementById("monthCaption").textContent = isCalendarExpanded
+                ? "Click to collapse back to centered date row"
+                : "Click to expand from centered row into full month calendar";
+            renderDateTiles();
         });
 
         renderSchedule();
