@@ -309,7 +309,7 @@
         }
 
         function parseSimpleExplanation(text) {
-            const raw = String(text || '').replace(/\r/g, '').trim();
+            const raw = String(text || '').replace(/\r/g, '').replace(/<br\s*\/?>/gi, '\n').trim();
             if (!raw) return null;
             const multiline = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\n+\s*(?:Explain(?:ation)?|Reason)\s*:\s*([\s\S]*)$/i);
             const inline = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\s+(?:Explain(?:ation)?|Reason)\s*:\s*([\s\S]*)$/i);
@@ -322,7 +322,7 @@
         }
 
         function renderExplanationText(el, text) {
-            const raw = String(text || '').replace(/\r/g, '').trim();
+            const raw = String(text || '').replace(/\r/g, '').replace(/<br\s*\/?>/gi, '\n').trim();
             const parsed = parseSimpleExplanation(raw);
             if (parsed) {
                 el.innerHTML = `
