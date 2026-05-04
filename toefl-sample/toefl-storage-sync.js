@@ -62,7 +62,47 @@ class ToeflStorageSync {
     return this._safeParse(localStorage.getItem(this._setsLocalKey), {});
   }
 
-  /** Save sets map to Firebase and localStorage. */
+  /**
+   * Save ONE module's metadata to Firebase without touching other modules.
+   * This prevents Developer A from overwriting Developer B's data.
+   * Use this from section editor pages (section 1/2/3.html).
+   */
+  async saveSetForModule(module, data) {
+    const payload = { ...(data || {}), _updatedAt: new Date().toISOString() };
+    try {
+      await this._put(`${this._setsPath}/${module}`, payload);
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline – ${module} set saved to localStorage only:`, e.message);
+    }
+    // Merge into local cache without wiping other modules
+    const local = this._safeParse(localStorage.getItem(this._setsLocalKey), {});
+    local[module] = data || {};
+    localStorage.setItem(this._setsLocalKey, JSON.stringify(local));
+  }
+
+  /**
+   * Delete ONE module's metadata and draft from Firebase.
+   * Use this from the developer dashboard Delete button.
+   */
+  async deleteSetForModule(module) {
+    try {
+      await fetch(this._url(`${this._setsPath}/${module}`), { method: "DELETE" });
+      await fetch(this._url(`${this._draftsPath}/${module}`), { method: "DELETE" });
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline – ${module} delete queued locally only:`, e.message);
+    }
+    // Remove from local cache
+    const local = this._safeParse(localStorage.getItem(this._setsLocalKey), {});
+    delete local[module];
+    localStorage.setItem(this._setsLocalKey, JSON.stringify(local));
+    localStorage.removeItem(this._draftLocalKey(module));
+  }
+
+  /** Save full sets map to Firebase (used only by developer dashboard import). */
   async saveSetsMap(map) {
     const payload = { ...(map || {}), _updatedAt: new Date().toISOString() };
     try {

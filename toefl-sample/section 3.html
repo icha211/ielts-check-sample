@@ -200,7 +200,8 @@
         function persistStoredSetMap(map) {
             localStorage.setItem(SETS_KEY, JSON.stringify(map));
             if (window.toeflStorage) {
-                toeflStorage.saveSetsMap(map).catch((e) => console.warn("[ToeflSync] sets save failed:", e));
+                // Use saveSetForModule — only writes THIS module's key, never touches others
+                toeflStorage.saveSetForModule(MODULE_ID, map[MODULE_ID]).catch((e) => console.warn("[ToeflSync] set save failed:", e));
             }
         }
 

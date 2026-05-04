@@ -986,12 +986,7 @@
 
         async function deleteSet(module) {
             if (!confirm(`Delete the saved ${MODULE_CONFIG[module]?.label || module} set? This cannot be undone.`)) return;
-            const map = safeParse(localStorage.getItem(SETS_KEY), {});
-            delete map[module];
-            localStorage.setItem(SETS_KEY, JSON.stringify(map));
-            await toeflStorage.saveSetsMap(map);
-            // Also clear the draft from Firebase
-            await toeflStorage.saveDraft(module, {});
+            await toeflStorage.deleteSetForModule(module);
             updateSyncStatus(toeflStorage.online);
             toast(`${MODULE_CONFIG[module]?.label || module} set deleted`);
             await renderAll();
