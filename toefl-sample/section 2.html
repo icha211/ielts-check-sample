@@ -277,6 +277,25 @@
             return currentSetId;
         }
 
+        async function resolveSetRecordByDate(setDate) {
+            try {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
+                    const records = await toeflStorage.getSetRecords();
+                    const match = (records || [])
+                        .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
+                        .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
+                    if (match) return match;
+                }
+            } catch (error) {
+                console.warn("[ToeflSync] date-based lookup failed:", error);
+            }
+
+            const local = getStoredSetMap();
+            return Object.values(local)
+                .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
+                .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
+        }
+
         function saveSectionDraft() {
             const draft = { parts: {} };
             PARTS.forEach((part) => {
@@ -328,8 +347,15 @@
             const params = new URLSearchParams(window.location.search);
             const requestedDate = params.get("setDate");
             currentSetId = params.get("setId") || "";
-            const isCreateMode = !currentSetId;
+            const isCreateMode = !currentSetId && isDeveloperMode();
             let stored = {};
+            if (!currentSetId && requestedDate && !isDeveloperMode()) {
+                const byDate = await resolveSetRecordByDate(requestedDate);
+                if (byDate?.setId) {
+                    currentSetId = byDate.setId;
+                    stored = byDate;
+                }
+            }
             if (window.toeflStorage) {
                 try {
                     if (currentSetId && typeof toeflStorage.getSetRecordById === "function") {

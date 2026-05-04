@@ -550,8 +550,10 @@
         </div>
     </div>
 
+    <script src="toefl-storage-sync.js?v=20260506"></script>
     <script>
         const STORAGE_KEY = "toefl_schedule_v3";
+        const TOEFL_SETS_V2_KEY = "toefl_developer_sets_v2";
         const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
         const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const difficultyCycle = ["Beginner", "Intermediate", "Advanced"];
@@ -572,6 +574,37 @@
             ? new Date(initialYear, safeMonth, today.getDate())
             : new Date(today.getFullYear(), today.getMonth(), today.getDate());
         let isCalendarExpanded = false;
+
+        function formatDateKey(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+        }
+
+        function getLocalSetRecords() {
+            const parsed = JSON.parse(localStorage.getItem(TOEFL_SETS_V2_KEY) || "{}");
+            return Object.entries(parsed || {})
+                .filter(([key]) => key !== "_updatedAt")
+                .map(([setId, value]) => ({ ...value, setId: value?.setId || setId }))
+                .filter((item) => item && item.module && item.setDate);
+        }
+
+        async function resolveSetIdForDate(sectionId, dateValue) {
+            try {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
+                    const records = await toeflStorage.getSetRecords();
+                    const match = (records || [])
+                        .filter((item) => item && item.module === sectionId && item.setDate === dateValue)
+                        .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
+                    if (match?.setId) return match.setId;
+                }
+            } catch (error) {
+                console.warn("[Schedule] Remote set lookup failed, using local cache:", error);
+            }
+
+            const localMatch = getLocalSetRecords()
+                .filter((item) => item.module === sectionId && item.setDate === dateValue)
+                .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
+            return localMatch?.setId || "";
+        }
 
         function getMonthStore(year, month) {
             const key = `${STORAGE_KEY}_${year}_${month}`;
@@ -743,10 +776,14 @@
             });
 
             sectionGrid.querySelectorAll("[data-open-section]").forEach((button) => {
-                button.addEventListener("click", () => {
+                button.addEventListener("click", async () => {
                     const sectionId = button.getAttribute("data-open-section");
                     const file = questionBlueprint[sectionId].file;
-                    window.location.href = file;
+                    const setDate = formatDateKey(selectedDate);
+                    const setId = await resolveSetIdForDate(sectionId, setDate);
+                    const params = new URLSearchParams({ setDate });
+                    if (setId) params.set("setId", setId);
+                    window.location.href = `${file}?${params.toString()}`;
                 });
             });
         }
