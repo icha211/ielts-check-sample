@@ -221,6 +221,7 @@
         const SETS_KEY = "toefl_developer_sets_v1";
         const MODULE_ID = "structure";
         const MODULE_LABEL = "Structure";
+        const DRAFT_KEY = "toefl_section2_dev_draft_v1";
 
         function safeParse(raw, fallback) {
             try {
@@ -243,6 +244,35 @@
 
         function persistStoredSetMap(map) {
             localStorage.setItem(SETS_KEY, JSON.stringify(map));
+        }
+
+        function saveSectionDraft() {
+            const draft = { parts: {} };
+            PARTS.forEach((part) => {
+                const p = part.id;
+                draft.parts[p] = {
+                    questions: (document.getElementById(`input-magic-questions-${p}`) || {}).value || "",
+                    answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
+                    explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || ""
+                };
+            });
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        }
+
+        function loadSectionDraft() {
+            const draft = safeParse(localStorage.getItem(DRAFT_KEY), {});
+            if (!draft || typeof draft !== "object" || !draft.parts) return;
+
+            PARTS.forEach((part) => {
+                const p = part.id;
+                const row = draft.parts[p] || {};
+                const qEl = document.getElementById(`input-magic-questions-${p}`);
+                const aEl = document.getElementById(`input-answer-key-${p}`);
+                const eEl = document.getElementById(`input-explanation-${p}`);
+                if (qEl && typeof row.questions === "string") qEl.value = row.questions;
+                if (aEl && typeof row.answerKey === "string") aEl.value = row.answerKey;
+                if (eEl && typeof row.explanation === "string") eEl.value = row.explanation;
+            });
         }
 
         function loadSectionMeta() {
@@ -429,7 +459,10 @@
 
         // ENGINE PARSER BARU UNTUK INLINE CLICKABLE & HURUF DI BAWAH
         function updateUserView(shouldSaveMeta = false) {
-            if (shouldSaveMeta) saveSectionMeta();
+            if (shouldSaveMeta) {
+                saveSectionMeta();
+                saveSectionDraft();
+            }
             document.getElementById('global-score-board').style.display = 'none';
             globalAnswerKey = {};
             globalExplanations = {};
@@ -593,6 +626,7 @@
         window.onload = () => {
             initStructure();
             loadSectionMeta();
+            loadSectionDraft();
             updateUserView();
             applyViewMode();
             activateInitialTab();

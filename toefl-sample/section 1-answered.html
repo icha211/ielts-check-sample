@@ -334,104 +334,32 @@
             return m ? m[1].trim() : '';
         }
 
-        function parseStructuredExplanation(text) {
-            const raw = String(text || "").replace(/\r/g, "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+        function parseSimpleExplanation(text) {
+            const raw = String(text || '').replace(/\r/g, '').trim();
             if (!raw) return null;
-            const hasPosLabel = /\bPosition\s*:/i.test(raw);
-            const explainRx = /\bExplain(?:ation)?\s*:/i;
-            if (!hasPosLabel || !explainRx.test(raw)) return null;
-            const explainIdx = raw.search(explainRx);
-            const positionChunk = raw.slice(0, explainIdx).trim();
-            const explainChunk = raw.slice(explainIdx).replace(explainRx, '').trim();
-            const posLabelRx = /\bPosition\s*:\s*/i;
-            const posLabelIdx = positionChunk.search(posLabelRx);
-            if (posLabelIdx < 0) return null;
-            const positionLine = positionChunk.slice(posLabelIdx).replace(posLabelRx, '').trim();
-            if (!positionLine || !explainChunk) return null;
-            let positionSource = positionLine, positionEvidence = '';
-            const arrowIdx = positionLine.search(/\s*(?:->|→)\s*/);
-            if (arrowIdx >= 0) { positionSource = positionLine.slice(0, arrowIdx).trim(); positionEvidence = positionLine.slice(arrowIdx).replace(/^\s*(?:->|→)\s*/, '').trim(); }
-            const paragraphMatch = positionSource.match(/\b(Paragraph\s+[A-Z])\b/i);
-            const paragraphLabel = paragraphMatch ? paragraphMatch[1] : '';
-            const steps = [];
-            let finalAnswer = '';
-            const ratioRx = /(\d+\s*\/\s*\d+)/g;
-            const allMatches = Array.from(explainChunk.matchAll(ratioRx));
-            if (allMatches.length > 0) {
-                allMatches.forEach((m, idx) => {
-                    const ratio = String(m[1] || '').replace(/\s+/g, '');
-                    const bodyStart = Number(m.index || 0) + String(m[0] || '').length;
-                    const bodyEnd = idx + 1 < allMatches.length ? Number(allMatches[idx + 1].index || explainChunk.length) : explainChunk.length;
-                    const bodyRaw = explainChunk.slice(bodyStart, bodyEnd).trim();
-                    if (bodyRaw) steps.push({ ratio, body: bodyRaw });
-                });
-            } else {
-                explainChunk.split(/\.\s+/).forEach(chunk => {
-                    const c = chunk.trim();
-                    if (!c) return;
-                    const finalOnly = c.match(/^(?:->|→)\s*(.+)$/);
-                    if (finalOnly) { finalAnswer = finalOnly[1].trim(); return; }
-                    steps.push({ ratio: '', body: c });
-                });
-            }
-            if (steps.length > 0) {
-                const last = steps[steps.length - 1];
-                const finalMatch = String(last.body || '').match(/\s*(?:->|→)\s*([^\n→>]+)\s*$/);
-                if (finalMatch) { finalAnswer = finalMatch[1].trim(); last.body = String(last.body || '').slice(0, finalMatch.index).trim(); if (!last.body) steps.pop(); }
-            }
-            if (!steps.length) return null;
-            return { positionSource, positionEvidence, paragraphLabel, positionTarget: extractFirstQuotedPhrase(positionEvidence) || positionEvidence || positionSource, steps, finalAnswer };
+            const multiline = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\n+\s*(?:Explain(?:ation)?|Reason)\s*:\s*([\s\S]*)$/i);
+            const inline = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\s+(?:Explain(?:ation)?|Reason)\s*:\s*([\s\S]*)$/i);
+            const match = multiline || inline;
+            if (!match) return null;
+            const positionText = String(match[1] || '').trim();
+            const explainText = String(match[2] || '').trim();
+            if (!positionText && !explainText) return null;
+            return { positionText, explainText };
         }
 
         function renderExplanationText(el, text) {
             const raw = String(text || '').replace(/\r/g, '').trim();
-            const structured = parseStructuredExplanation(raw);
-            if (structured) {
-                const stepRows = structured.steps.map(step => `
-                    <div class="explanation-step">
-                        <div class="explanation-step-ratio">${escapeHtml(step.ratio || 'Step')}</div>
-                        <div class="explanation-step-text">${renderQuotedHighlights(step.body)}</div>
-                    </div>`).join('');
-                const finalRow = structured.finalAnswer ? `
-                    <div class="explanation-final">
-                        <span class="explanation-final-arrow">&#8594;</span>
-                        <span class="explanation-final-label">Answer</span>
-                        <span class="explanation-final-value">${renderQuotedHighlights(structured.finalAnswer)}</span>
-                    </div>` : '';
-                const normalizedSource = String(structured.positionSource || '').replace(/\s+/g, ' ').trim().toLowerCase();
-                const normalizedParagraph = String(structured.paragraphLabel || '').replace(/\s+/g, ' ').trim().toLowerCase();
-                const showSourceText = normalizedSource && normalizedSource !== normalizedParagraph;
-                el.innerHTML = `
-                    <div class="explanation-structured">
-                        <div class="explanation-structured-position">
-                            <div class="explanation-position-meta">
-                                <span class="explanation-label-position">Position:</span>
-                                ${structured.paragraphLabel ? `<span class="explanation-paragraph-chip">${escapeHtml(structured.paragraphLabel)}</span>` : ''}
-                                ${showSourceText ? `<span class="explanation-position-source">${escapeHtml(structured.positionSource)}</span>` : ''}
-                            </div>
-                            ${structured.positionEvidence ? `<div class="explanation-evidence">${renderQuotedHighlights(structured.positionEvidence)}</div>` : ''}
-                        </div>
-                        <div class="explanation-steps">${stepRows}</div>
-                        ${finalRow}
-                    </div>`;
-                return;
-            }
-            const multilineMatch = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\n+\s*Reason\s*:\s*([\s\S]*)$/i);
-            const inlineMatch = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\s+Reason\s*:\s*([\s\S]*)$/i);
-            const match = multilineMatch || inlineMatch;
-            if (match) {
-                const positionText = String(match[1] || '').trim();
-                const reasonText = String(match[2] || '').trim();
-                const positionTarget = extractFirstQuotedPhrase(positionText) || positionText;
+            const parsed = parseSimpleExplanation(raw);
+            if (parsed) {
                 el.innerHTML = `
                     <div class="explanation-insight">
                         <div class="explanation-position-row">
                             <span class="explanation-label-position">Position:</span>
-                            <span>${renderQuotedHighlights(positionText)}</span>
+                            <span>${renderQuotedHighlights(parsed.positionText)}</span>
                         </div>
                         <div class="explanation-reason-row">
                             <span class="explanation-reason-arrow">&#8594;</span>
-                            <span><span class="explanation-label-reason">Reason:</span>${renderQuotedHighlights(reasonText)}</span>
+                            <span><span class="explanation-label-reason">Explain:</span>${renderQuotedHighlights(parsed.explainText)}</span>
                         </div>
                     </div>`;
                 return;
