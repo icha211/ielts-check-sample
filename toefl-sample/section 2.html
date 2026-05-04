@@ -380,8 +380,24 @@
             evt.currentTarget.classList.add("active");
         }
 
+        function isDeveloperMode() {
+            return window.location.hash === "#dev-view";
+        }
+
+        function applyViewMode() {
+            if (isDeveloperMode()) return;
+            const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
+            if (devButton) devButton.remove();
+            const devView = document.getElementById("dev-view");
+            if (devView) devView.remove();
+            const userButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'user-view'"));
+            const userView = document.getElementById("user-view");
+            if (userView) userView.classList.add("active");
+            if (userButton) userButton.classList.add("active");
+        }
+
         function activateInitialTab() {
-            if (window.location.hash !== "#dev-view") return;
+            if (!isDeveloperMode()) return;
             const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
             if (devButton) {
                 openTab({ currentTarget: devButton }, 'dev-view');
@@ -406,8 +422,9 @@
             textArea.focus();
         }
 
-        let globalAnswerKey = {}; 
-        let globalExplanations = {}; 
+        let globalAnswerKey = {};
+        let globalExplanations = {};
+        let globalQuestions = {};
         let timerInterval;
 
         // ENGINE PARSER BARU UNTUK INLINE CLICKABLE & HURUF DI BAWAH
@@ -416,6 +433,7 @@
             document.getElementById('global-score-board').style.display = 'none';
             globalAnswerKey = {};
             globalExplanations = {};
+            globalQuestions = {};
 
             PARTS.forEach((part) => {
                 let p = part.id;
@@ -484,17 +502,31 @@
                                 return html;
                             });
 
+                            // Capture Part B words as options for review page
+                            const partBOpts = {};
+                            let wi = 0;
+                            const partBLetters = ['A', 'B', 'C', 'D'];
+                            questionText.replace(/<u>(.*?)<\/u>/gi, (_, word) => {
+                                if (wi < 4) partBOpts[partBLetters[wi++]] = word.replace(/^\([A-D]\)\s*/i, '').replace(/\s*\([A-D]\)$/i, '');
+                            });
+                            const plainSentence = questionText.replace(/<u>/gi, '').replace(/<\/u>/gi, '').replace(/<[^>]+>/g, '');
+                            globalQuestions[currentUID] = { questionText: `${currentQuestionNum}. ${plainSentence}`, options: partBOpts, isPartB: true };
+
                             cleanHtml += `<p class="inline-question-text">${currentQuestionNum}. ${parsedText}</p>`;
                             cleanHtml += `<div class="radio-group" style="display:none;"></div>`; // Dummy agar validator checker aman
                             openDiv = true;
                         } else {
                             // SOAL PART A BIASA
+                            globalQuestions[currentUID] = { questionText: `${currentQuestionNum}. ${questionText}`, options: {}, isPartB: false };
                             cleanHtml += `<p>${currentQuestionNum}. ${questionText}</p>`;
                             cleanHtml += `<div class="radio-group">`;
                             openDiv = true;
                         }
                     } else if (isOption && openDiv) {
                         let letter = isOption[1].toUpperCase();
+                        if (globalQuestions[currentUID] && !globalQuestions[currentUID].isPartB) {
+                            globalQuestions[currentUID].options[letter] = isOption[2];
+                        }
                         cleanHtml += `<label>
                             <input type="radio" name="q_${currentUID}" value="${letter.toLowerCase()}"> 
                             <span class="option-letter">(${letter})</span> 
@@ -512,43 +544,34 @@
         function submitAnswers() {
             let score = 0;
             let total = Object.keys(globalAnswerKey).length;
-            
-            if(total === 0) { alert("Data Kunci Jawaban masih kosong. Sistem tidak dapat melakukan penilaian."); return; }
-            if(!confirm("Yakin ingin mengakhiri Section 2 dan melihat skor?")) return;
+
+            if (total === 0) { alert("Data Kunci Jawaban masih kosong. Sistem tidak dapat melakukan penilaian."); return; }
+            if (!confirm("Yakin ingin mengakhiri Section 2 dan melihat skor?")) return;
 
             clearInterval(timerInterval);
 
             for (let uid in globalAnswerKey) {
-                let correct = globalAnswerKey[uid];
-                let user = "";
-                let radio = document.querySelector(`input[name="q_${uid}"]:checked`);
-                if (radio) user = radio.value.trim().toLowerCase();
-
-                let container = document.getElementById(`q-container-${uid}`);
-                let fb = document.getElementById(`feedback-${uid}`);
-                if (!container || !fb) continue;
-
-                let expHTML = globalExplanations[uid] ? `<div class="explanation-box">💡 <strong>Pembahasan:</strong><br>${globalExplanations[uid]}</div>` : '';
-
-                if (user === correct) { 
-                    score++; 
-                    container.classList.add('correct-box'); 
-                    fb.innerHTML = `<span class="text-correct">✔️ Jawaban Anda Benar (${user.toUpperCase()})</span>` + expHTML; 
-                } else { 
-                    container.classList.add('wrong-box'); 
-                    let userText = user ? user.toUpperCase() : "Kosong";
-                    fb.innerHTML = `<span class="text-wrong">❌ Jawaban Anda (${userText}) Salah. Kunci: <strong>${correct.toUpperCase()}</strong></span>` + expHTML; 
-                }
-                fb.style.display = 'block';
+                const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                const userAnswer = radio ? radio.value.trim().toLowerCase() : '';
+                if (userAnswer === globalAnswerKey[uid]) score++;
             }
-            
-            let scaledScore = Math.round(31 + ((score / total) * (68 - 31)));
-            let sb = document.getElementById('global-score-board');
-            sb.innerHTML = `🌟 BENAR: ${score} / ${total} &nbsp;&nbsp;|&nbsp;&nbsp; ESTIMASI SKOR ITP STRUCTURE: ${scaledScore}`;
-            sb.style.display = 'block';
-            
-            document.getElementById('btn-nav-1').click();
-            document.getElementById('user-passages-container').scrollTo({top:0, behavior:'smooth'});
+
+            const scaledScore = Math.round(31 + ((score / total) * (68 - 31)));
+
+            const answeredQs = Object.keys(globalAnswerKey).map(uid => {
+                const pId = parseInt(uid.split('_')[0]);
+                const qNum = parseInt(uid.split('_')[1]);
+                const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                const userAnswer = radio ? radio.value.trim().toLowerCase() : '';
+                const correct = globalAnswerKey[uid];
+                const q = globalQuestions[uid] || {};
+                const part = PARTS.find(pt => pt.id === pId) || {};
+                return { uid, number: qNum, partId: pId, partName: part.name || '', questionText: q.questionText || `Question ${qNum}`, options: q.options || {}, correctAnswer: correct, userAnswer, isCorrect: userAnswer === correct, isPartB: q.isPartB || false, explanation: globalExplanations[uid] || '' };
+            }).sort((a, b) => a.number - b.number);
+
+            const result = { sectionTitle: "Section 2: Structure and Written Expression", sectionKey: "structure", totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), questions: answeredQs };
+            localStorage.setItem('toefl_section2_result', JSON.stringify(result));
+            window.location.href = 'section 2-answered.html';
         }
 
         function startTimer() {
@@ -571,9 +594,12 @@
             initStructure();
             loadSectionMeta();
             updateUserView();
+            applyViewMode();
             activateInitialTab();
-            document.getElementById("set-date").addEventListener("change", saveSectionMeta);
-            document.getElementById("set-difficulty").addEventListener("change", saveSectionMeta);
+            const setDateEl = document.getElementById("set-date");
+            const setDifficultyEl = document.getElementById("set-difficulty");
+            if (setDateEl) setDateEl.addEventListener("change", saveSectionMeta);
+            if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
         };
     </script>
     <style>

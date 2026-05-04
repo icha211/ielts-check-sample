@@ -375,8 +375,24 @@ Narrator: What does the woman mean?
             evt.currentTarget.classList.add("active");
         }
 
+        function isDeveloperMode() {
+            return window.location.hash === "#dev-view";
+        }
+
+        function applyViewMode() {
+            if (isDeveloperMode()) return;
+            const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
+            if (devButton) devButton.remove();
+            const devView = document.getElementById("dev-view");
+            if (devView) devView.remove();
+            const userButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'user-view'"));
+            const userView = document.getElementById("user-view");
+            if (userView) userView.classList.add("active");
+            if (userButton) userButton.classList.add("active");
+        }
+
         function activateInitialTab() {
-            if (window.location.hash !== "#dev-view") return;
+            if (!isDeveloperMode()) return;
             const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
             if (devButton) {
                 openTab({ currentTarget: devButton }, 'dev-view');
@@ -392,8 +408,9 @@ Narrator: What does the woman mean?
             evt.currentTarget.classList.add("active");
         }
 
-        let globalAnswerKey = {}; 
-        let globalExplanations = {}; 
+        let globalAnswerKey = {};
+        let globalExplanations = {};
+        let globalQuestions = {};
         let timerInterval;
 
         // ENGINE SMART PASTE LISTENING (MODIFIED)
@@ -402,6 +419,7 @@ Narrator: What does the woman mean?
             document.getElementById('global-score-board').style.display = 'none';
             globalAnswerKey = {};
             globalExplanations = {};
+            globalQuestions = {};
 
             PARTS.forEach((part) => {
                 let p = part.id;
@@ -479,6 +497,11 @@ Narrator: What does the woman mean?
                         </label>`;
                     });
                     
+                    // Capture structured question data for the review page
+                    const qOpts = {};
+                    options.forEach((optLine, idx) => { qOpts[letters[idx]] = optLine.replace(/^[\(]?([A-D])[\.]\)?\s*/i, ''); });
+                    globalQuestions[uid] = { questionText: block.text.trim() || `Question ${currentQuestionNum}`, options: qOpts };
+
                     // Tutup div untuk soal
                     cleanHtml += `</div><div class="feedback" id="feedback-${uid}"></div></div>`;
                 });
@@ -491,44 +514,35 @@ Narrator: What does the woman mean?
         function submitAnswers() {
             let score = 0;
             let total = Object.keys(globalAnswerKey).length;
-            
-            if(total === 0) { alert("Data Kunci Jawaban masih kosong. Sistem tidak dapat melakukan penilaian."); return; }
-            if(!confirm("Yakin ingin mengakhiri Section 1 dan melihat skor?")) return;
+
+            if (total === 0) { alert("Data Kunci Jawaban masih kosong. Sistem tidak dapat melakukan penilaian."); return; }
+            if (!confirm("Yakin ingin mengakhiri Section 1 dan melihat skor?")) return;
 
             clearInterval(timerInterval);
-            document.getElementById('cbt-audio-player').pause(); 
+            document.getElementById('cbt-audio-player').pause();
 
             for (let uid in globalAnswerKey) {
-                let correct = globalAnswerKey[uid];
-                let user = "";
-                let radio = document.querySelector(`input[name="q_${uid}"]:checked`);
-                if (radio) user = radio.value.trim().toLowerCase();
-
-                let container = document.getElementById(`q-container-${uid}`);
-                let fb = document.getElementById(`feedback-${uid}`);
-                if (!container || !fb) continue;
-
-                let expHTML = globalExplanations[uid] ? `<div class="explanation-box">💡 <strong>Transcript / Bahasan:</strong><br>${globalExplanations[uid]}</div>` : '';
-
-                if (user === correct) { 
-                    score++; 
-                    container.classList.add('correct-box'); 
-                    fb.innerHTML = `<span class="text-correct">✔️ Jawaban Anda Benar (${user.toUpperCase()})</span>` + expHTML; 
-                } else { 
-                    container.classList.add('wrong-box'); 
-                    let userText = user ? user.toUpperCase() : "Kosong";
-                    fb.innerHTML = `<span class="text-wrong">❌ Jawaban Anda (${userText}) Salah. Kunci: <strong>${correct.toUpperCase()}</strong></span>` + expHTML; 
-                }
-                fb.style.display = 'block';
+                const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                const userAnswer = radio ? radio.value.trim().toLowerCase() : '';
+                if (userAnswer === globalAnswerKey[uid]) score++;
             }
-            
-            let scaledScore = Math.round(31 + ((score / total) * (68 - 31)));
-            let sb = document.getElementById('global-score-board');
-            sb.innerHTML = `🌟 BENAR: ${score} / ${total} &nbsp;&nbsp;|&nbsp;&nbsp; ESTIMASI SKOR ITP LISTENING: ${scaledScore}`;
-            sb.style.display = 'block';
-            
-            document.getElementById('btn-nav-1').click();
-            document.getElementById('user-passages-container').scrollTo({top:0, behavior:'smooth'});
+
+            const scaledScore = Math.round(31 + ((score / total) * (68 - 31)));
+
+            const answeredQs = Object.keys(globalAnswerKey).map(uid => {
+                const pId = parseInt(uid.split('_')[0]);
+                const qNum = parseInt(uid.split('_')[1]);
+                const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                const userAnswer = radio ? radio.value.trim().toLowerCase() : '';
+                const correct = globalAnswerKey[uid];
+                const q = globalQuestions[uid] || {};
+                const part = PARTS.find(pt => pt.id === pId) || {};
+                return { uid, number: qNum, partId: pId, partName: part.name || '', questionText: q.questionText || `Question ${qNum}`, options: q.options || {}, correctAnswer: correct, userAnswer, isCorrect: userAnswer === correct, explanation: globalExplanations[uid] || '' };
+            }).sort((a, b) => a.number - b.number);
+
+            const result = { sectionTitle: "Section 1: Listening Comprehension", sectionKey: "listening", totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), questions: answeredQs };
+            localStorage.setItem('toefl_section1_result', JSON.stringify(result));
+            window.location.href = 'section 1-answered.html';
         }
 
         function startTimer() {
@@ -551,9 +565,12 @@ Narrator: What does the woman mean?
             initStructure();
             loadSectionMeta();
             updateUserView();
+            applyViewMode();
             activateInitialTab();
-            document.getElementById("set-date").addEventListener("change", saveSectionMeta);
-            document.getElementById("set-difficulty").addEventListener("change", saveSectionMeta);
+            const setDateEl = document.getElementById("set-date");
+            const setDifficultyEl = document.getElementById("set-difficulty");
+            if (setDateEl) setDateEl.addEventListener("change", saveSectionMeta);
+            if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
         };
     </script>
     <style>

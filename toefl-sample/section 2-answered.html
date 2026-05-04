@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Section 2 Review – Structure | TOEFL ITP</title>
+    <style>
+        :root {
+            --primary: #0e6b7a;
+            --bg-body: #f0f7f8;
+            --bg-surface: #ffffff;
+            --text-main: #0d2428;
+            --text-muted: #4a6870;
+            --border-color: #cde0e4;
+            --danger: #c44444;
+            --success: #1a7f4e;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+
+        body { background: var(--bg-body); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .page-header {
+            background: linear-gradient(90deg, #074f5a, #0e6b7a);
+            color: #e0f4f8;
+            padding: 14px 24px;
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+            border-bottom: 2px solid #17a1b8; flex-shrink: 0;
+        }
+
+        .page-header-title { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; }
+
+        .page-header-badge {
+            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+            border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700;
+            letter-spacing: 0.06em; text-transform: uppercase;
+        }
+
+        .container {
+            flex: 1; display: flex; flex-direction: column;
+            max-width: 900px; width: 100%; margin: 0 auto;
+            padding: 24px 20px 140px; gap: 16px;
+        }
+
+        .panel {
+            background: var(--bg-surface); border: 1px solid var(--border-color);
+            border-radius: 14px; box-shadow: 0 4px 12px rgba(14,107,122,0.07); padding: 24px;
+        }
+
+        .panel-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--primary); margin-bottom: 10px; }
+
+        .question-no { font-size: 0.82rem; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+
+        .part-badge {
+            display: inline-block; background: #d8f0f4; color: var(--primary);
+            border: 1px solid #9dd4de; border-radius: 999px;
+            padding: 4px 12px; font-size: 12px; font-weight: 700; margin-bottom: 14px;
+        }
+
+        /* Part B sentence display */
+        .sentence-display {
+            background: #f4fbfc; border: 1px solid #c0dde4;
+            border-radius: 10px; padding: 14px 16px;
+            font-size: 1rem; line-height: 1.8; color: var(--text-main);
+        }
+
+        .underline-word {
+            border-bottom: 2px solid var(--primary);
+            padding: 0 4px 1px; font-weight: 700;
+            position: relative;
+        }
+
+        .underline-word .letter-label {
+            display: inline-block; font-size: 0.7rem; font-weight: 700;
+            color: var(--primary); vertical-align: super; margin-left: 2px;
+        }
+
+        .underline-word.chosen { background: rgba(14,107,122,0.1); border-radius: 4px; }
+        .underline-word.correct-word { border-bottom-color: var(--success); color: var(--success); }
+        .underline-word.wrong-word { border-bottom-color: var(--danger); color: var(--danger); }
+
+        .question-text { font-size: 1rem; line-height: 1.65; color: var(--text-main); }
+
+        .answer-option {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 10px; border-radius: 10px; margin-bottom: 8px; border: 1px solid transparent;
+        }
+        .answer-option.correct { background: rgba(26,127,78,0.08); border-color: rgba(26,127,78,0.2); }
+        .answer-option.incorrect { background: rgba(196,68,68,0.08); border-color: rgba(196,68,68,0.2); }
+        .answer-option.neutral { background: #fafcfe; border-color: #d8e8ec; }
+
+        .opt-circle {
+            width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; border: 2px solid #b0ccd4; background: #fff; color: var(--text-main); font-size: 0.82rem;
+        }
+        .answer-option.correct .opt-circle { background: var(--success); border-color: var(--success); color: #fff; }
+        .answer-option.incorrect .opt-circle { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+        .opt-text { flex: 1; line-height: 1.5; font-size: 0.93rem; }
+        .opt-meta { font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 3px 8px; align-self: center; white-space: nowrap; }
+        .opt-meta.user { background: #d8f0f4; color: #074f5a; }
+        .opt-meta.correct { background: #e7f7ef; color: var(--success); }
+
+        /* Explanation */
+        .explanation-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
+        .explanation-text { line-height: 1.6; color: #334155; font-size: 0.93rem; }
+
+        .explanation-insight {
+            display: grid; gap: 12px;
+            background: linear-gradient(180deg, #f0fbfd 0%, #e4f6f9 100%);
+            border: 1px solid #a8dde8; border-left: 4px solid #0e6b7a;
+            border-radius: 12px; padding: 14px;
+        }
+
+        .explanation-structured {
+            display: grid; gap: 12px;
+            background: #f5fbfd; border: 1px solid #c0dde4;
+            border-left: 3px solid #0e6b7a; border-radius: 12px; padding: 14px;
+        }
+
+        .explanation-structured-position { display: grid; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid #c0dde4; }
+        .explanation-position-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .explanation-paragraph-chip { background: #e0f5f8; color: #074f5a; border: 1px solid #a0d4de; border-radius: 999px; padding: 2px 10px; font-size: 0.78rem; font-weight: 700; }
+        .explanation-position-source { color: #0a4f5c; font-weight: 600; font-size: 0.9rem; }
+        .explanation-evidence { color: #334155; line-height: 1.7; }
+        .explanation-steps { display: grid; gap: 8px; }
+        .explanation-step { display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: start; background: #fff; border: 1px solid #c4dde4; border-radius: 10px; padding: 8px 10px; }
+        .explanation-step-ratio { height: 24px; border-radius: 999px; background: #d8f0f4; color: #0e6b7a; border: 1px solid #9dd4de; display: inline-flex; align-items: center; justify-content: center; font-size: 0.74rem; font-weight: 700; }
+        .explanation-step-text { color: #334155; line-height: 1.65; font-size: 0.9rem; }
+        .explanation-final { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #b8dde6; border-radius: 999px; padding: 6px 12px; width: fit-content; }
+        .explanation-final-arrow { width: 20px; height: 20px; border-radius: 999px; background: #d8f0f4; border: 1px solid #9dd4de; color: #0e6b7a; display: inline-flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; }
+        .explanation-final-label { color: #2e6070; font-size: 0.79rem; font-weight: 700; text-transform: uppercase; }
+        .explanation-final-value { color: #074f5a; font-weight: 800; }
+        .explanation-position-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; line-height: 1.6; }
+        .explanation-reason-row { display: flex; align-items: flex-start; gap: 10px; line-height: 1.6; padding-top: 8px; border-top: 1px dashed #9dd4de; }
+        .explanation-label-position { font-weight: 700; color: #074f5a; background: #cef0f5; border: none; border-radius: 999px; padding: 2px 10px; font: inherit; }
+        .explanation-label-reason { font-weight: 700; color: #1f2937; margin-right: 4px; }
+        .explanation-reason-arrow { width: 24px; height: 24px; border-radius: 999px; background: #fff; border: 1px solid #7bbfc8; color: #074f5a; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; margin-top: 2px; flex-shrink: 0; }
+
+        .passage-highlight { background-color: #c8ecf4; color: #04363f; border-radius: 3px; padding: 0 2px; font-weight: 700; }
+
+        /* Footer */
+        .review-footer { position: sticky; bottom: 0; z-index: 20; background: var(--bg-surface); border-top: 1px solid var(--border-color); box-shadow: 0 -6px 20px rgba(14,107,122,0.1); }
+        .review-footer-wrap { max-width: 900px; margin: 0 auto; padding: 8px 20px; display: grid; grid-template-columns: 220px 1fr 240px; gap: 10px; align-items: center; }
+        .summary-col { display: flex; align-items: center; gap: 10px; }
+        .score-ring { --pct: 0%; width: 64px; height: 64px; border-radius: 50%; background: conic-gradient(var(--primary) var(--pct), #d0e8ec 0); display: grid; place-items: center; flex-shrink: 0; position: relative; }
+        .score-ring::before { content: ""; width: 48px; height: 48px; border-radius: 50%; background: #fff; border: 1px solid #c8dde4; position: absolute; }
+        .score-value { position: relative; z-index: 1; font-size: 1.1rem; font-weight: 700; color: var(--primary); }
+        .score-band { position: relative; z-index: 1; font-size: 0.55rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
+        .summary-meta h1 { font-size: 0.92rem; font-weight: 700; margin-bottom: 2px; }
+        .summary-meta p { font-size: 0.74rem; color: var(--text-muted); }
+        .tracker { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; overflow: hidden; max-height: 80px; }
+        .q-circle { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #b0ccd4; background: #fff; color: #1a3840; font-size: 0.72rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .q-circle.correct { background: #d8f0e4; border-color: #7dcba3; color: #0d5930; }
+        .q-circle.incorrect { background: #fae0e0; border-color: #e8a0a0; color: #8f2020; }
+        .q-circle.active { box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--primary); }
+        .nav-col { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+        .nav-small { width: 40px; height: 36px; border-radius: 8px; border: 1px solid var(--border-color); background: #fff; cursor: pointer; font-size: 1rem; font-weight: 700; }
+        .nav-small:disabled { opacity: 0.4; cursor: not-allowed; }
+        .next-btn { min-width: 140px; height: 36px; border-radius: 8px; border: 1px solid #9dd4de; background: #e0f4f8; color: var(--primary); font-weight: 700; cursor: pointer; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+        .next-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        @media (max-width: 900px) {
+            .review-footer-wrap { grid-template-columns: 1fr; }
+            .summary-col, .nav-col { justify-content: center; }
+            .tracker { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-header">
+        <div class="page-header-title">📝 Section 2: Structure and Written Expression — Answer Review</div>
+        <span class="page-header-badge">TOEFL ITP</span>
+    </div>
+
+    <div class="container">
+        <div class="panel" id="questionPanel">
+            <div class="panel-label">Question</div>
+            <div id="partBadge" class="part-badge"></div>
+            <div class="question-no" id="questionNo">Question —</div>
+            <div id="questionDisplay"></div>
+        </div>
+
+        <div class="panel" id="optionsPanel">
+            <div class="panel-label">Answer Options</div>
+            <div id="optionsBox"></div>
+        </div>
+
+        <div class="panel" id="explanationPanel">
+            <div class="explanation-title">Explanation</div>
+            <div class="explanation-text" id="explanationText">No explanation provided.</div>
+        </div>
+    </div>
+
+    <footer class="review-footer">
+        <div class="review-footer-wrap">
+            <div class="summary-col">
+                <div class="score-ring" id="scoreRing">
+                    <div>
+                        <div class="score-value" id="scaledScore">—</div>
+                        <div class="score-band">ITP Score</div>
+                    </div>
+                </div>
+                <div class="summary-meta">
+                    <h1>Section 2: Structure</h1>
+                    <p id="scoreSummary">0 correct of 0</p>
+                </div>
+            </div>
+
+            <div class="tracker" id="tracker"></div>
+
+            <div class="nav-col">
+                <button class="nav-small" id="prevBtn" type="button">&#8592;</button>
+                <div id="questionCounter" style="min-width:80px;text-align:center;font-weight:700;font-size:0.88rem;">Q 1 / 40</div>
+                <button class="next-btn" id="nextBtn" type="button">Next &#8594;</button>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let result = null;
+        let flatQuestions = [];
+        let currentIdx = 0;
+
+        function escapeHtml(v) { return String(v || "").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]); }
+        function escapeHtmlAttr(v) { return String(v || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+        function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+        function renderQuotedHighlights(v) {
+            return escapeHtml(v)
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/"([^"]{1,})"/g, (_, i) => `<mark class="passage-highlight">"${i}"</mark>`)
+                .replace(/\n/g, '<br>');
+        }
+
+        function extractFirstQuotedPhrase(text) {
+            const m = String(text || "").match(/"([^"]{2,})"/);
+            return m ? m[1].trim() : '';
+        }
+
+        function parseStructuredExplanation(text) {
+            const raw = String(text || "").replace(/\r/g, "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, " ").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
+            if (!raw) return null;
+            if (!/\bPosition\s*:/i.test(raw) || !/\bExplain(?:ation)?\s*:/i.test(raw)) return null;
+            const explainRx = /\bExplain(?:ation)?\s*:/i;
+            const explainIdx = raw.search(explainRx);
+            const positionChunk = raw.slice(0, explainIdx).trim();
+            const explainChunk = raw.slice(explainIdx).replace(explainRx, '').trim();
+            const posLabelRx = /\bPosition\s*:\s*/i;
+            const posLabelIdx = positionChunk.search(posLabelRx);
+            if (posLabelIdx < 0) return null;
+            const positionLine = positionChunk.slice(posLabelIdx).replace(posLabelRx, '').trim();
+            if (!positionLine || !explainChunk) return null;
+            let positionSource = positionLine, positionEvidence = '';
+            const arrowIdx = positionLine.search(/\s*(?:->|→)\s*/);
+            if (arrowIdx >= 0) { positionSource = positionLine.slice(0, arrowIdx).trim(); positionEvidence = positionLine.slice(arrowIdx).replace(/^\s*(?:->|→)\s*/, '').trim(); }
+            const paragraphMatch = positionSource.match(/\b(Paragraph\s+[A-Z])\b/i);
+            const paragraphLabel = paragraphMatch ? paragraphMatch[1] : '';
+            const steps = [];
+            let finalAnswer = '';
+            const ratioRx = /(\d+\s*\/\s*\d+)/g;
+            const allMatches = Array.from(explainChunk.matchAll(ratioRx));
+            if (allMatches.length > 0) {
+                allMatches.forEach((m, idx) => {
+                    const ratio = String(m[1] || '').replace(/\s+/g, '');
+                    const bodyStart = Number(m.index || 0) + String(m[0] || '').length;
+                    const bodyEnd = idx + 1 < allMatches.length ? Number(allMatches[idx + 1].index || explainChunk.length) : explainChunk.length;
+                    const bodyRaw = explainChunk.slice(bodyStart, bodyEnd).trim();
+                    if (bodyRaw) steps.push({ ratio, body: bodyRaw });
+                });
+            } else {
+                explainChunk.split(/\.\s+/).forEach(chunk => {
+                    const c = chunk.trim();
+                    if (!c) return;
+                    const finalOnly = c.match(/^(?:->|→)\s*(.+)$/);
+                    if (finalOnly) { finalAnswer = finalOnly[1].trim(); return; }
+                    steps.push({ ratio: '', body: c });
+                });
+            }
+            if (steps.length > 0) {
+                const last = steps[steps.length - 1];
+                const finalMatch = String(last.body || '').match(/\s*(?:->|→)\s*([^\n→>]+)\s*$/);
+                if (finalMatch) { finalAnswer = finalMatch[1].trim(); last.body = String(last.body || '').slice(0, finalMatch.index).trim(); if (!last.body) steps.pop(); }
+            }
+            if (!steps.length) return null;
+            return { positionSource, positionEvidence, paragraphLabel, positionTarget: extractFirstQuotedPhrase(positionEvidence) || positionEvidence || positionSource, steps, finalAnswer };
+        }
+
+        function renderExplanationText(el, text) {
+            const raw = String(text || '').replace(/\r/g, '').trim();
+            const structured = parseStructuredExplanation(raw);
+            if (structured) {
+                const stepRows = structured.steps.map(step => `
+                    <div class="explanation-step">
+                        <div class="explanation-step-ratio">${escapeHtml(step.ratio || 'Step')}</div>
+                        <div class="explanation-step-text">${renderQuotedHighlights(step.body)}</div>
+                    </div>`).join('');
+                const finalRow = structured.finalAnswer ? `
+                    <div class="explanation-final">
+                        <span class="explanation-final-arrow">&#8594;</span>
+                        <span class="explanation-final-label">Answer</span>
+                        <span class="explanation-final-value">${renderQuotedHighlights(structured.finalAnswer)}</span>
+                    </div>` : '';
+                const normalizedSource = String(structured.positionSource || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                const normalizedParagraph = String(structured.paragraphLabel || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                const showSourceText = normalizedSource && normalizedSource !== normalizedParagraph;
+                el.innerHTML = `
+                    <div class="explanation-structured">
+                        <div class="explanation-structured-position">
+                            <div class="explanation-position-meta">
+                                <span class="explanation-label-position">Position:</span>
+                                ${structured.paragraphLabel ? `<span class="explanation-paragraph-chip">${escapeHtml(structured.paragraphLabel)}</span>` : ''}
+                                ${showSourceText ? `<span class="explanation-position-source">${escapeHtml(structured.positionSource)}</span>` : ''}
+                            </div>
+                            ${structured.positionEvidence ? `<div class="explanation-evidence">${renderQuotedHighlights(structured.positionEvidence)}</div>` : ''}
+                        </div>
+                        <div class="explanation-steps">${stepRows}</div>
+                        ${finalRow}
+                    </div>`;
+                return;
+            }
+            const multilineMatch = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\n+\s*Reason\s*:\s*([\s\S]*)$/i);
+            const inlineMatch = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\s+Reason\s*:\s*([\s\S]*)$/i);
+            const match = multilineMatch || inlineMatch;
+            if (match) {
+                const positionText = String(match[1] || '').trim();
+                const reasonText = String(match[2] || '').trim();
+                el.innerHTML = `
+                    <div class="explanation-insight">
+                        <div class="explanation-position-row">
+                            <span class="explanation-label-position">Position:</span>
+                            <span>${renderQuotedHighlights(positionText)}</span>
+                        </div>
+                        <div class="explanation-reason-row">
+                            <span class="explanation-reason-arrow">&#8594;</span>
+                            <span><span class="explanation-label-reason">Reason:</span>${renderQuotedHighlights(reasonText)}</span>
+                        </div>
+                    </div>`;
+                return;
+            }
+            el.innerHTML = renderQuotedHighlights(raw);
+        }
+
+        function renderQuestionDisplay(q) {
+            const el = document.getElementById('questionDisplay');
+            if (q.isPartB) {
+                // Show sentence with underlined words highlighted
+                const correctLetter = String(q.correctAnswer || '').trim().toUpperCase();
+                const userLetter = String(q.userAnswer || '').trim().toUpperCase();
+                const letters = ['A', 'B', 'C', 'D'];
+                let sentence = escapeHtml(q.questionText || '');
+                // Replace underlined words back
+                const opts = q.options || {};
+                letters.forEach(letter => {
+                    if (!opts[letter]) return;
+                    const wordEscaped = escapeHtml(opts[letter]);
+                    let cls = 'underline-word';
+                    if (letter === userLetter) cls += ' chosen';
+                    if (letter === correctLetter) cls += ' correct-word';
+                    else if (letter === userLetter) cls += ' wrong-word';
+                    sentence = sentence.replace(wordEscaped, `<span class="${cls}">${wordEscaped}<span class="letter-label">${letter}</span></span>`);
+                });
+                el.innerHTML = `<div class="sentence-display">${sentence}</div>`;
+            } else {
+                el.innerHTML = `<div class="question-text">${escapeHtml(q.questionText || '')}</div>`;
+            }
+        }
+
+        function renderOptions(q) {
+            const box = document.getElementById('optionsBox');
+            box.innerHTML = '';
+            const options = q.options || {};
+            const letters = Object.keys(options).sort();
+            if (!letters.length) {
+                box.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;">No options stored for this question.</p>';
+                return;
+            }
+            const correctLetter = String(q.correctAnswer || '').trim().toUpperCase();
+            const userLetter = String(q.userAnswer || '').trim().toUpperCase();
+            letters.forEach(letter => {
+                const isCorrect = letter === correctLetter;
+                const row = document.createElement('div');
+                row.className = 'answer-option ' + (isCorrect ? 'correct' : 'incorrect');
+                const circle = document.createElement('div');
+                circle.className = 'opt-circle';
+                circle.textContent = letter;
+                const text = document.createElement('div');
+                text.className = 'opt-text';
+                text.textContent = q.isPartB ? `(${letter}) ${options[letter]}` : options[letter];
+                row.appendChild(circle);
+                row.appendChild(text);
+                if (userLetter === letter) { const tag = document.createElement('span'); tag.className = 'opt-meta user'; tag.textContent = 'Your answer'; row.appendChild(tag); }
+                if (isCorrect) { const tag = document.createElement('span'); tag.className = 'opt-meta correct'; tag.textContent = 'Correct'; row.appendChild(tag); }
+                box.appendChild(row);
+            });
+        }
+
+        function setActiveCircle(number) {
+            document.querySelectorAll('.q-circle.active').forEach(el => el.classList.remove('active'));
+            const target = Array.from(document.querySelectorAll('.q-circle')).find(el => Number(el.dataset.num) === number);
+            if (target) { target.classList.add('active'); target.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+        }
+
+        function showQuestion(idx) {
+            if (!flatQuestions.length) return;
+            idx = Math.max(0, Math.min(idx, flatQuestions.length - 1));
+            currentIdx = idx;
+            const q = flatQuestions[currentIdx];
+            document.getElementById('partBadge').textContent = q.partName || '';
+            document.getElementById('questionNo').textContent = `Question ${q.number}`;
+            document.getElementById('questionCounter').textContent = `Q ${q.number} / ${result.totalQuestions || flatQuestions.length}`;
+            document.getElementById('prevBtn').disabled = currentIdx === 0;
+            document.getElementById('nextBtn').disabled = currentIdx === flatQuestions.length - 1;
+            renderQuestionDisplay(q);
+            renderOptions(q);
+            renderExplanationText(document.getElementById('explanationText'), q.explanation || '');
+            setActiveCircle(q.number);
+        }
+
+        function buildTracker() {
+            const tracker = document.getElementById('tracker');
+            tracker.innerHTML = '';
+            flatQuestions.forEach(q => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'q-circle ' + (q.isCorrect ? 'correct' : 'incorrect');
+                btn.textContent = q.number;
+                btn.dataset.num = q.number;
+                btn.addEventListener('click', () => { const fi = flatQuestions.findIndex(x => x.number === q.number); if (fi >= 0) showQuestion(fi); });
+                tracker.appendChild(btn);
+            });
+        }
+
+        function init() {
+            try { const raw = localStorage.getItem('toefl_section2_result'); if (raw) result = JSON.parse(raw); } catch (_) {}
+
+            if (!result || !Array.isArray(result.questions) || !result.questions.length) {
+                document.getElementById('questionDisplay').textContent = 'No review data found. Complete Section 2 first.';
+                document.getElementById('prevBtn').disabled = true;
+                document.getElementById('nextBtn').disabled = true;
+                return;
+            }
+
+            flatQuestions = result.questions;
+            const total = result.totalQuestions || flatQuestions.length;
+            const raw2 = result.rawScore || 0;
+            const scaled = result.scaledScore || 0;
+            const pct = Math.round((raw2 / Math.max(1, total)) * 100);
+            document.getElementById('scaledScore').textContent = scaled;
+            document.getElementById('scoreSummary').textContent = `${raw2} correct of ${total}`;
+            document.getElementById('scoreRing').style.setProperty('--pct', pct + '%');
+
+            buildTracker();
+            document.getElementById('prevBtn').addEventListener('click', () => showQuestion(currentIdx - 1));
+            document.getElementById('nextBtn').addEventListener('click', () => showQuestion(currentIdx + 1));
+            showQuestion(0);
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

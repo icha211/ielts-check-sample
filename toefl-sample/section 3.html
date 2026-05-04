@@ -310,8 +310,24 @@
             evt.currentTarget.classList.add("active");
         }
 
+        function isDeveloperMode() {
+            return window.location.hash === "#dev-view";
+        }
+
+        function applyViewMode() {
+            if (isDeveloperMode()) return;
+            const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
+            if (devButton) devButton.remove();
+            const devView = document.getElementById("dev-view");
+            if (devView) devView.remove();
+            const userButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'user-view'"));
+            const userView = document.getElementById("user-view");
+            if (userView) userView.classList.add("active");
+            if (userButton) userButton.classList.add("active");
+        }
+
         function activateInitialTab() {
-            if (window.location.hash !== "#dev-view") return;
+            if (!isDeveloperMode()) return;
             const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
             if (devButton) {
                 openTab({ currentTarget: devButton }, 'dev-view');
@@ -354,8 +370,10 @@
             }
         }
 
-        let globalAnswerKey = {}; 
-        let globalExplanations = {}; 
+        let globalAnswerKey = {};
+        let globalExplanations = {};
+        let globalQuestions = {};
+        let globalPassages = {};
         let timerInterval;
 
         function updateUserView(shouldSaveMeta = false) {
@@ -363,6 +381,8 @@
             document.getElementById('global-score-board').style.display = 'none';
             globalAnswerKey = {};
             globalExplanations = {};
+            globalQuestions = {};
+            globalPassages = {};
 
             for(let p=1; p<=TOTAL_PASSAGES; p++) {
                 document.getElementById(`display-title-${p}`).innerText = document.getElementById(`input-title-${p}`).value || `Questions ${p}`;
@@ -378,6 +398,7 @@
                     return `<p>${processedPara}</p>`;
                 }).join('');
                 document.getElementById(`display-passage-${p}`).innerHTML = passageText;
+                globalPassages[p] = { title: document.getElementById(`input-title-${p}`).value || `Passage ${p}`, content: passageText };
 
                 document.getElementById(`input-answer-key-${p}`).value.split('\n').forEach(l => {
                     let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
@@ -407,12 +428,14 @@
                         if (openDiv) cleanHtml += `<div class="feedback" id="feedback-${currentUID}"></div></div>`;
                         let currentQuestionNum = qMatch[1];
                         currentUID = `${p}_${currentQuestionNum}`;
+                        globalQuestions[currentUID] = { questionText: qMatch[2], options: {}, passageId: p };
                         cleanHtml += `<div class="question-item" id="q-container-${currentUID}">`;
                         cleanHtml += `<p>${currentQuestionNum}. ${qMatch[2]}</p>`;
                         cleanHtml += `<div class="radio-group">`;
                         openDiv = true;
                     } else if (isOption && openDiv) {
                         let letter = isOption[1].toUpperCase();
+                        if (globalQuestions[currentUID]) globalQuestions[currentUID].options[letter] = isOption[2];
                         cleanHtml += `<label>
                             <input type="radio" name="q_${currentUID}" value="${letter.toLowerCase()}"> 
                             <span class="option-letter">(${letter})</span> 
@@ -430,44 +453,36 @@
         function submitAnswers() {
             let score = 0;
             let total = Object.keys(globalAnswerKey).length;
-            
-            if(total === 0) { alert("Kunci jawaban belum dimasukkan oleh instruktur/developer."); return; }
-            if(!confirm("Yakin ingin mengakhiri ujian dan melihat skor?")) return;
+
+            if (total === 0) { alert("Kunci jawaban belum dimasukkan oleh instruktur/developer."); return; }
+            if (!confirm("Yakin ingin mengakhiri ujian dan melihat skor?")) return;
 
             clearInterval(timerInterval);
 
             for (let uid in globalAnswerKey) {
-                let correct = globalAnswerKey[uid];
-                let user = "";
-                let radio = document.querySelector(`input[name="q_${uid}"]:checked`);
-                
-                if (radio) user = radio.value.trim().toLowerCase();
-
-                let container = document.getElementById(`q-container-${uid}`);
-                let fb = document.getElementById(`feedback-${uid}`);
-                if (!container || !fb) continue;
-
-                let expHTML = globalExplanations[uid] ? `<div class="explanation-box">💡 <strong>Pembahasan:</strong><br>${globalExplanations[uid]}<br><button class="btn-show-source" onclick="scrollToSource('${uid}')">📍 Tunjukkan di Teks Bacaan</button></div>` : '';
-
-                if (user === correct) { 
-                    score++; 
-                    container.classList.add('correct-box'); 
-                    fb.innerHTML = `<span class="text-correct">✔️ Jawaban Anda Benar (${user.toUpperCase()})</span>` + expHTML; 
-                } else { 
-                    container.classList.add('wrong-box'); 
-                    let userText = user ? user.toUpperCase() : "Kosong";
-                    fb.innerHTML = `<span class="text-wrong">❌ Jawaban Anda (${userText}) Salah. Kunci: <strong>${correct.toUpperCase()}</strong></span>` + expHTML; 
-                }
-                fb.style.display = 'block';
+                const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                const userAnswer = radio ? radio.value.trim().toLowerCase() : '';
+                if (userAnswer === globalAnswerKey[uid]) score++;
             }
-            
-            let scaledScore = Math.round(31 + ((score / total) * (67 - 31)));
-            let sb = document.getElementById('global-score-board');
-            sb.innerHTML = `🌟 BENAR: ${score} / ${total} &nbsp;&nbsp;|&nbsp;&nbsp; ESTIMASI SKOR ITP READING: ${scaledScore}`;
-            sb.style.display = 'block';
-            
-            document.getElementById('btn-nav-1').click();
-            window.scrollTo({top:0, behavior:'smooth'});
+
+            const scaledScore = Math.round(31 + ((score / total) * (67 - 31)));
+
+            const answeredQs = Object.keys(globalAnswerKey).map(uid => {
+                const pId = parseInt(uid.split('_')[0]);
+                const qNum = parseInt(uid.split('_')[1]);
+                const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                const userAnswer = radio ? radio.value.trim().toLowerCase() : '';
+                const correct = globalAnswerKey[uid];
+                const q = globalQuestions[uid] || {};
+                return { uid, number: qNum, passageId: pId, questionText: q.questionText || `Question ${qNum}`, options: q.options || {}, correctAnswer: correct, userAnswer, isCorrect: userAnswer === correct, explanation: globalExplanations[uid] || '' };
+            }).sort((a, b) => a.number - b.number);
+
+            const passages = {};
+            for (let pid in globalPassages) passages[pid] = globalPassages[pid];
+
+            const result = { sectionTitle: "Section 3: Reading Comprehension", sectionKey: "reading", totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), questions: answeredQs, passages };
+            localStorage.setItem('toefl_section3_result', JSON.stringify(result));
+            window.location.href = 'section 3-answered.html';
         }
 
         function startTimer() {
@@ -490,9 +505,12 @@
             initStructure();
             loadSectionMeta();
             updateUserView();
+            applyViewMode();
             activateInitialTab();
-            document.getElementById("set-date").addEventListener("change", saveSectionMeta);
-            document.getElementById("set-difficulty").addEventListener("change", saveSectionMeta);
+            const setDateEl = document.getElementById("set-date");
+            const setDifficultyEl = document.getElementById("set-difficulty");
+            if (setDateEl) setDateEl.addEventListener("change", saveSectionMeta);
+            if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
         };
     </script>
     <style>

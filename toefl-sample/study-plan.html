@@ -6,7 +6,7 @@
     <title>TOEFL ITP Study Plan | IELTS Check</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cal+Sans&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --blue-950: #06223d;
@@ -34,7 +34,7 @@
         body {
             margin: 0;
             min-height: 100vh;
-            font-family: "Space Grotesk", "Cal Sans", sans-serif;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
             color: var(--text);
             background:
                 radial-gradient(circle at 16% -10%, rgba(115, 186, 255, 0.6) 0%, transparent 30%),
@@ -511,7 +511,6 @@
             <main class="shell">
                 <div class="page-head">
                     <h1>Daily schedule inside your selected month</h1>
-                    <p>Use the chevrons to move through dates, click the month header to collapse or expand the schedule strip, and manage the three TOEFL tests inside the mock panel below.</p>
                 </div>
 
                 <section class="schedule-card" id="scheduleCard">
@@ -519,14 +518,14 @@
                         <button class="nav-arrow" type="button" id="prevDateBtn" aria-label="Previous date">‹</button>
                         <button class="month-toggle" type="button" id="monthToggle" aria-expanded="false">
                             <span class="month-label"><span id="monthHeading">Februari, 2026</span><span class="month-chevron">▾</span></span>
-                            <div class="month-caption" id="monthCaption">Click to expand from centered row into full month calendar</div>
+                            <div class="month-caption" id="monthCaption"></div>
                         </button>
                         <button class="nav-arrow" type="button" id="nextDateBtn" aria-label="Next date">›</button>
                     </div>
 
                     <div class="date-strip-wrap" id="dateStripWrap">
                         <div class="date-strip" id="dateStrip"></div>
-                        <div class="date-helper" id="dateHelper">Centered row view: selected date stays in the middle when possible.</div>
+                        <div class="date-helper" id="dateHelper"></div>
                     </div>
                 </section>
 
@@ -566,7 +565,12 @@
         const initialYear = Number(params.get("year")) || 2026;
         const initialMonth = Number(params.get("month"));
         const safeMonth = Number.isFinite(initialMonth) && initialMonth >= 0 && initialMonth <= 11 ? initialMonth : 1;
-        let selectedDate = new Date(initialYear, safeMonth, 19);
+        const today = new Date();
+        const hasYearParam = params.has("year");
+        const hasMonthParam = params.has("month");
+        let selectedDate = (hasYearParam || hasMonthParam)
+            ? new Date(initialYear, safeMonth, today.getDate())
+            : new Date(today.getFullYear(), today.getMonth(), today.getDate());
         let isCalendarExpanded = false;
 
         function getMonthStore(year, month) {
@@ -680,9 +684,7 @@
                 host.appendChild(tile);
             });
 
-            document.getElementById("dateHelper").textContent = isCalendarExpanded
-                ? "Expanded month view: showing dates 1 to end of month."
-                : "Centered row view: selected date stays in the middle when possible.";
+            document.getElementById("dateHelper").textContent = "";
         }
 
         function renderMockPanel() {
@@ -700,7 +702,7 @@
             document.getElementById("mockProgress").textContent = `${completedCount} of 3 Tests Complete`;
             document.getElementById("mockNotes").textContent = completedCount === 3
                 ? "All three tests are completed for this day. Use this panel to review the section mix and keep the same rhythm for the next date."
-                : "Open a section to practice, or mark it complete when finished. The completion counter above updates immediately for the selected day.";
+                : "";
 
             sectionGrid.innerHTML = "";
 
@@ -713,7 +715,6 @@
                         <div class="section-icon ${section.colorClass}">${section.icon}</div>
                         <div>
                             <h3 class="section-title">${section.title}</h3>
-                            <p class="section-description">Targeted ${section.difficulty.toLowerCase()} practice for this mock-test block.</p>
                         </div>
                     </div>
                     <div class="detail-row">
@@ -765,9 +766,7 @@
             isCalendarExpanded = !isCalendarExpanded;
             scheduleCard.classList.toggle("expanded", isCalendarExpanded);
             document.getElementById("monthToggle").setAttribute("aria-expanded", String(isCalendarExpanded));
-            document.getElementById("monthCaption").textContent = isCalendarExpanded
-                ? "Click to collapse back to centered date row"
-                : "Click to expand from centered row into full month calendar";
+            document.getElementById("monthCaption").textContent = "";
             renderDateTiles();
         });
 

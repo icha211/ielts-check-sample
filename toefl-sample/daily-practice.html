@@ -357,31 +357,53 @@
     </div>
 
     <script>
-        const STUDY_PLAN_KEY = "toefl_study_plan_v1";
+        const STORAGE_KEY = "toefl_schedule_v3";
 
         let currentDay = null;
-        let monthData = null;
         let dayData = null;
 
-        function initDay() {
-            const stored = localStorage.getItem("toefl_current_day");
-            if (!stored) {
-                window.location.href = "study-plan.html";
-                return;
-            }
+        function toPercent(rawScore, totalQuestions) {
+            if (!totalQuestions) return null;
+            return Math.round((rawScore / totalQuestions) * 100);
+        }
 
-            currentDay = JSON.parse(stored);
+        function getTodayContext() {
+            const now = new Date();
+            return {
+                year: now.getFullYear(),
+                month: now.getMonth(),
+                dayNumber: now.getDate()
+            };
+        }
+
+        function getSectionProgressFromResult(storageKey, fallbackTotal) {
+            try {
+                const raw = localStorage.getItem(storageKey);
+                if (!raw) {
+                    return { totalQuestions: fallbackTotal, completed: 0, score: null };
+                }
+
+                const parsed = JSON.parse(raw);
+                const totalQuestions = Number(parsed.totalQuestions) || fallbackTotal;
+                const rawScore = Number(parsed.rawScore) || 0;
+                const completed = totalQuestions;
+                const score = toPercent(rawScore, totalQuestions);
+                return { totalQuestions, completed, score };
+            } catch (_) {
+                return { totalQuestions: fallbackTotal, completed: 0, score: null };
+            }
+        }
+
+        function initDay() {
+            currentDay = getTodayContext();
+            localStorage.setItem("toefl_current_day", JSON.stringify(currentDay));
             const { year, month, dayNumber } = currentDay;
 
-            // Load month data
-            const key = `${STUDY_PLAN_KEY}_${year}_${month}`;
-            monthData = JSON.parse(localStorage.getItem(key)) || {};
-            dayData = monthData[dayNumber];
-
-            if (!dayData) {
-                window.location.href = "study-plan.html";
-                return;
-            }
+            dayData = {
+                listening: getSectionProgressFromResult("toefl_section1_result", 50),
+                structure: getSectionProgressFromResult("toefl_section2_result", 40),
+                reading: getSectionProgressFromResult("toefl_section3_result", 50)
+            };
 
             // Update title
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -465,7 +487,6 @@
         }
 
         function launchSection(sectionId) {
-            // Store progress reference
             localStorage.setItem("toefl_practice_context", JSON.stringify({
                 year: currentDay.year,
                 month: currentDay.month,
@@ -473,16 +494,14 @@
                 section: sectionId
             }));
 
-            // Map section to test pages (you'll update these paths)
+            const setDate = new Date().toISOString().split("T")[0];
             const sectionMap = {
-                listening: "../index.html", // Link to section 1
-                structure: "../index.html",  // Link to section 2
-                reading: "../index.html"     // Link to section 3
+                listening: `section 1.html?setDate=${setDate}`,
+                structure: `section 2.html?setDate=${setDate}`,
+                reading: `section 3.html?setDate=${setDate}`
             };
 
-            // For now, show alert. Update with actual section URLs when ready
-            alert(`Launching ${sectionId.toUpperCase()} section\n\nUpdate sectionMap with actual section URLs when ready.`);
-            // window.location.href = sectionMap[sectionId];
+            window.location.href = sectionMap[sectionId] || "study-plan.html";
         }
 
         function updateProgress() {
