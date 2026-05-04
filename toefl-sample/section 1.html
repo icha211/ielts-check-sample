@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEFL ITP Simulator - Section 1: Listening Comprehension</title>
+    <style>
+        :root {
+            --primary-color: #004b87; 
+            --dev-color: #2c3e50;
+            --cbt-header: #e9ecef;
+            --cbt-footer: #1a252f;
+            --cbt-bg: #ececec;
+            --cbt-question-bg: #ffffff;
+            --text-color: #212529;
+            --dev-bg: #f4f6f9; 
+        }
+
+        ::selection { background-color: #fce28b; color: #000; }
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; margin: 0; padding: 0; background-color: var(--cbt-bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        .tab-navigation { display: flex; background-color: #fff; border-bottom: 2px solid var(--primary-color); padding: 0 20px; flex-shrink: 0;}
+        .tab-button { padding: 10px 25px; cursor: pointer; border: none; background: none; font-size: 14px; font-weight: bold; color: #555; transition: 0.3s; }
+        .tab-button.active { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); }
+        .tab-content { display: none; flex: 1; overflow: hidden; flex-direction: column; min-height: 0; }
+        .tab-content.active { display: flex; }
+        
+        .cbt-header { background-color: var(--cbt-header); padding: 10px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); z-index: 10; flex-shrink: 0; flex-wrap: wrap;}
+        .cbt-header h2 { margin: 0; font-size: 18px; font-weight: bold; color: var(--primary-color); display: flex; align-items: center; text-transform: uppercase; letter-spacing: 1px;}
+        .cbt-header h2::before { content: "🎧"; margin-right: 10px; font-size: 22px; }
+        
+        .timer { font-size: 20px; font-weight: bold; background-color: transparent; color: #d32f2f; padding: 0; display: flex; align-items: center; letter-spacing: 1px;}
+        .timer::before { content: "⏱"; margin-right: 8px; font-weight: normal; color: #000;}
+
+        /* Audio Player Styling */
+        .audio-container { width: 100%; display: flex; justify-content: center; background: #fff; padding: 10px 0; border-bottom: 1px solid #ccc; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 9;}
+        audio { width: 60%; height: 40px; outline: none; }
+
+        .user-sub-nav { display: flex; background-color: var(--cbt-footer); justify-content: center; padding: 12px 0; flex-shrink: 0; align-items: center; gap: 15px;}
+        .user-sub-btn { padding: 10px 30px; cursor: pointer; border: 1px solid #555; background-color: #34495e; color: #fff; font-size: 15px; border-radius: 4px; transition: 0.2s; font-weight: bold;}
+        .user-sub-btn:hover { background-color: #4dc; }
+        .user-sub-btn.active { background-color: var(--primary-color); color: #fff; border: 1px solid #fff; }
+        
+        .dev-sub-nav { display: flex; background-color: #e2e8f0; justify-content: center; padding: 10px 0; flex-shrink: 0; flex-wrap: wrap; gap: 8px;}
+        .dev-sub-btn { padding: 8px 20px; cursor: pointer; border: 1px solid transparent; background-color: #cbd5e1; color: #334155; font-weight: bold; border-radius: 6px; font-size: 14px; transition: 0.2s;}
+        .dev-sub-btn:hover { background-color: #94a3b8; color: white;}
+        .dev-sub-btn.active { background-color: var(--dev-color); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
+        .btn-guide { background-color: #f59e0b !important; color: white !important; }
+        .btn-guide.active { background-color: #d97706 !important; border: 1px solid #fff; }
+        
+        .sub-content { display: none; flex: 1; overflow-y: auto; width: 100%; min-height: 0; }
+        #user-view .sub-content.active { display: block; } 
+        
+        .user-main { max-width: 900px; margin: 30px auto; background: var(--cbt-question-bg); padding: 40px 50px; border: 1px solid #ccc; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-radius: 5px;}
+        .section-instructions { background: #f8f9fa; padding: 20px; border-left: 5px solid var(--primary-color); margin-bottom: 30px; font-family: "Times New Roman", Times, serif;}
+        .section-instructions h3 { margin-top: 0; color: var(--primary-color); font-size: 18px;}
+        .section-instructions p { font-size: 16px; line-height: 1.6; margin-bottom: 0;}
+        
+        .question-item { margin-bottom: 35px; padding-bottom: 25px; border-bottom: 1px dashed #ccc; }
+        .question-item:last-child { border-bottom: none; }
+        .question-number { font-size: 18px; font-weight: bold; font-family: "Times New Roman", Times, serif; margin-bottom: 10px; display: block; color: #000;}
+        
+        .radio-group { display: flex; flex-direction: column; gap: 10px; margin-left: 10px; }
+        .radio-group label { cursor: pointer; display: flex; align-items: flex-start; gap: 8px; font-size: 16px; line-height: 1.5; color: #222; font-family: Arial, sans-serif;}
+        .radio-group input[type="radio"] { margin-top: 4px; cursor: pointer; flex-shrink: 0;}
+        .option-letter { width: 30px; flex-shrink: 0; display: inline-block; font-weight: bold;}
+
+        /* DEV PANELS */
+        #dev-view { background-color: var(--dev-bg); }
+        #dev-panels-container { flex: 1; overflow-y: auto; min-height: 0; width: 100%; padding-bottom: 40px;} 
+        #dev-panels-container .sub-content.active { display: block; } 
+        .dev-container { padding: 30px; max-width: 1000px; margin: 0 auto; width: 100%; }
+        
+        .dev-card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; border-top: 4px solid var(--dev-color);}
+        .dev-card.audio-card { border-top-color: #8b5cf6; background: #fbfbfe; } 
+        .dev-card.keys-card { border-top-color: #10b981; } 
+        .dev-card.guide-card { border-top-color: #f59e0b; } 
+        
+        .dev-card-title { margin-top: 0; margin-bottom: 15px; font-size: 18px; color: #1e293b; display: flex; align-items: center; gap: 8px;}
+        .dev-hint { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px 15px; border-radius: 0 4px 4px 0; font-size: 14px; color: #475569; margin-bottom: 15px; line-height: 1.5; }
+
+        .smart-textarea, .answer-textarea, .explanation-textarea { 
+            border: 1px solid #cbd5e1; border-radius: 0 0 6px 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); 
+            line-height: 1.6; padding: 15px; width: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; 
+            resize: vertical; outline: none; transition: 0.2s;
+        }
+        .smart-textarea:focus, .answer-textarea:focus, .explanation-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        .smart-textarea { height: 350px; }
+        .answer-textarea { height: 160px; }
+        .explanation-textarea { height: 160px; }
+
+        .btn-save { background-color: #0f172a; color: white; padding: 10px 25px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-save:hover { background-color: #334155; transform: translateY(-1px);}
+        .btn-save:active { transform: translateY(0); box-shadow: none;}
+        
+        .format-toolbar { display: flex; gap: 5px; background: #f1f5f9; padding: 10px; border: 1px solid #cbd5e1; border-bottom: none; border-radius: 6px 6px 0 0; align-items: center;}
+        .format-toolbar.header-soal { background: #334155; color: white; border-color: #334155;}
+        .format-toolbar.header-kunci { background: #10b981; color: white; border-color: #10b981;}
+        .format-toolbar.header-bahas { background: #0ea5e9; color: white; border-color: #0ea5e9;}
+
+        .correct-box { border-left: 5px solid #10b981 !important; background-color: #ecfdf5 !important; padding: 15px; border-radius: 5px;}
+        .wrong-box { border-left: 5px solid #ef4444 !important; background-color: #fef2f2 !important; padding: 15px; border-radius: 5px;}
+        .feedback { font-weight: bold; display: none; margin-top: 15px; font-size: 14px; border-top: 1px dashed #ccc; padding-top: 10px;}
+        .text-correct { color: #10b981; }
+        .text-wrong { color: #ef4444; }
+        .explanation-box { margin-top: 10px; padding: 12px 15px; background-color: #f0f9ff; border-left: 4px solid #0ea5e9; font-size: 14px; color: #0f172a; font-weight: normal; display: block; text-align: left; line-height: 1.6; border-radius: 0 4px 4px 0; }
+
+        #global-score-board { display: none; background-color: var(--primary-color); color: white; padding: 15px; text-align: center; font-size: 22px; font-weight:bold; margin: 0;}
+        .btn-submit-all { background-color: var(--primary-color); color: white; border: none; padding: 15px 30px; border-radius: 4px; cursor: pointer; margin-top: 20px; font-weight: bold; font-size:16px; width: 100%; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2);}
+        .btn-submit-all:hover { background-color: #003366; }
+        
+        .audio-upload-label { background: #8b5cf6; color: white; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; display: inline-block; transition: 0.2s;}
+        .audio-upload-label:hover { background: #7c3aed; }
+        #audio-upload-file { display: none; }
+        #audio-file-name { margin-left: 10px; font-style: italic; color: #555;}
+    </style>
+</head>
+<body>
+
+    <div class="tab-navigation">
+        <button class="tab-button active" onclick="openTab(event, 'user-view')">👁️ Simulasi Ujian User</button>
+        <button class="tab-button" onclick="openTab(event, 'dev-view')">⚙️ Panel Developer</button>
+    </div>
+
+    <div id="user-view" class="tab-content active">
+        <div id="global-score-board"></div>
+        <header class="cbt-header">
+            <h2>Section 1: Listening Comprehension</h2>
+            <div class="timer" id="time">35:00</div>
+        </header>
+        
+        <div class="audio-container">
+            <audio id="cbt-audio-player" controls controlsList="nodownload">
+                <source src="" type="audio/mpeg">
+                Browser Anda tidak mendukung pemutar audio.
+            </audio>
+        </div>
+
+        <div id="user-passages-container" style="flex: 1; overflow-y: auto; background-color: var(--cbt-bg);"></div>
+        <div class="user-sub-nav" id="user-sub-nav-container"></div>
+    </div>
+
+    <div id="dev-view" class="tab-content">
+        <header style="background:white; padding:15px 30px; display:flex; justify-content:space-between; border-bottom:1px solid #cbd5e1; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); z-index: 5; flex-shrink: 0;">
+            <div>
+                <h2 style="color: var(--dev-color); margin:0; font-size: 18px;">Content Manager</h2>
+                <span style="font-size: 13px; color: #64748b;">TOEFL ITP - Section 1 (Listening)</span>
+            </div>
+            <button class="btn-save" onclick="updateUserView(true)">🔄 Terapkan & Update Tampilan</button>
+        </header>
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:end; padding:12px 30px; background:#f8fbff; border-bottom:1px solid #dbe7f2;">
+            <div style="min-width:220px; flex:1; display:grid; gap:6px;">
+                <label for="set-date" style="font-size:12px; font-weight:700; color:#1e3a5f; text-transform:uppercase; letter-spacing:0.04em;">Set Date</label>
+                <input id="set-date" type="date" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit;">
+            </div>
+            <div style="min-width:220px; flex:1; display:grid; gap:6px;">
+                <label for="set-difficulty" style="font-size:12px; font-weight:700; color:#1e3a5f; text-transform:uppercase; letter-spacing:0.04em;">Difficulty</label>
+                <select id="set-difficulty" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; background:white;">
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="dev-sub-nav" id="dev-sub-nav-container"></div>
+        <div id="dev-panels-container"></div>
+    </div>
+
+    <script>
+        const PARTS = [
+            { id: 1, name: "Part A: Short Dialogues", range: "Questions 1-30", instr: "<strong>Directions:</strong> In Part A, you will hear short conversations between two people. After each conversation, you will hear a question about the conversation. The conversations and questions will not be repeated. After you hear a question, read the four possible answers in your test book and choose the best answer." },
+            { id: 2, name: "Part B: Longer Conversations", range: "Questions 31-38", instr: "<strong>Directions:</strong> In this part of the test, you will hear longer conversations. After each conversation, you will hear several questions. The conversations and questions will not be repeated." },
+            { id: 3, name: "Part C: Short Talks", range: "Questions 39-50", instr: "<strong>Directions:</strong> In this part of the test, you will hear several short talks. After each talk, you will hear some questions. The talks and questions will not be repeated." }
+        ];
+        const SETS_KEY = "toefl_developer_sets_v1";
+        const MODULE_ID = "listening";
+        const MODULE_LABEL = "Listening";
+
+        function safeParse(raw, fallback) {
+            try {
+                return JSON.parse(raw) || fallback;
+            } catch {
+                return fallback;
+            }
+        }
+
+        function getStoredSetMap() {
+            const parsed = safeParse(localStorage.getItem(SETS_KEY), {});
+            if (Array.isArray(parsed)) {
+                return parsed.reduce((accumulator, item) => {
+                    if (item && item.module) accumulator[item.module] = item;
+                    return accumulator;
+                }, {});
+            }
+            return parsed && typeof parsed === "object" ? parsed : {};
+        }
+
+        function persistStoredSetMap(map) {
+            localStorage.setItem(SETS_KEY, JSON.stringify(map));
+        }
+
+        function loadSectionMeta() {
+            const dateInput = document.getElementById("set-date");
+            const difficultyInput = document.getElementById("set-difficulty");
+            const params = new URLSearchParams(window.location.search);
+            const requestedDate = params.get("setDate");
+            const stored = getStoredSetMap()[MODULE_ID] || {};
+            const today = new Date().toISOString().split("T")[0];
+
+            dateInput.value = requestedDate || stored.setDate || today;
+            difficultyInput.value = stored.difficulty || "intermediate";
+        }
+
+        function saveSectionMeta() {
+            const dateInput = document.getElementById("set-date");
+            const difficultyInput = document.getElementById("set-difficulty");
+            const map = getStoredSetMap();
+
+            map[MODULE_ID] = {
+                module: MODULE_ID,
+                label: MODULE_LABEL,
+                setDate: dateInput.value || new Date().toISOString().split("T")[0],
+                difficulty: difficultyInput.value || "intermediate",
+                updatedAt: new Date().toISOString()
+            };
+
+            persistStoredSetMap(map);
+        }
+
+        function initStructure() {
+            const userContainer = document.getElementById('user-passages-container');
+            const userNavContainer = document.getElementById('user-sub-nav-container');
+            const devContainer = document.getElementById('dev-panels-container');
+            const devNavContainer = document.getElementById('dev-sub-nav-container');
+
+            const audioBtn = document.createElement('button');
+            audioBtn.className = 'dev-sub-btn active'; 
+            audioBtn.onclick = (e) => openSubTab(e, 'dev-audio-setup', 'dev-sub-btn');
+            audioBtn.innerText = '🎵 Setup Audio Utama';
+            devNavContainer.appendChild(audioBtn);
+
+            devContainer.innerHTML += `
+            <div id="dev-audio-setup" class="sub-content active">
+                <div class="dev-container">
+                    <div class="dev-card audio-card">
+                        <h2 class="dev-card-title" style="color:#6d28d9;">🎵 Konfigurasi Audio Listening</h2>
+                        <p style="font-size: 15px; color: #475569; line-height: 1.6;">Pilih file rekaman TOEFL Listening (MP3/WAV) dari perangkat Anda. File ini akan diputar di halaman User Simulator.</p>
+                        
+                        <div style="margin-top:20px; padding: 20px; background: #fff; border: 2px dashed #cbd5e1; text-align:center; border-radius: 8px;">
+                            <label for="audio-upload-file" class="audio-upload-label">📁 Pilih File Audio Lokal (.mp3)</label>
+                            <input type="file" id="audio-upload-file" accept="audio/*" onchange="handleAudioUpload(event)">
+                            <div id="audio-file-name" style="margin-top: 15px; color: #333; font-weight: bold;">Belum ada file audio yang dipilih.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+
+            PARTS.forEach((part) => {
+                const p = part.id;
+                
+                userContainer.innerHTML += `
+                <div id="user-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
+                    <div class="user-main">
+                        <div class="section-instructions">
+                            <h3>${part.name} (${part.range})</h3>
+                            <p>${part.instr}</p>
+                        </div>
+                        <div id="display-questions-${p}"></div>
+                        ${p === PARTS.length ? `<button class="btn-submit-all" onclick="submitAnswers()">Submit Section 1 (Finish Test)</button>` : `<button class="btn-submit-all" style="background:#64748b" onclick="document.getElementById('btn-nav-${p+1}').click()">Proceed to ${PARTS[p].name} ➔</button>`}
+                    </div>
+                </div>`;
+
+                userNavContainer.innerHTML += `<button id="btn-nav-${p}" class="user-sub-btn ${p === 1 ? 'active' : ''}" onclick="openSubTab(event, 'user-part-${p}', 'user-sub-btn')">${part.name}</button>`;
+
+                const devBtn = document.createElement('button');
+                devBtn.className = `dev-sub-btn`;
+                devBtn.onclick = (e) => openSubTab(e, `dev-part-${p}`, 'dev-sub-btn');
+                devBtn.innerText = `✏️ Edit ${part.name}`;
+                devNavContainer.appendChild(devBtn);
+
+                let hintHTML = `💡 <strong>Fitur SMART PASTE:</strong> Cukup <i>copy</i> teks opsi A,B,C,D dari PDF asli (meskipun tidak ada hurufnya) beserta teks transkripnya dan <i>paste</i> di sini. Selama ada Angka (1., 2.), sistem akan otomatis mengubah 4 baris terbawahnya menjadi opsi (A), (B), (C), (D)!`;
+                
+                let placeholderSoal = `Coba copy-paste seperti ini:\n1.\nMan: Did you finish reading the chapter for biology?\nWoman: I barely made a dent in it.\nNarrator: What does the woman mean?\n(A) She dropped the book.\n(B) She hasn't read much of the chapter.\n(C) She finished it quickly.\n(D) She damaged the book.`;
+
+                devContainer.innerHTML += `
+                <div id="dev-part-${p}" class="sub-content">
+                    <div class="dev-container">
+                        <div class="dev-card">
+                            <h3 class="dev-card-title">📝 Opsi Soal: ${part.name}</h3>
+                            <div class="dev-hint">${hintHTML}</div>
+                            
+                            <div class="format-toolbar header-soal">
+                                <span style="font-size:14px; font-weight:bold;">Input Opsi (Gunakan Smart Paste)</span>
+                            </div>
+                            <textarea id="input-magic-questions-${p}" class="smart-textarea" placeholder="${placeholderSoal}"></textarea>
+                        </div>
+
+                        <div class="dev-card keys-card">
+                            <h3 class="dev-card-title">✔️ Setup Kunci Jawaban & Transcript</h3>
+                            <div style="display:flex; gap:20px; flex-wrap: wrap;">
+                                <div style="flex:1; min-width: 250px;">
+                                    <div class="format-toolbar header-kunci"><span style="font-weight:bold; font-size:14px;">🔑 Kunci Jawaban</span></div>
+                                    <textarea id="input-answer-key-${p}" class="answer-textarea" placeholder="Format penulisan:\n1. a\n2. b"></textarea>
+                                </div>
+                                <div style="flex:2; min-width: 250px;">
+                                    <div class="format-toolbar header-bahas"><span style="font-weight:bold; font-size:14px;">💡 Transcript / Pembahasan (Opsional)</span></div>
+                                    <textarea id="input-explanation-${p}" class="explanation-textarea" placeholder="Tulis transkrip audio di sini...\n1. Man: I need to deposit this money.\nWoman: The teller is right over there.\nQuestion: Where does this conversation take place?"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>`;
+            });
+
+            // GUIDE TAB
+            const guideBtn = document.createElement('button');
+            guideBtn.className = 'dev-sub-btn btn-guide';
+            guideBtn.onclick = (e) => openSubTab(e, 'dev-guide', 'dev-sub-btn');
+            guideBtn.innerText = '📖 Cara Smart Paste';
+            devNavContainer.appendChild(guideBtn);
+
+            devContainer.innerHTML += `
+            <div id="dev-guide" class="sub-content">
+                <div class="dev-container">
+                    <div class="dev-card guide-card">
+                        <h2 class="dev-card-title" style="font-size:22px; color:#d97706;">📖 Panduan Smart Paste</h2>
+                        
+                        <div style="background:#fef2f2; padding:20px; border-left:4px solid #ef4444; border-radius:4px; margin-bottom:20px;">
+                            <strong style="color:#b91c1c; font-size:16px;">🔥 Lupakan Mengetik (A), (B), (C), (D) Manual!</strong><br><br>
+                            Simulator ini memiliki mesin pintar yang bisa membaca hasil <i>Copy-Paste</i> mentah dari file PDF Anda, termasuk transkrip percakapannya.<br><br>
+                            
+                            <strong>Syaratnya sangat mudah:</strong><br>
+                            1. Baris pertama harus berupa <strong>Angka lalu Titik</strong> (Contoh: <code>1.</code> atau <code>15.</code>)<br>
+                            2. Letakkan teks apapun (seperti dialog) di bawahnya.<br>
+                            3. Pastikan <strong>4 baris terakhir</strong> sebelum angka berikutnya adalah opsi A, B, C, D.<br><br>
+
+                            <em>Contoh Teks yang Anda Paste:</em><br>
+<pre style="background:#fff; padding:10px; border:1px solid #ccc; font-family:monospace; margin-top:10px;">
+1.
+Man: Did you finish reading the chapter for biology?
+Woman: I barely made a dent in it.
+Narrator: What does the woman mean?
+(A) She dropped the book.
+(B) She hasn't read much of the chapter.
+(C) She finished it quickly.
+(D) She damaged the book.
+</pre>
+                            <br>Saat Anda klik tombol Update, sistem akan <strong>otomatis mengabaikan teks dialog</strong> dan hanya mengubah 4 baris paling bawah menjadi format interaktif A, B, C, dan D!
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function handleAudioUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const audioURL = URL.createObjectURL(file);
+                document.getElementById('cbt-audio-player').src = audioURL;
+                document.getElementById('audio-file-name').innerText = "✅ File siap diputar: " + file.name;
+                document.getElementById('audio-file-name').style.color = "green";
+                alert("Audio berhasil di-load! Silakan cek di tab 'Simulasi Ujian User'.");
+            }
+        }
+
+        function openTab(evt, tabName) {
+            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+            document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        function activateInitialTab() {
+            if (window.location.hash !== "#dev-view") return;
+            const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
+            if (devButton) {
+                openTab({ currentTarget: devButton }, 'dev-view');
+            }
+        }
+
+        function openSubTab(evt, tabName, btnClass) {
+            const parent = document.getElementById(tabName).parentElement;
+            parent.querySelectorAll(".sub-content").forEach(c => c.classList.remove("active"));
+            const navContainer = btnClass.includes('user') ? document.getElementById('user-sub-nav-container') : document.getElementById('dev-sub-nav-container');
+            navContainer.querySelectorAll(`.${btnClass}`).forEach(b => b.classList.remove("active"));
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        let globalAnswerKey = {}; 
+        let globalExplanations = {}; 
+        let timerInterval;
+
+        // ENGINE SMART PASTE LISTENING (MODIFIED)
+        function updateUserView(shouldSaveMeta = false) {
+            if (shouldSaveMeta) saveSectionMeta();
+            document.getElementById('global-score-board').style.display = 'none';
+            globalAnswerKey = {};
+            globalExplanations = {};
+
+            PARTS.forEach((part) => {
+                let p = part.id;
+
+                document.getElementById(`input-answer-key-${p}`).value.split('\n').forEach(l => {
+                    let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
+                    if(m) globalAnswerKey[`${p}_${m[1]}`] = m[2].trim().toLowerCase();
+                });
+
+                let currentExpNum = null;
+                document.getElementById(`input-explanation-${p}`).value.split('\n').forEach(l => {
+                    let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
+                    if(m) { currentExpNum = `${p}_${m[1]}`; globalExplanations[currentExpNum] = m[2].trim(); }
+                    else if(currentExpNum && l.trim()) globalExplanations[currentExpNum] += "<br>" + l.trim();
+                });
+
+                // Filter baris kosong agar pembacaan array lebih mulus
+                const lines = document.getElementById(`input-magic-questions-${p}`).value.split('\n').filter(l => l.trim() !== '');
+                let cleanHtml = '';
+                
+                // Grouping baris menjadi blok per-nomor soal
+                let blocks = [];
+                let currentBlock = null;
+
+                for (let i = 0; i < lines.length; i++) {
+                    let rawLine = lines[i].trim();
+                    
+                    // Cek apakah baris ini dimulai dengan angka (sebagai awal nomor soal)
+                    let qMatch = rawLine.match(/^(\d+)[\.\)]?\s*(.*)/);
+
+                    // Jika ini awal nomor baru dan (blok saat ini belum ada ATAU blok sebelumnya sudah memiliki >= 4 baris)
+                    if (qMatch && (!currentBlock || currentBlock.lines.length >= 4)) {
+                        if (currentBlock) blocks.push(currentBlock);
+                        currentBlock = {
+                            num: qMatch[1],
+                            text: qMatch[2],
+                            lines: []
+                        };
+                    } else if (currentBlock) {
+                        currentBlock.lines.push(rawLine);
+                    }
+                }
+                if (currentBlock) blocks.push(currentBlock);
+
+                let letters = ['A', 'B', 'C', 'D'];
+
+                // Render setiap blok soal ke dalam HTML
+                blocks.forEach(block => {
+                    let currentQuestionNum = block.num;
+                    let uid = `${p}_${currentQuestionNum}`;
+                    
+                    cleanHtml += `<div class="question-item" id="q-container-${uid}">`;
+                    cleanHtml += `<span class="question-number">${currentQuestionNum}.</span>`;
+                    
+                    // Jika ada teks setelah angka di baris yang sama, render juga (menjaga fitur lama)
+                    if (block.text.trim() !== '') {
+                        cleanHtml += `<p style="margin-bottom: 10px;">${block.text}</p>`;
+                    }
+                    
+                    cleanHtml += `<div class="radio-group">`;
+                    
+                    // SMART FILTER: Hanya ambil maksimal 4 baris TERAKHIR dari blok sebagai opsi (Objektif)
+                    // Transkrip dialog (Man, Woman, Narrator) akan otomatis terabaikan
+                    let options = block.lines.slice(-4);
+                    
+                    options.forEach((optLine, index) => {
+                        let letter = letters[index];
+                        // Bersihkan teks manual jika developer mengetik (A), (B) agar tidak dobel
+                        let cleanOptionText = optLine.replace(/^[\(]?([A-D])[\.\)]?\s*/i, '');
+
+                        cleanHtml += `<label>
+                            <input type="radio" name="q_${uid}" value="${letter.toLowerCase()}"> 
+                            <span class="option-letter">(${letter})</span> 
+                            <span>${cleanOptionText}</span>
+                        </label>`;
+                    });
+                    
+                    // Tutup div untuk soal
+                    cleanHtml += `</div><div class="feedback" id="feedback-${uid}"></div></div>`;
+                });
+
+                document.getElementById(`display-questions-${p}`).innerHTML = cleanHtml;
+            });
+            startTimer();
+        }
+
+        function submitAnswers() {
+            let score = 0;
+            let total = Object.keys(globalAnswerKey).length;
+            
+            if(total === 0) { alert("Data Kunci Jawaban masih kosong. Sistem tidak dapat melakukan penilaian."); return; }
+            if(!confirm("Yakin ingin mengakhiri Section 1 dan melihat skor?")) return;
+
+            clearInterval(timerInterval);
+            document.getElementById('cbt-audio-player').pause(); 
+
+            for (let uid in globalAnswerKey) {
+                let correct = globalAnswerKey[uid];
+                let user = "";
+                let radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                if (radio) user = radio.value.trim().toLowerCase();
+
+                let container = document.getElementById(`q-container-${uid}`);
+                let fb = document.getElementById(`feedback-${uid}`);
+                if (!container || !fb) continue;
+
+                let expHTML = globalExplanations[uid] ? `<div class="explanation-box">💡 <strong>Transcript / Bahasan:</strong><br>${globalExplanations[uid]}</div>` : '';
+
+                if (user === correct) { 
+                    score++; 
+                    container.classList.add('correct-box'); 
+                    fb.innerHTML = `<span class="text-correct">✔️ Jawaban Anda Benar (${user.toUpperCase()})</span>` + expHTML; 
+                } else { 
+                    container.classList.add('wrong-box'); 
+                    let userText = user ? user.toUpperCase() : "Kosong";
+                    fb.innerHTML = `<span class="text-wrong">❌ Jawaban Anda (${userText}) Salah. Kunci: <strong>${correct.toUpperCase()}</strong></span>` + expHTML; 
+                }
+                fb.style.display = 'block';
+            }
+            
+            let scaledScore = Math.round(31 + ((score / total) * (68 - 31)));
+            let sb = document.getElementById('global-score-board');
+            sb.innerHTML = `🌟 BENAR: ${score} / ${total} &nbsp;&nbsp;|&nbsp;&nbsp; ESTIMASI SKOR ITP LISTENING: ${scaledScore}`;
+            sb.style.display = 'block';
+            
+            document.getElementById('btn-nav-1').click();
+            document.getElementById('user-passages-container').scrollTo({top:0, behavior:'smooth'});
+        }
+
+        function startTimer() {
+            let t = 2100; // 35 menit
+            clearInterval(timerInterval);
+            document.getElementById('time').style.color = "#d32f2f";
+            timerInterval = setInterval(() => {
+                let m = Math.floor(t/60), s = t%60;
+                document.getElementById('time').innerText = `${m<10?'0'+m:m}:${s<10?'0'+s:s}`;
+                if(t <= 180) { document.getElementById('time').style.animation = "blink 1s infinite"; }
+                if(--t < 0) { 
+                    clearInterval(timerInterval); 
+                    alert("Waktu Habis! Jawaban Anda disubmit otomatis.");
+                    submitAnswers(); 
+                }
+            }, 1000);
+        }
+
+        window.onload = () => {
+            initStructure();
+            loadSectionMeta();
+            updateUserView();
+            activateInitialTab();
+            document.getElementById("set-date").addEventListener("change", saveSectionMeta);
+            document.getElementById("set-difficulty").addEventListener("change", saveSectionMeta);
+        };
+    </script>
+    <style>
+        @keyframes blink { 50% { opacity: 0.5; color: red; } }
+    </style>
+</body>
+</html>

@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEFL ITP Simulator - Section 2: Structure & Written Expression</title>
+    <style>
+        :root {
+            --primary-color: #004b87; 
+            --dev-color: #2c3e50;
+            --cbt-header: #e9ecef;
+            --cbt-footer: #1a252f;
+            --cbt-bg: #ececec;
+            --cbt-question-bg: #ffffff;
+            --text-color: #212529;
+            --dev-bg: #f4f6f9; 
+        }
+
+        ::selection { background-color: #fce28b; color: #000; }
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; margin: 0; padding: 0; background-color: var(--cbt-bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        .tab-navigation { display: flex; background-color: #fff; border-bottom: 2px solid var(--primary-color); padding: 0 20px; flex-shrink: 0;}
+        .tab-button { padding: 10px 25px; cursor: pointer; border: none; background: none; font-size: 14px; font-weight: bold; color: #555; transition: 0.3s; }
+        .tab-button.active { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); }
+        .tab-content { display: none; flex: 1; overflow: hidden; flex-direction: column; min-height: 0; }
+        .tab-content.active { display: flex; }
+        
+        .cbt-header { background-color: var(--cbt-header); padding: 10px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); z-index: 10; flex-shrink: 0;}
+        .cbt-header h2 { margin: 0; font-size: 18px; font-weight: bold; color: var(--primary-color); display: flex; align-items: center; text-transform: uppercase; letter-spacing: 1px;}
+        .cbt-header h2::before { content: "📝"; margin-right: 10px; font-size: 22px; }
+        
+        .timer { font-size: 20px; font-weight: bold; background-color: transparent; color: #d32f2f; padding: 0; display: flex; align-items: center; letter-spacing: 1px;}
+        .timer::before { content: "⏱"; margin-right: 8px; font-weight: normal; color: #000;}
+
+        .user-sub-nav { display: flex; background-color: var(--cbt-footer); justify-content: center; padding: 12px 0; flex-shrink: 0; align-items: center; gap: 15px;}
+        .user-sub-btn { padding: 10px 30px; cursor: pointer; border: 1px solid #555; background-color: #34495e; color: #fff; font-size: 15px; border-radius: 4px; transition: 0.2s; font-weight: bold;}
+        .user-sub-btn:hover { background-color: #4dc; }
+        .user-sub-btn.active { background-color: var(--primary-color); color: #fff; border: 1px solid #fff; }
+        
+        .dev-sub-nav { display: flex; background-color: #e2e8f0; justify-content: center; padding: 10px 0; flex-shrink: 0; flex-wrap: wrap; gap: 8px;}
+        .dev-sub-btn { padding: 8px 20px; cursor: pointer; border: 1px solid transparent; background-color: #cbd5e1; color: #334155; font-weight: bold; border-radius: 6px; font-size: 14px; transition: 0.2s;}
+        .dev-sub-btn:hover { background-color: #94a3b8; color: white;}
+        .dev-sub-btn.active { background-color: var(--dev-color); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
+        .btn-guide { background-color: #f59e0b !important; color: white !important; }
+        .btn-guide.active { background-color: #d97706 !important; border: 1px solid #fff; }
+        
+        .sub-content { display: none; flex: 1; overflow-y: auto; width: 100%; min-height: 0; }
+        #user-view .sub-content.active { display: block; } 
+        
+        .user-main { max-width: 900px; margin: 30px auto; background: var(--cbt-question-bg); padding: 40px 50px; border: 1px solid #ccc; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-radius: 5px;}
+        .section-instructions { background: #f8f9fa; padding: 20px; border-left: 5px solid var(--primary-color); margin-bottom: 30px; font-family: "Times New Roman", Times, serif;}
+        .section-instructions h3 { margin-top: 0; color: var(--primary-color); font-size: 18px;}
+        .section-instructions p { font-size: 16px; line-height: 1.6; margin-bottom: 0;}
+        .question-item { margin-bottom: 35px; padding-bottom: 25px; border-bottom: 1px dashed #ccc; }
+        .question-item:last-child { border-bottom: none; }
+        .question-item p { margin: 0 0 15px 0; font-size: 18px; line-height: 1.6; color: #000; font-family: "Times New Roman", Times, serif;}
+        
+        .radio-group { display: flex; flex-direction: column; gap: 10px; margin-left: 28px; }
+        .radio-group label { cursor: pointer; display: flex; align-items: flex-start; gap: 8px; font-size: 16px; line-height: 1.5; color: #222; font-family: Arial, sans-serif;}
+        .radio-group input[type="radio"] { margin-top: 4px; cursor: pointer; flex-shrink: 0;}
+        .option-letter { width: 30px; flex-shrink: 0; display: inline-block; font-weight: bold;}
+
+        /* --- DESAIN BUKU TOEFL UNTUK PART B (HURUF DI BAWAH KATA) --- */
+        .inline-question-text { 
+            line-height: 2.8 !important; /* Spasi lebar agar huruf A,B,C,D tidak nabrak teks bawahnya */
+        }
+        .inline-error-wrapper { 
+            display: inline-block; 
+            margin: 0 1px; 
+        }
+        .inline-error-wrapper input[type="radio"] { 
+            display: none; /* Sembunyikan radio button asli */
+        }
+        
+        .error-label { 
+            position: relative; /* Penting untuk huruf yang melayang */
+            display: inline-block;
+            cursor: pointer; 
+            padding: 2px 4px; 
+            border-radius: 4px; 
+            transition: 0.2s; 
+            border: 1px solid transparent;
+        }
+        .error-label:hover { 
+            background-color: #f1f5f9; 
+            border-color: #cbd5e1; 
+        }
+
+        /* Garis bawah pada kata */
+        .error-label .word-text {
+            text-decoration: underline;
+            text-underline-offset: 4px;
+            text-decoration-thickness: 1px;
+        }
+
+        /* Huruf A, B, C, D di bawah kata */
+        .error-label .letter-badge { 
+            position: absolute;
+            bottom: -1.3em; /* Dorong huruf ke bawah kata */
+            left: 50%;
+            transform: translateX(-50%); /* Posisikan tepat di tengah kata */
+            font-family: "Times New Roman", Times, serif; 
+            font-size: 15px; 
+            color: #000; 
+            font-weight: bold;
+        }
+        
+        /* Efek saat kata diklik/dipilih oleh user */
+        .inline-error-wrapper input[type="radio"]:checked + .error-label {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            border-color: var(--primary-color);
+        }
+        .inline-error-wrapper input[type="radio"]:checked + .error-label .word-text { 
+            text-decoration-color: transparent; /* Sembunyikan garis bawah saat diblok biru */
+        } 
+        .inline-error-wrapper input[type="radio"]:checked + .error-label .letter-badge { 
+            color: white; 
+        }
+
+        /* DEV PANELS */
+        #dev-view { background-color: var(--dev-bg); }
+        #dev-panels-container { flex: 1; overflow-y: auto; min-height: 0; width: 100%; padding-bottom: 40px;} 
+        #dev-panels-container .sub-content.active { display: block; } 
+        .dev-container { padding: 30px; max-width: 1000px; margin: 0 auto; width: 100%; }
+        
+        .dev-card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; border-top: 4px solid var(--dev-color);}
+        .dev-card.keys-card { border-top-color: #10b981; } 
+        .dev-card.guide-card { border-top-color: #f59e0b; } 
+        
+        .dev-card-title { margin-top: 0; margin-bottom: 15px; font-size: 18px; color: #1e293b; display: flex; align-items: center; gap: 8px;}
+        .dev-hint { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px 15px; border-radius: 0 4px 4px 0; font-size: 14px; color: #475569; margin-bottom: 15px; line-height: 1.5; }
+
+        .smart-textarea, .answer-textarea, .explanation-textarea { 
+            border: 1px solid #cbd5e1; border-radius: 0 0 6px 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); 
+            line-height: 1.6; padding: 15px; width: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; 
+            resize: vertical; outline: none; transition: 0.2s;
+        }
+        .smart-textarea:focus, .answer-textarea:focus, .explanation-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        .smart-textarea { height: 350px; }
+        .answer-textarea { height: 160px; }
+        .explanation-textarea { height: 160px; }
+
+        .btn-save { background-color: #0f172a; color: white; padding: 10px 25px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-save:hover { background-color: #334155; transform: translateY(-1px);}
+        .btn-save:active { transform: translateY(0); box-shadow: none;}
+        
+        .format-toolbar { display: flex; gap: 5px; background: #f1f5f9; padding: 10px; border: 1px solid #cbd5e1; border-bottom: none; border-radius: 6px 6px 0 0; align-items: center;}
+        .format-toolbar.header-soal { background: #334155; color: white; border-color: #334155;}
+        .format-toolbar.header-kunci { background: #10b981; color: white; border-color: #10b981;}
+        .format-toolbar.header-bahas { background: #0ea5e9; color: white; border-color: #0ea5e9;}
+        
+        .format-btn { padding: 4px 10px; cursor: pointer; border: 1px solid #cbd5e1; background: white; border-radius: 4px; font-size: 13px; color: #334155; font-weight: bold; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);}
+        .format-btn:hover { background: #e2e8f0; }
+
+        .correct-box { border-left: 5px solid #10b981 !important; background-color: #ecfdf5 !important; padding: 15px; border-radius: 5px;}
+        .wrong-box { border-left: 5px solid #ef4444 !important; background-color: #fef2f2 !important; padding: 15px; border-radius: 5px;}
+        .feedback { font-weight: bold; display: none; margin-top: 15px; font-size: 14px; border-top: 1px dashed #ccc; padding-top: 10px;}
+        .text-correct { color: #10b981; }
+        .text-wrong { color: #ef4444; }
+        .explanation-box { margin-top: 10px; padding: 12px 15px; background-color: #f0f9ff; border-left: 4px solid #0ea5e9; font-size: 14px; color: #0f172a; font-weight: normal; display: block; text-align: left; line-height: 1.6; border-radius: 0 4px 4px 0; }
+
+        #global-score-board { display: none; background-color: var(--primary-color); color: white; padding: 15px; text-align: center; font-size: 22px; font-weight:bold; margin: 0;}
+        .btn-submit-all { background-color: var(--primary-color); color: white; border: none; padding: 15px 30px; border-radius: 4px; cursor: pointer; margin-top: 20px; font-weight: bold; font-size:16px; width: 100%; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2);}
+        .btn-submit-all:hover { background-color: #003366; }
+    </style>
+</head>
+<body>
+
+    <div class="tab-navigation">
+        <button class="tab-button active" onclick="openTab(event, 'user-view')">👁️ Simulasi Ujian User</button>
+        <button class="tab-button" onclick="openTab(event, 'dev-view')">⚙️ Panel Developer</button>
+    </div>
+
+    <div id="user-view" class="tab-content active">
+        <div id="global-score-board"></div>
+        <header class="cbt-header">
+            <h2>Section 2: Structure and Written Expression</h2>
+            <div class="timer" id="time">25:00</div>
+        </header>
+        <div id="user-passages-container" style="flex: 1; overflow-y: auto; background-color: var(--cbt-bg);"></div>
+        <div class="user-sub-nav" id="user-sub-nav-container"></div>
+    </div>
+
+    <div id="dev-view" class="tab-content">
+        <header style="background:white; padding:15px 30px; display:flex; justify-content:space-between; border-bottom:1px solid #cbd5e1; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); z-index: 5; flex-shrink: 0;">
+            <div>
+                <h2 style="color: var(--dev-color); margin:0; font-size: 18px;">Content Manager</h2>
+                <span style="font-size: 13px; color: #64748b;">TOEFL ITP - Section 2</span>
+            </div>
+            <button class="btn-save" onclick="updateUserView(true)">🔄 Terapkan & Update Tampilan</button>
+        </header>
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:end; padding:12px 30px; background:#f8fbff; border-bottom:1px solid #dbe7f2;">
+            <div style="min-width:220px; flex:1; display:grid; gap:6px;">
+                <label for="set-date" style="font-size:12px; font-weight:700; color:#1e3a5f; text-transform:uppercase; letter-spacing:0.04em;">Set Date</label>
+                <input id="set-date" type="date" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit;">
+            </div>
+            <div style="min-width:220px; flex:1; display:grid; gap:6px;">
+                <label for="set-difficulty" style="font-size:12px; font-weight:700; color:#1e3a5f; text-transform:uppercase; letter-spacing:0.04em;">Difficulty</label>
+                <select id="set-difficulty" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; background:white;">
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="dev-sub-nav" id="dev-sub-nav-container"></div>
+        <div id="dev-panels-container"></div>
+    </div>
+
+    <script>
+        const PARTS = [
+            { id: 1, name: "Part A: Structure", range: "Questions 1-15", instr: "<strong>Directions:</strong> In these questions, each sentence has an incomplete phrase or missing word. Choose the one word or phrase that best completes the sentence." },
+            { id: 2, name: "Part B: Written Expression", range: "Questions 16-40", instr: "<strong>Directions:</strong> In these questions, each sentence has four underlined words or phrases. Identify the one underlined word or phrase that must be changed in order for the sentence to be correct." }
+        ];
+        const SETS_KEY = "toefl_developer_sets_v1";
+        const MODULE_ID = "structure";
+        const MODULE_LABEL = "Structure";
+
+        function safeParse(raw, fallback) {
+            try {
+                return JSON.parse(raw) || fallback;
+            } catch {
+                return fallback;
+            }
+        }
+
+        function getStoredSetMap() {
+            const parsed = safeParse(localStorage.getItem(SETS_KEY), {});
+            if (Array.isArray(parsed)) {
+                return parsed.reduce((accumulator, item) => {
+                    if (item && item.module) accumulator[item.module] = item;
+                    return accumulator;
+                }, {});
+            }
+            return parsed && typeof parsed === "object" ? parsed : {};
+        }
+
+        function persistStoredSetMap(map) {
+            localStorage.setItem(SETS_KEY, JSON.stringify(map));
+        }
+
+        function loadSectionMeta() {
+            const dateInput = document.getElementById("set-date");
+            const difficultyInput = document.getElementById("set-difficulty");
+            const params = new URLSearchParams(window.location.search);
+            const requestedDate = params.get("setDate");
+            const stored = getStoredSetMap()[MODULE_ID] || {};
+            const today = new Date().toISOString().split("T")[0];
+
+            dateInput.value = requestedDate || stored.setDate || today;
+            difficultyInput.value = stored.difficulty || "intermediate";
+        }
+
+        function saveSectionMeta() {
+            const dateInput = document.getElementById("set-date");
+            const difficultyInput = document.getElementById("set-difficulty");
+            const map = getStoredSetMap();
+
+            map[MODULE_ID] = {
+                module: MODULE_ID,
+                label: MODULE_LABEL,
+                setDate: dateInput.value || new Date().toISOString().split("T")[0],
+                difficulty: difficultyInput.value || "intermediate",
+                updatedAt: new Date().toISOString()
+            };
+
+            persistStoredSetMap(map);
+        }
+
+        function initStructure() {
+            const userContainer = document.getElementById('user-passages-container');
+            const userNavContainer = document.getElementById('user-sub-nav-container');
+            const devContainer = document.getElementById('dev-panels-container');
+            const devNavContainer = document.getElementById('dev-sub-nav-container');
+
+            PARTS.forEach((part) => {
+                const p = part.id;
+                
+                // USER VIEW BUILDER
+                userContainer.innerHTML += `
+                <div id="user-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
+                    <div class="user-main">
+                        <div class="section-instructions">
+                            <h3>${part.name} (${part.range})</h3>
+                            <p>${part.instr}</p>
+                        </div>
+                        <div id="display-questions-${p}"></div>
+                        ${p === PARTS.length ? `<button class="btn-submit-all" onclick="submitAnswers()">Submit Section 2 (Finish Test)</button>` : `<button class="btn-submit-all" style="background:#64748b" onclick="document.getElementById('btn-nav-${p+1}').click()">Proceed to Part B ➔</button>`}
+                    </div>
+                </div>`;
+
+                userNavContainer.innerHTML += `<button id="btn-nav-${p}" class="user-sub-btn ${p === 1 ? 'active' : ''}" onclick="openSubTab(event, 'user-part-${p}', 'user-sub-btn')">${part.name}</button>`;
+
+                // DEV VIEW BUILDER
+                const devBtn = document.createElement('button');
+                devBtn.className = `dev-sub-btn ${p === 1 ? 'active' : ''}`;
+                devBtn.onclick = (e) => openSubTab(e, `dev-part-${p}`, 'dev-sub-btn');
+                devBtn.innerText = `✏️ Edit ${part.name}`;
+                devNavContainer.appendChild(devBtn);
+
+                let hintHTML = p === 1 
+                    ? `💡 <strong>Hint:</strong> Gunakan garis bawah beruntun <code>____</code> untuk area yang kosong (rumpang) pada kalimat.`
+                    : `💡 <strong>Desain Buku Asli:</strong> Blok kata yang salah di kalimat, lalu klik <b>U Garis Bawah</b>. Di tampilan User, huruf A, B, C, D akan otomatis muncul tepat di bawah kata yang digarisbawahi persis seperti buku TOEFL.`;
+
+                let placeholderSoal = p === 1 
+                    ? `Contoh:\n1. The president _____ the election.\n(A) won\n(B) win\n(C) winning\n(D) is winning`
+                    : `Contoh:\n5. Electrical <u>disturbances</u> on Earth are <u>frequently</u> caused <u>with</u> storms on the surface <u>of the sun</u>.`;
+
+                devContainer.innerHTML += `
+                <div id="dev-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
+                    <div class="dev-container">
+                        
+                        <div class="dev-card">
+                            <h3 class="dev-card-title">📝 Daftar Soal: ${part.name}</h3>
+                            <div class="dev-hint">${hintHTML}</div>
+                            
+                            <div class="format-toolbar header-soal">
+                                <span style="font-size:14px; font-weight:bold;">Input Teks Soal</span>
+                                ${p === 2 ? `<button class="format-btn" title="Garis Bawahi Teks" onclick="formatText('input-magic-questions-${p}', '<u>', '</u>')" style="margin-left:auto; color:black;">U Garis Bawah (Ctrl+U)</button>` : ''}
+                            </div>
+                            <textarea id="input-magic-questions-${p}" class="smart-textarea" placeholder="${placeholderSoal}"></textarea>
+                        </div>
+
+                        <div class="dev-card keys-card">
+                            <h3 class="dev-card-title">✔️ Setup Kunci Jawaban & Evaluasi</h3>
+                            <div style="display:flex; gap:20px; flex-wrap: wrap;">
+                                <div style="flex:1; min-width: 250px;">
+                                    <div class="format-toolbar header-kunci"><span style="font-weight:bold; font-size:14px;">🔑 Kunci Jawaban</span></div>
+                                    <textarea id="input-answer-key-${p}" class="answer-textarea" placeholder="Format penulisan:\n5. c\n6. a"></textarea>
+                                </div>
+                                <div style="flex:2; min-width: 250px;">
+                                    <div class="format-toolbar header-bahas"><span style="font-weight:bold; font-size:14px;">💡 Teks Pembahasan (Opsional)</span></div>
+                                    <textarea id="input-explanation-${p}" class="explanation-textarea" placeholder="Format penulisan:\n5. Preposition yang tepat untuk caused adalah 'by', bukan 'with'."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>`;
+            });
+
+            // GUIDE TAB
+            const guideBtn = document.createElement('button');
+            guideBtn.className = 'dev-sub-btn btn-guide';
+            guideBtn.onclick = (e) => openSubTab(e, 'dev-guide', 'dev-sub-btn');
+            guideBtn.innerText = '📖 Panduan Syntax';
+            devNavContainer.appendChild(guideBtn);
+
+            devContainer.innerHTML += `
+            <div id="dev-guide" class="sub-content">
+                <div class="dev-container">
+                    <div class="dev-card guide-card">
+                        <h2 class="dev-card-title" style="font-size:22px; color:#d97706;">📖 Panduan Clickable Sentence</h2>
+                        
+                        <div style="background:#fef2f2; padding:20px; border-left:4px solid #ef4444; border-radius:4px; margin-bottom:20px;">
+                            <strong style="color:#b91c1c; font-size:16px;">🔥 Fitur Ajaib Part B (Written Expression):</strong><br><br>
+                            Sekarang Anda tidak perlu lelah mengetik ulang opsi A, B, C, D ke bawah. Cukup ketik kalimatnya, blok kata yang ingin dijadikan opsi, lalu tekan tombol <kbd>U Garis Bawah</kbd>.<br><br>
+                            Sistem akan otomatis mengatur jarak kalimat dan meletakkan huruf A, B, C, D persis di bawah garis bawah kata tersebut (seperti di kertas ujian asli).<br><br>
+                            
+                            <em>Contoh Pengetikan Anda:</em><br>
+                            <code>5. Electrical &lt;u&gt;disturbances&lt;/u&gt; on Earth are &lt;u&gt;frequently&lt;/u&gt; caused &lt;u&gt;with&lt;/u&gt; storms on the surface &lt;u&gt;of the sun&lt;/u&gt;.</code><br><br>
+                            
+                            <strong>TIPS:</strong> Jika teks hasil *copy-paste* Anda sudah ada huruf A, B, C manualnya seperti <code>(A) &lt;u&gt;word&lt;/u&gt;</code> atau <code>&lt;u&gt;word&lt;/u&gt; (A)</code>, sistem cukup pintar untuk membersihkannya secara otomatis agar tampilannya tetap bersih!
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function openTab(evt, tabName) {
+            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+            document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        function activateInitialTab() {
+            if (window.location.hash !== "#dev-view") return;
+            const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
+            if (devButton) {
+                openTab({ currentTarget: devButton }, 'dev-view');
+            }
+        }
+
+        function openSubTab(evt, tabName, btnClass) {
+            const parent = document.getElementById(tabName).parentElement;
+            parent.querySelectorAll(".sub-content").forEach(c => c.classList.remove("active"));
+            const navContainer = btnClass.includes('user') ? document.getElementById('user-sub-nav-container') : document.getElementById('dev-sub-nav-container');
+            navContainer.querySelectorAll(`.${btnClass}`).forEach(b => b.classList.remove("active"));
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        function formatText(areaId, openTag, closeTag) {
+            const textArea = document.getElementById(areaId);
+            const start = textArea.selectionStart;
+            const end = textArea.selectionEnd;
+            const text = textArea.value;
+            textArea.value = text.substring(0, start) + openTag + text.substring(start, end) + closeTag + text.substring(end);
+            textArea.focus();
+        }
+
+        let globalAnswerKey = {}; 
+        let globalExplanations = {}; 
+        let timerInterval;
+
+        // ENGINE PARSER BARU UNTUK INLINE CLICKABLE & HURUF DI BAWAH
+        function updateUserView(shouldSaveMeta = false) {
+            if (shouldSaveMeta) saveSectionMeta();
+            document.getElementById('global-score-board').style.display = 'none';
+            globalAnswerKey = {};
+            globalExplanations = {};
+
+            PARTS.forEach((part) => {
+                let p = part.id;
+
+                document.getElementById(`input-answer-key-${p}`).value.split('\n').forEach(l => {
+                    let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
+                    if(m) globalAnswerKey[`${p}_${m[1]}`] = m[2].trim().toLowerCase();
+                });
+
+                let currentExpNum = null;
+                document.getElementById(`input-explanation-${p}`).value.split('\n').forEach(l => {
+                    let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
+                    if(m) { currentExpNum = `${p}_${m[1]}`; globalExplanations[currentExpNum] = m[2].trim(); }
+                    else if(currentExpNum && l.trim()) globalExplanations[currentExpNum] += "<br>" + l.trim();
+                });
+
+                const lines = document.getElementById(`input-magic-questions-${p}`).value.split('\n');
+                let cleanHtml = '';
+                let openDiv = false;
+                let currentUID = '';
+
+                for (let line of lines) {
+                    let rawLine = line.trim();
+                    if (!rawLine) continue;
+                    
+                    let qMatch = rawLine.match(/^(?:<[^>]+>)*(\d+)[\.\)]?\s+(.*)/);
+                    let isOption = rawLine.match(/^[\(]?([A-D])[\.\)]?\s+(.*)/i);
+
+                    if (qMatch && !isOption) {
+                        if (openDiv) cleanHtml += `<div class="feedback" id="feedback-${currentUID}"></div></div>`;
+                        let currentQuestionNum = qMatch[1];
+                        currentUID = `${p}_${currentQuestionNum}`;
+                        let questionText = qMatch[2];
+
+                        cleanHtml += `<div class="question-item" id="q-container-${currentUID}">`;
+
+                        // CEK APAKAH INI SOAL PART B (Memiliki garis bawah <u>)
+                        if (questionText.includes('<u>')) {
+                            
+                            // 1. Bersihkan pengetikan manual developer (A), (B), (C), (D) yang menempel sebelum/sesudah tag <u>
+                            // Contoh: <u>word</u> (A) atau (B) <u>word</u> akan dibersihkan A dan B nya.
+                            questionText = questionText.replace(/\s*\([A-D]\)\s*<u>/gi, ' <u>').replace(/<\/u>\s*\([A-D]\)\s*/gi, '</u> ');
+                            questionText = questionText.replace(/\s*[A-D]\.\s*<u>/gi, ' <u>').replace(/<\/u>\s*[A-D]\.\s*/gi, '</u> ');
+
+                            let optIndex = 0;
+                            let letters = ['A', 'B', 'C', 'D'];
+                            
+                            // 2. Ganti tag <u> menjadi kotak struktur berisikan huruf di bawahnya
+                            let parsedText = questionText.replace(/<u>(.*?)<\/u>/gi, (match, word) => {
+                                if(optIndex > 3) return match; // Maksimal D
+                                
+                                // Bersihkan lagi jika (A) masuk di DALAM tag <u>
+                                let cleanWord = word.replace(/^\([A-D]\)\s*/i, '').replace(/\s*\([A-D]\)$/i, '');
+                                
+                                let letter = letters[optIndex];
+                                let val = letter.toLowerCase();
+                                
+                                let html = `<span class="inline-error-wrapper">
+                                                <input type="radio" name="q_${currentUID}" id="q_${currentUID}_${val}" value="${val}">
+                                                <label for="q_${currentUID}_${val}" class="error-label">
+                                                    <span class="word-text">${cleanWord}</span>
+                                                    <span class="letter-badge">${letter}</span>
+                                                </label>
+                                            </span>`;
+                                optIndex++;
+                                return html;
+                            });
+
+                            cleanHtml += `<p class="inline-question-text">${currentQuestionNum}. ${parsedText}</p>`;
+                            cleanHtml += `<div class="radio-group" style="display:none;"></div>`; // Dummy agar validator checker aman
+                            openDiv = true;
+                        } else {
+                            // SOAL PART A BIASA
+                            cleanHtml += `<p>${currentQuestionNum}. ${questionText}</p>`;
+                            cleanHtml += `<div class="radio-group">`;
+                            openDiv = true;
+                        }
+                    } else if (isOption && openDiv) {
+                        let letter = isOption[1].toUpperCase();
+                        cleanHtml += `<label>
+                            <input type="radio" name="q_${currentUID}" value="${letter.toLowerCase()}"> 
+                            <span class="option-letter">(${letter})</span> 
+                            <span>${isOption[2]}</span>
+                        </label>`;
+                    }
+                }
+                if (openDiv) cleanHtml += `</div><div class="feedback" id="feedback-${currentUID}"></div></div>`;
+
+                document.getElementById(`display-questions-${p}`).innerHTML = cleanHtml;
+            });
+            startTimer();
+        }
+
+        function submitAnswers() {
+            let score = 0;
+            let total = Object.keys(globalAnswerKey).length;
+            
+            if(total === 0) { alert("Data Kunci Jawaban masih kosong. Sistem tidak dapat melakukan penilaian."); return; }
+            if(!confirm("Yakin ingin mengakhiri Section 2 dan melihat skor?")) return;
+
+            clearInterval(timerInterval);
+
+            for (let uid in globalAnswerKey) {
+                let correct = globalAnswerKey[uid];
+                let user = "";
+                let radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                if (radio) user = radio.value.trim().toLowerCase();
+
+                let container = document.getElementById(`q-container-${uid}`);
+                let fb = document.getElementById(`feedback-${uid}`);
+                if (!container || !fb) continue;
+
+                let expHTML = globalExplanations[uid] ? `<div class="explanation-box">💡 <strong>Pembahasan:</strong><br>${globalExplanations[uid]}</div>` : '';
+
+                if (user === correct) { 
+                    score++; 
+                    container.classList.add('correct-box'); 
+                    fb.innerHTML = `<span class="text-correct">✔️ Jawaban Anda Benar (${user.toUpperCase()})</span>` + expHTML; 
+                } else { 
+                    container.classList.add('wrong-box'); 
+                    let userText = user ? user.toUpperCase() : "Kosong";
+                    fb.innerHTML = `<span class="text-wrong">❌ Jawaban Anda (${userText}) Salah. Kunci: <strong>${correct.toUpperCase()}</strong></span>` + expHTML; 
+                }
+                fb.style.display = 'block';
+            }
+            
+            let scaledScore = Math.round(31 + ((score / total) * (68 - 31)));
+            let sb = document.getElementById('global-score-board');
+            sb.innerHTML = `🌟 BENAR: ${score} / ${total} &nbsp;&nbsp;|&nbsp;&nbsp; ESTIMASI SKOR ITP STRUCTURE: ${scaledScore}`;
+            sb.style.display = 'block';
+            
+            document.getElementById('btn-nav-1').click();
+            document.getElementById('user-passages-container').scrollTo({top:0, behavior:'smooth'});
+        }
+
+        function startTimer() {
+            let t = 1500; 
+            clearInterval(timerInterval);
+            document.getElementById('time').style.color = "#d32f2f";
+            timerInterval = setInterval(() => {
+                let m = Math.floor(t/60), s = t%60;
+                document.getElementById('time').innerText = `${m<10?'0'+m:m}:${s<10?'0'+s:s}`;
+                if(t <= 180) { document.getElementById('time').style.animation = "blink 1s infinite"; }
+                if(--t < 0) { 
+                    clearInterval(timerInterval); 
+                    alert("Waktu Habis! Jawaban Anda disubmit otomatis.");
+                    submitAnswers(); 
+                }
+            }, 1000);
+        }
+
+        window.onload = () => {
+            initStructure();
+            loadSectionMeta();
+            updateUserView();
+            activateInitialTab();
+            document.getElementById("set-date").addEventListener("change", saveSectionMeta);
+            document.getElementById("set-difficulty").addEventListener("change", saveSectionMeta);
+        };
+    </script>
+    <style>
+        @keyframes blink { 50% { opacity: 0.5; color: red; } }
+    </style>
+</body>
+</html>

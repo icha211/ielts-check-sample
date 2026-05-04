@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEFL ITP | IELTS Check</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --blue-950: #06223d;
+            --blue-900: #0a3560;
+            --blue-800: #0e4d88;
+            --blue-700: #1463ad;
+            --blue-600: #1d72bf;
+            --blue-500: #2e86d1;
+            --blue-200: #c9e6ff;
+            --blue-100: #e9f5ff;
+            --surface: #f5fbff;
+            --card: #ffffff;
+            --text: #10243a;
+            --muted: #59708a;
+            --shadow: 0 20px 50px rgba(8, 45, 83, 0.14);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 12% -10%, rgba(119, 190, 255, 0.7) 0%, transparent 32%),
+                radial-gradient(circle at 88% 0%, rgba(47, 126, 199, 0.55) 0%, transparent 34%),
+                linear-gradient(180deg, #eaf5ff 0%, #f6fbff 36%, #f7fbff 100%);
+        }
+
+        .shell {
+            width: min(1180px, calc(100% - 36px));
+            margin: 22px auto 36px;
+        }
+
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 18px;
+            border-radius: 18px;
+            background: rgba(6, 34, 61, 0.9);
+            border: 1px solid rgba(198, 225, 255, 0.28);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 12px 30px rgba(6, 34, 61, 0.28);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #f4f9ff;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+
+        .brand-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #92cbff, #2e86d1);
+            box-shadow: 0 0 0 6px rgba(46, 134, 209, 0.22);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .nav-links a {
+            color: #d8eaff;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .nav-links a:hover {
+            border-color: rgba(154, 210, 255, 0.55);
+            color: #ffffff;
+            background: rgba(46, 134, 209, 0.22);
+        }
+
+        .nav-links a.active {
+            color: #ffffff;
+            background: linear-gradient(135deg, #1670be, #135a98);
+            border-color: rgba(184, 225, 255, 0.6);
+        }
+
+        .hero {
+            margin-top: 20px;
+            background: linear-gradient(140deg, var(--blue-900), var(--blue-700));
+            color: #eef7ff;
+            border-radius: 28px;
+            border: 1px solid rgba(184, 223, 255, 0.42);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .hero::after {
+            content: "";
+            position: absolute;
+            right: -80px;
+            top: -48px;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(158, 214, 255, 0.52), rgba(158, 214, 255, 0));
+        }
+
+        .hero-inner {
+            display: grid;
+            grid-template-columns: 1.3fr 0.7fr;
+            gap: 26px;
+            padding: 32px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .eyebrow {
+            margin: 0 0 8px;
+            letter-spacing: 0.12em;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #badfff;
+            font-weight: 600;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(32px, 5vw, 46px);
+            line-height: 1.06;
+            letter-spacing: -0.03em;
+        }
+
+        .hero-copy {
+            margin: 14px 0 0;
+            max-width: 62ch;
+            color: #d8eaff;
+            line-height: 1.58;
+            font-size: 15px;
+        }
+
+        .hero-note {
+            background: rgba(232, 245, 255, 0.14);
+            border: 1px solid rgba(209, 234, 255, 0.38);
+            border-radius: 18px;
+            padding: 18px;
+            display: grid;
+            gap: 12px;
+            align-content: start;
+        }
+
+        .hero-note strong {
+            font-size: 14px;
+            color: #ffffff;
+            letter-spacing: 0.02em;
+        }
+
+        .hero-note-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .hero-note-item {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #dceeff;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        main {
+            margin-top: 22px;
+            display: grid;
+            gap: 22px;
+        }
+
+        .month-panel,
+        .score-panel {
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid rgba(207, 229, 248, 0.9);
+            border-radius: 28px;
+            padding: 26px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(6px);
+        }
+
+        .section-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            align-items: end;
+            margin-bottom: 22px;
+        }
+
+        .section-head h2,
+        .score-panel h3 {
+            margin: 0;
+            font-size: 28px;
+            letter-spacing: -0.02em;
+            color: var(--blue-900);
+        }
+
+        .section-head p,
+        .score-panel p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            max-width: 60ch;
+            line-height: 1.55;
+            font-size: 14px;
+        }
+
+        .planner-chip {
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #d9efff, #eff8ff);
+            color: var(--blue-900);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .month-card {
+            width: 100%;
+            min-height: 142px;
+            border: 1px solid rgba(220, 236, 248, 0.95);
+            border-radius: 26px;
+            padding: 24px 28px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 251, 255, 0.98));
+            box-shadow: 0 18px 34px rgba(14, 77, 136, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: left;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        .month-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 22px 42px rgba(14, 77, 136, 0.14);
+            border-color: rgba(107, 174, 228, 0.8);
+        }
+
+        .month-card.active {
+            background: linear-gradient(180deg, rgba(230, 244, 255, 0.98), rgba(241, 250, 255, 0.98));
+            border: 2px solid rgba(53, 131, 200, 0.48);
+            box-shadow: 0 22px 44px rgba(22, 99, 173, 0.15);
+        }
+
+        .month-name {
+            font-size: clamp(22px, 2vw, 28px);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #1c3248;
+        }
+
+        .month-meta {
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .month-arrow {
+            font-size: 54px;
+            line-height: 1;
+            color: rgba(20, 99, 173, 0.42);
+            transform: translateY(-2px);
+        }
+
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+
+        .field {
+            display: grid;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--blue-900);
+            letter-spacing: 0.02em;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            border: 1px solid #c4dcf5;
+            border-radius: 14px;
+            padding: 11px 12px;
+            font-size: 16px;
+            color: var(--text);
+            background: #fbfdff;
+            outline: none;
+            transition: box-shadow 0.18s ease, border-color 0.18s ease;
+        }
+
+        input[type="number"]:focus {
+            border-color: var(--blue-700);
+            box-shadow: 0 0 0 4px rgba(20, 99, 173, 0.18);
+        }
+
+        .score-actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn-score {
+            border: none;
+            border-radius: 14px;
+            padding: 11px 16px;
+            background: linear-gradient(135deg, var(--blue-700), var(--blue-900));
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .score-hint {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .result {
+            margin-top: 14px;
+            display: none;
+            background: linear-gradient(160deg, #e6f7ff, #eefbff);
+            border: 1px solid #bee4ff;
+            border-left: 4px solid var(--blue-700);
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .result-score {
+            margin: 0;
+            font-size: 34px;
+            color: var(--blue-900);
+            font-weight: 700;
+            letter-spacing: -0.01em;
+            font-family: "Source Serif 4", Georgia, serif;
+        }
+
+        .result-level {
+            margin: 4px 0 0;
+            font-size: 15px;
+            color: #255276;
+        }
+
+        .foot {
+            margin-top: 18px;
+            text-align: center;
+            color: #5a6f85;
+            font-size: 13px;
+        }
+
+        @media (max-width: 980px) {
+            .hero-inner,
+            .score-grid,
+            .month-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .section-head {
+                flex-direction: column;
+                align-items: start;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .shell {
+                width: calc(100% - 18px);
+                margin: 10px auto 20px;
+            }
+
+            .top-nav {
+                border-radius: 14px;
+                padding: 12px;
+                align-items: start;
+                flex-direction: column;
+            }
+
+            .hero {
+                border-radius: 20px;
+            }
+
+            .hero-inner,
+            .month-panel,
+            .score-panel {
+                padding: 20px;
+            }
+
+            .month-card {
+                min-height: 116px;
+                padding: 20px;
+            }
+
+            .month-arrow {
+                font-size: 42px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <nav class="top-nav" aria-label="TOEFL quick navigation">
+            <div class="brand"><span class="brand-dot" aria-hidden="true"></span>TOEFL ITP Workspace</div>
+            <div class="nav-links">
+                <a href="../index.html">Dashboard</a>
+                <a href="study-plan.html">Schedule</a>
+                <a href="developer.html">Developer</a>
+                <a class="active" href="index.html">TOEFL ITP</a>
+            </div>
+        </nav>
+
+        <header class="hero">
+            <div class="hero-inner">
+                <div>
+                    <p class="eyebrow">TOEFL Planner</p>
+                    <h1>Plan TOEFL practice one month at a time.</h1>
+                    <p class="hero-copy">Choose a month to open its study schedule. Each month leads into a cleaner daily planner with date tiles, a mock-test overview, and section cards for Listening, Structure, and Reading.</p>
+                </div>
+                <aside class="hero-note" aria-label="TOEFL details">
+                    <strong>What opens after you click a month</strong>
+                    <div class="hero-note-list">
+                        <div class="hero-note-item">A selected-date schedule with soft cards and left/right date navigation.</div>
+                        <div class="hero-note-item">A daily mock-test panel that tracks how many of the 3 tests are completed.</div>
+                        <div class="hero-note-item">Section cards with difficulty, total time, and question counts for the day.</div>
+                        <div class="hero-note-item">A developer builder page for creating and organizing TOEFL question sets.</div>
+                    </div>
+                </aside>
+            </div>
+        </header>
+
+        <main>
+            <section class="month-panel" aria-labelledby="monthPlannerHeading">
+                <div class="section-head">
+                    <div>
+                        <h2 id="monthPlannerHeading">2026 Study Calendar</h2>
+                        <p>The section boxes are replaced by a month-first planner. Pick any month from January through December to jump into its TOEFL schedule view.</p>
+                    </div>
+                    <div class="planner-chip">12 Month Planner</div>
+                </div>
+
+                <div class="month-grid" id="monthGrid">
+                    <button class="month-card" type="button" data-month="0">
+                        <div>
+                            <div class="month-name">JANUARI</div>
+                            <div class="month-meta">Open monthly schedule</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                    <button class="month-card" type="button" data-month="1">
+                        <div>
+                            <div class="month-name">FEBRUARI</div>
+                            <div class="month-meta">Open monthly schedule</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                    <button class="month-card" type="button" data-month="2">
+                        <div>
+                            <div class="month-name">MARET</div>
+                            <div class="month-meta">Open monthly schedule</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                    <button class="month-card" type="button" data-month="3">
+                        <div>
+                            <div class="month-name">APRIL</div>
+                            <div class="month-meta">Open monthly schedule</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                    <button class="month-card active" type="button" data-month="4">
+                        <div>
+                            <div class="month-name">MEI</div>
+                            <div class="month-meta">Current focus month</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                    <button class="month-card" type="button" data-month="5">
+                        <div>
+                            <div class="month-name">JUNI</div>
+                            <div class="month-meta">Open monthly schedule</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                    <button class="month-card" type="button" data-month="6">
+                        <div>
+                            <div class="month-name">JULI</div>
+                            <div class="month-meta">Open monthly schedule</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                    <button class="month-card" type="button" data-month="7">
+                        <div>
+                            <div class="month-name">AGUSTUS</div>
+                            <div class="month-meta">Open monthly schedule</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                    <button class="month-card" type="button" data-month="8">
+                        <div>
+                            <div class="month-name">SEPTEMBER</div>
+                            <div class="month-meta">Open monthly schedule</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                    <button class="month-card" type="button" data-month="9">
+                        <div>
+                            <div class="month-name">OKTOBER</div>
+                            <div class="month-meta">Open monthly schedule</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                    <button class="month-card" type="button" data-month="10">
+                        <div>
+                            <div class="month-name">NOVEMBER</div>
+                            <div class="month-meta">Open monthly schedule</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                    <button class="month-card" type="button" data-month="11">
+                        <div>
+                            <div class="month-name">DESEMBER</div>
+                            <div class="month-meta">Open monthly schedule</div>
+                        </div>
+                        <div class="month-arrow">›</div>
+                    </button>
+                </div>
+            </section>
+
+            <section class="score-panel" aria-label="TOEFL score calculator">
+                <h3>Estimate your TOEFL ITP total score</h3>
+                <p>Keep the score estimator below the planner so the page stays month-first while still letting students calculate a rough total score any time.</p>
+
+                <div class="score-grid">
+                    <div class="field">
+                        <label for="score1">Section 1 Listening</label>
+                        <input type="number" id="score1" min="31" max="68" placeholder="e.g. 50">
+                    </div>
+                    <div class="field">
+                        <label for="score2">Section 2 Structure</label>
+                        <input type="number" id="score2" min="31" max="68" placeholder="e.g. 54">
+                    </div>
+                    <div class="field">
+                        <label for="score3">Section 3 Reading</label>
+                        <input type="number" id="score3" min="31" max="67" placeholder="e.g. 48">
+                    </div>
+                </div>
+
+                <div class="score-actions">
+                    <button class="btn-score" type="button" onclick="calculateFinalScore()">Calculate Score</button>
+                    <span class="score-hint">Formula: ((S1 + S2 + S3) * 10) / 3</span>
+                </div>
+
+                <div class="result" id="final-score-result" aria-live="polite"></div>
+            </section>
+        </main>
+
+        <div class="foot">TOEFL ITP module integrated into IELTS Check workspace.</div>
+    </div>
+
+    <script>
+        const MONTH_PICKER_YEAR = 2026;
+        const monthCards = Array.from(document.querySelectorAll(".month-card"));
+
+        monthCards.forEach((card) => {
+            card.addEventListener("click", () => {
+                const month = Number(card.dataset.month || 0);
+                const target = `study-plan.html?year=${MONTH_PICKER_YEAR}&month=${month}`;
+                window.location.href = target;
+            });
+        });
+
+        function calculateFinalScore() {
+            const s1 = parseInt(document.getElementById("score1").value, 10);
+            const s2 = parseInt(document.getElementById("score2").value, 10);
+            const s3 = parseInt(document.getElementById("score3").value, 10);
+
+            if (Number.isNaN(s1) || Number.isNaN(s2) || Number.isNaN(s3)) {
+                alert("Please enter all three section scores.");
+                return;
+            }
+
+            if (s1 < 31 || s1 > 68 || s2 < 31 || s2 > 68 || s3 < 31 || s3 > 67) {
+                alert("Please use valid section scores (31-68, with Reading max 67 for this setup).");
+                return;
+            }
+
+            const finalScore = Math.round(((s1 + s2 + s3) * 10) / 3);
+            let level = "Elementary";
+            if (finalScore >= 600) level = "Advanced";
+            else if (finalScore >= 500) level = "High Intermediate";
+            else if (finalScore >= 400) level = "Low Intermediate";
+
+            const resultDiv = document.getElementById("final-score-result");
+            resultDiv.innerHTML = `
+                <p class="result-score">${finalScore}</p>
+                <p class="result-level">Estimated level: <strong>${level}</strong></p>
+            `;
+            resultDiv.style.display = "block";
+        }
+    </script>
+</body>
+</html>

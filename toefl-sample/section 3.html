@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEFL ITP Simulator - Section 3: Reading Comprehension</title>
+    <style>
+        :root {
+            --primary-color: #004b87; 
+            --dev-color: #2c3e50;
+            --cbt-header: #e9ecef;
+            --cbt-footer: #1a252f;
+            --cbt-passage-bg: #ffffff;
+            --cbt-question-bg: #ffffff;
+            --cbt-border: #ced4da;
+            --text-color: #212529;
+        }
+
+        ::selection { background-color: #fce28b; color: #000; }
+
+        body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; margin: 0; padding: 0; background-color: #ececec; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+        .tab-navigation { display: flex; background-color: #fff; border-bottom: 2px solid var(--primary-color); padding: 0 20px; flex-shrink: 0;}
+        .tab-button { padding: 10px 25px; cursor: pointer; border: none; background: none; font-size: 14px; font-weight: bold; color: #555; transition: 0.3s; }
+        .tab-button.active { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); }
+        .tab-content { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+        .tab-content.active { display: flex; }
+        
+        .cbt-header { background-color: var(--cbt-header); padding: 10px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); z-index: 10; flex-shrink: 0;}
+        .cbt-header h2 { margin: 0; font-size: 18px; font-weight: bold; color: var(--primary-color); display: flex; align-items: center; text-transform: uppercase; letter-spacing: 1px;}
+        .cbt-header h2::before { content: "📘"; margin-right: 10px; font-size: 22px; }
+        
+        .timer { font-size: 20px; font-weight: bold; background-color: transparent; color: #d32f2f; padding: 0; display: flex; align-items: center; letter-spacing: 1px;}
+        .timer::before { content: "⏱"; margin-right: 8px; font-weight: normal; color: #000;}
+
+        .user-sub-nav { display: flex; background-color: var(--cbt-footer); justify-content: center; padding: 12px 0; flex-shrink: 0; align-items: center; gap: 10px;}
+        .user-sub-btn { padding: 10px 25px; cursor: pointer; border: 1px solid #555; background-color: #34495e; color: #fff; font-size: 15px; border-radius: 4px; transition: 0.2s;}
+        .user-sub-btn:hover { background-color: #4dc; }
+        .user-sub-btn.active { background-color: var(--primary-color); color: #fff; border: 1px solid #fff; font-weight: bold; }
+        
+        .dev-sub-nav { display: flex; background-color: #e0e0e0; justify-content: center; padding: 5px 0; flex-shrink: 0; flex-wrap: wrap;}
+        .dev-sub-btn { padding: 8px 15px; margin: 2px; cursor: pointer; border: none; background-color: #cfd8dc; color: #333; font-weight: bold; border-radius: 4px; font-size: 13px;}
+        .dev-sub-btn.active { background-color: var(--dev-color); color: white; }
+        .btn-guide { background-color: #f39c12 !important; color: white !important; }
+        .btn-guide.active { background-color: #d68910 !important; border: 2px solid #fff; }
+        
+        .sub-content { display: none; flex: 1; overflow: hidden; width: 100%; }
+        #user-view .sub-content.active { display: flex; flex-direction: column; }
+        
+        .user-main { display: flex; flex: 1; padding: 0; gap: 0; overflow: hidden; box-sizing: border-box; background: #fff;}
+        .passage-section { background-color: var(--cbt-passage-bg); flex: 1.2; padding: 40px 50px; overflow-y: auto; border-right: 2px solid var(--cbt-border); scroll-behavior: smooth;}
+        .question-section { background-color: var(--cbt-question-bg); flex: 1; padding: 40px 40px; overflow-y: auto;}
+
+        /* KOTAK PASSAGE BUKU TOEFL */
+        .passage-heading { font-family: Arial, sans-serif; font-size: 16px; color: #000; margin-bottom: 10px; font-weight: normal; }
+        
+        .passage-box {
+            border: 1px solid #000;
+            padding: 20px 25px 20px 55px; /* Margin kiri 55px sebagai ruang nomor baris */
+            position: relative; 
+            background-color: #fff;
+        }
+
+        .passage-box p { 
+            font-family: "Times New Roman", Times, serif; 
+            font-size: 17px; 
+            line-height: 1.6; 
+            color: #000; 
+            text-align: justify; 
+            text-indent: 40px; 
+            margin: 0; 
+        }
+
+        /* NOMOR BARIS OTOMATIS */
+        .line-marker {
+            position: absolute;
+            left: 10px; /* Posisi menetap di margin luar paragraf */
+            font-family: Arial, sans-serif;
+            font-style: italic;
+            font-size: 14px;
+            color: #000;
+            width: 35px;
+            text-align: center;
+            text-indent: 0; /* Hindari indentasi dari <p> */
+        }
+
+        .question-item { margin-bottom: 35px; padding-bottom: 25px; border-bottom: 1px dashed #ccc; background-color: #fff; }
+        .question-item:last-child { border-bottom: none; }
+        .question-item p { margin: 0 0 12px 0; font-size: 16px; line-height: 1.5; color: #000; font-family: Arial, sans-serif;}
+        
+        .radio-group { display: flex; flex-direction: column; gap: 10px; margin-left: 28px; }
+        .radio-group label { cursor: pointer; display: flex; align-items: flex-start; gap: 8px; font-size: 16px; line-height: 1.5; color: #222; font-family: Arial, sans-serif;}
+        .radio-group input[type="radio"] { margin-top: 4px; cursor: pointer; flex-shrink: 0;}
+        .option-letter { width: 30px; flex-shrink: 0; display: inline-block; }
+
+        #dev-panels-container { flex: 1; overflow-y: auto; width: 100%; } 
+        #dev-panels-container .sub-content.active { display: block; } 
+        .dev-container { padding: 30px; max-width: 1000px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+        .smart-textarea { height: 280px; background-color: #fff; border-left: 5px solid var(--dev-color); line-height: 1.6; padding: 15px; width:100%; font-family: monospace;}
+        .answer-textarea { height: 120px; background-color: #fff; border-left: 5px solid #27ae60; line-height: 1.6; padding: 15px; width:100%; font-family: monospace;}
+        .explanation-textarea { height: 150px; background-color: #fff; border-left: 5px solid #3498db; line-height: 1.6; padding: 15px; width:100%; font-family: monospace; }
+        .btn-save { background-color: var(--dev-color); color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; width: 100%; font-weight: bold; margin-top: 10px; }
+        
+        .format-toolbar { display: flex; gap: 5px; background: #e9ecef; padding: 8px 10px; border: 1px solid #ccc; border-bottom: none; border-radius: 5px 5px 0 0; margin-top: 15px; flex-wrap: wrap; }
+        .format-btn { padding: 6px 10px; cursor: pointer; border: 1px solid #ccc; background: white; border-radius: 3px; font-size: 14px; color: #333; transition: 0.2s; font-weight: bold;}
+        .format-btn:hover { background: #d0d0d0; }
+        .passage-textarea { border-radius: 0 0 5px 5px !important; border-top: none !important; margin-top: 0 !important; margin-bottom: 15px !important;}
+
+        .correct-box { border-left: 5px solid #27ae60 !important; background-color: #f1fdf5 !important; padding: 15px; border-radius: 5px;}
+        .wrong-box { border-left: 5px solid #e74c3c !important; background-color: #fdf1f0 !important; padding: 15px; border-radius: 5px;}
+        .feedback { font-weight: bold; display: none; margin-top: 15px; font-size: 14px; border-top: 1px dashed #ccc; padding-top: 10px;}
+        .text-correct { color: #27ae60; }
+        .text-wrong { color: #e74c3c; }
+        
+        .explanation-box { margin-top: 10px; padding: 12px 15px; background-color: #f4f9fd; border-left: 4px solid #3498db; font-size: 14px; color: #2c3e50; font-weight: normal; display: block; text-align: left; line-height: 1.6; border-radius: 0 4px 4px 0; }
+
+        #global-score-board { display: none; background-color: var(--primary-color); color: white; padding: 15px; text-align: center; font-size: 22px; font-weight:bold; margin: 0;}
+        .btn-submit-all { background-color: var(--primary-color); color: white; border: none; padding: 15px 30px; border-radius: 4px; cursor: pointer; margin-top: 20px; margin-bottom: 30px; font-weight: bold; font-size:16px; width: 100%; transition: 0.2s;}
+        .btn-submit-all:hover { background-color: #003366; }
+
+        .source-highlight { transition: background-color 0.8s ease-out, outline 0.8s ease-out; border-radius: 3px; }
+        .source-highlight.active-highlight { background-color: #fce28b; outline: 2px solid #e1b400; color: #000; }
+        .btn-show-source { background-color: #2980b9; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-top: 10px; font-weight: bold; display: inline-flex; align-items: center;}
+    </style>
+</head>
+<body>
+
+    <div class="tab-navigation">
+        <button class="tab-button active" onclick="openTab(event, 'user-view')">Simulasi Ujian User</button>
+        <button class="tab-button" onclick="openTab(event, 'dev-view')">Panel Developer</button>
+    </div>
+
+    <div id="user-view" class="tab-content active">
+        <div id="global-score-board"></div>
+        <header class="cbt-header">
+            <h2>Section 3: Reading Comprehension</h2>
+            <div class="timer" id="time">55:00</div>
+        </header>
+
+        <div id="user-passages-container" style="display: flex; flex: 1; flex-direction: column; overflow: hidden;"></div>
+
+        <div class="user-sub-nav" id="user-sub-nav-container"></div>
+    </div>
+
+    <div id="dev-view" class="tab-content">
+        <header style="background:white; padding:10px 30px; display:flex; justify-content:space-between; border-bottom:1px solid #ccc; align-items: center;">
+            <h2 style="color: var(--dev-color); margin:0; font-size: 18px;">TOEFL ITP | Content Manager</h2>
+            <button class="btn-save" style="width:auto; margin:0;" onclick="updateUserView(true)">🔄 Update Tampilan Ujian</button>
+        </header>
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:end; padding:12px 30px; background:#f8fbff; border-bottom:1px solid #dbe7f2;">
+            <div style="min-width:220px; flex:1; display:grid; gap:6px;">
+                <label for="set-date" style="font-size:12px; font-weight:700; color:#1e3a5f; text-transform:uppercase; letter-spacing:0.04em;">Set Date</label>
+                <input id="set-date" type="date" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit;">
+            </div>
+            <div style="min-width:220px; flex:1; display:grid; gap:6px;">
+                <label for="set-difficulty" style="font-size:12px; font-weight:700; color:#1e3a5f; text-transform:uppercase; letter-spacing:0.04em;">Difficulty</label>
+                <select id="set-difficulty" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; background:white;">
+                    <option value="beginner">Beginner</option>
+                    <option value="intermediate">Intermediate</option>
+                    <option value="advanced">Advanced</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="dev-sub-nav" id="dev-sub-nav-container">
+            <button class="dev-sub-btn btn-guide" onclick="openSubTab(event, 'dev-guide', 'dev-sub-btn')">📖 Panduan Format Soal</button>
+        </div>
+        
+        <div id="dev-panels-container"></div>
+    </div>
+
+    <script>
+        const TOTAL_PASSAGES = 5; 
+        const SETS_KEY = "toefl_developer_sets_v1";
+        const MODULE_ID = "reading";
+        const MODULE_LABEL = "Reading";
+
+        function safeParse(raw, fallback) {
+            try {
+                return JSON.parse(raw) || fallback;
+            } catch {
+                return fallback;
+            }
+        }
+
+        function getStoredSetMap() {
+            const parsed = safeParse(localStorage.getItem(SETS_KEY), {});
+            if (Array.isArray(parsed)) {
+                return parsed.reduce((accumulator, item) => {
+                    if (item && item.module) accumulator[item.module] = item;
+                    return accumulator;
+                }, {});
+            }
+            return parsed && typeof parsed === "object" ? parsed : {};
+        }
+
+        function persistStoredSetMap(map) {
+            localStorage.setItem(SETS_KEY, JSON.stringify(map));
+        }
+
+        function loadSectionMeta() {
+            const dateInput = document.getElementById("set-date");
+            const difficultyInput = document.getElementById("set-difficulty");
+            const params = new URLSearchParams(window.location.search);
+            const requestedDate = params.get("setDate");
+            const stored = getStoredSetMap()[MODULE_ID] || {};
+            const today = new Date().toISOString().split("T")[0];
+
+            dateInput.value = requestedDate || stored.setDate || today;
+            difficultyInput.value = stored.difficulty || "intermediate";
+        }
+
+        function saveSectionMeta() {
+            const dateInput = document.getElementById("set-date");
+            const difficultyInput = document.getElementById("set-difficulty");
+            const map = getStoredSetMap();
+
+            map[MODULE_ID] = {
+                module: MODULE_ID,
+                label: MODULE_LABEL,
+                setDate: dateInput.value || new Date().toISOString().split("T")[0],
+                difficulty: difficultyInput.value || "intermediate",
+                updatedAt: new Date().toISOString()
+            };
+
+            persistStoredSetMap(map);
+        }
+
+        function initStructure() {
+            const userContainer = document.getElementById('user-passages-container');
+            const userNavContainer = document.getElementById('user-sub-nav-container');
+            const devContainer = document.getElementById('dev-panels-container');
+            const devNavContainer = document.getElementById('dev-sub-nav-container');
+
+            for (let p = 1; p <= TOTAL_PASSAGES; p++) {
+                userContainer.innerHTML += `
+                <div id="user-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
+                    <div class="user-main">
+                        <div class="passage-section">
+                            <div class="passage-heading" id="display-title-${p}">Questions 1-10</div>
+                            <div class="passage-box" id="display-passage-${p}"></div>
+                        </div>
+                        <div class="question-section">
+                            <div id="display-questions-${p}"></div>
+                            ${p === TOTAL_PASSAGES ? `<button class="btn-submit-all" onclick="submitAnswers()">Submit Section 3 (Finish Test)</button>` : `<button class="btn-submit-all" style="background:#7f8c8d" onclick="document.getElementById('btn-nav-${p+1}').click()">Next Passage ➔</button>`}
+                        </div>
+                    </div>
+                </div>`;
+
+                userNavContainer.innerHTML += `<button id="btn-nav-${p}" class="user-sub-btn ${p === 1 ? 'active' : ''}" onclick="openSubTab(event, 'user-part-${p}', 'user-sub-btn')">Passage ${p}</button>`;
+
+                const devBtn = document.createElement('button');
+                devBtn.className = `dev-sub-btn ${p === 1 ? 'active' : ''}`;
+                devBtn.onclick = (e) => openSubTab(e, `dev-part-${p}`, 'dev-sub-btn');
+                devBtn.innerText = `Edit P${p}`;
+                devNavContainer.insertBefore(devBtn, devNavContainer.lastElementChild);
+
+                // Hapus tombol insert marker manual, karena sekarang otomatis
+                devContainer.innerHTML += `
+                <div id="dev-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
+                    <div class="dev-container">
+                        <h3 style="margin-top:0; color:#333;">Passage ${p} Setup</h3>
+                        <input type="text" id="input-title-${p}" placeholder="Judul Heading (Misal: Questions 34-43)" value="Questions 1-10" style="padding:10px; width:100%; box-sizing:border-box; margin-bottom:10px; font-weight:bold;">
+                        
+                        <div class="format-toolbar">
+                            <button class="format-btn" title="Bold" onclick="formatText('input-passage-${p}', '<b>', '</b>')">B</button>
+                            <button class="format-btn" title="Italic" onclick="formatText('input-passage-${p}', '<i>', '</i>')">I</button>
+                            <button class="format-btn" onclick="formatSource('${p}')" style="color:red; margin-left:10px;">📍 Highlight Lokasi Jawaban</button>
+                        </div>
+                        <textarea id="input-passage-${p}" class="passage-textarea" style="height:250px" placeholder="Masukkan teks Passage di sini...\n\nKetik (1), (5), (10) di awal paragraf untuk memunculkan nomor baris otomatis."></textarea>
+                        
+                        <div class="format-toolbar" style="background:var(--dev-color); color:white; padding:8px 10px; border-radius:5px 5px 0 0;">📝 Soal Pilihan Ganda (Bisa (A), A., A), dll)</div>
+                        <textarea id="input-magic-questions-${p}" class="smart-textarea" placeholder="Ketik soal...\nContoh:\n34. What does the passage mainly discuss?\n(A) The function...\n(B) The connection..."></textarea>
+                        
+                        <div style="display:flex; gap:15px; margin-top:15px;">
+                            <div style="flex:1;">
+                                <div class="format-toolbar" style="background:#27ae60; color:white; padding:8px 10px; border-radius:5px 5px 0 0;">🔑 Kunci Jawaban</div>
+                                <textarea id="input-answer-key-${p}" class="answer-textarea" placeholder="Contoh: \n34. a\n35. b..."></textarea>
+                            </div>
+                            <div style="flex:2;">
+                                <div class="format-toolbar" style="background:#3498db; color:white; padding:8px 10px; border-radius:5px 5px 0 0;">💡 Pembahasan (Opsional)</div>
+                                <textarea id="input-explanation-${p}" class="explanation-textarea" placeholder="Contoh:\n34. Terdapat pada baris ke-4..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            devContainer.innerHTML += `
+            <div id="dev-guide" class="sub-content">
+                <div class="dev-container" style="max-width: 900px; padding-top: 10px;">
+                    <div style="background: #fff; padding: 25px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-top: 5px solid #004b87;">
+                        <h2 style="color: #004b87; margin-top: 0;">📖 Panduan Fitur Otomatis</h2>
+                        
+                        <div style="background:#e3f2fd; padding:15px; border-left:4px solid #3498db; margin-bottom:20px;">
+                            <strong style="color:#004b87;">Cara Memunculkan Nomor Baris Otomatis:</strong><br><br>
+                            Anda hanya perlu <strong>mengetikkan angka di dalam tanda kurung</strong> di awal paragraf atau awal baris pada kotak pengetikan teks (contoh: <code>(1)</code>, <code>(5)</code>, <code>(10)</code>).<br><br>
+                            Saat Anda mengklik "Update Tampilan", sistem akan <strong>secara ajaib</strong> memotong tanda kurung tersebut dan menjadikannya nomor baris yang melayang di margin kiri luar kotak, persis seperti yang Anda ketikkan di panel Developer!
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function openTab(evt, tabName) {
+            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+            document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        function activateInitialTab() {
+            if (window.location.hash !== "#dev-view") return;
+            const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
+            if (devButton) {
+                openTab({ currentTarget: devButton }, 'dev-view');
+            }
+        }
+
+        function openSubTab(evt, tabName, btnClass) {
+            const parent = document.getElementById(tabName).parentElement;
+            parent.querySelectorAll(".sub-content").forEach(c => c.classList.remove("active"));
+            
+            const navContainer = btnClass.includes('user') ? document.getElementById('user-sub-nav-container') : document.getElementById('dev-sub-nav-container');
+            navContainer.querySelectorAll(`.${btnClass}`).forEach(b => b.classList.remove("active"));
+            
+            document.getElementById(tabName).classList.add("active");
+            evt.currentTarget.classList.add("active");
+        }
+
+        function formatText(areaId, openTag, closeTag) {
+            const textArea = document.getElementById(areaId);
+            const start = textArea.selectionStart;
+            const end = textArea.selectionEnd;
+            const text = textArea.value;
+            textArea.value = text.substring(0, start) + openTag + text.substring(start, end) + closeTag + text.substring(end);
+            textArea.focus();
+        }
+
+        function formatSource(p) {
+            const qNum = prompt("Tandai lokasi jawaban untuk soal nomor berapa? (contoh: 34)");
+            if (qNum) formatText(`input-passage-${p}`, `<span id="source-${p}_${qNum.trim()}" class="source-highlight">`, `</span>`);
+        }
+
+        function scrollToSource(uniqueID) {
+            const el = document.getElementById(`source-${uniqueID}`);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('active-highlight');
+                setTimeout(() => el.classList.remove('active-highlight'), 2500);
+            } else {
+                alert("Lokasi jawaban (Highlight) belum ditambahkan oleh instruktur di teks bacaan ini.");
+            }
+        }
+
+        let globalAnswerKey = {}; 
+        let globalExplanations = {}; 
+        let timerInterval;
+
+        function updateUserView(shouldSaveMeta = false) {
+            if (shouldSaveMeta) saveSectionMeta();
+            document.getElementById('global-score-board').style.display = 'none';
+            globalAnswerKey = {};
+            globalExplanations = {};
+
+            for(let p=1; p<=TOTAL_PASSAGES; p++) {
+                document.getElementById(`display-title-${p}`).innerText = document.getElementById(`input-title-${p}`).value || `Questions ${p}`;
+                let passageText = document.getElementById(`input-passage-${p}`).value;
+                
+                // SISTEM PENDETEKSI (AUTO-PARSE) NOMOR BARIS
+                passageText = passageText.split('\n\n').map(para => {
+                    if(para.trim() === '') return '';
+                    // 1. Ubah enter tunggal menjadi <br>
+                    let processedPara = para.trim().replace(/\n/g, '<br>');
+                    // 2. Deteksi teks (1), (5), (14) di awal paragraf atau setelah <br>, lalu jadikan span
+                    processedPara = processedPara.replace(/(^|<br>)\s*\((\d+)\)\s*/g, '$1<span class="line-marker">($2)</span>');
+                    return `<p>${processedPara}</p>`;
+                }).join('');
+                document.getElementById(`display-passage-${p}`).innerHTML = passageText;
+
+                document.getElementById(`input-answer-key-${p}`).value.split('\n').forEach(l => {
+                    let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
+                    if(m) globalAnswerKey[`${p}_${m[1]}`] = m[2].trim().toLowerCase();
+                });
+
+                let currentExpNum = null;
+                document.getElementById(`input-explanation-${p}`).value.split('\n').forEach(l => {
+                    let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
+                    if(m) { currentExpNum = `${p}_${m[1]}`; globalExplanations[currentExpNum] = m[2].trim(); }
+                    else if(currentExpNum && l.trim()) globalExplanations[currentExpNum] += "<br>" + l.trim();
+                });
+
+                const lines = document.getElementById(`input-magic-questions-${p}`).value.split('\n');
+                let cleanHtml = '';
+                let openDiv = false;
+                let currentUID = '';
+
+                for (let line of lines) {
+                    let rawLine = line.trim();
+                    if (!rawLine) continue;
+                    
+                    let qMatch = rawLine.match(/^(?:<[^>]+>)*(\d+)[\.\)]?\s+(.*)/);
+                    let isOption = rawLine.match(/^[\(]?([A-D])[\.\)]?\s+(.*)/i);
+
+                    if (qMatch && !isOption) {
+                        if (openDiv) cleanHtml += `<div class="feedback" id="feedback-${currentUID}"></div></div>`;
+                        let currentQuestionNum = qMatch[1];
+                        currentUID = `${p}_${currentQuestionNum}`;
+                        cleanHtml += `<div class="question-item" id="q-container-${currentUID}">`;
+                        cleanHtml += `<p>${currentQuestionNum}. ${qMatch[2]}</p>`;
+                        cleanHtml += `<div class="radio-group">`;
+                        openDiv = true;
+                    } else if (isOption && openDiv) {
+                        let letter = isOption[1].toUpperCase();
+                        cleanHtml += `<label>
+                            <input type="radio" name="q_${currentUID}" value="${letter.toLowerCase()}"> 
+                            <span class="option-letter">(${letter})</span> 
+                            <span>${isOption[2]}</span>
+                        </label>`;
+                    }
+                }
+                if (openDiv) cleanHtml += `</div><div class="feedback" id="feedback-${currentUID}"></div></div>`;
+
+                document.getElementById(`display-questions-${p}`).innerHTML = cleanHtml;
+            }
+            startTimer();
+        }
+
+        function submitAnswers() {
+            let score = 0;
+            let total = Object.keys(globalAnswerKey).length;
+            
+            if(total === 0) { alert("Kunci jawaban belum dimasukkan oleh instruktur/developer."); return; }
+            if(!confirm("Yakin ingin mengakhiri ujian dan melihat skor?")) return;
+
+            clearInterval(timerInterval);
+
+            for (let uid in globalAnswerKey) {
+                let correct = globalAnswerKey[uid];
+                let user = "";
+                let radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                
+                if (radio) user = radio.value.trim().toLowerCase();
+
+                let container = document.getElementById(`q-container-${uid}`);
+                let fb = document.getElementById(`feedback-${uid}`);
+                if (!container || !fb) continue;
+
+                let expHTML = globalExplanations[uid] ? `<div class="explanation-box">💡 <strong>Pembahasan:</strong><br>${globalExplanations[uid]}<br><button class="btn-show-source" onclick="scrollToSource('${uid}')">📍 Tunjukkan di Teks Bacaan</button></div>` : '';
+
+                if (user === correct) { 
+                    score++; 
+                    container.classList.add('correct-box'); 
+                    fb.innerHTML = `<span class="text-correct">✔️ Jawaban Anda Benar (${user.toUpperCase()})</span>` + expHTML; 
+                } else { 
+                    container.classList.add('wrong-box'); 
+                    let userText = user ? user.toUpperCase() : "Kosong";
+                    fb.innerHTML = `<span class="text-wrong">❌ Jawaban Anda (${userText}) Salah. Kunci: <strong>${correct.toUpperCase()}</strong></span>` + expHTML; 
+                }
+                fb.style.display = 'block';
+            }
+            
+            let scaledScore = Math.round(31 + ((score / total) * (67 - 31)));
+            let sb = document.getElementById('global-score-board');
+            sb.innerHTML = `🌟 BENAR: ${score} / ${total} &nbsp;&nbsp;|&nbsp;&nbsp; ESTIMASI SKOR ITP READING: ${scaledScore}`;
+            sb.style.display = 'block';
+            
+            document.getElementById('btn-nav-1').click();
+            window.scrollTo({top:0, behavior:'smooth'});
+        }
+
+        function startTimer() {
+            let t = 3300; 
+            clearInterval(timerInterval);
+            document.getElementById('time').style.color = "#d32f2f";
+            timerInterval = setInterval(() => {
+                let m = Math.floor(t/60), s = t%60;
+                document.getElementById('time').innerText = `${m<10?'0'+m:m}:${s<10?'0'+s:s}`;
+                if(t <= 300) { document.getElementById('time').style.animation = "blink 1s infinite"; }
+                if(--t < 0) { 
+                    clearInterval(timerInterval); 
+                    alert("Waktu Habis! Jawaban Anda disubmit otomatis.");
+                    submitAnswers(); 
+                }
+            }, 1000);
+        }
+
+        window.onload = () => {
+            initStructure();
+            loadSectionMeta();
+            updateUserView();
+            activateInitialTab();
+            document.getElementById("set-date").addEventListener("change", saveSectionMeta);
+            document.getElementById("set-difficulty").addEventListener("change", saveSectionMeta);
+        };
+    </script>
+    <style>
+        @keyframes blink { 50% { opacity: 0.5; color: red; } }
+    </style>
+</body>
+</html>

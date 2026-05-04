@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEFL ITP Study Plan | IELTS Check</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --blue-950: #06223d;
+            --blue-900: #0a3560;
+            --blue-800: #0e4d88;
+            --blue-700: #1463ad;
+            --blue-600: #1d72bf;
+            --blue-100: #e8f5ff;
+            --text: #10243a;
+            --muted: #60758d;
+            --card: #ffffff;
+            --surface: #f4f9fe;
+            --stroke: #d7e7f6;
+            --success: #0f9f7f;
+            --shadow: 0 18px 40px rgba(10, 53, 96, 0.1);
+            --listening: #1463ad;
+            --structure: #0891b2;
+            --reading: #4f46e5;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 16% -10%, rgba(115, 186, 255, 0.6) 0%, transparent 30%),
+                linear-gradient(180deg, #eaf5ff 0%, #f7fbff 32%, #f6faff 100%);
+        }
+
+        .app-shell {
+            min-height: 100vh;
+        }
+
+        .content-wrap {
+            min-width: 0;
+        }
+
+        .subheader {
+            background: linear-gradient(90deg, rgba(10, 53, 96, 0.96), rgba(14, 77, 136, 0.92));
+            color: #f0f6ff;
+            padding: 18px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            border-bottom: 1px solid rgba(184, 223, 255, 0.2);
+        }
+
+        .subheader strong {
+            font-size: 18px;
+            letter-spacing: 0.02em;
+        }
+
+        .subnav {
+            display: flex;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        .subnav a {
+            color: #d8eaff;
+            text-decoration: none;
+            padding: 7px 12px;
+            border-radius: 999px;
+            transition: all 0.2s ease;
+        }
+
+        .subnav a:hover,
+        .subnav a.active {
+            background: rgba(46, 134, 209, 0.3);
+            color: #ffffff;
+        }
+
+        .shell {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 28px;
+        }
+
+        .page-head {
+            margin-bottom: 24px;
+        }
+
+        .page-head h1 {
+            margin: 0;
+            font-size: 34px;
+            color: var(--blue-900);
+            letter-spacing: -0.03em;
+        }
+
+        .page-head p {
+            margin: 10px 0 0;
+            max-width: 72ch;
+            color: var(--muted);
+            line-height: 1.55;
+        }
+
+        .schedule-card,
+        .mock-panel {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(215, 231, 246, 0.95);
+            border-radius: 26px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(6px);
+        }
+
+        .schedule-card {
+            padding: 24px;
+            margin-bottom: 22px;
+        }
+
+        .schedule-toolbar {
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-arrow {
+            width: 52px;
+            height: 52px;
+            border: 1px solid var(--stroke);
+            border-radius: 18px;
+            background: linear-gradient(180deg, #ffffff, #f2f8ff);
+            color: var(--blue-900);
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 12px 24px rgba(10, 53, 96, 0.08);
+        }
+
+        .month-toggle {
+            border: none;
+            background: transparent;
+            text-align: center;
+            cursor: pointer;
+            color: var(--blue-900);
+            font-family: inherit;
+        }
+
+        .month-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .month-chevron {
+            font-size: 18px;
+            color: var(--muted);
+            transition: transform 0.2s ease;
+        }
+
+        .schedule-card.collapsed .month-chevron {
+            transform: rotate(-90deg);
+        }
+
+        .month-caption {
+            margin-top: 8px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .date-strip-wrap {
+            margin-top: 24px;
+            display: grid;
+            gap: 14px;
+            overflow: hidden;
+            transition: max-height 0.25s ease, opacity 0.25s ease, margin-top 0.25s ease;
+            max-height: 260px;
+            opacity: 1;
+        }
+
+        .schedule-card.collapsed .date-strip-wrap {
+            max-height: 0;
+            opacity: 0;
+            margin-top: 0;
+        }
+
+        .date-strip {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .date-tile {
+            border: 1px solid transparent;
+            border-radius: 24px;
+            padding: 18px 10px;
+            background: linear-gradient(180deg, #ffffff, #f7fbff);
+            box-shadow: 0 14px 24px rgba(10, 53, 96, 0.08);
+            text-align: center;
+            cursor: pointer;
+            color: var(--text);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+
+        .date-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 18px 28px rgba(10, 53, 96, 0.1);
+        }
+
+        .date-tile.active {
+            color: #ffffff;
+            background: linear-gradient(180deg, #2e86d1, #1463ad);
+            box-shadow: 0 18px 32px rgba(20, 99, 173, 0.24);
+        }
+
+        .weekday {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            opacity: 0.78;
+        }
+
+        .date-number {
+            display: block;
+            margin-top: 10px;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+
+        .date-helper {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .mock-panel {
+            padding: 26px;
+        }
+
+        .mock-panel-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 18px;
+            align-items: start;
+            margin-bottom: 22px;
+        }
+
+        .mock-title-wrap {
+            display: flex;
+            align-items: start;
+            gap: 14px;
+        }
+
+        .mock-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #d7ecff, #eef7ff);
+            color: var(--blue-900);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        }
+
+        .mock-kicker {
+            margin: 2px 0 6px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--blue-700);
+        }
+
+        .mock-title {
+            margin: 0;
+            font-size: 28px;
+            letter-spacing: -0.03em;
+            color: var(--blue-900);
+        }
+
+        .mock-subtitle {
+            margin: 8px 0 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .mock-progress {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #eef7ff, #f7fbff);
+            border: 1px solid var(--stroke);
+            color: var(--blue-900);
+            font-size: 13px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .section-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .section-card {
+            border: 1px solid var(--stroke);
+            border-radius: 22px;
+            padding: 18px;
+            background: linear-gradient(180deg, #ffffff, #f8fbff);
+            box-shadow: 0 14px 24px rgba(10, 53, 96, 0.06);
+            display: grid;
+            gap: 14px;
+        }
+
+        .section-head {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .section-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 21px;
+        }
+
+        .section-icon.listening {
+            background: linear-gradient(135deg, #1d72bf, #1463ad);
+        }
+
+        .section-icon.structure {
+            background: linear-gradient(135deg, #0eb4cd, #0891b2);
+        }
+
+        .section-icon.reading {
+            background: linear-gradient(135deg, #6c63ff, #4f46e5);
+        }
+
+        .section-title {
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: -0.02em;
+        }
+
+        .section-description {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .detail-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .detail-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 10px;
+            border-radius: 999px;
+            background: #f3f8fd;
+            color: var(--blue-900);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-top: 2px;
+        }
+
+        .status-badge {
+            padding: 8px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .status-pending {
+            background: #eef2f7;
+            color: #5c6f83;
+        }
+
+        .status-done {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 10px 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
+        .btn-open {
+            background: linear-gradient(135deg, var(--blue-700), var(--blue-900));
+            color: #ffffff;
+        }
+
+        .btn-toggle {
+            background: #ebf3fb;
+            color: var(--blue-900);
+        }
+
+        .mock-notes {
+            margin-top: 18px;
+            padding: 14px 16px;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #f6fbff, #f9fcff);
+            border: 1px solid var(--stroke);
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 1100px) {
+            .section-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .date-strip {
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 860px) {
+            .shell {
+                padding: 20px 16px;
+            }
+
+            .schedule-toolbar,
+            .mock-panel-head {
+                grid-template-columns: 1fr;
+                display: grid;
+            }
+
+            .mock-progress {
+                justify-self: start;
+            }
+
+            .date-strip {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 560px) {
+            .subheader {
+                flex-direction: column;
+                align-items: start;
+            }
+
+            .month-label {
+                font-size: 24px;
+            }
+
+            .mock-title {
+                font-size: 22px;
+            }
+
+            .card-footer {
+                flex-direction: column;
+                align-items: start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <div class="content-wrap">
+            <section class="subheader" aria-label="Study plan header">
+                <strong>🗓️ TOEFL ITP Schedule</strong>
+                <div class="subnav">
+                    <a href="index.html">📅 Month Planner</a>
+                    <a class="active" href="study-plan.html">🧭 Daily Schedule</a>
+                    <a href="developer.html">🛠 Developer</a>
+                </div>
+            </section>
+
+            <main class="shell">
+                <div class="page-head">
+                    <h1>Daily schedule inside your selected month</h1>
+                    <p>Use the chevrons to move through dates, click the month header to collapse or expand the schedule strip, and manage the three TOEFL tests inside the mock panel below.</p>
+                </div>
+
+                <section class="schedule-card" id="scheduleCard">
+                    <div class="schedule-toolbar">
+                        <button class="nav-arrow" type="button" id="prevDateBtn" aria-label="Previous date">‹</button>
+                        <button class="month-toggle" type="button" id="monthToggle" aria-expanded="true">
+                            <span class="month-label"><span id="monthHeading">Februari, 2026</span><span class="month-chevron">▾</span></span>
+                            <div class="month-caption">Click to collapse or expand the schedule row</div>
+                        </button>
+                        <button class="nav-arrow" type="button" id="nextDateBtn" aria-label="Next date">›</button>
+                    </div>
+
+                    <div class="date-strip-wrap" id="dateStripWrap">
+                        <div class="date-strip" id="dateStrip"></div>
+                        <div class="date-helper">Selected day controls the mock test content below.</div>
+                    </div>
+                </section>
+
+                <section class="mock-panel" aria-labelledby="mockTitle">
+                    <div class="mock-panel-head">
+                        <div class="mock-title-wrap">
+                            <div class="mock-icon">🧪</div>
+                            <div>
+                                <div class="mock-kicker" id="mockKicker">Selected day</div>
+                                <h2 class="mock-title" id="mockTitle">Mock Test Package</h2>
+                                <p class="mock-subtitle" id="mockSubtitle">A focused daily TOEFL set for all three sections.</p>
+                            </div>
+                        </div>
+                        <div class="mock-progress" id="mockProgress">0 of 3 Tests Complete</div>
+                    </div>
+
+                    <div class="section-grid" id="sectionGrid"></div>
+
+                    <div class="mock-notes" id="mockNotes"></div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = "toefl_schedule_v3";
+        const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const difficultyCycle = ["Beginner", "Intermediate", "Advanced"];
+        const questionBlueprint = {
+            listening: { icon: "🎧", title: "Listening Comprehension", difficultyBase: 0, minutes: 35, questions: 50, colorClass: "listening", file: "section 1.html" },
+            structure: { icon: "📝", title: "Structure and Written Expression", difficultyBase: 1, minutes: 25, questions: 40, colorClass: "structure", file: "section 2.html" },
+            reading: { icon: "📘", title: "Reading Comprehension", difficultyBase: 2, minutes: 55, questions: 50, colorClass: "reading", file: "section 3.html" }
+        };
+
+        const params = new URLSearchParams(window.location.search);
+        const initialYear = Number(params.get("year")) || 2026;
+        const initialMonth = Number(params.get("month"));
+        const safeMonth = Number.isFinite(initialMonth) && initialMonth >= 0 && initialMonth <= 11 ? initialMonth : 1;
+        let selectedDate = new Date(initialYear, safeMonth, 19);
+
+        function getMonthStore(year, month) {
+            const key = `${STORAGE_KEY}_${year}_${month}`;
+            const existing = localStorage.getItem(key);
+            if (existing) {
+                return JSON.parse(existing);
+            }
+
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const monthStore = {};
+            for (let day = 1; day <= daysInMonth; day++) {
+                monthStore[day] = {
+                    mockTitle: `Mock Test Package ${String(day).padStart(2, "0")}`,
+                    focus: day % 3 === 0 ? "accuracy under timed conditions" : day % 3 === 1 ? "steady foundation building" : "mixed TOEFL stamina practice",
+                    sections: {
+                        listening: { completed: false },
+                        structure: { completed: false },
+                        reading: { completed: false }
+                    }
+                };
+            }
+            localStorage.setItem(key, JSON.stringify(monthStore));
+            return monthStore;
+        }
+
+        function saveMonthStore(year, month, value) {
+            const key = `${STORAGE_KEY}_${year}_${month}`;
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        function clampDateToMonth(date) {
+            const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+            if (date.getDate() > daysInMonth) {
+                date.setDate(daysInMonth);
+            }
+            return date;
+        }
+
+        function shiftDate(offset) {
+            selectedDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate() + offset);
+            renderSchedule();
+        }
+
+        function getDayWindow(date) {
+            const start = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 3);
+            const tiles = [];
+            for (let index = 0; index < 7; index++) {
+                const item = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
+                if (item.getMonth() === date.getMonth() && item.getFullYear() === date.getFullYear()) {
+                    tiles.push(item);
+                }
+            }
+
+            while (tiles.length < 7) {
+                const last = tiles[tiles.length - 1] || date;
+                const next = new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1);
+                if (next.getMonth() !== date.getMonth() || next.getFullYear() !== date.getFullYear()) break;
+                tiles.push(next);
+            }
+
+            while (tiles.length < 7) {
+                const first = tiles[0] || date;
+                const prev = new Date(first.getFullYear(), first.getMonth(), first.getDate() - 1);
+                if (prev.getMonth() !== date.getMonth() || prev.getFullYear() !== date.getFullYear()) break;
+                tiles.unshift(prev);
+            }
+
+            return tiles;
+        }
+
+        function getSectionState(dayData, sectionId, dayNumber) {
+            const base = questionBlueprint[sectionId];
+            const difficulty = difficultyCycle[(dayNumber + base.difficultyBase) % difficultyCycle.length];
+            return {
+                ...base,
+                difficulty,
+                completed: Boolean(dayData.sections[sectionId].completed)
+            };
+        }
+
+        function renderDateTiles() {
+            const strip = document.getElementById("dateStrip");
+            strip.innerHTML = "";
+            const tiles = getDayWindow(selectedDate);
+
+            tiles.forEach((dateItem) => {
+                const tile = document.createElement("button");
+                tile.type = "button";
+                tile.className = `date-tile${dateItem.toDateString() === selectedDate.toDateString() ? " active" : ""}`;
+                tile.innerHTML = `
+                    <span class="weekday">${weekdayNames[dateItem.getDay()]}</span>
+                    <span class="date-number">${dateItem.getDate()}</span>
+                `;
+                tile.addEventListener("click", () => {
+                    selectedDate = new Date(dateItem.getFullYear(), dateItem.getMonth(), dateItem.getDate());
+                    renderSchedule();
+                });
+                strip.appendChild(tile);
+            });
+        }
+
+        function renderMockPanel() {
+            const year = selectedDate.getFullYear();
+            const month = selectedDate.getMonth();
+            const day = selectedDate.getDate();
+            const store = getMonthStore(year, month);
+            const dayData = store[day];
+            const sectionGrid = document.getElementById("sectionGrid");
+            const completedCount = Object.values(dayData.sections).filter((item) => item.completed).length;
+
+            document.getElementById("mockKicker").textContent = `${weekdayNames[selectedDate.getDay()]} ${day} ${monthNames[month]}`;
+            document.getElementById("mockTitle").textContent = dayData.mockTitle;
+            document.getElementById("mockSubtitle").textContent = `Daily TOEFL practice for ${dayData.focus}.`;
+            document.getElementById("mockProgress").textContent = `${completedCount} of 3 Tests Complete`;
+            document.getElementById("mockNotes").textContent = completedCount === 3
+                ? "All three tests are completed for this day. Use this panel to review the section mix and keep the same rhythm for the next date."
+                : "Open a section to practice, or mark it complete when finished. The completion counter above updates immediately for the selected day.";
+
+            sectionGrid.innerHTML = "";
+
+            ["listening", "structure", "reading"].forEach((sectionId) => {
+                const section = getSectionState(dayData, sectionId, day);
+                const card = document.createElement("article");
+                card.className = "section-card";
+                card.innerHTML = `
+                    <div class="section-head">
+                        <div class="section-icon ${section.colorClass}">${section.icon}</div>
+                        <div>
+                            <h3 class="section-title">${section.title}</h3>
+                            <p class="section-description">Targeted ${section.difficulty.toLowerCase()} practice for this mock-test block.</p>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-pill">📈 ${section.difficulty}</span>
+                        <span class="detail-pill">⏱ ${section.minutes} min</span>
+                        <span class="detail-pill">❓ ${section.questions} questions</span>
+                    </div>
+                    <div class="card-footer">
+                        <span class="status-badge ${section.completed ? "status-done" : "status-pending"}">${section.completed ? "Completed" : "Pending"}</span>
+                        <div class="card-actions">
+                            <button class="btn btn-open" type="button" data-open-section="${sectionId}">Open Test</button>
+                            <button class="btn btn-toggle" type="button" data-toggle-section="${sectionId}">${section.completed ? "Undo" : "Mark Complete"}</button>
+                        </div>
+                    </div>
+                `;
+                sectionGrid.appendChild(card);
+            });
+
+            sectionGrid.querySelectorAll("[data-toggle-section]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    const sectionId = button.getAttribute("data-toggle-section");
+                    dayData.sections[sectionId].completed = !dayData.sections[sectionId].completed;
+                    saveMonthStore(year, month, store);
+                    renderMockPanel();
+                });
+            });
+
+            sectionGrid.querySelectorAll("[data-open-section]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    const sectionId = button.getAttribute("data-open-section");
+                    const file = questionBlueprint[sectionId].file;
+                    window.location.href = file;
+                });
+            });
+        }
+
+        function renderSchedule() {
+            selectedDate = clampDateToMonth(selectedDate);
+            document.getElementById("monthHeading").textContent = `${monthNames[selectedDate.getMonth()]}, ${selectedDate.getFullYear()}`;
+            renderDateTiles();
+            renderMockPanel();
+        }
+
+        document.getElementById("prevDateBtn").addEventListener("click", () => shiftDate(-1));
+        document.getElementById("nextDateBtn").addEventListener("click", () => shiftDate(1));
+
+        document.getElementById("monthToggle").addEventListener("click", () => {
+            const scheduleCard = document.getElementById("scheduleCard");
+            scheduleCard.classList.toggle("collapsed");
+            const expanded = !scheduleCard.classList.contains("collapsed");
+            document.getElementById("monthToggle").setAttribute("aria-expanded", String(expanded));
+        });
+
+        renderSchedule();
+    </script>
+</body>
+</html>

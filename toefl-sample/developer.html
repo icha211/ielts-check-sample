@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEFL Developer Dashboard | IELTS Check</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #eef6ff;
+            --surface: #ffffff;
+            --blue-950: #0a3258;
+            --blue-900: #114c84;
+            --blue-800: #1764aa;
+            --blue-700: #1f7ccf;
+            --blue-500: #80c4ff;
+            --text: #18263b;
+            --muted: #60728a;
+            --border: #d8e6f3;
+            --danger: #d64545;
+            --shadow: 0 14px 34px rgba(14, 66, 120, 0.12);
+            --radius-lg: 22px;
+            --radius-md: 16px;
+            --radius-sm: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: "Poppins", sans-serif;
+            background:
+                radial-gradient(circle at 10% 10%, rgba(128, 196, 255, 0.18), transparent 36%),
+                radial-gradient(circle at 90% 0%, rgba(23, 100, 170, 0.14), transparent 32%),
+                var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .app-shell {
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            background: rgba(238, 246, 255, 0.9);
+        }
+
+        .sidebar-inner {
+            width: min(1200px, calc(100% - 2rem));
+            margin-inline: auto;
+            min-height: 68px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .top-brand {
+            display: flex;
+            align-items: center;
+            gap: 0;
+        }
+
+        .brand-badge {
+            width: clamp(64px, 9vw, 104px);
+            height: 34px;
+            border-radius: 0;
+            display: grid;
+            place-items: center;
+            overflow: visible;
+            background: transparent;
+            transform: translateY(-5px);
+        }
+
+        .brand-badge img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            list-style: none;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #214468;
+            font-size: 0.88rem;
+            font-weight: 600;
+            min-height: 44px;
+            padding: 0 0.75rem;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background-color 0.18s ease, transform 0.18s ease;
+        }
+
+        .nav-link.active,
+        .nav-link:hover {
+            background: #dfeefe;
+            transform: translateY(-1px);
+        }
+
+        .content-wrap {
+            width: min(1200px, calc(100% - 2rem));
+            margin-inline: auto;
+            padding: 1rem 0;
+        }
+
+        .frame {
+            width: 100%;
+            margin: 0;
+            padding: 0 0 36px;
+            display: grid;
+            gap: 18px;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #ffffff, #ecf5ff);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow);
+            padding: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .hero-brand {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .hero-brand img {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            object-fit: contain;
+            background: #fff;
+            border: 1px solid var(--border);
+            padding: 5px;
+        }
+
+        h1, h2, h3 {
+            font-family: "Sora", sans-serif;
+            letter-spacing: -0.02em;
+        }
+
+        .hero h1 { font-size: 1.45rem; }
+        .hero p { color: var(--muted); max-width: 72ch; margin-top: 6px; font-size: 0.92rem; }
+
+        .hero-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
+        .create-stack {
+            display: grid;
+            gap: 8px;
+        }
+
+        .create-inline-options {
+            min-width: 320px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: #fff;
+            box-shadow: var(--shadow);
+            padding: 10px;
+            display: none;
+            gap: 8px;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .create-inline-options.show {
+            display: grid;
+        }
+
+        .create-inline-options a,
+        .create-inline-options button {
+            font-size: 0.86rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px;
+            color: var(--blue-950);
+            text-decoration: none;
+            font-weight: 700;
+            background: #f8fbff;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .create-inline-options a:hover,
+        .create-inline-options button:hover {
+            background: #edf5ff;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 12px;
+            padding: 11px 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn:hover { transform: translateY(-2px); }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--blue-900), var(--blue-800));
+            color: #fff;
+            box-shadow: 0 10px 22px rgba(17, 76, 132, 0.28);
+        }
+
+        .btn-secondary {
+            background: #fff;
+            color: var(--blue-950);
+            border: 1px solid var(--border);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .module-overview {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .module-pill {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #ffffff, #f7fbff);
+            box-shadow: var(--shadow);
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .pill-head {
+            padding: 8px 10px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .pill-body {
+            padding: 10px;
+        }
+
+        .pill-body small {
+            color: var(--muted);
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 3px;
+        }
+
+        .pill-body strong {
+            color: var(--blue-950);
+            font-size: 1.05rem;
+        }
+
+        .module-pill.listening .pill-head {
+            background: #eaf4ff;
+            color: #2e5f8f;
+        }
+
+        .module-pill.structure .pill-head {
+            background: #ecfbff;
+            color: #286c81;
+        }
+
+        .module-pill.reading .pill-head {
+            background: #eef0ff;
+            color: #4b56a4;
+        }
+
+        .module-pill.package .pill-head {
+            background: #eef6ff;
+            color: #325d8f;
+        }
+
+        .module-pill.tests .pill-head {
+            background: #eef8f4;
+            color: #2c6a53;
+        }
+
+        .stat {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: rgba(255, 255, 255, 0.72);
+            backdrop-filter: blur(8px);
+            box-shadow: var(--shadow);
+            padding: 12px;
+        }
+
+        .stat small { color: var(--muted); display: block; font-size: 0.72rem; text-transform: uppercase; font-weight: 700; }
+        .stat strong { color: var(--blue-950); font-size: 1.15rem; }
+
+        .board {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--surface);
+            box-shadow: var(--shadow);
+            padding: 18px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .board-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .board-head p {
+            color: var(--muted);
+            font-size: 0.86rem;
+            margin-top: 4px;
+        }
+
+        .builder-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 12px;
+        }
+
+        .builder-form {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #fff, #f7fbff);
+            padding: 14px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .field {
+            display: grid;
+            gap: 8px;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        label {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: var(--blue-950);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            font: inherit;
+            background: #fff;
+            color: var(--text);
+            outline: none;
+        }
+
+        textarea { min-height: 96px; resize: vertical; }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: rgba(31, 124, 207, 0.6);
+            box-shadow: 0 0 0 4px rgba(31, 124, 207, 0.14);
+        }
+
+        .builder-side {
+            display: grid;
+            gap: 10px;
+        }
+
+        .helper-card,
+        .summary-card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #fff, #f7fbff);
+            padding: 14px;
+            box-shadow: 0 10px 20px rgba(17, 76, 132, 0.06);
+        }
+
+        .helper-card h3,
+        .summary-card h3 {
+            font-size: 0.98rem;
+            color: var(--blue-950);
+        }
+
+        .helper-card p,
+        .summary-card p,
+        .summary-card li {
+            color: var(--muted);
+            font-size: 0.82rem;
+            line-height: 1.55;
+            margin-top: 6px;
+        }
+
+        .summary-card ul {
+            margin: 8px 0 0 18px;
+        }
+
+        .library {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 10px;
+        }
+
+        .card {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #fff, #f7fbff);
+            overflow: hidden;
+            display: grid;
+            box-shadow: 0 10px 20px rgba(17, 76, 132, 0.08);
+        }
+
+        .card-body { padding: 12px; display: grid; gap: 7px; }
+        .card h3 { font-size: 0.96rem; color: var(--blue-950); }
+        .meta { font-size: 0.8rem; color: var(--muted); display: grid; gap: 2px; }
+
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .btn-mini {
+            font-size: 0.78rem;
+            border-radius: 10px;
+            padding: 8px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            background: #fff;
+            font-weight: 700;
+            text-decoration: none;
+            text-align: center;
+            color: inherit;
+        }
+
+        .btn-mini.edit { background: #ecf5ff; color: var(--blue-950); }
+        .btn-mini.open { background: #eef6ff; color: #214d98; }
+        .btn-mini.delete { background: #fff3f3; color: var(--danger); }
+
+        .empty {
+            border: 1px dashed var(--border);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            text-align: center;
+            color: var(--muted);
+            background: #fbfdff;
+        }
+
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .month-card {
+            appearance: none;
+            cursor: pointer;
+            text-decoration: none;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            background: linear-gradient(180deg, #fff, #f7fbff);
+            box-shadow: 0 10px 20px rgba(17, 76, 132, 0.08);
+            padding: 14px;
+            display: grid;
+            gap: 10px;
+            min-height: 112px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+            color: var(--blue-950);
+        }
+
+        .month-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 24px rgba(17, 76, 132, 0.12);
+        }
+
+        .month-card:focus-visible {
+            outline: 3px solid rgba(31, 124, 207, 0.22);
+            outline-offset: 2px;
+        }
+
+        .month-card.complete {
+            border-color: rgba(31, 124, 207, 0.45);
+            background: linear-gradient(180deg, #f5fbff, #ecf5ff);
+        }
+
+        .month-card.partial {
+            border-color: rgba(214, 69, 69, 0.2);
+            background: linear-gradient(180deg, #fff, #f8fbff);
+        }
+
+        .month-card.active {
+            box-shadow: 0 0 0 2px rgba(31, 124, 207, 0.18), 0 14px 24px rgba(17, 76, 132, 0.12);
+        }
+
+        .month-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .month-head strong {
+            font-family: "Sora", sans-serif;
+            font-size: 0.95rem;
+            letter-spacing: 0.02em;
+        }
+
+        .month-ratio {
+            font-size: 1.4rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .month-note {
+            font-size: 0.76rem;
+            color: var(--muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .month-status {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 7px 9px;
+            border-radius: 999px;
+            justify-self: start;
+        }
+
+        .month-card.complete .month-status {
+            background: #e6f2ff;
+            color: #1f5ea0;
+        }
+
+        .month-card.partial .month-status {
+            background: #f2f6fa;
+            color: #4f6478;
+        }
+
+        .month-card .arrow {
+            font-size: 1.15rem;
+            opacity: 0.55;
+            align-self: center;
+        }
+
+        .month-detail {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            background: linear-gradient(180deg, #ffffff, #f7fbff);
+            box-shadow: var(--shadow);
+            padding: 16px;
+            display: none;
+            gap: 12px;
+        }
+
+        .month-detail.show {
+            display: grid;
+        }
+
+        .month-detail-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .month-detail-head h3 {
+            font-size: 1.1rem;
+        }
+
+        .month-detail-meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .month-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 8px;
+        }
+
+        .month-detail-day {
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 10px;
+            min-height: 110px;
+            background: #fff;
+            display: grid;
+            gap: 8px;
+        }
+
+        .month-detail-day.empty {
+            background: #f8fbfd;
+            border-style: dashed;
+            min-height: 110px;
+        }
+
+        .month-detail-day.complete {
+            background: linear-gradient(180deg, #f5fbff, #ecf5ff);
+            border-color: rgba(31, 124, 207, 0.38);
+        }
+
+        .month-detail-day.partial {
+            background: linear-gradient(180deg, #fff, #f8fbff);
+            border-color: rgba(214, 69, 69, 0.15);
+        }
+
+        .month-detail-day .day-no {
+            font-size: 1.45rem;
+            font-weight: 800;
+            line-height: 1;
+            color: var(--blue-950);
+        }
+
+        .month-detail-day.empty .day-no {
+            color: #b1c0cb;
+        }
+
+        .module-chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .module-chip {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.82rem;
+            background: #eef3f7;
+            color: #7b8c97;
+        }
+
+        .module-chip.done {
+            background: #2878c8;
+            color: #fff;
+        }
+
+        .month-actions {
+            display: grid;
+            gap: 6px;
+        }
+
+        .month-action {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 7px 8px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            color: var(--blue-950);
+            background: #fff;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .month-action.create {
+            background: #eef6ff;
+            border-color: rgba(31, 124, 207, 0.22);
+        }
+
+        .month-action.complete {
+            background: #f2f8ff;
+            border-color: rgba(31, 124, 207, 0.2);
+        }
+
+        .month-action:hover {
+            transform: translateY(-1px);
+        }
+
+        .detail-note {
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        .toast {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            background: var(--blue-950);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            display: none;
+            z-index: 20;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar-inner {
+                min-height: auto;
+                padding: 0.75rem 0;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .nav-links {
+                width: 100%;
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+
+            .stats { grid-template-columns: 1fr 1fr; }
+            .module-overview { grid-template-columns: 1fr 1fr; }
+            .builder-grid { grid-template-columns: 1fr; }
+            .month-grid { grid-template-columns: 1fr 1fr; }
+            .month-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .actions { grid-template-columns: 1fr; }
+            .create-inline-options { grid-template-columns: 1fr; min-width: 100%; }
+            .field-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="appSidebar">
+            <div class="sidebar-inner">
+                <div class="top-brand">
+                    <div class="brand-badge"><img src="../logo.png" alt="IELTS Check logo"></div>
+                </div>
+                <ul class="nav-links">
+                    <li><a class="nav-link" href="../index.html">🏠 Dashboard</a></li>
+                    <li><a class="nav-link" href="index.html">🔵 TOEFL ITP</a></li>
+                    <li><a class="nav-link" href="study-plan.html">🗓️ Schedule</a></li>
+                    <li><a class="nav-link active" href="developer.html">🧑‍💻 Developer Console</a></li>
+                </ul>
+            </div>
+        </aside>
+        <div class="content-wrap">
+            <main class="frame">
+                <section class="hero">
+                    <div>
+                        <div class="hero-brand">
+                            <img src="../logo.png" alt="IELTS Check logo">
+                            <div>
+                                <h1>TOEFL ITP Developer Dashboard</h1>
+                                <p>Create and organize TOEFL question sets with the same dashboard-first workflow used in IELTS, adapted for Listening, Structure, and Reading.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hero-actions">
+                        <div class="create-stack">
+                            <button class="btn btn-primary" type="button" id="createBtn">Create New Question Set</button>
+                            <div class="create-inline-options" id="createOptions">
+                                <a href="section 1.html#dev-view">🎧 Listening</a>
+                                <a href="section 2.html#dev-view">📝 Structure</a>
+                                <a href="section 3.html#dev-view">📘 Reading</a>
+                            </div>
+                        </div>
+                        <a class="btn btn-secondary" href="section 1.html#dev-view">Edit Listening</a>
+                        <a class="btn btn-secondary" href="section 2.html#dev-view">Edit Structure</a>
+                        <a class="btn btn-secondary" href="section 3.html#dev-view">Edit Reading</a>
+                        <button class="btn btn-secondary" type="button" id="exportBtn">Export Data</button>
+                        <button class="btn btn-secondary" type="button" id="importBtn">Import Data</button>
+                        <input type="file" id="importFile" accept=".json" style="display: none;">
+                    </div>
+                </section>
+
+                <section class="stats" id="stats"></section>
+                <section class="module-overview" id="moduleOverview"></section>
+
+                <section class="board">
+                    <div class="board-head">
+                        <div>
+                            <h2>Problem Set Library</h2>
+                            <p>Each section editor now saves its own set date and difficulty. Open a module to update the metadata, then review it here.</p>
+                        </div>
+                    </div>
+                    <div class="library" id="library"></div>
+                </section>
+
+                <section class="board month-board">
+                    <div class="board-head">
+                        <div>
+                            <h2>Monthly Package Calendar</h2>
+                            <p>The calendar now groups saved Listening, Structure, and Reading sets by their set date and shows which modules are ready for each day.</p>
+                        </div>
+                    </div>
+                    <div class="month-grid" id="monthGrid"></div>
+                    <div class="month-detail" id="monthDetail"></div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const SETS_KEY = "toefl_developer_sets_v1";
+        const MODULE_CONFIG = {
+            listening: {
+                editorPage: "section 1.html",
+                createPage: "section 1.html#dev-view",
+                icon: "🎧",
+                label: "Listening"
+            },
+            structure: {
+                editorPage: "section 2.html",
+                createPage: "section 2.html#dev-view",
+                icon: "📝",
+                label: "Structure"
+            },
+            reading: {
+                editorPage: "section 3.html",
+                createPage: "section 3.html#dev-view",
+                icon: "📘",
+                label: "Reading"
+            }
+        };
+        const MONTH_LABELS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+        const MODULES = ["listening", "structure", "reading"];
+        const DIFFICULTY_LABELS = {
+            beginner: "Beginner",
+            intermediate: "Intermediate",
+            advanced: "Advanced"
+        };
+
+        let sectionSets = [];
+
+        function safeParse(raw, fallback) {
+            try {
+                return JSON.parse(raw) || fallback;
+            } catch {
+                return fallback;
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function toast(message) {
+            const el = document.getElementById("toast");
+            el.textContent = message;
+            el.style.display = "block";
+            setTimeout(() => { el.style.display = "none"; }, 2200);
+        }
+
+        function normalizeSet(item, fallbackModule) {
+            const moduleId = MODULE_CONFIG[item?.module] ? item.module : fallbackModule;
+            if (!MODULE_CONFIG[moduleId]) return null;
+
+            const setDate = /^\d{4}-\d{2}-\d{2}$/.test(String(item?.setDate || item?.date || ""))
+                ? String(item?.setDate || item?.date)
+                : "";
+            const dateValue = setDate ? new Date(`${setDate}T00:00:00`) : null;
+            const validDate = dateValue instanceof Date && !Number.isNaN(dateValue?.getTime?.());
+            const difficultyKey = Object.prototype.hasOwnProperty.call(DIFFICULTY_LABELS, item?.difficulty)
+                ? item.difficulty
+                : "intermediate";
+
+            return {
+                module: moduleId,
+                label: MODULE_CONFIG[moduleId].label,
+                icon: MODULE_CONFIG[moduleId].icon,
+                setDate,
+                difficulty: difficultyKey,
+                difficultyLabel: DIFFICULTY_LABELS[difficultyKey],
+                updatedAt: String(item?.updatedAt || ""),
+                year: validDate ? dateValue.getFullYear() : null,
+                monthIndex: validDate ? dateValue.getMonth() : null,
+                day: validDate ? dateValue.getDate() : null,
+                displayDate: validDate
+                    ? `${String(dateValue.getDate()).padStart(2, "0")} ${MONTH_LABELS[dateValue.getMonth()]} ${dateValue.getFullYear()}`
+                    : "No date set"
+            };
+        }
+
+        function getStoredSets() {
+            const parsed = safeParse(localStorage.getItem(SETS_KEY), {});
+            const items = Array.isArray(parsed)
+                ? parsed
+                : Object.entries(parsed || {}).map(([moduleId, value]) => ({ ...value, module: value?.module || moduleId }));
+
+            return items
+                .map((item) => normalizeSet(item, item?.module))
+                .filter(Boolean)
+                .sort((left, right) => left.label.localeCompare(right.label));
+        }
+
+        function persistSets(records) {
+            const payload = {};
+            records.forEach((item) => {
+                payload[item.module] = {
+                    module: item.module,
+                    setDate: item.setDate,
+                    difficulty: item.difficulty,
+                    updatedAt: item.updatedAt || new Date().toISOString()
+                };
+            });
+            localStorage.setItem(SETS_KEY, JSON.stringify(payload));
+        }
+
+        function toggleCreateOptions(force) {
+            const menu = document.getElementById("createOptions");
+            if (!menu) return;
+            if (typeof force === "boolean") {
+                menu.classList.toggle("show", force);
+                return;
+            }
+            menu.classList.toggle("show");
+        }
+
+        function buildEditorUrl(moduleId, setDate) {
+            if (!setDate) return MODULE_CONFIG[moduleId].createPage;
+            return `${MODULE_CONFIG[moduleId].editorPage}?setDate=${encodeURIComponent(setDate)}#dev-view`;
+        }
+
+        function dateKey(year, monthIndex, day) {
+            return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        }
+
+        function buildScheduleMap() {
+            const scheduleMap = {};
+            sectionSets.forEach((item) => {
+                if (!item.setDate) return;
+                if (!scheduleMap[item.setDate]) {
+                    scheduleMap[item.setDate] = { items: [], listening: false, structure: false, reading: false };
+                }
+                scheduleMap[item.setDate].items.push(item);
+                scheduleMap[item.setDate][item.module] = true;
+            });
+            return scheduleMap;
+        }
+
+        function isDayComplete(dateValue, scheduleMap) {
+            return MODULES.every((moduleId) => Boolean(scheduleMap[dateValue] && scheduleMap[dateValue][moduleId]));
+        }
+
+        function getMonthStats(year, monthIndex) {
+            const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+            const scheduleMap = buildScheduleMap();
+            let completeDays = 0;
+            let activeDays = 0;
+
+            for (let day = 1; day <= daysInMonth; day += 1) {
+                const key = dateKey(year, monthIndex, day);
+                const hasAny = Boolean(scheduleMap[key] && scheduleMap[key].items.length);
+                if (hasAny) activeDays += 1;
+                if (isDayComplete(key, scheduleMap)) completeDays += 1;
+            }
+
+            return { daysInMonth, completeDays, activeDays, scheduleMap };
+        }
+
+        function renderStats() {
+            const uniqueDays = new Set(sectionSets.filter((item) => item.setDate).map((item) => item.setDate));
+            const now = new Date();
+            const currentMonthIndex = now.getMonth();
+            const currentMonthYear = now.getFullYear();
+            const currentMonthCount = sectionSets.filter((item) => item.monthIndex === currentMonthIndex && item.year === currentMonthYear).length;
+            const advancedCount = sectionSets.filter((item) => item.difficulty === "advanced").length;
+            const stats = [
+                { label: "Saved Sets", value: sectionSets.length },
+                { label: "Scheduled Days", value: uniqueDays.size },
+                { label: "This Month", value: currentMonthCount },
+                { label: "Advanced Sets", value: advancedCount }
+            ];
+
+            document.getElementById("stats").innerHTML = stats.map((item) => `
+                <article class="stat">
+                    <small>${item.label}</small>
+                    <strong>${item.value}</strong>
+                </article>
+            `).join("");
+        }
+
+        function renderModuleOverview() {
+            const host = document.getElementById("moduleOverview");
+            host.innerHTML = MODULES.map((moduleId) => {
+                const savedSet = sectionSets.find((item) => item.module === moduleId);
+                return `
+                    <article class="module-pill ${moduleId}">
+                        <div class="pill-head">${MODULE_CONFIG[moduleId].icon} ${MODULE_CONFIG[moduleId].label}</div>
+                        <div class="pill-body">
+                            <small>${savedSet ? `${savedSet.difficultyLabel} · ${savedSet.displayDate}` : "No set metadata yet"}</small>
+                            <strong>${savedSet ? "Ready" : "Draft"}</strong>
+                        </div>
+                    </article>
+                `;
+            }).join("");
+        }
+
+        function renderLibrary() {
+            const host = document.getElementById("library");
+            if (sectionSets.length === 0) {
+                host.innerHTML = '<div class="empty">No TOEFL section sets saved yet. Open Listening, Structure, or Reading, set the date and difficulty, then click Update.</div>';
+                return;
+            }
+
+            host.innerHTML = sectionSets.map((item) => `
+                <article class="card">
+                    <div class="card-body">
+                        <h3>${item.icon} ${escapeHtml(item.label)} Set</h3>
+                        <div class="meta">
+                            <span>Set Date: ${escapeHtml(item.displayDate)}</span>
+                            <span>Difficulty: ${escapeHtml(item.difficultyLabel)}</span>
+                            <span>Updated: ${escapeHtml(item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "Not saved")}</span>
+                        </div>
+                        <div class="actions">
+                            <a class="btn-mini edit" href="${buildEditorUrl(item.module, item.setDate)}">Open Editor</a>
+                            <a class="btn-mini open" href="study-plan.html?year=${item.year ?? new Date().getFullYear()}&month=${item.monthIndex ?? new Date().getMonth()}">Schedule</a>
+                        </div>
+                    </div>
+                </article>
+            `).join("");
+        }
+
+        function renderMonthCalendar() {
+            const host = document.getElementById("monthGrid");
+            const now = new Date();
+            const year = now.getFullYear();
+
+            host.innerHTML = MONTH_LABELS.map((monthLabel, monthIndex) => {
+                const { daysInMonth, completeDays, activeDays } = getMonthStats(year, monthIndex);
+                const isComplete = completeDays > 0 && completeDays === activeDays;
+                const ratio = `${String(activeDays).padStart(2, "0")}/${String(daysInMonth).padStart(2, "0")}`;
+                const statusLabel = activeDays === 0 ? "Empty" : isComplete ? "Complete" : "In Progress";
+                const cardClass = isComplete ? "month-card complete" : "month-card partial";
+                const activeClass = monthIndex === now.getMonth() ? " active" : "";
+
+                return `
+                    <button class="${cardClass}${activeClass}" type="button" data-month-index="${monthIndex}" data-year="${year}">
+                        <div class="month-head">
+                            <strong>${monthLabel}</strong>
+                            <span class="arrow">➜</span>
+                        </div>
+                        <div class="month-ratio">${ratio}</div>
+                        <div class="month-note">Scheduled set days for ${year}</div>
+                        <div class="month-status">${statusLabel}</div>
+                    </button>
+                `;
+            }).join("");
+
+            host.querySelectorAll("[data-month-index]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    renderMonthDetail(Number(button.dataset.year), Number(button.dataset.monthIndex));
+                    host.querySelectorAll(".month-card.active").forEach((item) => item.classList.remove("active"));
+                    button.classList.add("active");
+                });
+            });
+
+            renderMonthDetail(year, now.getMonth());
+        }
+
+        function renderMonthDetail(year, monthIndex) {
+            const host = document.getElementById("monthDetail");
+            const monthLabel = MONTH_LABELS[monthIndex];
+            const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+            const firstWeekday = new Date(year, monthIndex, 1).getDay();
+            const { completeDays, activeDays, scheduleMap } = getMonthStats(year, monthIndex);
+            const ratio = `${String(activeDays).padStart(2, "0")}/${String(daysInMonth).padStart(2, "0")}`;
+            const dayCards = [];
+
+            for (let index = 0; index < firstWeekday; index += 1) {
+                dayCards.push('<div class="month-detail-day empty"></div>');
+            }
+
+            for (let day = 1; day <= daysInMonth; day += 1) {
+                const key = dateKey(year, monthIndex, day);
+                const entry = scheduleMap[key];
+                const dayComplete = isDayComplete(key, scheduleMap);
+                const hasAny = Boolean(entry && entry.items.length);
+                const items = entry ? entry.items : [];
+                const missingModules = MODULES.filter((moduleId) => !items.some((item) => item.module === moduleId));
+                const moduleActions = hasAny
+                    ? `
+                        ${items.map((item) => `
+                            <a class="month-action complete" href="${buildEditorUrl(item.module, key)}">
+                                <span>${item.icon} ${item.label}</span>
+                                <span>${item.difficultyLabel}</span>
+                            </a>
+                        `).join("")}
+                        ${missingModules.map((moduleId) => `
+                            <a class="month-action create" href="${buildEditorUrl(moduleId, key)}">
+                                <span>＋ ${MODULE_CONFIG[moduleId].label}</span>
+                                <span>Create</span>
+                            </a>
+                        `).join("")}
+                    `
+                    : `
+                        ${MODULES.map((moduleId) => `
+                            <a class="month-action create" href="${buildEditorUrl(moduleId, key)}">
+                                <span>＋ ${MODULE_CONFIG[moduleId].label}</span>
+                                <span>Create</span>
+                            </a>
+                        `).join("")}
+                    `;
+
+                dayCards.push(`
+                    <article class="month-detail-day ${dayComplete ? "complete" : "partial"}">
+                        <div class="day-no">${day}</div>
+                        <div class="module-chip-row">
+                            ${MODULES.map((moduleId) => {
+                                const done = Boolean(entry && entry[moduleId]);
+                                return `<span class="module-chip${done ? " done" : ""}" title="${MODULE_CONFIG[moduleId].label}">${MODULE_CONFIG[moduleId].icon}</span>`;
+                            }).join("")}
+                        </div>
+                        <div class="month-actions">${moduleActions}</div>
+                        <div class="detail-note">${dayComplete ? "All three TOEFL modules scheduled" : hasAny ? "Some modules saved for this day" : "No saved section set yet"}</div>
+                    </article>
+                `);
+            }
+
+            host.innerHTML = `
+                <div class="month-detail-head">
+                    <div>
+                        <h3>${monthLabel} ${year}</h3>
+                        <div class="month-detail-meta">
+                            <span>Scheduled ${ratio}</span>
+                            <span>${completeDays} fully-covered day(s)</span>
+                        </div>
+                    </div>
+                    <div class="detail-note">Open any day to route into Listening, Structure, or Reading with that date prefilled.</div>
+                </div>
+                <div class="month-detail-grid">
+                    ${dayCards.join("")}
+                </div>
+            `;
+            host.classList.add("show");
+        }
+
+        function exportData() {
+            const blob = new Blob([JSON.stringify(sectionSets, null, 2)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `toefl_section_sets_${new Date().toISOString().split("T")[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+            toast("Exported section metadata");
+        }
+
+        async function importData(file) {
+            try {
+                const text = await file.text();
+                const imported = JSON.parse(text);
+                const inputItems = Array.isArray(imported)
+                    ? imported
+                    : Object.entries(imported || {}).map(([moduleId, value]) => ({ ...value, module: value?.module || moduleId }));
+                const normalized = inputItems.map((item) => normalizeSet(item, item?.module)).filter(Boolean);
+                if (normalized.length === 0) {
+                    toast("No valid section metadata found in file");
+                    return;
+                }
+                const merged = getStoredSets().filter((item) => !normalized.some((incoming) => incoming.module === item.module));
+                persistSets([...merged, ...normalized]);
+                renderAll();
+                toast("Imported section metadata");
+            } catch (error) {
+                toast(`Error importing file: ${error.message}`);
+            }
+        }
+
+        function renderAll() {
+            sectionSets = getStoredSets();
+            renderStats();
+            renderModuleOverview();
+            renderLibrary();
+            renderMonthCalendar();
+        }
+
+        document.getElementById("exportBtn").addEventListener("click", exportData);
+        document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+        document.getElementById("importFile").addEventListener("change", (event) => {
+            const file = event.target.files[0];
+            if (file) importData(file);
+            event.target.value = "";
+        });
+        document.getElementById("createBtn").addEventListener("click", () => toggleCreateOptions());
+
+        document.addEventListener("click", (event) => {
+            const picker = document.querySelector(".create-stack");
+            if (!picker) return;
+            if (!picker.contains(event.target)) toggleCreateOptions(false);
+        });
+
+        window.addEventListener("focus", renderAll);
+        document.addEventListener("visibilitychange", () => {
+            if (!document.hidden) renderAll();
+        });
+
+        renderAll();
+    </script>
+</body>
+</html>
