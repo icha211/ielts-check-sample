@@ -6,159 +6,1073 @@
     <title>TOEFL ITP Simulator - Section 1: Listening Comprehension</title>
     <style>
         :root {
-            --primary-color: #004b87; 
+            --primary-color: #004b87;
             --dev-color: #2c3e50;
-            --cbt-header: #e9ecef;
-            --cbt-footer: #1a252f;
             --cbt-bg: #ececec;
-            --cbt-question-bg: #ffffff;
-            --text-color: #212529;
-            --dev-bg: #f4f6f9; 
+            --dev-bg: #f4f6f9;
+            --navy-dark: #003560;
+            --navy-mid: #005faa;
+            --sky-soft: #e0f2fe;
+            --line-gray: #d1dce8;
+            --mid-gray: #7a8fa6;
+            --off-white: #f4f7fb;
+            --asset-dots: url("../asset/icon/menu.png");
+            --asset-info: url("../asset/icon/Vector.svg");
+            --asset-pause: url("../asset/icon/pause 1.svg");
+            --asset-play: url("../asset/icon/play.svg");
+            --asset-clock: url("../asset/icon/stopwatch.png");
         }
 
-        ::selection { background-color: #fce28b; color: #000; }
-        *, *::before, *::after { box-sizing: border-box; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            background: var(--cbt-bg);
+            font-family: "Plus Jakarta Sans", Arial, sans-serif;
+            color: #111827;
+        }
 
-        body { font-family: Arial, "Helvetica Neue", Helvetica, sans-serif; margin: 0; padding: 0; background-color: var(--cbt-bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-
-        .tab-navigation { display: flex; background-color: #fff; border-bottom: 2px solid var(--primary-color); padding: 0 20px; flex-shrink: 0;}
-        .tab-button { padding: 10px 25px; cursor: pointer; border: none; background: none; font-size: 14px; font-weight: bold; color: #555; transition: 0.3s; }
-        .tab-button.active { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); }
-        .tab-content { display: none; flex: 1; overflow: hidden; flex-direction: column; min-height: 0; }
+        .tab-content {
+            display: none;
+            height: 100vh;
+            overflow: hidden;
+            flex-direction: column;
+        }
         .tab-content.active { display: flex; }
-        
-        .cbt-header { background-color: var(--cbt-header); padding: 10px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); z-index: 10; flex-shrink: 0; flex-wrap: wrap;}
-        .cbt-header h2 { margin: 0; font-size: 18px; font-weight: bold; color: var(--primary-color); display: flex; align-items: center; text-transform: uppercase; letter-spacing: 1px;}
-        .cbt-header h2::before { content: "🎧"; margin-right: 10px; font-size: 22px; }
-        
-        .timer { font-size: 20px; font-weight: bold; background-color: transparent; color: #d32f2f; padding: 0; display: flex; align-items: center; letter-spacing: 1px;}
-        .timer::before { content: "⏱"; margin-right: 8px; font-weight: normal; color: #000;}
 
-        /* Audio Player Styling */
-        .audio-container { width: 100%; display: flex; justify-content: center; background: #fff; padding: 10px 0; border-bottom: 1px solid #ccc; flex-shrink: 0; box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 9;}
-        audio { width: 60%; height: 40px; outline: none; }
-
-        .user-sub-nav { display: flex; background-color: var(--cbt-footer); justify-content: center; padding: 12px 0; flex-shrink: 0; align-items: center; gap: 15px;}
-        .user-sub-btn { padding: 10px 30px; cursor: pointer; border: 1px solid #555; background-color: #34495e; color: #fff; font-size: 15px; border-radius: 4px; transition: 0.2s; font-weight: bold;}
-        .user-sub-btn:hover { background-color: #4dc; }
-        .user-sub-btn.active { background-color: var(--primary-color); color: #fff; border: 1px solid #fff; }
-        
-        .dev-sub-nav { display: flex; background-color: #e2e8f0; justify-content: center; padding: 10px 0; flex-shrink: 0; flex-wrap: wrap; gap: 8px;}
-        .dev-sub-btn { padding: 8px 20px; cursor: pointer; border: 1px solid transparent; background-color: #cbd5e1; color: #334155; font-weight: bold; border-radius: 6px; font-size: 14px; transition: 0.2s;}
-        .dev-sub-btn:hover { background-color: #94a3b8; color: white;}
-        .dev-sub-btn.active { background-color: var(--dev-color); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
-        .btn-guide { background-color: #f59e0b !important; color: white !important; }
-        .btn-guide.active { background-color: #d97706 !important; border: 1px solid #fff; }
-        
-        .sub-content { display: none; flex: 1; overflow-y: auto; width: 100%; min-height: 0; }
-        #user-view .sub-content.active { display: block; } 
-        
-        .user-main { max-width: 900px; margin: 30px auto; background: var(--cbt-question-bg); padding: 40px 50px; border: 1px solid #ccc; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-radius: 5px;}
-        .section-instructions { background: #f8f9fa; padding: 20px; border-left: 5px solid var(--primary-color); margin-bottom: 30px; font-family: "Times New Roman", Times, serif;}
-        .section-instructions h3 { margin-top: 0; color: var(--primary-color); font-size: 18px;}
-        .section-instructions p { font-size: 16px; line-height: 1.6; margin-bottom: 0;}
-        
-        .question-item { margin-bottom: 35px; padding-bottom: 25px; border-bottom: 1px dashed #ccc; }
-        .question-item:last-child { border-bottom: none; }
-        .question-number { font-size: 18px; font-weight: bold; font-family: "Times New Roman", Times, serif; margin-bottom: 10px; display: block; color: #000;}
-        
-        .radio-group { display: flex; flex-direction: column; gap: 10px; margin-left: 10px; }
-        .radio-group label { cursor: pointer; display: flex; align-items: flex-start; gap: 8px; font-size: 16px; line-height: 1.5; color: #222; font-family: Arial, sans-serif;}
-        .radio-group input[type="radio"] { margin-top: 4px; cursor: pointer; flex-shrink: 0;}
-        .option-letter { width: 30px; flex-shrink: 0; display: inline-block; font-weight: bold;}
-
-        /* DEV PANELS */
-        #dev-view { background-color: var(--dev-bg); }
-        #dev-panels-container { flex: 1; overflow-y: auto; min-height: 0; width: 100%; padding-bottom: 40px;} 
-        #dev-panels-container .sub-content.active { display: block; } 
-        .dev-container { padding: 30px; max-width: 1000px; margin: 0 auto; width: 100%; }
-        
-        .dev-card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; border-top: 4px solid var(--dev-color);}
-        .dev-card.audio-card { border-top-color: #8b5cf6; background: #fbfbfe; } 
-        .dev-card.keys-card { border-top-color: #10b981; } 
-        .dev-card.guide-card { border-top-color: #f59e0b; } 
-        
-        .dev-card-title { margin-top: 0; margin-bottom: 15px; font-size: 18px; color: #1e293b; display: flex; align-items: center; gap: 8px;}
-        .dev-hint { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px 15px; border-radius: 0 4px 4px 0; font-size: 14px; color: #475569; margin-bottom: 15px; line-height: 1.5; }
-
-        .smart-textarea, .answer-textarea, .explanation-textarea { 
-            border: 1px solid #cbd5e1; border-radius: 0 0 6px 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); 
-            line-height: 1.6; padding: 15px; width: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; 
-            resize: vertical; outline: none; transition: 0.2s;
+        #user-view { background: var(--off-white); }
+        #global-score-board {
+            display: none;
+            background: var(--navy-dark);
+            color: #fff;
+            padding: 12px;
+            text-align: center;
+            font-weight: 700;
         }
-        .smart-textarea:focus, .answer-textarea:focus, .explanation-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
-        .smart-textarea { height: 350px; }
-        .answer-textarea { height: 160px; }
-        .explanation-textarea { height: 160px; }
 
-        .btn-save { background-color: #0f172a; color: white; padding: 10px 25px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn-save:hover { background-color: #334155; transform: translateY(-1px);}
-        .btn-save:active { transform: translateY(0); box-shadow: none;}
-        
-        .format-toolbar { display: flex; gap: 5px; background: #f1f5f9; padding: 10px; border: 1px solid #cbd5e1; border-bottom: none; border-radius: 6px 6px 0 0; align-items: center;}
-        .format-toolbar.header-soal { background: #334155; color: white; border-color: #334155;}
-        .format-toolbar.header-kunci { background: #10b981; color: white; border-color: #10b981;}
-        .format-toolbar.header-bahas { background: #0ea5e9; color: white; border-color: #0ea5e9;}
+        .exam-shell {
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            height: 100%;
+        }
 
-        .correct-box { border-left: 5px solid #10b981 !important; background-color: #ecfdf5 !important; padding: 15px; border-radius: 5px;}
-        .wrong-box { border-left: 5px solid #ef4444 !important; background-color: #fef2f2 !important; padding: 15px; border-radius: 5px;}
-        .feedback { font-weight: bold; display: none; margin-top: 15px; font-size: 14px; border-top: 1px dashed #ccc; padding-top: 10px;}
-        .text-correct { color: #10b981; }
-        .text-wrong { color: #ef4444; }
-        .explanation-box { margin-top: 10px; padding: 12px 15px; background-color: #f0f9ff; border-left: 4px solid #0ea5e9; font-size: 14px; color: #0f172a; font-weight: normal; display: block; text-align: left; line-height: 1.6; border-radius: 0 4px 4px 0; }
+        .exam-topbar {
+            height: 64px;
+            background: #fff;
+            box-shadow: 0 1px 1px rgba(122, 143, 166, 0.25);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 32px;
+            padding: 0 24px;
+            z-index: 3;
+            flex-shrink: 0;
+        }
+        .exam-topbar__left {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            min-width: 0;
+            flex: 1;
+        }
+        .exam-topbar__brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        .exam-topbar__logo {
+            width: 111px;
+            height: 42px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .exam-topbar__logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+        .exam-topbar__title-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+        .exam-topbar__title {
+            font: 600 33px/1.05 "Outfit", Arial, sans-serif;
+            color: #000;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+        .exam-topbar__subtitle {
+            color: var(--mid-gray);
+            font: 500 14px/1.15 "Outfit", Arial, sans-serif;
+        }
 
-        #global-score-board { display: none; background-color: var(--primary-color); color: white; padding: 15px; text-align: center; font-size: 22px; font-weight:bold; margin: 0;}
-        .btn-submit-all { background-color: var(--primary-color); color: white; border: none; padding: 15px 30px; border-radius: 4px; cursor: pointer; margin-top: 20px; font-weight: bold; font-size:16px; width: 100%; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2);}
-        .btn-submit-all:hover { background-color: #003366; }
-        
-        .audio-upload-label { background: #8b5cf6; color: white; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; display: inline-block; transition: 0.2s;}
-        .audio-upload-label:hover { background: #7c3aed; }
+        .exam-topbar__center {
+            display: flex;
+            justify-content: center;
+            min-width: 0;
+            flex: 1;
+        }
+        .exam-timer-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            color: var(--navy-mid);
+        }
+        .exam-timer-pill__icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+            border: 2.5px solid var(--navy-mid);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--navy-mid);
+        }
+        .exam-timer-pill__icon .ph-clock {
+            width: 14px;
+            height: 14px;
+            position: relative;
+            display: block;
+        }
+        .exam-timer-pill__icon .ph-clock::before,
+        .exam-timer-pill__icon .ph-clock::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            bottom: 50%;
+            transform-origin: bottom center;
+            background: currentColor;
+            border-radius: 999px;
+        }
+        .exam-timer-pill__icon .ph-clock::before {
+            width: 2px;
+            height: 5px;
+            transform: translateX(-50%) rotate(0deg);
+        }
+        .exam-timer-pill__icon .ph-clock::after {
+            width: 2px;
+            height: 8px;
+            transform: translateX(-50%) rotate(55deg);
+        }
+        .exam-timer {
+            font: 500 35px/1 "JetBrains Mono", Consolas, monospace;
+            letter-spacing: 0.02em;
+            color: var(--navy-mid);
+            min-width: 105px;
+            text-align: center;
+        }
+
+        .exam-topbar__status {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 2px;
+            width: 613px;
+            max-width: 100%;
+        }
+        .progress-duo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 495px;
+            min-width: 0;
+        }
+        .part-progress {
+            width: 144px;
+            display: flex;
+            align-items: center;
+            padding: 24px 0 12px;
+        }
+        .progress-track {
+            height: 12px;
+            width: 100%;
+            padding: 1px 2px;
+            box-sizing: border-box;
+            border-radius: 32px;
+            background: #E0F2FE;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+        .progress-fill {
+            position: relative;
+            width: 0;
+            min-width: 8px;
+            height: 8px;
+            border-radius: 100px;
+            background: linear-gradient(90deg, #0EA5E9 0%, #0D9488 100%);
+            background-size: 180% 100%;
+            animation: progress-sheen 2.1s ease-in-out infinite alternate;
+            transition: width 0.35s ease-in-out;
+        }
+        .progress-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            width: 160px;
+        }
+        .answer-caption {
+            text-align: right;
+            color: var(--mid-gray);
+            font: 400 12px/24px "Plus Jakarta Sans", Arial, sans-serif;
+            width: 100%;
+            padding-right: 6px;
+        }
+        .progress-meta .part-progress { padding: 0 0 12px; }
+        .topbar-controls {
+            width: 92px;
+            height: 64px;
+            padding: 0 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            flex-shrink: 0;
+        }
+        .topbar-icon {
+            width: 24px;
+            height: 24px;
+            border: none;
+            padding: 0;
+            background-color: transparent;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: contain;
+            cursor: pointer;
+        }
+        .topbar-icon.info { background-image: var(--asset-info); }
+        .topbar-icon.play { background-image: var(--asset-play); }
+        .topbar-icon.pause { background-image: var(--asset-pause); }
+        .topbar-icon.disabled { opacity: 0.35; cursor: not-allowed; }
+        .topbar-icon span { display: none; }
+
+        .exam-body {
+            flex: 1;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 24px;
+            padding: 24px;
+            overflow: hidden;
+        }
+
+        .exam-main {
+            min-height: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            padding-right: 4px;
+        }
+        .audio-shell {
+            background: var(--navy-dark);
+            border-radius: 8px;
+            box-shadow: 0 4px 2px rgba(0, 53, 96, 0.10);
+            padding: 20px 22px 14px;
+            color: #fff;
+        }
+        .audio-shell__title {
+            margin: 0;
+            font: 600 32px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+        .audio-shell__visual {
+            margin: 12px auto 10px;
+            width: min(670px, 100%);
+            height: 82px;
+            position: relative;
+            cursor: pointer;
+        }
+        .audio-progress-track {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 10px;
+            border-radius: 6px;
+            background: rgba(209, 220, 232, 0.95);
+            overflow: visible;
+            transform: translateY(-50%);
+        }
+        .audio-wave-canvas {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            clip-path: inset(0 100% 0 0 round 6px);
+        }
+        .audio-progress-knob {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #f1f5f9;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+            transform: translate(-12px, -50%);
+        }
+        .audio-shell__status {
+            margin: 0;
+            text-align: center;
+            color: rgba(209, 220, 232, 0.95);
+            font: 400 20px/1.3 "Outfit", Arial, sans-serif;
+        }
+        .audio-shell audio {
+            display: none;
+        }
+
+        .question-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            padding-bottom: 12px;
+        }
+        .question-section {
+            background: transparent;
+            display: none;
+            flex-direction: column;
+            gap: 24px;
+        }
+        .question-section.is-active {
+            display: flex;
+        }
+        .question-section__meta {
+            margin: 0;
+            color: var(--navy-dark);
+            font: 700 18px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        [id^="display-questions-"] {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .question-item {
+            width: 855px;
+            max-width: 100%;
+            min-height: 268px;
+            box-sizing: border-box;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 2px rgba(0, 53, 96, 0.10);
+            padding: 35px 35px 35px 30px;
+            display: grid;
+            grid-template-columns: 40px minmax(0, 1fr);
+            gap: 24px;
+            align-items: flex-start;
+        }
+        .question-number-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid var(--mid-gray);
+            background: #fff;
+            color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font: 400 18px/1 "Plus Jakarta Sans", Arial, sans-serif;
+            margin-top: 2px;
+        }
+        .question-number-badge.is-answered {
+            background: var(--navy-dark);
+            border-color: #fff;
+            color: #fff;
+            box-shadow: 0 1px 4px rgba(14, 165, 233, 1);
+        }
+        .question-content { display: grid; gap: 10px; }
+        .question-title {
+            margin: 0;
+            color: #0f172a;
+            font: 600 18px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .radio-group {
+            display: grid;
+            gap: 10px;
+            margin: 0;
+        }
+        .radio-group label {
+            border: 1px solid var(--line-gray);
+            border-radius: 8px;
+            padding: 13px 15px;
+            min-height: 58px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff;
+            color: #0f172a;
+            cursor: pointer;
+            font: 400 18px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
+            transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .radio-group label:hover:not(.selected) {
+            background: var(--off-white);
+            border-color: var(--line-gray);
+            box-shadow: none;
+        }
+        .radio-group label.selected {
+            border-color: var(--navy-mid);
+            background: rgba(14, 165, 233, 0.2);
+            box-shadow: 0 4px 4px rgba(14, 165, 233, 0.25);
+        }
+        .radio-group input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+            pointer-events: none;
+        }
+        .option-letter {
+            width: 36px;
+            flex-shrink: 0;
+        }
+        .question-actions {
+            display: flex;
+            justify-content: flex-end;
+        }
+        .flag-toggle {
+            border: 1px solid var(--line-gray);
+            border-radius: 999px;
+            background: #fff;
+            color: var(--mid-gray);
+            padding: 6px 12px;
+            font: 600 12px/1 "Plus Jakarta Sans", Arial, sans-serif;
+            cursor: pointer;
+        }
+        .flag-toggle.active {
+            background: #fb7185;
+            border-color: #fb7185;
+            color: #fff;
+        }
+
+        .navigator-panel {
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            width: 282px;
+            min-width: 282px;
+            transition: width 0.25s ease, min-width 0.25s ease;
+        }
+        .navigator-panel.is-collapsed {
+            width: 124px;
+            min-width: 124px;
+            padding: 24px 12px 24px 24px;
+            background: #fff;
+            box-shadow: 0 4px 4px rgba(0, 53, 96, 0.10);
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+            outline: 1px solid rgba(209, 220, 232, 0.50);
+            outline-offset: -0.5px;
+            align-items: flex-end;
+            justify-content: flex-start;
+        }
+        .navigator-card {
+            background: #fff;
+            border: 1px solid var(--line-gray);
+            border-radius: 8px;
+            box-shadow: 0 4px 4px rgba(0, 53, 96, 0.10);
+            padding: 24px;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .navigator-panel.is-collapsed .navigator-card {
+            width: 100%;
+            border: 1px solid var(--line-gray);
+            box-shadow: none;
+            padding: 20px;
+            overflow: hidden;
+            min-height: auto;
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-start;
+            border-radius: 8px;
+        }
+        .navigator-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .navigator-dots {
+            width: 32px;
+            height: 32px;
+            background-image: url("../asset/icon/menu.png");
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .navigator-toggle {
+            width: 32px;
+            height: 32px;
+            border: none;
+            padding: 0;
+            background: transparent;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--navy-mid);
+        }
+        .navigator-toggle .ph-dots-nine {
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+            position: relative;
+        }
+        .navigator-toggle .ph-dots-nine::before {
+            content: "";
+            position: absolute;
+            left: 6px;
+            top: 6px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+            box-shadow:
+                0 8px 0 currentColor,
+                0 16px 0 currentColor,
+                8px 0 0 currentColor,
+                8px 8px 0 currentColor,
+                8px 16px 0 currentColor,
+                16px 0 0 currentColor,
+                16px 8px 0 currentColor,
+                16px 16px 0 currentColor;
+        }
+        .navigator-title {
+            margin: 0;
+            font: 700 18px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+            color: #000;
+        }
+        .navigator-panel.is-collapsed .navigator-title,
+        .navigator-panel.is-collapsed .navigator-group,
+        .navigator-panel.is-collapsed .navigator-legend,
+        .navigator-panel.is-collapsed .btn-next-question,
+        .navigator-panel.is-collapsed .btn-submit-all {
+            display: none;
+        }
+        .navigator-panel.is-collapsed .navigator-header {
+            margin-bottom: 0;
+            justify-content: flex-end;
+        }
+        .navigator-panel.is-collapsed .navigator-card {
+            min-height: auto;
+        }
+
+        .navigator-group { margin-bottom: 14px; }
+        .navigator-group__title {
+            font: 500 18px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+            margin-bottom: 10px;
+            color: #000;
+        }
+        .navigator-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+        }
+        .navigator-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--navy-dark);
+            background: #fff;
+            color: var(--navy-dark);
+            font: 400 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+        .navigator-btn.is-answered {
+            background: var(--navy-dark);
+            color: #fff;
+            border-color: #fff;
+            box-shadow: 0 1px 4px rgba(14, 165, 233, 1);
+        }
+        .navigator-btn.is-flagged {
+            outline: 2px solid #fb7185;
+            outline-offset: 1px;
+        }
+
+        .navigator-legend {
+            margin-top: 8px;
+            display: grid;
+            gap: 6px;
+            color: var(--navy-dark);
+            font: 500 14px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            border: 1px solid var(--navy-dark);
+            flex-shrink: 0;
+        }
+        .legend-swatch.answered { background: var(--navy-dark); border-color: #fff; box-shadow: 0 1px 4px rgba(14, 165, 233, 1); }
+        .legend-swatch.unanswered { background: #fff; }
+        .legend-swatch.flagged { background: #fb7185; border-color: #fb7185; }
+
+        .btn-next-question,
+        .btn-submit-all {
+            width: 100%;
+            height: 52px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font: 600 30px/1 "Outfit", Arial, sans-serif;
+            transition: transform 0.2s ease, filter 0.2s ease;
+        }
+        .btn-next-question {
+            background: var(--navy-dark);
+            color: #fff;
+        }
+        .btn-submit-all {
+            background: #0d9488;
+            color: #fff;
+            font-size: 20px;
+            margin-top: 10px;
+        }
+        .btn-next-question:hover,
+        .btn-submit-all:hover {
+            filter: brightness(1.06);
+            transform: translateY(-1px);
+        }
+
+        #dev-view { background: var(--dev-bg); }
+        .dev-sub-nav {
+            display: flex;
+            background-color: #e2e8f0;
+            justify-content: center;
+            padding: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .dev-sub-btn {
+            padding: 8px 18px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            background-color: #cbd5e1;
+            color: #334155;
+            border-radius: 6px;
+            font: 700 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+        .dev-sub-btn.active {
+            background-color: var(--dev-color);
+            color: #fff;
+        }
+        .btn-guide { background-color: #f59e0b !important; color: #fff !important; }
+        .btn-guide.active { background-color: #d97706 !important; }
+
+        #dev-panels-container {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding-bottom: 24px;
+        }
+        .sub-content { display: none; }
+        #dev-panels-container .sub-content.active { display: block; }
+
+        .dev-container {
+            padding: 24px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .dev-card {
+            background: #fff;
+            padding: 22px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 18px;
+            border: 1px solid #e2e8f0;
+            border-top: 4px solid var(--dev-color);
+        }
+        .dev-card.keys-card { border-top-color: #10b981; }
+        .dev-card.guide-card { border-top-color: #f59e0b; }
+        .dev-card-title {
+            margin: 0 0 12px;
+            font: 700 18px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+            color: #1e293b;
+        }
+        .dev-hint {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 10px 12px;
+            border-radius: 0 4px 4px 0;
+            font-size: 14px;
+            color: #475569;
+            margin-bottom: 12px;
+            line-height: 1.5;
+        }
+
+        .format-toolbar {
+            display: flex;
+            background: #f1f5f9;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            align-items: center;
+        }
+        .format-toolbar.header-soal { background: #334155; color: #fff; border-color: #334155; }
+        .format-toolbar.header-kunci { background: #10b981; color: #fff; border-color: #10b981; }
+        .format-toolbar.header-bahas { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+
+        .smart-textarea, .answer-textarea, .explanation-textarea {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 0 0 6px 6px;
+            padding: 14px;
+            font: 14px/1.6 Consolas, Monaco, monospace;
+            resize: vertical;
+            outline: none;
+        }
+        .smart-textarea { height: 310px; }
+        .answer-textarea, .explanation-textarea { height: 160px; }
+        .smart-textarea:focus,
+        .answer-textarea:focus,
+        .explanation-textarea:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        .btn-save {
+            background: #0f172a;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 18px;
+            cursor: pointer;
+            font: 700 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+        .mode-switch-btn {
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #0f172a;
+            border-radius: 6px;
+            padding: 9px 12px;
+            cursor: pointer;
+            font: 600 13px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+        .dev-header-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .onboarding-overlay {
+            position: fixed;
+            left: 0;
+            right: 0;
+            top: 64px;
+            bottom: 0;
+            z-index: 30;
+            display: none;
+            overflow-y: auto;
+            background: rgba(0, 53, 96, 0.90);
+            padding: 72px 84px 48px;
+        }
+        .onboarding-overlay.is-visible {
+            display: block;
+        }
+        .onboarding-title {
+            margin: 0 0 24px;
+            color: #fff;
+            font: 500 48px/1 "Outfit", Arial, sans-serif;
+        }
+        .onboarding-list {
+            display: grid;
+            gap: 28px;
+            max-width: 980px;
+        }
+        .onboarding-item {
+            display: grid;
+            grid-template-columns: 48px minmax(0, 1fr);
+            align-items: flex-start;
+            gap: 16px;
+        }
+        .onboarding-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 999px;
+            border: 2px solid #fff;
+            background: var(--sky-soft);
+            box-shadow: 0 1px 4px var(--sky-soft);
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #0ea5e9;
+            font: 700 18px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+        .onboarding-icon.play::before {
+            content: "";
+            width: 0;
+            height: 0;
+            border-top: 9px solid transparent;
+            border-bottom: 9px solid transparent;
+            border-left: 14px solid #0ea5e9;
+            margin-left: 3px;
+        }
+        .onboarding-icon.audio::before {
+            content: "\1F50A";
+            font-size: 19px;
+            line-height: 1;
+        }
+        .onboarding-icon.nav::before {
+            content: "\22EE";
+            transform: rotate(90deg);
+            font-size: 20px;
+            line-height: 1;
+        }
+        .onboarding-icon.time::before {
+            content: "\23F1";
+            font-size: 18px;
+            line-height: 1;
+        }
+        .onboarding-item__title {
+            margin: 0 0 10px;
+            color: #fff;
+            font: 700 34px/1 "Outfit", Arial, sans-serif;
+        }
+        .onboarding-item__desc {
+            margin: 0;
+            color: #fff;
+            font: 500 20px/1.28 "Plus Jakarta Sans", Arial, sans-serif;
+            max-width: 980px;
+        }
+        .onboarding-actions {
+            margin-top: 36px;
+        }
+        .btn-onboarding-start {
+            border: 1px solid #fff;
+            background: #fff;
+            color: var(--navy-dark);
+            border-radius: 10px;
+            padding: 12px 20px;
+            font: 700 18px/1 "Plus Jakarta Sans", Arial, sans-serif;
+            cursor: pointer;
+        }
+
+        .audio-upload-label {
+            display: inline-block;
+            border-radius: 8px;
+            background: #0f172a;
+            color: #fff;
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 14px;
+        }
         #audio-upload-file { display: none; }
-        #audio-file-name { margin-left: 10px; font-style: italic; color: #555;}
+
+        @keyframes blink { 50% { opacity: 0.55; } }
+        @keyframes progress-sheen {
+            0% { background-position: 0 0; }
+            100% { background-position: 100% 0; }
+        }
+
+        @media (max-width: 1200px) {
+            .exam-topbar { height: auto; gap: 14px; padding: 10px 16px; flex-wrap: wrap; }
+            .exam-topbar__left,
+            .exam-topbar__center,
+            .exam-topbar__status { width: 100%; }
+            .exam-topbar__center,
+            .exam-topbar__status { justify-content: flex-start; }
+            .navigator-card { max-height: 280px; }
+            .progress-duo { width: auto; }
+        }
+
+        @media (max-width: 768px) {
+            .exam-body { padding: 14px; gap: 14px; }
+            .audio-shell { padding: 14px; }
+            .audio-shell__title { font-size: 24px; }
+            .radio-group label { font-size: 16px; }
+            .question-item { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; }
+            .btn-next-question { font-size: 24px; }
+            .exam-topbar__title { font-size: 28px; }
+            .progress-duo { flex-wrap: wrap; }
+            .topbar-controls { width: auto; justify-content: flex-start; }
+            .onboarding-overlay {
+                padding: 24px 18px 24px;
+            }
+            .onboarding-title {
+                font-size: 36px;
+                line-height: 1.1;
+            }
+            .onboarding-item__title {
+                font-size: 28px;
+                line-height: 1.1;
+            }
+            .onboarding-item__desc {
+                font-size: 17px;
+                line-height: 1.4;
+            }
+        }
     </style>
 </head>
 <body>
-
-    <div class="tab-navigation">
-        <button class="tab-button active" onclick="openTab(event, 'user-view')">👁️ Simulasi Ujian User</button>
-        <button class="tab-button" onclick="openTab(event, 'dev-view')">⚙️ Panel Developer</button>
-    </div>
-
     <div id="user-view" class="tab-content active">
         <div id="global-score-board"></div>
-        <header class="cbt-header">
-            <h2>Section 1: Listening Comprehension</h2>
-            <div class="timer" id="time">35:00</div>
-        </header>
-        
-        <div class="audio-container">
-            <audio id="cbt-audio-player" controls controlsList="nodownload">
-                <source src="" type="audio/mpeg">
-                Browser Anda tidak mendukung pemutar audio.
-            </audio>
-        </div>
+        <div class="exam-shell">
+            <header class="exam-topbar">
+                <div class="exam-topbar__left">
+                    <div class="exam-topbar__brand">
+                        <div class="exam-topbar__logo" aria-label="Quick Check">
+                            <img src="../asset/icon/logo.png" alt="Quick Check">
+                        </div>
+                        <div class="exam-topbar__title-wrap">
+                            <div class="exam-topbar__title">Listening Comprehension</div>
+                            <div class="exam-topbar__subtitle" id="package-label">Package 01 Jan</div>
+                        </div>
+                    </div>
+                </div>
 
-        <div id="user-passages-container" style="flex: 1; overflow-y: auto; background-color: var(--cbt-bg);"></div>
-        <div class="user-sub-nav" id="user-sub-nav-container"></div>
+                <div class="exam-topbar__center">
+                    <div class="exam-timer-pill">
+                        <span class="exam-timer-pill__icon" aria-hidden="true"><i class="ph ph-clock" aria-hidden="true"></i></span>
+                        <div class="exam-timer" id="time">35:00</div>
+                    </div>
+                </div>
+
+                <div class="exam-topbar__status">
+                    <div class="progress-duo">
+                        <div class="part-progress"><div class="progress-track"><div class="progress-fill" id="progress-fill-a"></div></div></div>
+                        <div class="part-progress"><div class="progress-track"><div class="progress-fill" id="progress-fill-b"></div></div></div>
+                        <div class="progress-meta">
+                            <div class="answer-caption" id="answer-summary">Answered 0/30</div>
+                            <div class="part-progress"><div class="progress-track"><div class="progress-fill" id="progress-fill-c"></div></div></div>
+                        </div>
+                    </div>
+                    <div class="topbar-controls">
+                        <button class="mode-switch-btn" id="open-dev-mode-btn" type="button" onclick="openDeveloperEditor()" style="display:none;">Developer</button>
+                        <button class="topbar-icon info" type="button" aria-hidden="true"><span>i</span></button>
+                        <button class="topbar-icon play" id="audio-play-control" type="button" aria-label="Play listening audio"><span>play</span></button>
+                    </div>
+                </div>
+            </header>
+
+            <div class="exam-body">
+                <main class="exam-main" id="user-passages-container">
+                    <section class="audio-shell">
+                        <h2 class="audio-shell__title" id="audio-shell-title">Part A: Short Conversation</h2>
+                        <div class="audio-shell__visual" id="audio-visual-trigger" aria-hidden="true">
+                            <canvas class="audio-wave-canvas" id="audio-wave-canvas" width="670" height="82"></canvas>
+                            <div class="audio-progress-track"></div>
+                            <div class="audio-progress-knob" id="audio-progress-knob"></div>
+                        </div>
+                        <p class="audio-shell__status" id="audio-shell-status">Click To Play....</p>
+                        <audio id="cbt-audio-player" controls preload="metadata"></audio>
+                    </section>
+
+                    <div class="question-stack" id="question-sections-container"></div>
+                </main>
+
+                <aside class="navigator-panel" id="navigator-panel">
+                    <div class="navigator-card">
+                        <div class="navigator-header">
+                            <button class="navigator-toggle" type="button" aria-label="Toggle question navigator" onclick="toggleNavigatorPanel()">
+                                <i class="ph ph-dots-nine" aria-hidden="true"></i>
+                            </button>
+                            <h3 class="navigator-title">Question Navigator</h3>
+                        </div>
+                        <div id="user-sub-nav-container"></div>
+                        <div class="navigator-legend">
+                            <div class="legend-item"><span class="legend-swatch answered"></span> Answered</div>
+                            <div class="legend-item"><span class="legend-swatch unanswered"></span> Unanswered</div>
+                            <div class="legend-item"><span class="legend-swatch flagged"></span> Flagged</div>
+                        </div>
+                    </div>
+                    <button class="btn-next-question" type="button" onclick="scrollToNextQuestion()">Next Question</button>
+                    <button class="btn-submit-all" type="button" onclick="submitAnswers()">Submit Section 1</button>
+                </aside>
+            </div>
+        </div>
+        <div class="onboarding-overlay" id="onboarding-overlay" aria-hidden="true">
+            <h2 class="onboarding-title">Instruction</h2>
+            <div class="onboarding-list">
+                <section class="onboarding-item">
+                    <span class="onboarding-icon play" aria-hidden="true"></span>
+                    <div>
+                        <h3 class="onboarding-item__title">Start The Listening</h3>
+                        <p class="onboarding-item__desc">Click the Start button to begin. Note that the test environment is locked once active, if you exit or stop the session, your test will be terminated immediately and cannot be resumed.</p>
+                    </div>
+                </section>
+                <section class="onboarding-item">
+                    <span class="onboarding-icon audio" aria-hidden="true"></span>
+                    <div>
+                        <h3 class="onboarding-item__title">Single Play ONLY</h3>
+                        <p class="onboarding-item__desc">The audio for the entire section will play once only. There are no replay, rewind, or pause functions available. This matches authentic TOEFL ITP conditions.</p>
+                    </div>
+                </section>
+                <section class="onboarding-item">
+                    <span class="onboarding-icon nav" aria-hidden="true"></span>
+                    <div>
+                        <h3 class="onboarding-item__title">Question Navigator</h3>
+                        <p class="onboarding-item__desc">Read each question and its four answer choices carefully. You must progress through the session as the audio dictates. You cannot jump ahead or return to previous questions.</p>
+                    </div>
+                </section>
+                <section class="onboarding-item">
+                    <span class="onboarding-icon time" aria-hidden="true"></span>
+                    <div>
+                        <h3 class="onboarding-item__title">Time Management</h3>
+                        <p class="onboarding-item__desc">Monitor the countdown timer in the top bar. The test will automatically transition to the next phase once the audio concludes or the time limit is reached.</p>
+                    </div>
+                </section>
+            </div>
+            <div class="onboarding-actions">
+                <button class="btn-onboarding-start" type="button" onclick="dismissOnboarding()">Start Test</button>
+            </div>
+        </div>
     </div>
 
     <div id="dev-view" class="tab-content">
-        <header style="background:white; padding:15px 30px; display:flex; justify-content:space-between; border-bottom:1px solid #cbd5e1; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); z-index: 5; flex-shrink: 0;">
+        <header style="background:#fff; padding:14px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #cbd5e1; box-shadow:0 2px 4px rgba(0,0,0,0.02); flex-shrink:0;">
             <div>
-                <h2 style="color: var(--dev-color); margin:0; font-size: 18px;">Content Manager</h2>
-                <span style="font-size: 13px; color: #64748b;">TOEFL ITP - Section 1 (Listening)</span>
+                <h2 style="color:var(--dev-color); margin:0; font-size:18px;">Content Manager</h2>
+                <span style="font-size:13px; color:#64748b;">TOEFL ITP - Section 1</span>
             </div>
-            <button class="btn-save" onclick="updateUserView(true)">🔄 Terapkan & Update Tampilan</button>
+            <div class="dev-header-actions">
+                <button class="mode-switch-btn" type="button" onclick="openUserPreviewFromDeveloper()">Apply + Open User View</button>
+                <button class="btn-save" type="button" onclick="updateUserView(true)">Apply and Update View</button>
+            </div>
         </header>
 
-        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:end; padding:12px 30px; background:#f8fbff; border-bottom:1px solid #dbe7f2;">
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:end; padding:12px 24px; background:#f8fbff; border-bottom:1px solid #dbe7f2; flex-shrink:0;">
             <div style="min-width:220px; flex:1; display:grid; gap:6px;">
                 <label for="set-date" style="font-size:12px; font-weight:700; color:#1e3a5f; text-transform:uppercase; letter-spacing:0.04em;">Set Date</label>
                 <input id="set-date" type="date" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit;">
             </div>
             <div style="min-width:220px; flex:1; display:grid; gap:6px;">
                 <label for="set-difficulty" style="font-size:12px; font-weight:700; color:#1e3a5f; text-transform:uppercase; letter-spacing:0.04em;">Difficulty</label>
-                <select id="set-difficulty" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; background:white;">
+                <select id="set-difficulty" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit; background:#fff;">
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Intermediate</option>
                     <option value="advanced">Advanced</option>
@@ -173,16 +1087,188 @@
     <script src="toefl-storage-sync.js?v=20260506"></script>
     <script>
         const PARTS = [
-            { id: 1, name: "Part A: Short Dialogues", range: "Questions 1-30", instr: "<strong>Directions:</strong> In Part A, you will hear short conversations between two people. After each conversation, you will hear a question about the conversation. The conversations and questions will not be repeated. After you hear a question, read the four possible answers in your test book and choose the best answer." },
-            { id: 2, name: "Part B: Longer Conversations", range: "Questions 31-38", instr: "<strong>Directions:</strong> In this part of the test, you will hear longer conversations. After each conversation, you will hear several questions. The conversations and questions will not be repeated." },
-            { id: 3, name: "Part C: Short Talks", range: "Questions 39-50", instr: "<strong>Directions:</strong> In this part of the test, you will hear several short talks. After each talk, you will hear some questions. The talks and questions will not be repeated." }
+            { id: 1, name: "Part A: Short Dialogues", range: "Questions 1-30", start: 1, end: 30, instr: "<strong>Directions:</strong> In Part A, you will hear short conversations between two people. After each conversation, you will hear a question about the conversation. The conversations and questions will not be repeated. After you hear a question, choose the best answer." },
+            { id: 2, name: "Part B: Longer Conversations", range: "Questions 31-38", start: 31, end: 38, instr: "<strong>Directions:</strong> In this part of the test, you will hear longer conversations. After each conversation, you will hear several questions. The conversations and questions will not be repeated." },
+            { id: 3, name: "Part C: Short Talks", range: "Questions 39-50", start: 39, end: 50, instr: "<strong>Directions:</strong> In this part of the test, you will hear several short talks. After each talk, you will hear some questions. The talks and questions will not be repeated." }
         ];
+
         const SETS_KEY = "toefl_developer_sets_v1";
         const SETS_KEY_V2 = "toefl_developer_sets_v2";
         const MODULE_ID = "listening";
         const MODULE_LABEL = "Listening";
+        const ONBOARDING_KEY = "toefl_section1_onboarding_seen_v1";
         const DRAFT_KEY = "toefl_section1_dev_draft_v1";
+        const FLAG_KEY = "toefl_section1_flagged_questions_v1";
+        const AUDIO_DB_NAME = "toefl_listening_audio_db_v1";
+        const AUDIO_STORE_NAME = "set_audio";
+        const AUDIO_PART_TITLES = {
+            1: "Part A: Short Conversation",
+            2: "Part B: Extended Conversation",
+            3: "Part C: Short Talks"
+        };
+        const PART_PROGRESS_SEGMENTS = {
+            1: { start: 0, end: 30 },
+            2: { start: 30, end: 40 },
+            3: { start: 40, end: 50 }
+        };
+
         let currentSetId = "";
+        let questionOrder = [];
+        let globalAnswerKey = {};
+        let globalExplanations = {};
+        let globalQuestions = {};
+        let timerInterval = null;
+        let flaggedQuestions = safeParse(localStorage.getItem(FLAG_KEY), {});
+        let activePartId = 1;
+        let audioContext = null;
+        let audioAnalyser = null;
+        let audioSourceNode = null;
+        let audioDataArray = null;
+        let audioVisualFrame = null;
+        let audioIsLocked = false;
+        let currentAudioObjectUrl = "";
+
+        function getAudioStorageKey(setId) {
+            return `${MODULE_ID}:${setId}`;
+        }
+
+        function openAudioDatabase() {
+            return new Promise((resolve, reject) => {
+                if (!("indexedDB" in window)) {
+                    resolve(null);
+                    return;
+                }
+
+                const request = window.indexedDB.open(AUDIO_DB_NAME, 1);
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(AUDIO_STORE_NAME)) {
+                        db.createObjectStore(AUDIO_STORE_NAME, { keyPath: "id" });
+                    }
+                };
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        function saveAudioRecord(record) {
+            return openAudioDatabase().then((db) => new Promise((resolve, reject) => {
+                if (!db) {
+                    resolve(false);
+                    return;
+                }
+                const tx = db.transaction(AUDIO_STORE_NAME, "readwrite");
+                const store = tx.objectStore(AUDIO_STORE_NAME);
+                store.put(record);
+                tx.oncomplete = () => {
+                    db.close();
+                    resolve(true);
+                };
+                tx.onerror = () => {
+                    db.close();
+                    reject(tx.error);
+                };
+            }));
+        }
+
+        function getAudioRecordBySetId(setId) {
+            if (!setId) return Promise.resolve(null);
+            return openAudioDatabase().then((db) => new Promise((resolve, reject) => {
+                if (!db) {
+                    resolve(null);
+                    return;
+                }
+                const tx = db.transaction(AUDIO_STORE_NAME, "readonly");
+                const store = tx.objectStore(AUDIO_STORE_NAME);
+                const request = store.get(getAudioStorageKey(setId));
+                request.onsuccess = () => {
+                    db.close();
+                    resolve(request.result || null);
+                };
+                request.onerror = () => {
+                    db.close();
+                    reject(request.error);
+                };
+            }));
+        }
+
+        function getLatestAudioRecordForModule() {
+            return openAudioDatabase().then((db) => new Promise((resolve, reject) => {
+                if (!db) {
+                    resolve(null);
+                    return;
+                }
+                const tx = db.transaction(AUDIO_STORE_NAME, "readonly");
+                const store = tx.objectStore(AUDIO_STORE_NAME);
+                const request = store.getAll();
+                request.onsuccess = () => {
+                    const latest = (request.result || [])
+                        .filter((item) => item && item.module === MODULE_ID && item.setId && item.blob)
+                        .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
+                    db.close();
+                    resolve(latest);
+                };
+                request.onerror = () => {
+                    db.close();
+                    reject(request.error);
+                };
+            }));
+        }
+
+        function revokeCurrentAudioUrl() {
+            if (currentAudioObjectUrl) {
+                URL.revokeObjectURL(currentAudioObjectUrl);
+                currentAudioObjectUrl = "";
+            }
+        }
+
+        function setAudioLabelReady(fileName) {
+            const fileLabel = document.getElementById("audio-file-name");
+            if (!fileLabel) return;
+            fileLabel.innerText = `Ready to play: ${fileName || "saved audio"}`;
+            fileLabel.style.color = "green";
+        }
+
+        function setAudioLabelEmpty() {
+            const fileLabel = document.getElementById("audio-file-name");
+            if (!fileLabel) return;
+            fileLabel.innerText = "No audio file selected.";
+            fileLabel.style.color = "#334155";
+        }
+
+        function setAudioSourceFromBlob(blob) {
+            const audio = document.getElementById("cbt-audio-player");
+            if (!audio || !blob) return;
+
+            revokeCurrentAudioUrl();
+            currentAudioObjectUrl = URL.createObjectURL(blob);
+            audio.src = currentAudioObjectUrl;
+            audio.currentTime = 0;
+            audioIsLocked = false;
+            updateAudioShellStatus();
+        }
+
+        async function restoreAudioForCurrentSet() {
+            if (!currentSetId) {
+                setAudioLabelEmpty();
+                return false;
+            }
+
+            try {
+                const record = await getAudioRecordBySetId(currentSetId);
+                if (!record || !record.blob) {
+                    setAudioLabelEmpty();
+                    return false;
+                }
+
+                setAudioSourceFromBlob(record.blob);
+                setAudioLabelReady(record.fileName);
+                return true;
+            } catch (error) {
+                console.warn("[AudioPersistence] restore failed:", error);
+                return false;
+            }
+        }
 
         function safeParse(raw, fallback) {
             try {
@@ -190,6 +1276,26 @@
             } catch {
                 return fallback;
             }
+        }
+
+        function escapeHtml(value = "") {
+            return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/\"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function formatPackageLabel(dateValue) {
+            if (!dateValue) return "Package 01 Jan";
+            const parsedDate = new Date(`${dateValue}T00:00:00`);
+            if (Number.isNaN(parsedDate.getTime())) return `Package ${dateValue}`;
+            const formatter = new Intl.DateTimeFormat("en-US", { day: "2-digit", month: "short" });
+            const parts = formatter.formatToParts(parsedDate);
+            const day = parts.find((item) => item.type === "day")?.value || "01";
+            const month = parts.find((item) => item.type === "month")?.value || "Jan";
+            return `Package ${day} ${month}`;
         }
 
         function getStoredSetMap() {
@@ -254,6 +1360,535 @@
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 
+        async function resolveSetRecordById(setId) {
+            if (!setId) return null;
+
+            if (window.toeflStorage && typeof toeflStorage.getSetRecordById === "function") {
+                try {
+                    const remote = await toeflStorage.getSetRecordById(setId);
+                    if (remote && remote.setId) return remote;
+                } catch (error) {
+                    console.warn("[ToeflSync] setId lookup failed:", error);
+                }
+            }
+
+            const local = getStoredSetMap();
+            return local[setId] || null;
+        }
+
+        async function resolveLatestSetRecord() {
+            try {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
+                    const records = await toeflStorage.getSetRecords();
+                    const latest = (records || [])
+                        .filter((item) => item && item.module === MODULE_ID)
+                        .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
+                    if (latest) return latest;
+                }
+            } catch (error) {
+                console.warn("[ToeflSync] latest-set lookup failed:", error);
+            }
+
+            const local = getStoredSetMap();
+            return Object.values(local)
+                .filter((item) => item && item.module === MODULE_ID)
+                .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
+        }
+
+        async function resolveLatestUserSetRecord() {
+            const latestAudio = await getLatestAudioRecordForModule().catch(() => null);
+            if (latestAudio?.setId) {
+                const audioLinked = await resolveSetRecordById(latestAudio.setId);
+                if (audioLinked?.setId) return audioLinked;
+            }
+            return resolveLatestSetRecord();
+        }
+
+        function persistFlagState() {
+            localStorage.setItem(FLAG_KEY, JSON.stringify(flaggedQuestions));
+        }
+
+        function isQuestionFlagged(uid) {
+            return Boolean(flaggedQuestions && flaggedQuestions[uid]);
+        }
+
+        function updatePackageLabel(dateValue) {
+            const packageLabel = document.getElementById("package-label");
+            if (packageLabel) packageLabel.innerText = formatPackageLabel(dateValue);
+        }
+
+        function getAnsweredCount() {
+            return questionOrder.reduce((count, uid) => {
+                const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                return count + (radio ? 1 : 0);
+            }, 0);
+        }
+
+        function getPartAnsweredCount(partId) {
+            return questionOrder.reduce((count, uid) => {
+                const [uidPart] = uid.split("_");
+                if (parseInt(uidPart, 10) !== partId) return count;
+                const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                return count + (radio ? 1 : 0);
+            }, 0);
+        }
+
+        function getPartQuestionCount(partId) {
+            return questionOrder.reduce((count, uid) => {
+                const [uidPart] = uid.split("_");
+                return count + (parseInt(uidPart, 10) === partId ? 1 : 0);
+            }, 0);
+        }
+
+        function getPartIdFromUid(uid) {
+            if (!uid) return 1;
+            const partId = parseInt(String(uid).split("_")[0], 10);
+            return Number.isFinite(partId) ? partId : 1;
+        }
+
+        function getQuestionUidsByPart(partId) {
+            return questionOrder.filter((uid) => getPartIdFromUid(uid) === partId);
+        }
+
+        function findNextAvailablePart(fromPartId) {
+            for (let partId = fromPartId + 1; partId <= PARTS.length; partId += 1) {
+                if (getQuestionUidsByPart(partId).length > 0) {
+                    return partId;
+                }
+            }
+            return null;
+        }
+
+        function setActivePart(partId, options = {}) {
+            const { resetScroll = true } = options;
+            const targetPart = PARTS.find((item) => item.id === partId) ? partId : 1;
+            activePartId = targetPart;
+
+            PARTS.forEach((part) => {
+                const section = document.getElementById(`user-part-${part.id}`);
+                if (!section) return;
+                section.classList.toggle("is-active", part.id === targetPart);
+            });
+
+            const mainContainer = document.getElementById("user-passages-container");
+            if (mainContainer && resetScroll) {
+                mainContainer.scrollTo({ top: 0, behavior: "smooth" });
+            }
+
+            setAudioShellTitle(activePartId);
+            updateAudioShellStatus();
+            refreshExamState();
+        }
+
+        function updatePlayControlState() {
+            const playControl = document.getElementById("audio-play-control");
+            const audio = document.getElementById("cbt-audio-player");
+            if (!playControl || !audio) return;
+
+            playControl.classList.remove("play", "pause", "disabled");
+            if (audioIsLocked) {
+                playControl.classList.add("disabled");
+                playControl.disabled = true;
+                playControl.setAttribute("aria-label", "Audio already completed");
+                return;
+            }
+
+            playControl.disabled = false;
+            if (!audio.paused && !audio.ended) {
+                playControl.classList.add("pause");
+                playControl.setAttribute("aria-label", "Pause listening audio");
+            } else {
+                playControl.classList.add("play");
+                playControl.setAttribute("aria-label", "Play listening audio");
+            }
+        }
+
+        function toggleNavigatorPanel() {
+            const panel = document.getElementById("navigator-panel");
+            if (!panel) return;
+            panel.classList.toggle("is-collapsed");
+        }
+
+        function setAudioShellTitle(partId) {
+            const titleElement = document.getElementById("audio-shell-title");
+            if (!titleElement) return;
+            titleElement.innerText = AUDIO_PART_TITLES[partId] || AUDIO_PART_TITLES[1];
+        }
+
+        function updateAudioShellStatus() {
+            const audio = document.getElementById("cbt-audio-player");
+            const statusElement = document.getElementById("audio-shell-status");
+            if (!statusElement || !audio) return;
+
+            if (audioIsLocked) {
+                statusElement.innerText = "Audio completed";
+                updatePlayControlState();
+                return;
+            }
+
+            const hasAudioSource = Boolean(audio.src);
+            if (!hasAudioSource || (audio.paused && audio.currentTime === 0)) {
+                statusElement.innerText = "Click To Play....";
+                updatePlayControlState();
+                return;
+            }
+
+            if (!audio.paused && !audio.ended) {
+                statusElement.innerText = "Playing...";
+                updatePlayControlState();
+                return;
+            }
+
+            if (audio.paused && !audio.ended) {
+                statusElement.innerText = "Paused";
+                updatePlayControlState();
+                return;
+            }
+
+            statusElement.innerText = "Click To Play....";
+            updatePlayControlState();
+        }
+
+        function ensureAudioAnalyzer() {
+            const audio = document.getElementById("cbt-audio-player");
+            if (!audio) return;
+            if (audioContext && audioAnalyser && audioDataArray) return;
+
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            audioSourceNode = audioContext.createMediaElementSource(audio);
+            audioAnalyser = audioContext.createAnalyser();
+            audioAnalyser.fftSize = 128;
+            audioAnalyser.smoothingTimeConstant = 0.82;
+            audioDataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
+
+            audioSourceNode.connect(audioAnalyser);
+            audioAnalyser.connect(audioContext.destination);
+        }
+
+        function renderWaveform() {
+            const canvas = document.getElementById("audio-wave-canvas");
+            const knob = document.getElementById("audio-progress-knob");
+            const audio = document.getElementById("cbt-audio-player");
+            const track = document.querySelector(".audio-progress-track");
+            if (!canvas || !audio || !track || !knob) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            const targetWidth = Math.max(1, Math.floor(rect.width * dpr));
+            const targetHeight = Math.max(1, Math.floor(rect.height * dpr));
+
+            if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+                canvas.width = targetWidth;
+                canvas.height = targetHeight;
+            }
+
+            const ctx = canvas.getContext("2d");
+            if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const now = performance.now() / 1000;
+            const colors = ["#3300FF", "#0EA5E9", "#00CA01"];
+            const audioLineY = canvas.height * 0.58;
+            const waveLayers = 3;
+
+            let audioEnergy = 0.22;
+            let lowEnergy = audioEnergy;
+            let midEnergy = audioEnergy;
+            let highEnergy = audioEnergy;
+            if (audioAnalyser && audioDataArray) {
+                audioAnalyser.getByteFrequencyData(audioDataArray);
+                const sampleCount = Math.min(24, audioDataArray.length);
+                if (sampleCount > 0) {
+                    const sampleBandEnergy = (startRatio, endRatio) => {
+                        const startIndex = Math.floor(sampleCount * startRatio);
+                        const endIndex = Math.max(startIndex + 1, Math.floor(sampleCount * endRatio));
+                        let sum = 0;
+                        let count = 0;
+                        for (let i = startIndex; i < endIndex; i += 1) {
+                            sum += audioDataArray[i];
+                            count += 1;
+                        }
+                        return count > 0 ? sum / (count * 255) : audioEnergy;
+                    };
+
+                    lowEnergy = sampleBandEnergy(0.00, 0.34);
+                    midEnergy = sampleBandEnergy(0.34, 0.68);
+                    highEnergy = sampleBandEnergy(0.68, 1.00);
+                    audioEnergy = Math.max(0.12, Math.min(0.95, (lowEnergy + midEnergy + highEnergy) / 3));
+                }
+            }
+
+            const layerConfigs = [
+                { color: colors[0], energy: lowEnergy, speed: 1.05, phaseOffset: 0.0, lift: 0.00 },
+                { color: colors[1], energy: midEnergy, speed: 1.22, phaseOffset: 0.8, lift: 0.012 },
+                { color: colors[2], energy: highEnergy, speed: 1.38, phaseOffset: 1.6, lift: 0.022 }
+            ];
+
+            const waveStep = Math.max(4, Math.floor(canvas.width / 150));
+            for (let i = 0; i < waveLayers; i += 1) {
+                const layer = layerConfigs[i];
+                const wavelength = canvas.width / (1.7 + (layer.energy * 5.8) + (i * 0.35));
+                const frequency = (Math.PI * 2) / Math.max(28, wavelength);
+                const amplitude = canvas.height * (0.045 + (layer.energy * 0.11) + (i * 0.012));
+                const phase = now * layer.speed + (layer.energy * 5.2) + layer.phaseOffset;
+
+                ctx.fillStyle = layer.color;
+                ctx.globalAlpha = 0.76 + (layer.energy * 0.2);
+                ctx.beginPath();
+                ctx.moveTo(0, audioLineY);
+
+                for (let x = 0; x <= canvas.width; x += waveStep) {
+                    const progress = x / canvas.width;
+                    const envelope = Math.sin(progress * Math.PI);
+                    const ripple = Math.sin((x * frequency) + phase);
+                    const crest = Math.abs(ripple) * amplitude * (0.6 + envelope * 0.5);
+                    const y = audioLineY - layer.lift * canvas.height - crest;
+                    ctx.lineTo(x, y);
+                }
+
+                ctx.lineTo(canvas.width, audioLineY);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            const duration = audio.duration || 0;
+            const timelineProgress = duration > 0 ? Math.min(1, Math.max(0, audio.currentTime / duration)) : 0;
+            const idleReveal = !audio.src || (audio.paused && audio.currentTime === 0);
+            const visualProgress = idleReveal ? 0.68 : timelineProgress;
+            const hiddenRight = `${(1 - visualProgress) * 100}%`;
+            canvas.style.clipPath = `inset(0 ${hiddenRight} 0 0 round 6px)`;
+            knob.style.left = `${timelineProgress * 100}%`;
+
+            audioVisualFrame = requestAnimationFrame(renderWaveform);
+        }
+
+        function startWaveformRenderer() {
+            if (audioVisualFrame) return;
+            renderWaveform();
+        }
+
+        function stopWaveformRenderer() {
+            if (!audioVisualFrame) return;
+            cancelAnimationFrame(audioVisualFrame);
+            audioVisualFrame = null;
+        }
+
+        async function toggleAudioFromUserGesture() {
+            const audio = document.getElementById("cbt-audio-player");
+            if (!audio || audioIsLocked) return;
+
+            if (!audio.src) {
+                const recovered = await ensurePlayableAudioSource();
+                if (!recovered || !audio.src) {
+                    alert("No saved listening audio was found for this browser yet. Upload once from Developer mode, then click Apply + Open User View.");
+                    return;
+                }
+            }
+
+            try {
+                ensureAudioAnalyzer();
+                if (audioContext && audioContext.state === "suspended") {
+                    await audioContext.resume();
+                }
+
+                if (audio.paused) {
+                    await audio.play();
+                } else {
+                    audio.pause();
+                }
+            } catch (error) {
+                console.warn("Audio play toggle failed:", error);
+            }
+
+            updateAudioShellStatus();
+        }
+
+        async function ensurePlayableAudioSource() {
+            const audio = document.getElementById("cbt-audio-player");
+            if (!audio) return false;
+            if (audio.src) return true;
+
+            const restoredCurrent = await restoreAudioForCurrentSet();
+            if (restoredCurrent && audio.src) return true;
+
+            try {
+                const latestAudio = await getLatestAudioRecordForModule();
+                if (!latestAudio || !latestAudio.blob) return false;
+
+                setAudioSourceFromBlob(latestAudio.blob);
+                setAudioLabelReady(latestAudio.fileName);
+
+                if (!currentSetId && latestAudio.setId) {
+                    currentSetId = latestAudio.setId;
+                }
+
+                if (latestAudio.setId) {
+                    const linkedRecord = await resolveSetRecordById(latestAudio.setId);
+                    if (linkedRecord?.setDate) updatePackageLabel(linkedRecord.setDate);
+                }
+
+                return Boolean(audio.src);
+            } catch (error) {
+                console.warn("[AudioPersistence] play-time recovery failed:", error);
+                return false;
+            }
+        }
+
+        function detectActivePartFromScroll() {
+            return activePartId;
+        }
+
+        function syncAudioPanelFromView() {
+            activePartId = detectActivePartFromScroll();
+            setAudioShellTitle(activePartId);
+            updateAudioShellStatus();
+        }
+
+        function setupAudioInteractions() {
+            const audio = document.getElementById("cbt-audio-player");
+            const visual = document.getElementById("audio-visual-trigger");
+            const playControl = document.getElementById("audio-play-control");
+            const mainContainer = document.getElementById("user-passages-container");
+            if (!audio || !mainContainer) return;
+
+            if (visual) {
+                visual.title = "Play or pause listening audio";
+                visual.addEventListener("click", toggleAudioFromUserGesture);
+            }
+            if (playControl) playControl.addEventListener("click", toggleAudioFromUserGesture);
+
+            audio.addEventListener("play", () => {
+                startWaveformRenderer();
+                updateAudioShellStatus();
+            });
+            audio.addEventListener("pause", () => {
+                updateAudioShellStatus();
+            });
+            audio.addEventListener("loadeddata", () => {
+                audioIsLocked = false;
+                startWaveformRenderer();
+                updateAudioShellStatus();
+            });
+            audio.addEventListener("ended", () => {
+                audioIsLocked = true;
+                stopWaveformRenderer();
+                updateAudioShellStatus();
+            });
+            audio.addEventListener("timeupdate", updateAudioShellStatus);
+
+            mainContainer.addEventListener("scroll", syncAudioPanelFromView);
+
+            startWaveformRenderer();
+            syncAudioPanelFromView();
+            updatePlayControlState();
+        }
+
+        function scrollToQuestion(uid) {
+            const partId = getPartIdFromUid(uid);
+            if (partId !== activePartId) {
+                setActivePart(partId, { resetScroll: true });
+            }
+            const questionCard = document.getElementById(`q-container-${uid}`);
+            if (questionCard) {
+                questionCard.scrollIntoView({ behavior: "smooth", block: "center" });
+                setTimeout(syncAudioPanelFromView, 250);
+            }
+        }
+
+        function scrollToNextQuestion() {
+            const activePartQuestions = getQuestionUidsByPart(activePartId);
+            const nextUid = activePartQuestions.find((uid) => !document.querySelector(`input[name="q_${uid}"]:checked`));
+
+            if (nextUid) {
+                scrollToQuestion(nextUid);
+                return;
+            }
+
+            const nextPartId = findNextAvailablePart(activePartId);
+            if (nextPartId) {
+                setActivePart(nextPartId, { resetScroll: true });
+                const nextPartQuestions = getQuestionUidsByPart(nextPartId);
+                const firstUnanswered = nextPartQuestions.find((uid) => !document.querySelector(`input[name="q_${uid}"]:checked`));
+                const targetUid = firstUnanswered || nextPartQuestions[0];
+                if (targetUid) {
+                    setTimeout(() => scrollToQuestion(targetUid), 80);
+                }
+                return;
+            }
+
+            if (activePartQuestions[0]) {
+                scrollToQuestion(activePartQuestions[0]);
+            }
+        }
+
+        function toggleQuestionFlag(uid) {
+            if (!uid) return;
+            if (isQuestionFlagged(uid)) {
+                delete flaggedQuestions[uid];
+            } else {
+                flaggedQuestions[uid] = true;
+            }
+            persistFlagState();
+            refreshExamState();
+        }
+
+        function refreshExamState() {
+            const totalQuestions = questionOrder.length || 0;
+            const answerSummary = document.getElementById("answer-summary");
+            const progressFillA = document.getElementById("progress-fill-a");
+            const progressFillB = document.getElementById("progress-fill-b");
+            const progressFillC = document.getElementById("progress-fill-c");
+
+            const answeredA = getPartAnsweredCount(1);
+            const answeredB = getPartAnsweredCount(2);
+            const answeredC = getPartAnsweredCount(3);
+            const totalA = getPartQuestionCount(1);
+            const totalB = getPartQuestionCount(2);
+            const totalC = getPartQuestionCount(3);
+
+            if (progressFillA) progressFillA.style.width = totalA > 0 ? `${Math.round((answeredA / totalA) * 100)}%` : "0%";
+            if (progressFillB) progressFillB.style.width = totalB > 0 ? `${Math.round((answeredB / totalB) * 100)}%` : "0%";
+            if (progressFillC) progressFillC.style.width = totalC > 0 ? `${Math.round((answeredC / totalC) * 100)}%` : "0%";
+
+            const activeSegment = PART_PROGRESS_SEGMENTS[activePartId] || PART_PROGRESS_SEGMENTS[1];
+            const activeAnswered = activePartId === 1 ? answeredA : activePartId === 2 ? answeredB : answeredC;
+            const shownAnswered = Math.min(activeSegment.end, activeSegment.start + activeAnswered);
+
+            if (answerSummary) {
+                answerSummary.innerText = `Answered ${shownAnswered}/${activeSegment.end}`;
+            }
+
+            questionOrder.forEach((uid) => {
+                const questionCard = document.getElementById(`q-container-${uid}`);
+                const navigatorButton = document.querySelector(`.navigator-btn[data-uid="${uid}"]`);
+                const checkedInput = document.querySelector(`input[name="q_${uid}"]:checked`);
+                const isAnswered = Boolean(checkedInput);
+                const isFlagged = isQuestionFlagged(uid);
+
+                if (questionCard) {
+                    questionCard.classList.toggle("is-answered", isAnswered);
+                    questionCard.classList.toggle("is-flagged", isFlagged);
+                    const badge = questionCard.querySelector(".question-number-badge");
+                    if (badge) badge.classList.toggle("is-answered", isAnswered);
+                    questionCard.querySelectorAll(".radio-group label").forEach((label) => {
+                        const radio = label.querySelector('input[type="radio"]');
+                        label.classList.toggle("selected", Boolean(radio && radio.checked));
+                    });
+                    const flagButton = questionCard.querySelector(".flag-toggle");
+                    if (flagButton) {
+                        flagButton.classList.toggle("active", isFlagged);
+                        flagButton.innerText = isFlagged ? "Flagged" : "Flag question";
+                    }
+                }
+
+                if (navigatorButton) {
+                    navigatorButton.classList.toggle("is-answered", isAnswered);
+                    navigatorButton.classList.toggle("is-flagged", isFlagged);
+                }
+            });
+        }
+
         function saveSectionDraft() {
             const draft = { parts: {} };
             PARTS.forEach((part) => {
@@ -268,34 +1903,31 @@
             if (window.toeflStorage) {
                 const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
                 const setId = ensureCurrentSetId(setDate);
-                toeflStorage.saveDraftBySetId(setId, MODULE_ID, draft).catch((e) => console.warn("[ToeflSync] draft save failed:", e));
+                toeflStorage.saveDraftBySetId(setId, MODULE_ID, draft).catch((error) => console.warn("[ToeflSync] draft save failed:", error));
             }
         }
 
         async function loadSectionDraft() {
-            if (!currentSetId) {
-                // New set flow should always start blank.
-                return;
-            }
+            if (!currentSetId) return;
             let draft = {};
             if (window.toeflStorage) {
                 try {
-                    if (currentSetId) {
-                        draft = await toeflStorage.getDraftBySetId(currentSetId);
-                    }
-                } catch { /* fallback below */ }
+                    draft = await toeflStorage.getDraftBySetId(currentSetId);
+                } catch {
+                    draft = {};
+                }
             }
             if (!draft || typeof draft !== "object" || !draft.parts) return;
 
             PARTS.forEach((part) => {
                 const p = part.id;
                 const row = draft.parts[p] || {};
-                const qEl = document.getElementById(`input-magic-questions-${p}`);
-                const aEl = document.getElementById(`input-answer-key-${p}`);
-                const eEl = document.getElementById(`input-explanation-${p}`);
-                if (qEl && typeof row.questions === "string") qEl.value = row.questions;
-                if (aEl && typeof row.answerKey === "string") aEl.value = row.answerKey;
-                if (eEl && typeof row.explanation === "string") eEl.value = row.explanation;
+                const questionsElement = document.getElementById(`input-magic-questions-${p}`);
+                const answerElement = document.getElementById(`input-answer-key-${p}`);
+                const explanationElement = document.getElementById(`input-explanation-${p}`);
+                if (questionsElement && typeof row.questions === "string") questionsElement.value = row.questions;
+                if (answerElement && typeof row.answerKey === "string") answerElement.value = row.answerKey;
+                if (explanationElement && typeof row.explanation === "string") explanationElement.value = row.explanation;
             });
         }
 
@@ -307,6 +1939,7 @@
             currentSetId = params.get("setId") || "";
             const isCreateMode = !currentSetId && isDeveloperMode();
             let stored = {};
+
             if (!currentSetId && requestedDate && !isDeveloperMode()) {
                 const byDate = await resolveSetRecordByDate(requestedDate);
                 if (byDate?.setId) {
@@ -314,13 +1947,25 @@
                     stored = byDate;
                 }
             }
+
+            if (!currentSetId && !requestedDate && !isDeveloperMode()) {
+                const latest = await resolveLatestUserSetRecord();
+                if (latest?.setId) {
+                    currentSetId = latest.setId;
+                    stored = latest;
+                }
+            }
+
             if (window.toeflStorage) {
                 try {
                     if (currentSetId && typeof toeflStorage.getSetRecordById === "function") {
                         stored = await toeflStorage.getSetRecordById(currentSetId) || {};
                     }
-                } catch { /* fallback below */ }
+                } catch {
+                    stored = stored || {};
+                }
             }
+
             if (!stored.setDate) {
                 if (isCreateMode) {
                     stored = {};
@@ -331,26 +1976,31 @@
                     }
                 }
             }
+
             const today = new Date().toISOString().split("T")[0];
-            dateInput.value = requestedDate || stored.setDate || today;
-            difficultyInput.value = stored.difficulty || "intermediate";
+            const effectiveDate = requestedDate || stored.setDate || today;
+            if (dateInput) dateInput.value = effectiveDate;
+            if (difficultyInput) difficultyInput.value = stored.difficulty || "intermediate";
+            updatePackageLabel(effectiveDate);
+            await restoreAudioForCurrentSet();
         }
 
         async function saveSectionMeta() {
             const dateInput = document.getElementById("set-date");
             const difficultyInput = document.getElementById("set-difficulty");
-            const setDate = dateInput.value || new Date().toISOString().split("T")[0];
+            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
             const setId = ensureCurrentSetId(setDate);
             const record = {
                 setId,
                 module: MODULE_ID,
                 label: MODULE_LABEL,
                 setDate,
-                difficulty: difficultyInput.value || "intermediate",
+                difficulty: difficultyInput?.value || "intermediate",
                 updatedAt: new Date().toISOString()
             };
             upsertLocalRecord(record);
             updateEditorUrl(setId, setDate);
+            updatePackageLabel(setDate);
             if (window.toeflStorage && typeof toeflStorage.upsertSetRecord === "function") {
                 try {
                     await toeflStorage.upsertSetRecord(record);
@@ -361,334 +2011,429 @@
         }
 
         function initStructure() {
-            const userContainer = document.getElementById('user-passages-container');
-            const userNavContainer = document.getElementById('user-sub-nav-container');
-            const devContainer = document.getElementById('dev-panels-container');
-            const devNavContainer = document.getElementById('dev-sub-nav-container');
+            const sectionContainer = document.getElementById("question-sections-container");
+            const userNavContainer = document.getElementById("user-sub-nav-container");
+            const devContainer = document.getElementById("dev-panels-container");
+            const devNavContainer = document.getElementById("dev-sub-nav-container");
 
-            const audioBtn = document.createElement('button');
-            audioBtn.className = 'dev-sub-btn active'; 
-            audioBtn.onclick = (e) => openSubTab(e, 'dev-audio-setup', 'dev-sub-btn');
-            audioBtn.innerText = '🎵 Setup Audio Utama';
+            if (!sectionContainer || !userNavContainer || !devContainer || !devNavContainer) return;
+
+            const audioBtn = document.createElement("button");
+            audioBtn.className = "dev-sub-btn active";
+            audioBtn.onclick = (event) => openSubTab(event, "dev-audio-setup", "dev-sub-btn");
+            audioBtn.innerText = "Setup Main Audio";
             devNavContainer.appendChild(audioBtn);
 
             devContainer.innerHTML += `
             <div id="dev-audio-setup" class="sub-content active">
                 <div class="dev-container">
-                    <div class="dev-card audio-card">
-                        <h2 class="dev-card-title" style="color:#6d28d9;">🎵 Konfigurasi Audio Listening</h2>
-                        <p style="font-size: 15px; color: #475569; line-height: 1.6;">Pilih file rekaman TOEFL Listening (MP3/WAV) dari perangkat Anda. File ini akan diputar di halaman User Simulator.</p>
-                        
-                        <div style="margin-top:20px; padding: 20px; background: #fff; border: 2px dashed #cbd5e1; text-align:center; border-radius: 8px;">
-                            <label for="audio-upload-file" class="audio-upload-label">📁 Pilih File Audio Lokal (.mp3)</label>
+                    <div class="dev-card">
+                        <h2 class="dev-card-title">Audio Configuration</h2>
+                        <p style="font-size:14px; color:#475569; line-height:1.6;">Choose a local MP3/WAV file. This audio is used in User Simulator mode.</p>
+                        <div style="margin-top:12px; padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
+                            <label for="audio-upload-file" class="audio-upload-label">Choose Local Audio File</label>
                             <input type="file" id="audio-upload-file" accept="audio/*" onchange="handleAudioUpload(event)">
-                            <div id="audio-file-name" style="margin-top: 15px; color: #333; font-weight: bold;">Belum ada file audio yang dipilih.</div>
+                            <div id="audio-file-name" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
                         </div>
                     </div>
                 </div>
             </div>`;
 
-            PARTS.forEach((part) => {
-                const p = part.id;
-                
-                userContainer.innerHTML += `
-                <div id="user-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
-                    <div class="user-main">
-                        <div class="section-instructions">
-                            <h3>${part.name} (${part.range})</h3>
-                            <p>${part.instr}</p>
-                        </div>
-                        <div id="display-questions-${p}"></div>
-                        ${p === PARTS.length ? `<button class="btn-submit-all" onclick="submitAnswers()">Submit Section 1 (Finish Test)</button>` : `<button class="btn-submit-all" style="background:#64748b" onclick="document.getElementById('btn-nav-${p+1}').click()">Proceed to ${PARTS[p].name} ➔</button>`}
-                    </div>
+            userNavContainer.innerHTML = PARTS.map((part) => {
+                const buttons = [];
+                for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
+                    const uid = `${part.id}_${questionNumber}`;
+                    buttons.push(`<button type="button" class="navigator-btn" data-uid="${uid}" onclick="scrollToQuestion('${uid}')">${questionNumber}</button>`);
+                }
+                return `
+                <div class="navigator-group">
+                    <div class="navigator-group__title">${part.name.replace(/:.+$/, "")}</div>
+                    <div class="navigator-grid">${buttons.join("")}</div>
                 </div>`;
+            }).join("");
 
-                userNavContainer.innerHTML += `<button id="btn-nav-${p}" class="user-sub-btn ${p === 1 ? 'active' : ''}" onclick="openSubTab(event, 'user-part-${p}', 'user-sub-btn')">${part.name}</button>`;
+            sectionContainer.innerHTML = PARTS.map((part) => {
+                return `
+                <section class="question-section" id="user-part-${part.id}">
+                    <h3 class="question-section__meta">${part.name} - ${part.range}</h3>
+                    <div id="display-questions-${part.id}"></div>
+                </section>`;
+            }).join("");
 
-                const devBtn = document.createElement('button');
-                devBtn.className = `dev-sub-btn`;
-                devBtn.onclick = (e) => openSubTab(e, `dev-part-${p}`, 'dev-sub-btn');
-                devBtn.innerText = `✏️ Edit ${part.name}`;
+            PARTS.forEach((part) => {
+                const devBtn = document.createElement("button");
+                devBtn.className = "dev-sub-btn";
+                devBtn.onclick = (event) => openSubTab(event, `dev-part-${part.id}`, "dev-sub-btn");
+                devBtn.innerText = `Edit ${part.name}`;
                 devNavContainer.appendChild(devBtn);
 
-                let hintHTML = `💡 <strong>Fitur SMART PASTE:</strong> Cukup <i>copy</i> teks opsi A,B,C,D dari PDF asli (meskipun tidak ada hurufnya) beserta teks transkripnya dan <i>paste</i> di sini. Selama ada Angka (1., 2.), sistem akan otomatis mengubah 4 baris terbawahnya menjadi opsi (A), (B), (C), (D)!`;
-                
-                let placeholderSoal = `Coba copy-paste seperti ini:\n1.\nMan: Did you finish reading the chapter for biology?\nWoman: I barely made a dent in it.\nNarrator: What does the woman mean?\n(A) She dropped the book.\n(B) She hasn't read much of the chapter.\n(C) She finished it quickly.\n(D) She damaged the book.`;
+                const hintHTML = "Use smart paste: place question number lines (1., 2., ...) and ensure the last 4 lines of each block are options A-D.";
+                const placeholderQuestion = "1.\nMan: Did you finish reading the chapter for biology?\nWoman: I barely made a dent in it.\nNarrator: What does the woman mean?\n(A) She dropped the book.\n(B) She has not read much of the chapter.\n(C) She finished it quickly.\n(D) She damaged the book.";
 
                 devContainer.innerHTML += `
-                <div id="dev-part-${p}" class="sub-content">
+                <div id="dev-part-${part.id}" class="sub-content">
                     <div class="dev-container">
                         <div class="dev-card">
-                            <h3 class="dev-card-title">📝 Opsi Soal: ${part.name}</h3>
+                            <h3 class="dev-card-title">Question Options: ${part.name}</h3>
                             <div class="dev-hint">${hintHTML}</div>
-                            
-                            <div class="format-toolbar header-soal">
-                                <span style="font-size:14px; font-weight:bold;">Input Opsi (Gunakan Smart Paste)</span>
-                            </div>
-                            <textarea id="input-magic-questions-${p}" class="smart-textarea" placeholder="${placeholderSoal}"></textarea>
+                            <div class="format-toolbar header-soal"><span style="font-size:14px; font-weight:700;">Question Input (Smart Paste)</span></div>
+                            <textarea id="input-magic-questions-${part.id}" class="smart-textarea" placeholder="${placeholderQuestion}"></textarea>
                         </div>
-
                         <div class="dev-card keys-card">
-                            <h3 class="dev-card-title">✔️ Setup Kunci Jawaban & Transcript</h3>
-                            <div style="display:flex; gap:20px; flex-wrap: wrap;">
-                                <div style="flex:1; min-width: 250px;">
-                                    <div class="format-toolbar header-kunci"><span style="font-weight:bold; font-size:14px;">🔑 Kunci Jawaban</span></div>
-                                    <textarea id="input-answer-key-${p}" class="answer-textarea" placeholder="Format penulisan:\n1. a\n2. b"></textarea>
+                            <h3 class="dev-card-title">Answer Key and Transcript</h3>
+                            <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                                <div style="flex:1; min-width:250px;">
+                                    <div class="format-toolbar header-kunci"><span style="font-weight:700; font-size:14px;">Answer Key</span></div>
+                                    <textarea id="input-answer-key-${part.id}" class="answer-textarea" placeholder="1. a\n2. b"></textarea>
                                 </div>
-                                <div style="flex:2; min-width: 250px;">
-                                    <div class="format-toolbar header-bahas"><span style="font-weight:bold; font-size:14px;">💡 Transcript / Pembahasan (Opsional)</span></div>
-                                    <textarea id="input-explanation-${p}" class="explanation-textarea" placeholder="Tulis transkrip audio di sini...\n1. Man: I need to deposit this money.\nWoman: The teller is right over there.\nQuestion: Where does this conversation take place?"></textarea>
+                                <div style="flex:2; min-width:250px;">
+                                    <div class="format-toolbar header-bahas"><span style="font-weight:700; font-size:14px;">Transcript / Explanation (Optional)</span></div>
+                                    <textarea id="input-explanation-${part.id}" class="explanation-textarea" placeholder="1. Man: ...\nWoman: ...\nQuestion: ..."></textarea>
                                 </div>
                             </div>
                         </div>
-
                     </div>
                 </div>`;
             });
 
-            // GUIDE TAB
-            const guideBtn = document.createElement('button');
-            guideBtn.className = 'dev-sub-btn btn-guide';
-            guideBtn.onclick = (e) => openSubTab(e, 'dev-guide', 'dev-sub-btn');
-            guideBtn.innerText = '📖 Cara Smart Paste';
+            const guideBtn = document.createElement("button");
+            guideBtn.className = "dev-sub-btn btn-guide";
+            guideBtn.onclick = (event) => openSubTab(event, "dev-guide", "dev-sub-btn");
+            guideBtn.innerText = "Smart Paste Guide";
             devNavContainer.appendChild(guideBtn);
 
             devContainer.innerHTML += `
             <div id="dev-guide" class="sub-content">
                 <div class="dev-container">
                     <div class="dev-card guide-card">
-                        <h2 class="dev-card-title" style="font-size:22px; color:#d97706;">📖 Panduan Smart Paste</h2>
-                        
-                        <div style="background:#fef2f2; padding:20px; border-left:4px solid #ef4444; border-radius:4px; margin-bottom:20px;">
-                            <strong style="color:#b91c1c; font-size:16px;">🔥 Lupakan Mengetik (A), (B), (C), (D) Manual!</strong><br><br>
-                            Simulator ini memiliki mesin pintar yang bisa membaca hasil <i>Copy-Paste</i> mentah dari file PDF Anda, termasuk transkrip percakapannya.<br><br>
-                            
-                            <strong>Syaratnya sangat mudah:</strong><br>
-                            1. Baris pertama harus berupa <strong>Angka lalu Titik</strong> (Contoh: <code>1.</code> atau <code>15.</code>)<br>
-                            2. Letakkan teks apapun (seperti dialog) di bawahnya.<br>
-                            3. Pastikan <strong>4 baris terakhir</strong> sebelum angka berikutnya adalah opsi A, B, C, D.<br><br>
-
-                            <em>Contoh Teks yang Anda Paste:</em><br>
-<pre style="background:#fff; padding:10px; border:1px solid #ccc; font-family:monospace; margin-top:10px;">
-1.
-Man: Did you finish reading the chapter for biology?
-Woman: I barely made a dent in it.
-Narrator: What does the woman mean?
-(A) She dropped the book.
-(B) She hasn't read much of the chapter.
-(C) She finished it quickly.
-(D) She damaged the book.
-</pre>
-                            <br>Saat Anda klik tombol Update, sistem akan <strong>otomatis mengabaikan teks dialog</strong> dan hanya mengubah 4 baris paling bawah menjadi format interaktif A, B, C, dan D!
+                        <h2 class="dev-card-title">Smart Paste Guide</h2>
+                        <div style="background:#fef2f2; padding:16px; border-left:4px solid #ef4444; border-radius:4px;">
+                            <strong>Use this fast input format:</strong><br><br>
+                            1. Start each question with number + dot (example: <code>1.</code> or <code>25.</code>).<br>
+                            2. Put dialogue/transcript lines under it.<br>
+                            3. Keep the last 4 lines before next number as options A/B/C/D.<br><br>
+                            The parser automatically uses the last four lines as answer options.
                         </div>
                     </div>
                 </div>
             </div>`;
         }
 
-        function handleAudioUpload(event) {
+        async function handleAudioUpload(event) {
             const file = event.target.files[0];
-            if (file) {
-                const audioURL = URL.createObjectURL(file);
-                document.getElementById('cbt-audio-player').src = audioURL;
-                document.getElementById('audio-file-name').innerText = "✅ File siap diputar: " + file.name;
-                document.getElementById('audio-file-name').style.color = "green";
-                alert("Audio berhasil di-load! Silakan cek di tab 'Simulasi Ujian User'.");
+            if (!file) return;
+
+            const dateInput = document.getElementById("set-date");
+            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
+            const setId = ensureCurrentSetId(setDate);
+
+            setAudioSourceFromBlob(file);
+            setAudioLabelReady(file.name);
+
+            try {
+                const persisted = await saveAudioRecord({
+                    id: getAudioStorageKey(setId),
+                    setId,
+                    module: MODULE_ID,
+                    fileName: file.name,
+                    mimeType: file.type || "audio/mpeg",
+                    updatedAt: new Date().toISOString(),
+                    blob: file
+                });
+                if (!persisted) {
+                    throw new Error("IndexedDB is unavailable in this context");
+                }
+                await saveSectionMeta();
+                alert("Audio loaded and saved successfully.");
+            } catch (error) {
+                console.warn("[AudioPersistence] save failed:", error);
+                alert("Audio loaded, but failed to persist for reload.");
             }
         }
 
         function openTab(evt, tabName) {
-            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-            document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
-            document.getElementById(tabName).classList.add("active");
-            evt.currentTarget.classList.add("active");
+            document.querySelectorAll(".tab-content").forEach((content) => content.classList.remove("active"));
+            document.querySelectorAll(".tab-button").forEach((button) => button.classList.remove("active"));
+            const target = document.getElementById(tabName);
+            if (target) target.classList.add("active");
+            if (evt?.currentTarget) evt.currentTarget.classList.add("active");
         }
 
         function isDeveloperMode() {
             return window.location.hash === "#dev-view";
         }
 
+        function isDeveloperPreviewMode() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("preview") === "developer";
+        }
+
+        function setDeveloperPreviewMode(enabled) {
+            const url = new URL(window.location.href);
+            if (enabled) {
+                url.searchParams.set("preview", "developer");
+            } else {
+                url.searchParams.delete("preview");
+            }
+            window.history.replaceState({}, "", `${url.pathname}?${url.searchParams.toString()}${url.hash}`);
+        }
+
+        function updateDeveloperButtonVisibility() {
+            const developerButton = document.getElementById("open-dev-mode-btn");
+            if (!developerButton) return;
+            developerButton.style.display = isDeveloperPreviewMode() ? "inline-flex" : "none";
+        }
+
+        function shouldShowOnboarding() {
+            if (isDeveloperMode() || isDeveloperPreviewMode()) return false;
+            return localStorage.getItem(ONBOARDING_KEY) !== "1";
+        }
+
+        function dismissOnboarding() {
+            const overlay = document.getElementById("onboarding-overlay");
+            if (!overlay) return;
+            overlay.classList.remove("is-visible");
+            overlay.setAttribute("aria-hidden", "true");
+            localStorage.setItem(ONBOARDING_KEY, "1");
+        }
+
+        function updateOnboardingVisibility() {
+            const overlay = document.getElementById("onboarding-overlay");
+            if (!overlay) return;
+            if (!isDeveloperMode() && shouldShowOnboarding()) {
+                overlay.classList.add("is-visible");
+                overlay.setAttribute("aria-hidden", "false");
+                return;
+            }
+            overlay.classList.remove("is-visible");
+            overlay.setAttribute("aria-hidden", "true");
+        }
+
+        function openUserPreviewFromDeveloper() {
+            updateUserView(true);
+            setDeveloperPreviewMode(true);
+            window.location.hash = "#user-view";
+            applyViewMode();
+            syncAudioPanelFromView();
+        }
+
+        function openDeveloperEditor() {
+            window.location.hash = "#dev-view";
+            applyViewMode();
+        }
+
         function applyViewMode() {
-            if (isDeveloperMode()) return;
-            const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
-            if (devButton) devButton.remove();
-            const devView = document.getElementById("dev-view");
-            if (devView) devView.remove();
-            const userButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'user-view'"));
             const userView = document.getElementById("user-view");
+            const devView = document.getElementById("dev-view");
+            updateDeveloperButtonVisibility();
+            if (isDeveloperMode()) {
+                if (userView) userView.classList.remove("active");
+                if (devView) devView.classList.add("active");
+                updateOnboardingVisibility();
+                return;
+            }
+            if (devView) devView.classList.remove("active");
             if (userView) userView.classList.add("active");
-            if (userButton) userButton.classList.add("active");
+            updateOnboardingVisibility();
         }
 
         function activateInitialTab() {
             if (!isDeveloperMode()) return;
-            const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
-            if (devButton) {
-                openTab({ currentTarget: devButton }, 'dev-view');
-            }
+            const userView = document.getElementById("user-view");
+            const devView = document.getElementById("dev-view");
+            if (userView) userView.classList.remove("active");
+            if (devView) devView.classList.add("active");
         }
 
         function openSubTab(evt, tabName, btnClass) {
-            const parent = document.getElementById(tabName).parentElement;
-            parent.querySelectorAll(".sub-content").forEach(c => c.classList.remove("active"));
-            const navContainer = btnClass.includes('user') ? document.getElementById('user-sub-nav-container') : document.getElementById('dev-sub-nav-container');
-            navContainer.querySelectorAll(`.${btnClass}`).forEach(b => b.classList.remove("active"));
-            document.getElementById(tabName).classList.add("active");
-            evt.currentTarget.classList.add("active");
+            const target = document.getElementById(tabName);
+            if (!target) return;
+            const parent = target.parentElement;
+            parent.querySelectorAll(".sub-content").forEach((content) => content.classList.remove("active"));
+            const navContainer = btnClass.includes("user") ? document.getElementById("user-sub-nav-container") : document.getElementById("dev-sub-nav-container");
+            if (navContainer) navContainer.querySelectorAll(`.${btnClass}`).forEach((button) => button.classList.remove("active"));
+            target.classList.add("active");
+            if (evt?.currentTarget) evt.currentTarget.classList.add("active");
         }
 
-        let globalAnswerKey = {};
-        let globalExplanations = {};
-        let globalQuestions = {};
-        let timerInterval;
-
-        // ENGINE SMART PASTE LISTENING (MODIFIED)
         function updateUserView(shouldSaveMeta = false) {
             if (shouldSaveMeta) {
                 saveSectionMeta();
                 saveSectionDraft();
             }
-            document.getElementById('global-score-board').style.display = 'none';
+
+            const scoreBoard = document.getElementById("global-score-board");
+            if (scoreBoard) scoreBoard.style.display = "none";
+
             globalAnswerKey = {};
             globalExplanations = {};
             globalQuestions = {};
+            questionOrder = [];
 
             PARTS.forEach((part) => {
-                let p = part.id;
+                const p = part.id;
+                const answerKeyElement = document.getElementById(`input-answer-key-${p}`);
+                const explanationElement = document.getElementById(`input-explanation-${p}`);
+                const questionsElement = document.getElementById(`input-magic-questions-${p}`);
+                const displayElement = document.getElementById(`display-questions-${p}`);
+                if (!answerKeyElement || !explanationElement || !questionsElement || !displayElement) return;
 
-                document.getElementById(`input-answer-key-${p}`).value.split('\n').forEach(l => {
-                    let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
-                    if(m) globalAnswerKey[`${p}_${m[1]}`] = m[2].trim().toLowerCase();
+                answerKeyElement.value.split("\n").forEach((line) => {
+                    const match = line.match(/^(\d+)[\.\)]?\s+(.*)/);
+                    if (match) globalAnswerKey[`${p}_${match[1]}`] = match[2].trim().toLowerCase();
                 });
 
                 let currentExpNum = null;
-                document.getElementById(`input-explanation-${p}`).value.split('\n').forEach(l => {
-                    let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
-                    if(m) { currentExpNum = `${p}_${m[1]}`; globalExplanations[currentExpNum] = m[2].trim(); }
-                    else if(currentExpNum && l.trim()) globalExplanations[currentExpNum] += "<br>" + l.trim();
+                explanationElement.value.split("\n").forEach((line) => {
+                    const match = line.match(/^(\d+)[\.\)]?\s+(.*)/);
+                    if (match) {
+                        currentExpNum = `${p}_${match[1]}`;
+                        globalExplanations[currentExpNum] = match[2].trim();
+                    } else if (currentExpNum && line.trim()) {
+                        globalExplanations[currentExpNum] += "<br>" + line.trim();
+                    }
                 });
 
-                // Filter baris kosong agar pembacaan array lebih mulus
-                const lines = document.getElementById(`input-magic-questions-${p}`).value.split('\n').filter(l => l.trim() !== '');
-                let cleanHtml = '';
-                
-                // Grouping baris menjadi blok per-nomor soal
-                let blocks = [];
+                const lines = questionsElement.value.split("\n").filter((line) => line.trim() !== "");
+                const blocks = [];
                 let currentBlock = null;
 
-                for (let i = 0; i < lines.length; i++) {
-                    let rawLine = lines[i].trim();
-                    
-                    // Cek apakah baris ini dimulai dengan angka (sebagai awal nomor soal)
-                    let qMatch = rawLine.match(/^(\d+)[\.\)]?\s*(.*)/);
-
-                    // Jika ini awal nomor baru dan (blok saat ini belum ada ATAU blok sebelumnya sudah memiliki >= 4 baris)
-                    if (qMatch && (!currentBlock || currentBlock.lines.length >= 4)) {
+                for (let index = 0; index < lines.length; index += 1) {
+                    const rawLine = lines[index].trim();
+                    const questionMatch = rawLine.match(/^(\d+)[\.\)]?\s*(.*)/);
+                    if (questionMatch && (!currentBlock || currentBlock.lines.length >= 4)) {
                         if (currentBlock) blocks.push(currentBlock);
-                        currentBlock = {
-                            num: qMatch[1],
-                            text: qMatch[2],
-                            lines: []
-                        };
+                        currentBlock = { num: questionMatch[1], text: questionMatch[2], lines: [] };
                     } else if (currentBlock) {
                         currentBlock.lines.push(rawLine);
                     }
                 }
                 if (currentBlock) blocks.push(currentBlock);
 
-                let letters = ['A', 'B', 'C', 'D'];
+                const letters = ["A", "B", "C", "D"];
+                let cleanHtml = "";
 
-                // Render setiap blok soal ke dalam HTML
-                blocks.forEach(block => {
-                    let currentQuestionNum = block.num;
-                    let uid = `${p}_${currentQuestionNum}`;
-                    
-                    cleanHtml += `<div class="question-item" id="q-container-${uid}">`;
-                    cleanHtml += `<span class="question-number">${currentQuestionNum}.</span>`;
-                    
-                    // Jika ada teks setelah angka di baris yang sama, render juga (menjaga fitur lama)
-                    if (block.text.trim() !== '') {
-                        cleanHtml += `<p style="margin-bottom: 10px;">${block.text}</p>`;
-                    }
-                    
+                blocks.forEach((block) => {
+                    const questionNumber = block.num;
+                    const uid = `${p}_${questionNumber}`;
+                    const flagged = isQuestionFlagged(uid);
+                    const questionText = escapeHtml((block.text || "").trim());
+                    const options = block.lines.slice(-4);
+                    questionOrder.push(uid);
+
+                    cleanHtml += `<article class="question-item ${flagged ? "is-flagged" : ""}" id="q-container-${uid}" data-uid="${uid}">`;
+                    cleanHtml += `<div class="question-number-badge">${questionNumber}</div>`;
+                    cleanHtml += `<div class="question-content">`;
+                    if (questionText !== "") cleanHtml += `<h4 class="question-title">${questionText}</h4>`;
                     cleanHtml += `<div class="radio-group">`;
-                    
-                    // SMART FILTER: Hanya ambil maksimal 4 baris TERAKHIR dari blok sebagai opsi (Objektif)
-                    // Transkrip dialog (Man, Woman, Narrator) akan otomatis terabaikan
-                    let options = block.lines.slice(-4);
-                    
+
                     options.forEach((optLine, index) => {
-                        let letter = letters[index];
-                        // Bersihkan teks manual jika developer mengetik (A), (B) agar tidak dobel
-                        let cleanOptionText = optLine.replace(/^[\(]?([A-D])[\.\)]?\s*/i, '');
-
-                        cleanHtml += `<label>
-                            <input type="radio" name="q_${uid}" value="${letter.toLowerCase()}"> 
-                            <span class="option-letter">(${letter})</span> 
-                            <span>${cleanOptionText}</span>
-                        </label>`;
+                        const letter = letters[index];
+                        const cleanOptionText = escapeHtml(optLine.replace(/^[\(]?([A-D])[\.\)]?\s*/i, ""));
+                        cleanHtml += `<label><input type="radio" name="q_${uid}" value="${letter.toLowerCase()}" onchange="refreshExamState()"><span class="option-letter">(${letter})</span><span>${cleanOptionText}</span></label>`;
                     });
-                    
-                    // Capture structured question data for the review page
-                    const qOpts = {};
-                    options.forEach((optLine, idx) => { qOpts[letters[idx]] = optLine.replace(/^[\(]?([A-D])[\.]\)?\s*/i, ''); });
-                    globalQuestions[uid] = { questionText: block.text.trim() || `Question ${currentQuestionNum}`, options: qOpts };
 
-                    // Tutup div untuk soal
-                    cleanHtml += `</div><div class="feedback" id="feedback-${uid}"></div></div>`;
+                    cleanHtml += `</div>`;
+                    cleanHtml += `<div class="question-actions"><button type="button" class="flag-toggle ${flagged ? "active" : ""}" onclick="toggleQuestionFlag('${uid}')">${flagged ? "Flagged" : "Flag question"}</button></div>`;
+                    cleanHtml += `</div></article>`;
+
+                    const qOpts = {};
+                    options.forEach((optLine, index) => {
+                        qOpts[letters[index]] = optLine.replace(/^[\(]?([A-D])[\.\)]?\s*/i, "");
+                    });
+                    globalQuestions[uid] = { questionText: block.text.trim() || `Question ${questionNumber}`, options: qOpts };
                 });
 
-                document.getElementById(`display-questions-${p}`).innerHTML = cleanHtml;
+                displayElement.innerHTML = cleanHtml;
             });
+
+            if (!PARTS.find((part) => part.id === activePartId)) {
+                activePartId = 1;
+            }
+            setActivePart(activePartId, { resetScroll: false });
+            refreshExamState();
             startTimer();
         }
 
         function submitAnswers() {
-            let score = 0;
-            let total = Object.keys(globalAnswerKey).length;
-
-            if (total === 0) { alert("Data Kunci Jawaban masih kosong. Sistem tidak dapat melakukan penilaian."); return; }
-            if (!confirm("Yakin ingin mengakhiri Section 1 dan melihat skor?")) return;
+            const total = Object.keys(globalAnswerKey).length;
+            if (total === 0) {
+                alert("Answer key data is empty. Unable to score.");
+                return;
+            }
+            if (!confirm("Finish Section 1 and see your score?")) return;
 
             clearInterval(timerInterval);
-            document.getElementById('cbt-audio-player').pause();
+            const audio = document.getElementById("cbt-audio-player");
+            if (audio) {
+                audio.pause();
+                updateAudioShellStatus();
+            }
 
-            for (let uid in globalAnswerKey) {
+            let score = 0;
+            for (const uid in globalAnswerKey) {
                 const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
-                const userAnswer = radio ? radio.value.trim().toLowerCase() : '';
-                if (userAnswer === globalAnswerKey[uid]) score++;
+                const userAnswer = radio ? radio.value.trim().toLowerCase() : "";
+                if (userAnswer === globalAnswerKey[uid]) score += 1;
             }
 
             const scaledScore = Math.round(31 + ((score / total) * (68 - 31)));
 
-            const answeredQs = Object.keys(globalAnswerKey).map(uid => {
-                const pId = parseInt(uid.split('_')[0]);
-                const qNum = parseInt(uid.split('_')[1]);
+            const answeredQs = Object.keys(globalAnswerKey).map((uid) => {
+                const pId = parseInt(uid.split("_")[0], 10);
+                const qNum = parseInt(uid.split("_")[1], 10);
                 const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
-                const userAnswer = radio ? radio.value.trim().toLowerCase() : '';
+                const userAnswer = radio ? radio.value.trim().toLowerCase() : "";
                 const correct = globalAnswerKey[uid];
                 const q = globalQuestions[uid] || {};
-                const part = PARTS.find(pt => pt.id === pId) || {};
-                return { uid, number: qNum, partId: pId, partName: part.name || '', questionText: q.questionText || `Question ${qNum}`, options: q.options || {}, correctAnswer: correct, userAnswer, isCorrect: userAnswer === correct, explanation: globalExplanations[uid] || '' };
-            }).sort((a, b) => a.number - b.number);
+                const part = PARTS.find((item) => item.id === pId) || {};
+                return {
+                    uid,
+                    number: qNum,
+                    partId: pId,
+                    partName: part.name || "",
+                    questionText: q.questionText || `Question ${qNum}`,
+                    options: q.options || {},
+                    correctAnswer: correct,
+                    userAnswer,
+                    isCorrect: userAnswer === correct,
+                    explanation: globalExplanations[uid] || ""
+                };
+            }).sort((left, right) => left.number - right.number);
 
-            const result = { sectionTitle: "Section 1: Listening Comprehension", sectionKey: "listening", totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), questions: answeredQs };
-            localStorage.setItem('toefl_section1_result', JSON.stringify(result));
-            window.location.href = 'section 1-answered.html';
+            const result = {
+                sectionTitle: "Section 1: Listening Comprehension",
+                sectionKey: "listening",
+                totalQuestions: total,
+                rawScore: score,
+                scaledScore,
+                submittedAt: new Date().toISOString().slice(0, 10),
+                questions: answeredQs
+            };
+            localStorage.setItem("toefl_section1_result", JSON.stringify(result));
+            window.location.href = "section 1-answered.html";
         }
 
         function startTimer() {
-            let t = 2100; // 35 menit
+            let t = 2100;
             clearInterval(timerInterval);
-            document.getElementById('time').style.color = "#d32f2f";
+            const timerElement = document.getElementById("time");
+            if (timerElement) {
+                timerElement.style.color = "#005faa";
+                timerElement.style.animation = "none";
+            }
             timerInterval = setInterval(() => {
-                let m = Math.floor(t/60), s = t%60;
-                document.getElementById('time').innerText = `${m<10?'0'+m:m}:${s<10?'0'+s:s}`;
-                if(t <= 180) { document.getElementById('time').style.animation = "blink 1s infinite"; }
-                if(--t < 0) { 
-                    clearInterval(timerInterval); 
-                    alert("Waktu Habis! Jawaban Anda disubmit otomatis.");
-                    submitAnswers(); 
+                const minutes = Math.floor(t / 60);
+                const seconds = t % 60;
+                if (timerElement) timerElement.innerText = `${minutes < 10 ? "0" + minutes : minutes}:${seconds < 10 ? "0" + seconds : seconds}`;
+                if (timerElement && t <= 180) {
+                    timerElement.style.color = "#d32f2f";
+                    timerElement.style.animation = "blink 1s infinite";
+                }
+                if (--t < 0) {
+                    clearInterval(timerInterval);
+                    alert("Time is up. Answers will be auto-submitted.");
+                    submitAnswers();
                 }
             }, 1000);
         }
@@ -698,16 +2443,18 @@ Narrator: What does the woman mean?
             await loadSectionMeta();
             await loadSectionDraft();
             updateUserView();
+            setupAudioInteractions();
+            syncAudioPanelFromView();
             applyViewMode();
             activateInitialTab();
+            window.addEventListener("hashchange", applyViewMode);
+            updateOnboardingVisibility();
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
             if (setDateEl) setDateEl.addEventListener("change", saveSectionMeta);
             if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
+            window.addEventListener("beforeunload", revokeCurrentAudioUrl);
         };
     </script>
-    <style>
-        @keyframes blink { 50% { opacity: 0.5; color: red; } }
-    </style>
 </body>
 </html>
