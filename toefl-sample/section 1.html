@@ -1312,6 +1312,17 @@
             audio.currentTime = 0;
             audioIsLocked = false;
             updateAudioShellStatus();
+
+                function setAudioSourceFromUrl(url) {
+                    const audio = document.getElementById("cbt-audio-player");
+                    if (!audio || !url) return;
+                    revokeCurrentAudioUrl();
+                    currentAudioObjectUrl = null;
+                    audio.src = url;
+                    audio.currentTime = 0;
+                    audioIsLocked = false;
+                    updateAudioShellStatus();
+                }
         }
 
         async function restoreAudioForCurrentSet(partId = activePartId || 1) {
@@ -1321,11 +1332,11 @@
             }
 
             try {
-                // Try Firebase first (cross-machine sync)
-                const firebaseBlob = await window.toeflStorage.getAudioFromFirebase(currentSetId, partId).catch(() => null);
-                if (firebaseBlob) {
-                    setAudioSourceFromBlob(firebaseBlob);
-                    setAudioLabelReady(`firebase audio`, partId);
+                // Try Firebase Storage first (cross-machine sync)
+                const storageUrl = await window.toeflStorage.getAudioFromFirebase(currentSetId, partId).catch(() => null);
+                if (storageUrl) {
+                    setAudioSourceFromUrl(storageUrl);
+                    setAudioLabelReady(`cloud audio`, partId);
                     return true;
                 }
 
@@ -1373,10 +1384,10 @@
 
             await Promise.all(AUDIO_PART_IDS.map(async (partId) => {
                 try {
-                    // Try Firebase first
-                    const firebaseBlob = await window.toeflStorage.getAudioFromFirebase(currentSetId, partId).catch(() => null);
-                    if (firebaseBlob) {
-                        setAudioLabelReady(`firebase saved`, partId);
+                    // Try Firebase Storage first
+                    const storageUrl = await window.toeflStorage.getAudioFromFirebase(currentSetId, partId).catch(() => null);
+                    if (storageUrl) {
+                        setAudioLabelReady(`cloud saved`, partId);
                         return;
                     }
 
@@ -1854,10 +1865,10 @@
             try {
                 // Try to get audio from Firebase for current set
                 if (currentSetId) {
-                    const firebaseBlob = await window.toeflStorage.getAudioFromFirebase(currentSetId, activePartId || 1).catch(() => null);
-                    if (firebaseBlob) {
-                        setAudioSourceFromBlob(firebaseBlob);
-                        setAudioLabelReady("firebase audio", Number(activePartId || 1));
+                    const storageUrl = await window.toeflStorage.getAudioFromFirebase(currentSetId, activePartId || 1).catch(() => null);
+                    if (storageUrl) {
+                        setAudioSourceFromUrl(storageUrl);
+                        setAudioLabelReady("cloud audio", Number(activePartId || 1));
                         return Boolean(audio.src);
                     }
                 }
