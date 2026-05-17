@@ -2303,8 +2303,6 @@
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
             const setId = ensureCurrentSetId(setDate);
 
-            // Firebase RTDB safe limit: ~7.5 MB raw (becomes ~10 MB as base64)
-            const MAX_FIREBASE_BYTES = 7.5 * 1024 * 1024;
             const fileMB = (file.size / 1024 / 1024).toFixed(1);
 
             setAudioSourceFromBlob(file);
@@ -2327,12 +2325,7 @@
                 }
                 await saveSectionMeta();
 
-                // Step 2: Upload to Firebase for cross-device sync
-                if (file.size > MAX_FIREBASE_BYTES) {
-                    alert(`Audio saved on this device only.\n\n⚠ File is too large for cross-device sync (${fileMB} MB — max ~7.5 MB).\n\nTo make audio work on other devices, use a smaller/compressed audio file.`);
-                    return;
-                }
-
+                // Step 2: Upload to Firebase Storage for cross-device sync
                 const fileLabel = document.getElementById(getAudioFileLabelId(partId));
                 if (fileLabel) { fileLabel.innerText = `${file.name} — uploading…`; fileLabel.style.color = "#b45309"; }
 
