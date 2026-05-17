@@ -1590,6 +1590,17 @@
         function setActivePart(partId, options = {}) {
             const { resetScroll = true } = options;
             const targetPart = PARTS.find((item) => item.id === partId) ? partId : 1;
+            
+            // Stop current audio if switching to a different part
+            if (activePartId !== targetPart) {
+                const audio = document.getElementById("cbt-audio-player");
+                if (audio) {
+                    audio.pause();
+                    audio.src = "";
+                    audio.currentTime = 0;
+                }
+            }
+            
             activePartId = targetPart;
 
             PARTS.forEach((part) => {
