@@ -356,6 +356,130 @@ class ToeflStorageSync {
     localStorage.setItem(this._draftLocalKey(module), JSON.stringify(draft || {}));
   }
 
+  // ─── AUDIO FILES (Firebase Realtime Database) ──────────────────────────────
+
+  /**
+   * Upload audio blob to Firebase
+   * @param {string} setId - The set ID
+   * @param {Blob} audioBlob - The audio file
+   * @param {number} partId - The part ID (1, 2, or 3)
+   * @returns {Promise<boolean>} Success status
+   */
+  async saveAudioToFirebase(setId, audioBlob, partId = 1) {
+    if (!setId || !audioBlob) {
+      console.warn('[ToeflSync] Missing setId or audioBlob for audio upload');
+      return false;
+    }
+
+    try {
+      // Convert blob to base64
+      const base64Data = await this._blobToBase64(audioBlob);
+      const payload = {
+        base64: base64Data,
+        partId: Number(partId || 1),
+        fileName: audioBlob.name || `audio_part${partId}.mp3`,
+        size: audioBlob.size,
+        type: audioBlob.type || 'audio/mpeg',
+        uploadedAt: new Date().toISOString()
+      };
+
+      const path = `toefl_itp/audio_v1/${setId}/part_${partId}`;
+      await this._put(path, payload);
+      this.isRemoteAvailable = true;
+      console.log('[ToeflSync] Audio saved to Firebase:', { setId, partId });
+      return true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline – audio ${setId} part ${partId} save failed:`, e.message);
+      return false;
+    }
+  }
+
+  /**
+   * Download audio blob from Firebase
+   * @param {string} setId - The set ID
+   * @param {number} partId - The part ID (1, 2, or 3)
+   * @returns {Promise<Blob|null>} Audio blob or null if not found
+   */
+  async getAudioFromFirebase(setId, partId = 1) {
+    if (!setId) {
+      console.warn('[ToeflSync] Missing setId for audio download');
+      return null;
+    }
+
+    try {
+      const path = `toefl_itp/audio_v1/${setId}/part_${partId}`;
+      const data = await this._get(path);
+      
+      if (!data || !data.base64) {
+        console.warn('[ToeflSync] No audio data found:', { setId, partId });
+        return null;
+      }
+
+      // Convert base64 back to blob
+      const blob = this._base64ToBlob(data.base64, data.type || 'audio/mpeg');
+      this.isRemoteAvailable = true;
+      console.log('[ToeflSync] Audio loaded from Firebase:', { setId, partId });
+      return blob;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline – audio ${setId} part ${partId} load failed:`, e.message);
+      return null;
+    }
+  }
+
+  /**
+   * Delete audio from Firebase
+   * @param {string} setId - The set ID
+   * @param {number} partId - The part ID (1, 2, or 3)
+   * @returns {Promise<boolean>} Success status
+   */
+  async deleteAudioFromFirebase(setId, partId = 1) {
+    if (!setId) return false;
+
+    try {
+      const path = `toefl_itp/audio_v1/${setId}/part_${partId}`;
+      await fetch(this._url(path), { method: 'DELETE' });
+      this.isRemoteAvailable = true;
+      console.log('[ToeflSync] Audio deleted from Firebase:', { setId, partId });
+      return true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Audio ${setId} part ${partId} delete failed:`, e.message);
+      return false;
+    }
+  }
+
+  /**
+   * Convert blob to base64 string
+   * @private
+   */
+  _blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        // Extract base64 data without the data URL prefix
+        const base64 = reader.result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  /**
+   * Convert base64 string back to blob
+   * @private
+   */
+  _base64ToBlob(base64, mimeType) {
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return new Blob([bytes], { type: mimeType });
+  }
+
   /** Convenience: returns true if last operation reached Firebase. */
   get online() { return this.isRemoteAvailable; }
 }
