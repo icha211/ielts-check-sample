@@ -1145,6 +1145,7 @@
     </div>
 
     <script src="toefl-storage-sync.js?v=20260506"></script>
+    <script src="audio-server-sync.js?v=20260506"></script>
     <script>
         const PARTS = [
             { id: 1, name: "Part A: Short Dialogues", range: "Questions 1-30", start: 1, end: 30, instr: "<strong>Directions:</strong> In Part A, you will hear short conversations between two people. After each conversation, you will hear a question about the conversation. The conversations and questions will not be repeated. After you hear a question, choose the best answer." },
@@ -1223,6 +1224,11 @@
                 store.put(record);
                 tx.oncomplete = () => {
                     db.close();
+                    // Also upload to server for cross-machine sync
+                    if (record.blob && record.setId) {
+                        AUDIO_SERVER.uploadAudio(record.setId, record.blob, record.partId || 1)
+                            .catch(err => console.warn('[Audio] Server upload failed:', err));
+                    }
                     resolve(true);
                 };
                 tx.onerror = () => {
@@ -1321,6 +1327,15 @@
             }
 
             try {
+                // Try server first (cross-machine sync)
+                const serverBlob = await AUDIO_SERVER.downloadAudio(currentSetId, partId).catch(() => null);
+                if (serverBlob) {
+                    setAudioSourceFromBlob(serverBlob);
+                    setAudioLabelReady(`server audio`, partId);
+                    return true;
+                }
+
+                // Fallback to IndexedDB
                 let record = await getAudioRecordBySetAndPart(currentSetId, partId);
                 // Backward compatibility: old builds stored only one file without part suffix.
                 if (!record && Number(partId) === 1) {
@@ -1364,6 +1379,14 @@
 
             await Promise.all(AUDIO_PART_IDS.map(async (partId) => {
                 try {
+                    // Try server first
+                    const serverBlob = await AUDIO_SERVER.downloadAudio(currentSetId, partId).catch(() => null);
+                    if (serverBlob) {
+                        setAudioLabelReady(`saved (server)`, partId);
+                        return;
+                    }
+
+                    // Fallback to IndexedDB
                     const record = await getAudioRecordBySetAndPart(currentSetId, partId);
                     if (record?.blob) {
                         setAudioLabelReady(record.fileName, partId);
@@ -1824,6 +1847,17 @@
             if (restoredCurrent && audio.src) return true;
 
             try {
+                // Try to get audio from server for current set
+                if (currentSetId) {
+                    const serverBlob = await AUDIO_SERVER.downloadAudio(currentSetId, activePartId || 1).catch(() => null);
+                    if (serverBlob) {
+                        setAudioSourceFromBlob(serverBlob);
+                        setAudioLabelReady("server audio", Number(activePartId || 1));
+                        return Boolean(audio.src);
+                    }
+                }
+
+                // Fallback to latest audio from IndexedDB
                 const latestAudio = await getLatestAudioRecordForModule(activePartId || 1);
                 if (!latestAudio || !latestAudio.blob) return false;
 

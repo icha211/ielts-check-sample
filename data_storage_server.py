@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
 Persistent Data Storage Server for IELTS Check Application
-Stores problems, test results, and schedules to JSON files
+Stores problems, test results, schedules to JSON files, and audio files
 """
 
 import json
 import os
 import threading
+import urllib.parse
+import base64
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +16,7 @@ from pathlib import Path
 
 # Configuration
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+AUDIO_DIR = os.path.join(DATA_DIR, "audio")
 STORAGE_PORT = int(os.getenv("STORAGE_PORT", "8788"))
 STORAGE_HOST = os.getenv("STORAGE_HOST", "127.0.0.1")
 
@@ -27,8 +30,9 @@ file_lock = threading.RLock()
 
 
 def ensure_data_dir():
-    """Create data directory if it doesn't exist"""
+    """Create data directory and audio subdirectory if they don't exist"""
     Path(DATA_DIR).mkdir(exist_ok=True)
+    Path(AUDIO_DIR).mkdir(exist_ok=True)
 
 
 def read_json_file(filepath, default=None):
@@ -152,6 +156,58 @@ def save_test_result(result_data):
         return result_data
 
 
+def get_audio_file_path(set_id, part_id=1):
+    """Get the file path for audio storage"""
+    return os.path.join(AUDIO_DIR, f"{set_id}_part{part_id}.mp3")
+
+
+def save_audio_file(set_id, part_id, audio_data):
+    """Save audio file from base64-encoded data"""
+    try:
+        file_path = get_audio_file_path(set_id, part_id)
+        # If audio_data is base64-encoded, decode it
+        if isinstance(audio_data, str):
+            try:
+                # Try to decode as base64
+                audio_bytes = base64.b64decode(audio_data)
+            except:
+                # If not base64, treat as binary string
+                audio_bytes = audio_data.encode('latin1')
+        else:
+            audio_bytes = audio_data
+        
+        with open(file_path, 'wb') as f:
+            f.write(audio_bytes)
+        return True
+    except Exception as e:
+        print(f"Error saving audio file: {e}")
+        return False
+
+
+def load_audio_file(set_id, part_id=1):
+    """Load audio file and return as binary"""
+    try:
+        file_path = get_audio_file_path(set_id, part_id)
+        if os.path.exists(file_path):
+            with open(file_path, 'rb') as f:
+                return f.read()
+    except Exception as e:
+        print(f"Error loading audio file: {e}")
+    return None
+
+
+def delete_audio_file(set_id, part_id=1):
+    """Delete audio file"""
+    try:
+        file_path = get_audio_file_path(set_id, part_id)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            return True
+    except Exception as e:
+        print(f"Error deleting audio file: {e}")
+    return False
+
+
 class StorageHandler(BaseHTTPRequestHandler):
     """HTTP request handler for data storage operations"""
     
@@ -192,6 +248,27 @@ class StorageHandler(BaseHTTPRequestHandler):
                 # Get all test results
                 results = get_test_results()
                 self._send(200, results)
+            
+            elif self.path.startswith('/api/audio/download/'):
+                # Download audio file
+                # Format: /api/audio/download/{setId}/{partId}
+                parts = self.path.split('/')
+                if len(parts) >= 5:
+                    set_id = urllib.parse.unquote(parts[4])
+                    part_id = int(parts[5]) if len(parts) > 5 else 1
+                    
+                    audio_data = load_audio_file(set_id, part_id)
+                    if audio_data:
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'audio/mpeg')
+                        self.send_header('Content-Length', str(len(audio_data)))
+                        self.send_header('Access-Control-Allow-Origin', '*')
+                        self.end_headers()
+                        self.wfile.write(audio_data)
+                    else:
+                        self._send(404, {"error": "Audio file not found"})
+                else:
+                    self._send(400, {"error": "Invalid audio download path"})
             
             else:
                 self._send(404, {"error": "Not found"})
@@ -244,6 +321,22 @@ class StorageHandler(BaseHTTPRequestHandler):
                 result = payload.get('result', {})
                 saved = save_test_result(result)
                 self._send(200, {"success": True, "result": saved})
+            
+            elif action == 'save-audio':
+                # Save audio file from base64 data
+                set_id = payload.get('setId')
+                part_id = payload.get('partId', 1)
+                audio_data = payload.get('audioData')  # base64-encoded
+                
+                if not set_id or not audio_data:
+                    self._send(400, {"error": "setId and audioData required"})
+                    return
+                
+                success = save_audio_file(set_id, part_id, audio_data)
+                if success:
+                    self._send(200, {"success": True, "message": "Audio saved"})
+                else:
+                    self._send(500, {"error": "Failed to save audio"})
             
             else:
                 self._send(400, {"error": "Unknown action"})
