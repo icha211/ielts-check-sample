@@ -267,8 +267,13 @@
             display: grid;
             grid-template-columns: minmax(0, 1fr) auto;
             gap: 24px;
-            padding: 24px;
+            padding: 24px 0 24px 24px;
             overflow: hidden;
+            position: relative;
+        }
+
+        .exam-body.is-navigator-collapsed {
+            grid-template-columns: minmax(0, 1fr);
         }
 
         .exam-main {
@@ -285,6 +290,10 @@
             box-shadow: 0 4px 2px rgba(0, 53, 96, 0.10);
             padding: 20px 22px 14px;
             color: #fff;
+            width: min(922px, calc(100% - 113px));
+            margin-left: 113px;
+            margin-right: auto;
+            box-sizing: border-box;
         }
         .audio-shell__title {
             margin: 0;
@@ -367,8 +376,7 @@
         }
 
         .question-item {
-            width: 855px;
-            max-width: 100%;
+            width: min(922px, calc(100% - 113px));
             min-height: 268px;
             box-sizing: border-box;
             background: #fff;
@@ -379,6 +387,8 @@
             grid-template-columns: 40px minmax(0, 1fr);
             gap: 24px;
             align-items: flex-start;
+            margin-left: 113px;
+            margin-right: auto;
         }
         .question-number-badge {
             width: 40px;
@@ -470,14 +480,21 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
-            width: 282px;
-            min-width: 282px;
+            width: 330px;
+            min-width: 330px;
+            height: 960px;
+            min-height: 960px;
+            padding: 24px;
+            box-sizing: border-box;
+            background: #fff;
             transition: width 0.25s ease, min-width 0.25s ease;
         }
         .navigator-panel.is-collapsed {
-            width: 124px;
-            min-width: 124px;
-            padding: 24px 12px 24px 24px;
+            width: 121px;
+            min-width: 121px;
+            height: 960px;
+            min-height: 960px;
+            padding: 24px;
             background: #fff;
             box-shadow: 0 4px 4px rgba(0, 53, 96, 0.10);
             border-top-left-radius: 8px;
@@ -487,27 +504,41 @@
             align-items: flex-end;
             justify-content: flex-start;
         }
+        .exam-body.is-navigator-collapsed .navigator-panel {
+            position: absolute;
+            top: 24px;
+            right: 0;
+            z-index: 3;
+        }
+        .exam-body.is-navigator-collapsed .audio-shell,
+        .exam-body.is-navigator-collapsed .question-item {
+            width: min(922px, 100%);
+            margin-left: auto;
+            margin-right: auto;
+        }
         .navigator-card {
-            background: #fff;
-            border: 1px solid var(--line-gray);
-            border-radius: 8px;
-            box-shadow: 0 4px 4px rgba(0, 53, 96, 0.10);
-            padding: 24px;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 0;
+            height: 100%;
+            box-sizing: border-box;
             min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
         }
         .navigator-panel.is-collapsed .navigator-card {
             width: 100%;
-            border: 1px solid var(--line-gray);
+            border: none;
             box-shadow: none;
-            padding: 20px;
+            padding: 0;
             overflow: hidden;
             min-height: auto;
             display: flex;
             justify-content: flex-end;
             align-items: flex-start;
-            border-radius: 8px;
+            border-radius: 0;
         }
         .navigator-header {
             display: flex;
@@ -920,6 +951,22 @@
             .exam-topbar__title { font-size: 28px; }
             .progress-duo { flex-wrap: wrap; }
             .topbar-controls { width: auto; justify-content: flex-start; }
+            .navigator-panel,
+            .navigator-panel.is-collapsed {
+                width: 100%;
+                min-width: 0;
+                height: auto;
+                min-height: 0;
+                padding: 16px;
+            }
+            .audio-shell,
+            .question-item,
+            .exam-body.is-navigator-collapsed .audio-shell,
+            .exam-body.is-navigator-collapsed .question-item {
+                width: 100%;
+                margin-left: 0;
+                margin-right: 0;
+            }
             .onboarding-overlay {
                 padding: 24px 18px 24px;
             }
@@ -1505,8 +1552,12 @@
 
         function toggleNavigatorPanel() {
             const panel = document.getElementById("navigator-panel");
+            const examBody = document.querySelector(".exam-body");
             if (!panel) return;
-            panel.classList.toggle("is-collapsed");
+            const isCollapsed = panel.classList.toggle("is-collapsed");
+            if (examBody) {
+                examBody.classList.toggle("is-navigator-collapsed", isCollapsed);
+            }
         }
 
         function setAudioShellTitle(partId) {
