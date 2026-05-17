@@ -935,7 +935,7 @@
             cursor: pointer;
             font-size: 14px;
         }
-        #audio-upload-file { display: none; }
+        .audio-upload-file { display: none; }
 
         @keyframes blink { 50% { opacity: 0.55; } }
         @keyframes progress-sheen {
@@ -1166,6 +1166,7 @@
             2: "Part B: Extended Conversation",
             3: "Part C: Short Talks"
         };
+        const AUDIO_PART_IDS = [1, 2, 3];
         const PART_PROGRESS_SEGMENTS = {
             1: { start: 0, end: 30 },
             2: { start: 30, end: 40 },
@@ -1188,8 +1189,8 @@
         let audioIsLocked = false;
         let currentAudioObjectUrl = "";
 
-        function getAudioStorageKey(setId) {
-            return `${MODULE_ID}:${setId}`;
+        function getAudioStorageKey(setId, partId = 1) {
+            return `${MODULE_ID}:${setId}:part-${partId}`;
         }
 
         function openAudioDatabase() {
@@ -1231,7 +1232,7 @@
             }));
         }
 
-        function getAudioRecordBySetId(setId) {
+        function getAudioRecordBySetAndPart(setId, partId = 1) {
             if (!setId) return Promise.resolve(null);
             return openAudioDatabase().then((db) => new Promise((resolve, reject) => {
                 if (!db) {
@@ -1240,7 +1241,7 @@
                 }
                 const tx = db.transaction(AUDIO_STORE_NAME, "readonly");
                 const store = tx.objectStore(AUDIO_STORE_NAME);
-                const request = store.get(getAudioStorageKey(setId));
+                const request = store.get(getAudioStorageKey(setId, partId));
                 request.onsuccess = () => {
                     db.close();
                     resolve(request.result || null);
@@ -1252,7 +1253,7 @@
             }));
         }
 
-        function getLatestAudioRecordForModule() {
+        function getLatestAudioRecordForModule(partId = null) {
             return openAudioDatabase().then((db) => new Promise((resolve, reject) => {
                 if (!db) {
                     resolve(null);
@@ -1264,6 +1265,7 @@
                 request.onsuccess = () => {
                     const latest = (request.result || [])
                         .filter((item) => item && item.module === MODULE_ID && item.setId && item.blob)
+                        .filter((item) => partId == null || Number(item.partId || 1) === Number(partId))
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
                     db.close();
                     resolve(latest);
@@ -1282,15 +1284,19 @@
             }
         }
 
-        function setAudioLabelReady(fileName) {
-            const fileLabel = document.getElementById("audio-file-name");
+        function getAudioFileLabelId(partId = 1) {
+            return `audio-file-name-${partId}`;
+        }
+
+        function setAudioLabelReady(fileName, partId = 1) {
+            const fileLabel = document.getElementById(getAudioFileLabelId(partId));
             if (!fileLabel) return;
             fileLabel.innerText = `Ready to play: ${fileName || "saved audio"}`;
             fileLabel.style.color = "green";
         }
 
-        function setAudioLabelEmpty() {
-            const fileLabel = document.getElementById("audio-file-name");
+        function setAudioLabelEmpty(partId = 1) {
+            const fileLabel = document.getElementById(getAudioFileLabelId(partId));
             if (!fileLabel) return;
             fileLabel.innerText = "No audio file selected.";
             fileLabel.style.color = "#334155";
@@ -1308,26 +1314,66 @@
             updateAudioShellStatus();
         }
 
-        async function restoreAudioForCurrentSet() {
+        async function restoreAudioForCurrentSet(partId = activePartId || 1) {
             if (!currentSetId) {
-                setAudioLabelEmpty();
+                AUDIO_PART_IDS.forEach((id) => setAudioLabelEmpty(id));
                 return false;
             }
 
             try {
-                const record = await getAudioRecordBySetId(currentSetId);
+                let record = await getAudioRecordBySetAndPart(currentSetId, partId);
+                // Backward compatibility: old builds stored only one file without part suffix.
+                if (!record && Number(partId) === 1) {
+                    record = await openAudioDatabase().then((db) => new Promise((resolve, reject) => {
+                        if (!db) {
+                            resolve(null);
+                            return;
+                        }
+                        const tx = db.transaction(AUDIO_STORE_NAME, "readonly");
+                        const store = tx.objectStore(AUDIO_STORE_NAME);
+                        const request = store.get(`${MODULE_ID}:${currentSetId}`);
+                        request.onsuccess = () => {
+                            db.close();
+                            resolve(request.result || null);
+                        };
+                        request.onerror = () => {
+                            db.close();
+                            reject(request.error);
+                        };
+                    }));
+                }
                 if (!record || !record.blob) {
-                    setAudioLabelEmpty();
+                    setAudioLabelEmpty(partId);
                     return false;
                 }
 
                 setAudioSourceFromBlob(record.blob);
-                setAudioLabelReady(record.fileName);
+                setAudioLabelReady(record.fileName, partId);
                 return true;
             } catch (error) {
                 console.warn("[AudioPersistence] restore failed:", error);
                 return false;
             }
+        }
+
+        async function refreshAudioLabelsForCurrentSet() {
+            if (!currentSetId) {
+                AUDIO_PART_IDS.forEach((id) => setAudioLabelEmpty(id));
+                return;
+            }
+
+            await Promise.all(AUDIO_PART_IDS.map(async (partId) => {
+                try {
+                    const record = await getAudioRecordBySetAndPart(currentSetId, partId);
+                    if (record?.blob) {
+                        setAudioLabelReady(record.fileName, partId);
+                    } else {
+                        setAudioLabelEmpty(partId);
+                    }
+                } catch {
+                    setAudioLabelEmpty(partId);
+                }
+            }));
         }
 
         function safeParse(raw, fallback) {
@@ -1536,6 +1582,7 @@
             }
 
             setAudioShellTitle(activePartId);
+            void restoreAudioForCurrentSet(activePartId);
             updateAudioShellStatus();
             refreshExamState();
         }
@@ -1773,15 +1820,15 @@
             if (!audio) return false;
             if (audio.src) return true;
 
-            const restoredCurrent = await restoreAudioForCurrentSet();
+            const restoredCurrent = await restoreAudioForCurrentSet(activePartId || 1);
             if (restoredCurrent && audio.src) return true;
 
             try {
-                const latestAudio = await getLatestAudioRecordForModule();
+                const latestAudio = await getLatestAudioRecordForModule(activePartId || 1);
                 if (!latestAudio || !latestAudio.blob) return false;
 
                 setAudioSourceFromBlob(latestAudio.blob);
-                setAudioLabelReady(latestAudio.fileName);
+                setAudioLabelReady(latestAudio.fileName, Number(latestAudio.partId || activePartId || 1));
 
                 if (!currentSetId && latestAudio.setId) {
                     currentSetId = latestAudio.setId;
@@ -2046,7 +2093,8 @@
             if (dateInput) dateInput.value = effectiveDate;
             if (difficultyInput) difficultyInput.value = stored.difficulty || "intermediate";
             updatePackageLabel(effectiveDate);
-            await restoreAudioForCurrentSet();
+            await restoreAudioForCurrentSet(activePartId || 1);
+            await refreshAudioLabelsForCurrentSet();
         }
 
         async function saveSectionMeta() {
@@ -2093,11 +2141,26 @@
                 <div class="dev-container">
                     <div class="dev-card">
                         <h2 class="dev-card-title">Audio Configuration</h2>
-                        <p style="font-size:14px; color:#475569; line-height:1.6;">Choose a local MP3/WAV file. This audio is used in User Simulator mode.</p>
-                        <div style="margin-top:12px; padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
-                            <label for="audio-upload-file" class="audio-upload-label">Choose Local Audio File</label>
-                            <input type="file" id="audio-upload-file" accept="audio/*" onchange="handleAudioUpload(event)">
-                            <div id="audio-file-name" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
+                        <p style="font-size:14px; color:#475569; line-height:1.6;">Choose local MP3/WAV files for each listening part. Each part uses its own audio in User Simulator mode.</p>
+                        <div style="margin-top:12px; display:grid; gap:12px;">
+                            <div style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
+                                <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part A Audio</div>
+                                <label for="audio-upload-file-a" class="audio-upload-label">Choose Local Audio File</label>
+                                <input type="file" class="audio-upload-file" id="audio-upload-file-a" accept="audio/*" onchange="handleAudioUpload(event, 1)">
+                                <div id="audio-file-name-1" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
+                            </div>
+                            <div style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
+                                <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part B Audio</div>
+                                <label for="audio-upload-file-b" class="audio-upload-label">Choose Local Audio File</label>
+                                <input type="file" class="audio-upload-file" id="audio-upload-file-b" accept="audio/*" onchange="handleAudioUpload(event, 2)">
+                                <div id="audio-file-name-2" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
+                            </div>
+                            <div style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
+                                <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part C Audio</div>
+                                <label for="audio-upload-file-c" class="audio-upload-label">Choose Local Audio File</label>
+                                <input type="file" class="audio-upload-file" id="audio-upload-file-c" accept="audio/*" onchange="handleAudioUpload(event, 3)">
+                                <div id="audio-file-name-3" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2182,7 +2245,7 @@
             </div>`;
         }
 
-        async function handleAudioUpload(event) {
+        async function handleAudioUpload(event, partId = 1) {
             const file = event.target.files[0];
             if (!file) return;
 
@@ -2191,13 +2254,14 @@
             const setId = ensureCurrentSetId(setDate);
 
             setAudioSourceFromBlob(file);
-            setAudioLabelReady(file.name);
+            setAudioLabelReady(file.name, partId);
 
             try {
                 const persisted = await saveAudioRecord({
-                    id: getAudioStorageKey(setId),
+                    id: getAudioStorageKey(setId, partId),
                     setId,
                     module: MODULE_ID,
+                    partId,
                     fileName: file.name,
                     mimeType: file.type || "audio/mpeg",
                     updatedAt: new Date().toISOString(),
