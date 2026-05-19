@@ -5,251 +5,1097 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Section 1 Review – Listening | TOEFL ITP</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
         :root {
-            --primary: #004b87;
-            --bg-body: #f0f5fa;
-            --bg-surface: #ffffff;
-            --text-main: #0d1f33;
-            --text-muted: #5a6d83;
-            --border-color: #d0dde9;
-            --danger: #c44444;
-            --success: #1463ad;
-            --review-header-height: 110px;
+            --ink: #000000;
+            --navy-dark: #003560;
+            --navy-mid: #005faa;
+            --teal: #0d9488;
+            --teal-deep: #0d4c30;
+            --sky: #0ea5e9;
+            --sky-light: #e0f2fe;
+            --off-white: #f4f7fb;
+            --line-gray: #d1dce8;
+            --mid-gray: #7a8fa6;
+            --amber: #fedb36;
+            --amber-soft: #fef3c7;
+            --coral: #dc2626;
+            --indigo: #4f46e5;
+            --primary-shadow: 0 4px 20px rgba(0, 53, 96, 0.1);
+            --review-footer-height: 100px;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
         body {
-            background: var(--bg-body);
-            color: var(--text-main);
             min-height: 100vh;
+            background: radial-gradient(circle at 8% 10%, #ffffff 0%, var(--off-white) 30%, #edf3fa 100%);
+            color: var(--ink);
+            font-family: 'Plus Jakarta Sans', sans-serif;
             display: flex;
             flex-direction: column;
         }
 
-        .page-header {
-            background: linear-gradient(90deg, #003a6e, #004b87);
-            color: #e8f2ff;
-            padding: 14px 24px;
+        .qc-topbar {
+            height: 64px;
+            background: #ffffff;
+            border-bottom: 1px solid var(--line-gray);
+            padding: 0 24px;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 20px;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+        }
+
+        .qc-topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .qc-logo {
+            width: 94px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(140deg, #003560, #005faa);
+            color: #ffffff;
+            display: grid;
+            place-items: center;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+        }
+
+        .qc-topbar-title {
+            display: grid;
+        }
+
+        .qc-topbar-title h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.12rem;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .qc-topbar-title p {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--mid-gray);
+        }
+
+        .qc-time {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--navy-dark);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+        }
+
+        .qc-time-icon {
+            width: 24px;
+            height: 24px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .qc-topbar-right {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .progress-stack {
+            display: grid;
+            gap: 8px;
+        }
+
+        .progress-line {
+            height: 12px;
+            border-radius: 999px;
+            background: var(--sky-light);
+            overflow: hidden;
+            border: 1px solid #d9e9f5;
+        }
+
+        .progress-line span {
+            display: block;
+            height: 100%;
+            width: 38%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, var(--sky), #00ca01);
+        }
+
+        .answered-stat {
+            justify-self: end;
+            font-size: 0.78rem;
+            color: var(--mid-gray);
+            font-weight: 600;
+        }
+
+        .qc-main {
+            flex: 1;
+            width: min(1439px, 100%);
+            margin: 0 auto;
+            padding: 18px 20px calc(var(--review-footer-height) + 26px);
+            display: grid;
+            grid-template-columns: 503px minmax(530px, 1fr) 98px;
+            gap: 22px;
+        }
+
+        .panel {
+            background: #ffffff;
+            border: 1px solid var(--line-gray);
+            border-radius: 14px;
+            box-shadow: var(--primary-shadow);
+        }
+
+        .left-rail {
+            display: grid;
+            align-content: start;
+            gap: 14px;
+        }
+
+        .audio-card {
+            background: var(--navy-dark);
+            color: #ffffff;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: var(--primary-shadow);
+            display: grid;
+            gap: 14px;
+        }
+
+        .audio-card h2 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.22rem;
+            font-weight: 600;
+        }
+
+        .wave-wrap {
+            display: grid;
+            gap: 8px;
+        }
+
+        .wave-track {
+            height: 12px;
+            border-radius: 8px;
+            background: #d1dce8;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .wave-track::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            width: 64%;
+            background:
+                repeating-linear-gradient(
+                    90deg,
+                    rgba(14, 165, 233, 0.85) 0,
+                    rgba(14, 165, 233, 0.85) 10px,
+                    rgba(13, 148, 136, 0.9) 10px,
+                    rgba(13, 148, 136, 0.9) 20px,
+                    rgba(79, 70, 229, 0.92) 20px,
+                    rgba(79, 70, 229, 0.92) 30px
+                );
+            border-radius: inherit;
+        }
+
+        .play-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #ffffff;
+            margin-left: calc(64% - 11px);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .audio-time {
+            display: flex;
+            justify-content: space-between;
+            color: #d0c9c7;
+            font-size: 0.96rem;
+        }
+
+        .transcript-panel {
+            padding: 14px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .hint-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--mid-gray);
+            font-size: 0.86rem;
+            letter-spacing: 0.02em;
+        }
+
+        .hint-chip .mark {
+            width: 32px;
+            height: 32px;
+            border-radius: 20px;
+            background: var(--amber-soft);
+            border: 2px solid #ffffff;
+            box-shadow: 0 1px 4px rgba(255, 222, 0, 0.25);
+            display: grid;
+            place-items: center;
+            color: #eb8928;
+            font-weight: 700;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hint-chip .mark img {
+            position: absolute;
+            object-fit: contain;
+        }
+
+        .hint-chip .mark .bulb-outer {
+            width: 18px;
+            height: 18px;
+            top: 7px;
+            left: 7px;
+        }
+
+        .hint-chip .mark .bulb-inner {
+            width: 9px;
+            height: 9px;
+            top: 11px;
+            left: 11px;
+        }
+
+        .line-card {
+            border: 1px solid var(--line-gray);
+            border-radius: 10px;
+            padding: 10px;
+            display: grid;
+            gap: 10px;
+            background: #ffffff;
+        }
+
+        .line-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--line-gray);
+            font-size: 0.8rem;
+            color: var(--mid-gray);
+        }
+
+        .line-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .line-action-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: transparent;
+            padding: 0;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+        }
+
+        .line-action-btn img {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+        }
+
+        .line-body {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .speaker-tag {
+            background: var(--sky-light);
+            border: 1px solid #ffffff;
+            box-shadow: 0 1px 4px rgba(14, 165, 233, 0.45);
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            min-width: 62px;
+            text-align: center;
+        }
+
+        .content-rail {
+            display: grid;
+            align-content: start;
+            gap: 14px;
+        }
+
+        .question-card {
+            padding: 26px;
+            display: grid;
+            gap: 16px;
+        }
+
+        .question-head {
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 12px;
-            border-bottom: 2px solid #0069bd;
-            flex-shrink: 0;
         }
 
-        .page-header-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 17px;
-            font-weight: 700;
+        .status-chip {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: #eb8928;
+            color: #ffffff;
+            display: grid;
+            place-items: center;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            box-shadow: 0 1px 4px rgba(14, 165, 233, 0.65);
         }
 
-        .page-header-badge {
-            background: rgba(255,255,255,0.15);
-            border: 1px solid rgba(255,255,255,0.25);
-            border-radius: 999px;
-            padding: 4px 12px;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-        }
-
-        .container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            max-width: 900px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 24px 20px calc(var(--review-header-height) + 24px);
-            gap: 16px;
-        }
-
-        .panel {
-            background: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
-            box-shadow: 0 4px 12px rgba(0,75,135,0.07);
-            padding: 24px;
-        }
-
-        .panel-label {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: var(--primary);
-            margin-bottom: 10px;
-        }
-
-        .question-no {
-            font-size: 0.82rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: 8px;
-        }
-
-        .question-text {
-            font-size: 1rem;
-            line-height: 1.65;
-            color: var(--text-main);
+        .question-meta {
+            display: grid;
+            gap: 6px;
         }
 
         .part-badge {
-            display: inline-block;
-            background: #e8f2ff;
-            color: var(--primary);
-            border: 1px solid #b8d5f5;
+            width: fit-content;
+            padding: 5px 10px;
             border-radius: 999px;
-            padding: 4px 12px;
-            font-size: 12px;
+            background: #fef3c7;
+            color: #375992;
+            border: 1px solid #fedb36;
+            font-size: 0.74rem;
             font-weight: 700;
-            margin-bottom: 14px;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+        }
+
+        .question-no {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #dc2626;
+            letter-spacing: 0.04em;
+        }
+
+        .question-text {
+            font-size: 1.22rem;
+            font-weight: 600;
+            line-height: 1.45;
+            letter-spacing: 0.02em;
+        }
+
+        .panel-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            color: var(--navy-dark);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .panel-title.icon-title {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title.icon-title img {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+        }
+
+        .options-panel,
+        .explanation-panel {
+            padding: 18px;
         }
 
         .answer-option {
             display: flex;
             align-items: flex-start;
-            gap: 10px;
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 8px;
-            border: 1px solid transparent;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid var(--line-gray);
+            background: #ffffff;
         }
 
-        .answer-option.correct { background: rgba(20,99,173,0.08); border-color: rgba(20,99,173,0.2); }
-        .answer-option.incorrect { background: rgba(196,68,68,0.08); border-color: rgba(196,68,68,0.2); }
-        .answer-option.neutral { background: #fafcfe; border-color: #e4edf5; }
+        .answer-option.correct {
+            background: rgba(13, 148, 136, 0.2);
+            box-shadow: inset 2px 1px 4px rgba(13, 148, 136, 0.9);
+            border-color: rgba(13, 148, 136, 0.45);
+        }
+
+        .answer-option.incorrect {
+            background: rgba(220, 38, 38, 0.2);
+            box-shadow: inset 2px 1px 4px rgba(220, 38, 38, 0.9);
+            border-color: rgba(220, 38, 38, 0.4);
+        }
 
         .opt-circle {
             width: 30px;
             height: 30px;
             border-radius: 50%;
+            border: 2px solid var(--line-gray);
+            display: grid;
+            place-items: center;
             flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            font-size: 0.8rem;
             font-weight: 700;
-            border: 2px solid #c8d8e8;
-            background: #fff;
-            color: var(--text-main);
-            font-size: 0.82rem;
+            background: #ffffff;
         }
 
-        .answer-option.correct .opt-circle { background: var(--success); border-color: var(--success); color: #fff; }
-        .answer-option.incorrect .opt-circle { background: var(--danger); border-color: var(--danger); color: #fff; }
+        .answer-option.correct .opt-circle {
+            border-color: var(--teal);
+            color: var(--teal);
+        }
 
-        .opt-text { flex: 1; line-height: 1.5; font-size: 0.93rem; }
+        .answer-option.incorrect .opt-circle {
+            border-color: var(--coral);
+            color: var(--coral);
+        }
+
+        .opt-text {
+            flex: 1;
+            font-size: 1rem;
+            line-height: 1.5;
+        }
 
         .opt-meta {
+            border-radius: 999px;
+            padding: 4px 9px;
+            white-space: nowrap;
             font-size: 0.72rem;
             font-weight: 700;
-            border-radius: 999px;
-            padding: 3px 8px;
-            align-self: center;
-            white-space: nowrap;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        .opt-meta.user { background: #e7f2fd; color: #1a5a8f; }
-        .opt-meta.correct { background: #ddeeff; color: var(--success); }
 
-        /* Explanation styles */
-        .explanation-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
-        .explanation-text { line-height: 1.6; color: #334155; font-size: 0.93rem; display: grid; gap: 8px; }
-        .expl-position-card { background: #eaf3ff; border: 1px solid #b8d5f5; border-left: 4px solid #004b87; border-radius: 10px; padding: 12px 14px; }
-        .expl-explain-card { background: #f8fbff; border: 1px solid #ccdded; border-left: 4px solid #1463ad; border-radius: 10px; padding: 12px 14px; }
-        .expl-card-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #004b87; margin-bottom: 6px; }
-        .expl-card-body { font-size: 0.93rem; line-height: 1.65; color: #334155; }
+        .opt-meta.user {
+            color: var(--coral);
+            background: rgba(220, 38, 38, 0.13);
+        }
 
-        /* Review footer */
+        .opt-meta.correct {
+            color: var(--teal);
+            background: rgba(13, 148, 136, 0.13);
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .opt-meta.correct img {
+            width: 12px;
+            height: 12px;
+            object-fit: contain;
+        }
+
+        .explanation-text {
+            display: grid;
+            gap: 10px;
+            font-size: 1rem;
+            line-height: 1.62;
+        }
+
+        .expl-position-card {
+            background: rgba(13, 148, 136, 0.58);
+            border-radius: 10px;
+            padding: 12px;
+            color: #ffffff;
+        }
+
+        .expl-explain-card {
+            background: rgba(220, 38, 38, 0.58);
+            border-radius: 10px;
+            padding: 12px;
+            color: #ffffff;
+        }
+
+        .expl-card-label {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 0.08em;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            color: #ffffff;
+        }
+
+        .expl-card-body {
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .cta-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .cta-card {
+            padding: 22px;
+            border-radius: 12px;
+            border: 1px solid var(--line-gray);
+            background: #ffffff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            box-shadow: 0 1px 4px rgba(0, 53, 96, 0.15);
+        }
+
+        .cta-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--sky-light);
+            display: grid;
+            place-items: center;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #3300ff;
+        }
+
+        .cta-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .cta-title.ai {
+            color: #3300ff;
+        }
+
+        .cta-title.detail {
+            color: #0d4c30;
+        }
+
+        .cta-sub {
+            color: var(--mid-gray);
+            font-size: 0.84rem;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .cta-arrow {
+            color: #003560;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .tool-rail {
+            border: 1px solid rgba(209, 220, 232, 0.5);
+            border-radius: 14px 0 0 14px;
+            background: #ffffff;
+            box-shadow: var(--primary-shadow);
+            padding: 20px 14px;
+            display: grid;
+            align-content: start;
+            justify-content: center;
+            gap: 18px;
+        }
+
+        .tool-btn {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            border: 1px solid var(--line-gray);
+            background: #ffffff;
+            cursor: pointer;
+            color: var(--navy-dark);
+            font-size: 1rem;
+        }
+
+        .tool-btn.active {
+            border-color: #449055;
+            background: #eff8f1;
+        }
+
         .review-footer {
-            position: sticky;
+            position: fixed;
+            left: 0;
+            right: 0;
             bottom: 0;
-            z-index: 20;
-            background: var(--bg-surface);
-            border-top: 1px solid var(--border-color);
-            box-shadow: 0 -6px 20px rgba(0,75,135,0.1);
+            background: rgba(255, 255, 255, 0.96);
+            border-top: 1px solid var(--line-gray);
+            backdrop-filter: blur(7px);
+            z-index: 40;
         }
 
         .review-footer-wrap {
-            max-width: 900px;
+            max-width: 1439px;
             margin: 0 auto;
-            padding: 8px 20px;
+            padding: 11px 20px;
             display: grid;
-            grid-template-columns: 220px 1fr 240px;
-            gap: 10px;
+            grid-template-columns: 280px 1fr 250px;
+            gap: 14px;
             align-items: center;
         }
 
-        .summary-col { display: flex; align-items: center; gap: 10px; }
+        .summary-col {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
 
         .score-ring {
             --pct: 0%;
-            width: 64px; height: 64px; border-radius: 50%;
-            background: conic-gradient(var(--primary) var(--pct), #d8e8f4 0);
-            display: grid; place-items: center; flex-shrink: 0; position: relative;
+            width: 66px;
+            height: 66px;
+            border-radius: 50%;
+            position: relative;
+            background: conic-gradient(var(--sky) var(--pct), #d1dce8 0);
+            display: grid;
+            place-items: center;
+            flex-shrink: 0;
         }
-        .score-ring::before { content: ""; width: 48px; height: 48px; border-radius: 50%; background: #fff; border: 1px solid #d0dde9; position: absolute; }
-        .score-value { position: relative; z-index: 1; font-size: 1.1rem; font-weight: 700; color: var(--primary); }
-        .score-band { position: relative; z-index: 1; font-size: 0.55rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
 
-        .summary-meta h1 { font-size: 0.92rem; font-weight: 700; margin-bottom: 2px; }
-        .summary-meta p { font-size: 0.74rem; color: var(--text-muted); }
+        .score-ring::before {
+            content: "";
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 1px solid var(--line-gray);
+            position: absolute;
+        }
 
-        .tracker { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; overflow: hidden; max-height: 80px; }
+        .score-value {
+            position: relative;
+            z-index: 2;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.14rem;
+            color: var(--navy-dark);
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .score-band {
+            position: relative;
+            z-index: 2;
+            color: var(--mid-gray);
+            font-size: 0.58rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .summary-meta h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            margin-bottom: 2px;
+        }
+
+        .summary-meta p {
+            color: var(--mid-gray);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .tracker {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            max-height: 76px;
+            overflow: auto;
+            padding-right: 2px;
+        }
 
         .q-circle {
-            width: 26px; height: 26px; border-radius: 50%;
-            border: 2px solid #c0d4e8; background: #fff;
-            color: #2a3f54; font-size: 0.72rem; font-weight: 700; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 2px solid #c9d8e7;
+            background: #ffffff;
+            color: #2a3f54;
+            font-size: 0.72rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .q-circle.correct { background: #d8eeff; border-color: #7db3d5; color: #0d3f70; }
-        .q-circle.incorrect { background: #fae0e0; border-color: #e8a0a0; color: #8f2020; }
-        .q-circle.active { box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--primary); }
 
-        .nav-col { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-        .nav-small { width: 40px; height: 36px; border-radius: 8px; border: 1px solid var(--border-color); background: #fff; cursor: pointer; font-size: 1rem; font-weight: 700; }
-        .nav-small:disabled { opacity: 0.4; cursor: not-allowed; }
-        .next-btn { min-width: 140px; height: 36px; border-radius: 8px; border: 1px solid #b0ccee; background: #e8f2ff; color: var(--primary); font-weight: 700; cursor: pointer; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-        .next-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .q-circle.correct {
+            background: rgba(13, 148, 136, 0.2);
+            border-color: var(--teal);
+            color: var(--teal-deep);
+        }
 
-        .passage-highlight { background-color: #cde8ff; color: #0d3d6b; border-radius: 3px; padding: 0 2px; font-weight: 700; }
+        .q-circle.incorrect {
+            background: rgba(220, 38, 38, 0.2);
+            border-color: var(--coral);
+            color: #8b1818;
+        }
+
+        .q-circle.active {
+            box-shadow: inset 0 0 0 2px #ffffff, 0 0 0 2px var(--navy-mid);
+        }
+
+        .nav-col {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .nav-small,
+        .next-btn {
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid var(--line-gray);
+            background: #ffffff;
+            color: var(--navy-dark);
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0 12px;
+        }
+
+        .nav-small {
+            width: 42px;
+            padding: 0;
+            font-size: 1rem;
+        }
+
+        .next-btn {
+            min-width: 122px;
+            background: var(--sky-light);
+            border-color: #b8d5f5;
+        }
+
+        .next-btn:disabled,
+        .nav-small:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .passage-highlight {
+            background-color: #fef3c7;
+            color: #003560;
+            border-radius: 4px;
+            padding: 0 2px;
+            font-weight: 700;
+        }
+
+        /* Figma export parity overrides */
+        .explaination {
+            text-align: justify;
+            font-size: 18px;
+            color: #ffffff;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .frame-parent9 {
+            background-color: #ffffff;
+            gap: 34px;
+        }
+
+        .frame-parent10 {
+            gap: 24px;
+        }
+
+        .listening-comprehension-parent {
+            gap: 8px;
+        }
+
+        .listening-comprehension {
+            line-height: 32px;
+            font-weight: 500;
+        }
+
+        .package-01-jan {
+            line-height: 32px;
+            font-weight: 500;
+            font-size: 14px;
+            color: #7a8fa6;
+        }
+
+        .frame-wrapper {
+            font-size: 24px;
+            color: #005faa;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 16px;
+        }
+
+        .progressbar-final {
+            font-size: 13px;
+            color: #7a8fa6;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            gap: 2px;
+        }
+
+        .progress-bar-question {
+            gap: 8px;
+        }
+
+        .progressbar {
+            border-radius: 32px;
+            background-color: #e0f2fe;
+            padding: 1px 2px;
+            box-sizing: border-box;
+        }
+
+        .progressbar-child {
+            border-radius: 100px;
+            background: linear-gradient(90deg, #0ea5e9, #0d9488);
+        }
+
+        .answered-030 {
+            line-height: 22.4px;
+        }
+
+        .component-34 {
+            background-color: #f4f7fb;
+            border: 1px solid #d1dce8;
+            border-top: 0;
+        }
+
+        .audio {
+            box-shadow: 0 4px 4px rgba(0, 53, 96, 0.1);
+            border-radius: 8px;
+            background-color: #003560;
+            min-height: 206px;
+        }
+
+        .property-1default {
+            border-radius: 8px;
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 503px;
+            min-height: 697px;
+            padding: 10px 20px;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 1320px) {
+            .qc-main {
+                grid-template-columns: 1fr;
+            }
+
+            .tool-rail {
+                grid-auto-flow: column;
+                justify-content: start;
+                border-radius: 14px;
+                padding: 12px;
+            }
+        }
 
         @media (max-width: 900px) {
-            .review-footer-wrap { grid-template-columns: 1fr; }
-            .summary-col, .nav-col { justify-content: center; }
-            .tracker { justify-content: center; }
+            .qc-topbar {
+                height: auto;
+                padding: 12px;
+                grid-template-columns: 1fr;
+            }
+
+            .qc-topbar-left {
+                flex-wrap: wrap;
+            }
+
+            .qc-topbar-right {
+                grid-template-columns: 1fr;
+            }
+
+            .review-footer-wrap {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-col,
+            .nav-col {
+                justify-content: center;
+            }
+
+            .tracker {
+                justify-content: center;
+                max-height: 120px;
+            }
+
+            .line-body {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
-<body>
-    <div class="page-header">
-        <div class="page-header-title">🎧 Section 1: Listening Comprehension — Answer Review</div>
-        <span class="page-header-badge">TOEFL ITP</span>
-    </div>
-
-    <div class="container">
-        <div class="panel" id="questionPanel">
-            <div class="panel-label">Question</div>
-            <div id="partBadge" class="part-badge"></div>
-            <div class="question-no" id="questionNo">Question —</div>
-            <div class="question-text" id="questionText">—</div>
+<body class="explaination">
+    <header class="qc-topbar frame-parent9">
+        <div class="qc-topbar-left frame-parent10">
+            <div class="qc-logo">QUICKCHECK</div>
+            <div class="qc-topbar-title listening-comprehension-parent">
+                <h1 class="listening-comprehension">Listening Comprehension</h1>
+                <p class="package-01-jan">Package 01 Jan</p>
+            </div>
+            <div class="qc-time frame-wrapper">
+                <img src="../asst/icon/timer.svg" alt="Timer" class="qc-time-icon">
+                <span>35:00</span>
+            </div>
         </div>
-
-        <div class="panel" id="optionsPanel">
-            <div class="panel-label">Answer Options</div>
-            <div id="optionsBox"></div>
+        <div class="qc-topbar-right progressbar-final">
+            <div class="progress-stack progress-bar-question">
+                <div class="progress-line progressbar"><span class="progressbar-child"></span></div>
+                <div class="progress-line progressbar"><span class="progressbar-child" style="width: 44%;"></span></div>
+                <div class="progress-line progressbar"><span class="progressbar-child" style="width: 28%;"></span></div>
+            </div>
+            <div class="answered-stat answered-030" id="answeredStat">Answered 0/30</div>
         </div>
+    </header>
 
-        <div class="panel" id="explanationPanel">
-            <div class="explanation-title">Explanation</div>
-            <div class="explanation-text" id="explanationText">No explanation provided.</div>
-        </div>
-    </div>
+    <main class="qc-main component-34">
+        <aside class="left-rail">
+            <section class="audio-card audio">
+                <h2>Audio Transcribe</h2>
+                <div class="wave-wrap">
+                    <div class="wave-track"></div>
+                    <div class="play-dot"></div>
+                    <div class="audio-time"><span>1:04</span><span>-3:05</span></div>
+                </div>
+            </section>
+
+            <section class="panel transcript-panel property-1default">
+                <div class="hint-chip">
+                    <span class="mark" aria-hidden="true">
+                        <img src="../asst/icon/lightbulb1.svg" alt="" class="bulb-outer">
+                        <img src="../asst/icon/lightbulb2.svg" alt="" class="bulb-inner">
+                    </span>
+                    <span>Click any text to see playback option and highlight</span>
+                </div>
+
+                <article class="line-card">
+                    <div class="line-head">
+                        <span>2:41</span>
+                        <span class="line-actions">
+                            <button class="line-action-btn" type="button" aria-label="Play transcript at 2:41">
+                                <img src="../asst/icon/playtranscribe.svg" alt="Play">
+                            </button>
+                            <button class="line-action-btn" type="button" aria-label="Highlight transcript at 2:41">
+                                <img src="../asst/icon/highlight.svg" alt="Highlight">
+                            </button>
+                        </span>
+                    </div>
+                    <div class="line-body">
+                        <span class="speaker-tag">MEN</span>
+                        <p>Are you going to the movie night at the student center?</p>
+                    </div>
+                </article>
+
+                <article class="line-card">
+                    <div class="line-head">
+                        <span>2:50</span>
+                        <span class="line-actions">
+                            <button class="line-action-btn" type="button" aria-label="Play transcript at 2:50">
+                                <img src="../asst/icon/playtranscribe.svg" alt="Play">
+                            </button>
+                            <button class="line-action-btn" type="button" aria-label="Highlight transcript at 2:50">
+                                <img src="../asst/icon/highlight.svg" alt="Highlight">
+                            </button>
+                        </span>
+                    </div>
+                    <div class="line-body">
+                        <span class="speaker-tag">WOMEN</span>
+                        <p>I'd love to, but I really need to hit the books for my economics exam.</p>
+                    </div>
+                </article>
+
+                <article class="line-card">
+                    <div class="line-head">
+                        <span>3:00</span>
+                        <span class="line-actions">
+                            <button class="line-action-btn" type="button" aria-label="Play transcript at 3:00">
+                                <img src="../asst/icon/playtranscribe.svg" alt="Play">
+                            </button>
+                            <button class="line-action-btn" type="button" aria-label="Highlight transcript at 3:00">
+                                <img src="../asst/icon/highlight.svg" alt="Highlight">
+                            </button>
+                        </span>
+                    </div>
+                    <div class="line-body">
+                        <span class="speaker-tag">NARR</span>
+                        <p>What does the woman mean?</p>
+                    </div>
+                </article>
+            </section>
+        </aside>
+
+        <section class="content-rail">
+            <section class="panel question-card" id="questionPanel">
+                <div class="question-head">
+                    <div style="display:flex;align-items:center;gap:14px;">
+                        <div class="status-chip">1</div>
+                        <div class="question-meta">
+                            <div id="partBadge" class="part-badge">Part 1</div>
+                            <div class="question-no" id="questionNo">Question -</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="question-text" id="questionText">No review question loaded.</div>
+            </section>
+
+            <section class="panel options-panel" id="optionsPanel">
+                <h3 class="panel-title">Answer options</h3>
+                <div id="optionsBox"></div>
+            </section>
+
+            <section class="panel explanation-panel" id="explanationPanel">
+                <h3 class="panel-title icon-title"><img src="../asst/icon/explaination.svg" alt="Explanation">Detail explanation</h3>
+                <div class="explanation-text" id="explanationText">No explanation provided.</div>
+            </section>
+
+            <section class="cta-grid">
+                <article class="cta-card">
+                    <div style="display:flex;align-items:center;gap:14px;">
+                        <div class="cta-icon">AI</div>
+                        <div>
+                            <div class="cta-title ai">ASK AI TUTOR</div>
+                            <div class="cta-sub">Real-time answer</div>
+                        </div>
+                    </div>
+                    <div class="cta-arrow">&gt;</div>
+                </article>
+
+                <article class="cta-card">
+                    <div style="display:flex;align-items:center;gap:14px;">
+                        <div class="cta-icon" style="color:#0d4c30;">DX</div>
+                        <div>
+                            <div class="cta-title detail">DETAIL EXPLANATION</div>
+                            <div class="cta-sub">Why B is correct? Proof transcribe</div>
+                        </div>
+                    </div>
+                    <div class="cta-arrow">&gt;</div>
+                </article>
+            </section>
+        </section>
+
+        <aside class="tool-rail">
+            <button class="tool-btn active" type="button">A</button>
+            <button class="tool-btn" type="button">B</button>
+            <button class="tool-btn" type="button">C</button>
+        </aside>
+    </main>
 
     <footer class="review-footer">
         <div class="review-footer-wrap">
@@ -347,8 +1193,9 @@
             const userLetter = String(question.userAnswer || '').trim().toUpperCase();
             letters.forEach(letter => {
                 const isCorrect = letter === correctLetter;
+                const isUserWrong = userLetter === letter && userLetter && userLetter !== correctLetter;
                 const row = document.createElement('div');
-                row.className = 'answer-option ' + (isCorrect ? 'correct' : 'incorrect');
+                row.className = 'answer-option ' + (isCorrect ? 'correct' : (isUserWrong ? 'incorrect' : 'neutral'));
                 const circle = document.createElement('div');
                 circle.className = 'opt-circle';
                 circle.textContent = letter;
@@ -366,7 +1213,7 @@
                 if (isCorrect) {
                     const tag = document.createElement('span');
                     tag.className = 'opt-meta correct';
-                    tag.textContent = 'Correct';
+                    tag.innerHTML = '<img src="../asst/icon/correct.svg" alt="Correct">Correct';
                     row.appendChild(tag);
                 }
                 box.appendChild(row);
@@ -435,6 +1282,8 @@
             const pct = scaled <= 31 ? 0 : Math.round(((scaled - 31) / (68 - 31)) * 100);
             document.getElementById('scaledScore').textContent = scaled;
             document.getElementById('scoreSummary').textContent = `${raw2} correct of ${total}`;
+            const answeredStat = document.getElementById('answeredStat');
+            if (answeredStat) answeredStat.textContent = `Answered ${raw2}/${total}`;
             document.getElementById('scoreRing').style.setProperty('--pct', pct + '%');
 
             buildTracker();

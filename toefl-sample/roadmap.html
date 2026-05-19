@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuickCheck — Product Roadmap</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        /* ─── Design tokens (matches Figma / section 1 answered) ─── */
+        :root {
+            --ink:          #000000;
+            --navy-dark:    #003560;
+            --navy-mid:     #005faa;
+            --teal:         #0d9488;
+            --teal-deep:    #0d4c30;
+            --sky:          #0ea5e9;
+            --sky-light:    #e0f2fe;
+            --off-white:    #f4f7fb;
+            --line-gray:    #d1dce8;
+            --mid-gray:     #7a8fa6;
+            --amber:        #fedb36;
+            --amber-soft:   #fef3c7;
+            --coral:        #dc2626;
+            --indigo:       #4f46e5;
+            --green:        #00ca01;
+            --surface:      #ffffff;
+            --shadow:       0 4px 20px rgba(0,53,96,0.10);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: radial-gradient(circle at 5% 0%, rgba(14,165,233,0.09) 0%, transparent 40%),
+                        linear-gradient(180deg, #edf5fb 0%, var(--off-white) 100%);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+
+        /* ─── Top bar ─── */
+        .topbar {
+            height: 64px;
+            background: #ffffff;
+            border-bottom: 1px solid var(--line-gray);
+            padding: 0 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 30;
+        }
+
+        .topbar-left { display: flex; align-items: center; gap: 16px; }
+
+        .qc-logo {
+            height: 40px;
+            padding: 0 14px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #003560, #005faa);
+            color: #ffffff;
+            display: grid;
+            place-items: center;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.88rem;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
+
+        .topbar-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--navy-dark);
+        }
+
+        .topbar-sub {
+            font-size: 0.76rem;
+            color: var(--mid-gray);
+            font-weight: 500;
+        }
+
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
+
+        .overall-pill {
+            background: var(--sky-light);
+            border: 1px solid #b8d5f5;
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            color: var(--navy-mid);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .overall-pill .ring {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 3px solid var(--sky);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        /* ─── Page shell ─── */
+        .page {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 32px 28px 80px;
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 28px;
+            align-items: start;
+        }
+
+        /* ─── Sidebar stats ─── */
+        .sidebar { display: grid; gap: 18px; }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--line-gray);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .stat-card-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--mid-gray);
+            margin-bottom: 12px;
+        }
+
+        .big-number {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: var(--navy-dark);
+            line-height: 1;
+        }
+
+        .big-label {
+            font-size: 0.78rem;
+            color: var(--mid-gray);
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .phase-legend { display: grid; gap: 10px; }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 8px 10px;
+            border-radius: 10px;
+            transition: background 0.15s;
+        }
+
+        .legend-row:hover { background: var(--off-white); }
+        .legend-row.active { background: var(--sky-light); }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-count {
+            margin-left: auto;
+            font-size: 0.72rem;
+            background: var(--off-white);
+            border: 1px solid var(--line-gray);
+            border-radius: 999px;
+            padding: 2px 8px;
+            font-weight: 700;
+            color: var(--mid-gray);
+        }
+
+        .mini-bar-wrap {
+            margin-top: 12px;
+        }
+
+        .mini-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.74rem;
+            color: var(--mid-gray);
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .mini-bar {
+            height: 8px;
+            border-radius: 999px;
+            background: var(--line-gray);
+            overflow: hidden;
+        }
+
+        .mini-bar span {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            transition: width 0.6s ease;
+        }
+
+        /* ─── Main timeline ─── */
+        .main { display: grid; gap: 32px; }
+
+        .phase-group { display: grid; gap: 0; }
+
+        .phase-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding-bottom: 16px;
+        }
+
+        .phase-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 3px solid #ffffff;
+            box-shadow: 0 0 0 2px currentColor;
+        }
+
+        .phase-label {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: inherit;
+        }
+
+        .phase-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.12rem;
+            font-weight: 700;
+        }
+
+        .phase-meta {
+            margin-left: auto;
+            font-size: 0.76rem;
+            color: var(--mid-gray);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Timeline vertical line */
+        .timeline {
+            position: relative;
+            padding-left: 32px;
+        }
+
+        .timeline::before {
+            content: "";
+            position: absolute;
+            left: 7px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, var(--line-gray) 0%, rgba(209,220,232,0.2) 100%);
+            border-radius: 2px;
+        }
+
+        /* Task card */
+        .task-row {
+            position: relative;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 14px;
+            align-items: start;
+            background: var(--surface);
+            border: 1px solid var(--line-gray);
+            border-radius: 14px;
+            padding: 16px 18px;
+            margin-bottom: 10px;
+            box-shadow: var(--shadow);
+            transition: box-shadow 0.2s, border-color 0.2s;
+            cursor: pointer;
+        }
+
+        .task-row:hover {
+            border-color: var(--sky);
+            box-shadow: 0 6px 24px rgba(14,165,233,0.12);
+        }
+
+        .task-row.done {
+            background: rgba(13,148,136,0.06);
+            border-color: rgba(13,148,136,0.35);
+        }
+
+        .task-row.in-progress {
+            background: rgba(14,165,233,0.06);
+            border-color: rgba(14,165,233,0.4);
+        }
+
+        .task-row.blocked {
+            background: rgba(220,38,38,0.05);
+            border-color: rgba(220,38,38,0.3);
+        }
+
+        /* Node on timeline */
+        .task-row::before {
+            content: "";
+            position: absolute;
+            left: -28px;
+            top: 18px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--surface);
+            border: 2.5px solid var(--line-gray);
+        }
+
+        .task-row.done::before   { border-color: var(--teal); background: var(--teal); }
+        .task-row.in-progress::before { border-color: var(--sky); background: var(--sky); }
+        .task-row.blocked::before { border-color: var(--coral); background: var(--coral); }
+
+        .task-left { display: grid; gap: 6px; }
+
+        .task-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.68rem;
+            color: var(--mid-gray);
+            letter-spacing: 0.06em;
+        }
+
+        .task-name {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--navy-dark);
+        }
+
+        .task-row.done .task-name {
+            color: var(--teal-deep);
+            text-decoration: line-through;
+            text-decoration-color: rgba(13,148,136,0.5);
+        }
+
+        .task-desc {
+            font-size: 0.82rem;
+            color: var(--mid-gray);
+            font-weight: 500;
+            line-height: 1.5;
+        }
+
+        .task-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .tag {
+            font-size: 0.66rem;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: var(--off-white);
+            border: 1px solid var(--line-gray);
+            color: var(--mid-gray);
+        }
+
+        .tag.design    { background: #fef3c7; border-color: #fedb36; color: #7a5f00; }
+        .tag.code      { background: var(--sky-light); border-color: #b8d5f5; color: var(--navy-mid); }
+        .tag.testing   { background: #f0fdf4; border-color: #86efac; color: #166534; }
+        .tag.security  { background: #fdf2f8; border-color: #f0abfc; color: #7e22ce; }
+        .tag.infra     { background: #fff7ed; border-color: #fdba74; color: #9a3412; }
+        .tag.ai        { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+        .tag.ux        { background: rgba(13,148,136,0.1); border-color: var(--teal); color: var(--teal-deep); }
+
+        .task-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+
+        .status-badge {
+            font-size: 0.66rem;
+            font-weight: 700;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            padding: 4px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .status-badge.todo        { background: var(--off-white); color: var(--mid-gray); border: 1px solid var(--line-gray); }
+        .status-badge.in-progress { background: var(--sky-light); color: var(--navy-mid); border: 1px solid #b8d5f5; }
+        .status-badge.done        { background: rgba(13,148,136,0.15); color: var(--teal-deep); border: 1px solid var(--teal); }
+        .status-badge.blocked     { background: rgba(220,38,38,0.1); color: var(--coral); border: 1px solid rgba(220,38,38,0.4); }
+
+        .check-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--line-gray);
+            background: #ffffff;
+            display: grid;
+            place-items: center;
+            color: var(--line-gray);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .task-row.done   .check-btn { background: var(--teal); border-color: var(--teal); color: #ffffff; }
+        .task-row.in-progress .check-btn { border-color: var(--sky); color: var(--sky); }
+        .task-row.blocked .check-btn { border-color: var(--coral); color: var(--coral); }
+
+        /* ─── Phase colors ─── */
+        .c-sky      { color: var(--sky); }
+        .c-indigo   { color: var(--indigo); }
+        .c-teal     { color: var(--teal); }
+        .c-amber    { color: #eb8928; }
+        .c-coral    { color: var(--coral); }
+        .c-navy     { color: var(--navy-dark); }
+        .c-green    { color: var(--green); }
+
+        .bg-sky     { background: var(--sky); }
+        .bg-indigo  { background: var(--indigo); }
+        .bg-teal    { background: var(--teal); }
+        .bg-amber   { background: #eb8928; }
+        .bg-coral   { background: var(--coral); }
+        .bg-navy    { background: var(--navy-dark); }
+        .bg-green   { background: var(--green); }
+
+        /* ─── Scrollbar ─── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--line-gray); border-radius: 999px; }
+
+        @media (max-width: 960px) {
+            .page { grid-template-columns: 1fr; }
+            .sidebar { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 600px) {
+            .sidebar { grid-template-columns: 1fr; }
+            .page { padding: 20px 16px 60px; }
+            .topbar { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ─── Top bar ─── -->
+<header class="topbar">
+    <div class="topbar-left">
+        <div class="qc-logo">QUICKCHECK</div>
+        <div>
+            <div class="topbar-title">Product Roadmap</div>
+            <div class="topbar-sub">Development Timeline — 2026</div>
+        </div>
+    </div>
+    <div class="topbar-right">
+        <div class="overall-pill">
+            <span class="ring"></span>
+            <span id="overallPct">0%</span>&nbsp;Overall Progress
+        </div>
+    </div>
+</header>
+
+<!-- ─── Page ─── -->
+<div class="page">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+
+        <div class="stat-card">
+            <div class="stat-card-title">Tasks</div>
+            <div class="big-number" id="statDone">0</div>
+            <div class="big-label">completed of <span id="statTotal">0</span></div>
+
+            <div class="mini-bar-wrap">
+                <div class="mini-bar-label"><span>Done</span><span id="barPct">0%</span></div>
+                <div class="mini-bar">
+                    <span id="progressBar" style="width:0%;background:linear-gradient(90deg,#0ea5e9,#0d9488);"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-card-title">Phases</div>
+            <div class="phase-legend" id="legendList"></div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-card-title">Status key</div>
+            <div style="display:grid;gap:8px;font-size:0.82rem;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="status-badge todo">To do</span>
+                    <span style="color:var(--mid-gray);">Not started yet</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="status-badge in-progress">In Progress</span>
+                    <span style="color:var(--mid-gray);">Currently active</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="status-badge done">Done</span>
+                    <span style="color:var(--mid-gray);">Completed ✓</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="status-badge blocked">Blocked</span>
+                    <span style="color:var(--mid-gray);">Needs unblocking</span>
+                </div>
+            </div>
+        </div>
+
+    </aside>
+
+    <!-- Main timeline -->
+    <main class="main" id="roadmapMain"></main>
+
+</div>
+
+<script>
+// ─── Data ───────────────────────────────────────────────────────────────────
+const PHASES = [
+    {
+        id: "structure-writing",
+        label: "Phase 1",
+        name: "Structure & Writing",
+        color: "sky",
+        tasks: [
+            {
+                id: 1,
+                name: "Structure & Writing — Design",
+                desc: "Wireframe layouts for question types, answer inputs, timer bar, section header, and review UI for Structure/Writing module.",
+                tags: ["design", "ux"],
+                status: "todo"
+            },
+            {
+                id: 2,
+                name: "Structure & Writing — Implement Code",
+                desc: "Build HTML/CSS/JS for section pages: question renderer, answer picker, auto-save, timer, score calculation, and answered.html review.",
+                tags: ["code"],
+                status: "todo"
+            }
+        ]
+    },
+    {
+        id: "reading",
+        label: "Phase 2",
+        name: "Reading",
+        color: "indigo",
+        tasks: [
+            {
+                id: 3,
+                name: "Reading — Design",
+                desc: "Design passage viewer, question panel, highlight/bookmark interactions, and answer review page consistent with the Figma design system.",
+                tags: ["design", "ux"],
+                status: "todo"
+            },
+            {
+                id: 4,
+                name: "Reading — Implement Code",
+                desc: "Implement passage display, question navigation, option selection, local/Firebase persistence, and reading-test-answered.html.",
+                tags: ["code"],
+                status: "todo"
+            }
+        ]
+    },
+    {
+        id: "study-plan",
+        label: "Phase 3",
+        name: "Study Plan",
+        color: "teal",
+        tasks: [
+            {
+                id: 5,
+                name: "Study Plan — Design",
+                desc: "Design weekly/monthly calendar, goal-setting UI, streak tracker, progress rings per section, and daily-practice schedule cards.",
+                tags: ["design", "ux"],
+                status: "todo"
+            },
+            {
+                id: 6,
+                name: "Study Plan — Implement Code",
+                desc: "Build study-plan.html with localStorage persistence, streak logic, goal completion tracking, and calendar rendering.",
+                tags: ["code"],
+                status: "todo"
+            }
+        ]
+    },
+    {
+        id: "ai",
+        label: "Phase 4",
+        name: "AI Chat Bot",
+        color: "indigo",
+        tasks: [
+            {
+                id: 7,
+                name: "AI Chat Bot — Testing",
+                desc: "End-to-end test AI Tutor responses: accuracy on question explanations, latency, fallback messages, and safety filters for student-facing content.",
+                tags: ["ai", "testing"],
+                status: "todo"
+            },
+            {
+                id: 8,
+                name: "AI Tutor — Prompt Engineering",
+                desc: "Write and refine system prompts for TOEFL ITP context: answer explanations, idiom breakdowns, grammar hints, and vocabulary lookup.",
+                tags: ["ai", "code"],
+                status: "todo"
+            }
+        ]
+    },
+    {
+        id: "dashboard",
+        label: "Phase 5",
+        name: "Dashboard",
+        color: "navy",
+        tasks: [
+            {
+                id: 9,
+                name: "Dashboard — Design",
+                desc: "Design the home dashboard: overall score trend, section breakdowns, recent packages, quick-start buttons, and streak/achievement cards.",
+                tags: ["design", "ux"],
+                status: "todo"
+            },
+            {
+                id: 10,
+                name: "Dashboard — Implement Code",
+                desc: "Build index/dashboard page reading Firebase + localStorage, render charts, progress rings, recent activity feed, and navigation.",
+                tags: ["code"],
+                status: "todo"
+            }
+        ]
+    },
+    {
+        id: "micro",
+        label: "Phase 6",
+        name: "Micro-Interactions & Polish",
+        color: "amber",
+        tasks: [
+            {
+                id: 11,
+                name: "Micro-Interaction Design",
+                desc: "Define motion spec: answer-select ripple, correct/incorrect shake/bounce, timer pulse below 60s, page transitions, and loading skeletons.",
+                tags: ["design", "ux"],
+                status: "todo"
+            },
+            {
+                id: 12,
+                name: "Micro-Interaction — Implement Code",
+                desc: "Add CSS animations and JS event handlers for all micro-interactions. Respect prefers-reduced-motion. Validate on mobile.",
+                tags: ["code", "ux"],
+                status: "todo"
+            }
+        ]
+    },
+    {
+        id: "security",
+        label: "Phase 7",
+        name: "Security & Infrastructure",
+        color: "coral",
+        tasks: [
+            {
+                id: 13,
+                name: "Firebase Security Rules — Storage",
+                desc: "Tighten Storage rules: scope audio uploads to /toefl_itp/audio/, enforce max file size via Security Rules conditions, restrict delete to uploader.",
+                tags: ["security", "infra"],
+                status: "in-progress"
+            },
+            {
+                id: 14,
+                name: "Firebase Security Rules — RTDB",
+                desc: "Lock Realtime Database rules: read/write scoped per setId path, prevent mass-read of all data, add input size validation on write.",
+                tags: ["security", "infra"],
+                status: "in-progress"
+            },
+            {
+                id: 15,
+                name: "Input Sanitisation & XSS Prevention",
+                desc: "Audit all innerHTML assignments, replace with textContent or escapeHtml helper. Review developer content paths for stored-XSS risk.",
+                tags: ["security", "code"],
+                status: "todo"
+            },
+            {
+                id: 16,
+                name: "Content Security Policy (CSP) Header",
+                desc: "Add CSP meta tag restricting script-src, connect-src (Firebase domains only), and object-src none. Test with browser devtools.",
+                tags: ["security", "infra"],
+                status: "todo"
+            }
+        ]
+    },
+    {
+        id: "auth-backend",
+        label: "Phase 8",
+        name: "Auth, Backend & Data Model",
+        color: "navy",
+        tasks: [
+            {
+                id: 17,
+                name: "Authentication Flow Design",
+                desc: "Design signup, login, forgot-password, email verification, and session timeout UX for web and mobile breakpoints.",
+                tags: ["design", "security", "ux"],
+                status: "todo"
+            },
+            {
+                id: 18,
+                name: "Backend Auth Service Implementation",
+                desc: "Implement backend endpoints for signup/login/refresh/logout, hashed passwords, token issuance, and secure refresh-token rotation.",
+                tags: ["code", "security", "infra"],
+                status: "todo"
+            },
+            {
+                id: 19,
+                name: "User Profile & Progress Data Model",
+                desc: "Create per-user schema for packages, answers, study plan, and scores so each account has isolated data and portable cross-device history.",
+                tags: ["code", "infra"],
+                status: "todo"
+            },
+            {
+                id: 20,
+                name: "Role-Based Access Control (RBAC)",
+                desc: "Separate developer/admin routes from learner routes. Enforce roles server-side for content editing, package publishing, and analytics access.",
+                tags: ["security", "code"],
+                status: "todo"
+            }
+        ]
+    },
+    {
+        id: "cross-device",
+        label: "Phase 9",
+        name: "Cross-Device Sync & Audio",
+        color: "sky",
+        tasks: [
+            {
+                id: 21,
+                name: "Audio Upload — Firebase Storage",
+                desc: "Large audio files now upload to Firebase Storage via REST (no 7.5 MB cap). Verify upload, URL save in RTDB, and playback on other devices.",
+                tags: ["code", "infra"],
+                status: "done"
+            },
+            {
+                id: 22,
+                name: "Audio Playback — Cross-device Test",
+                desc: "Test audio load from Firebase Storage download URL on a second device/browser. Verify IndexedDB fallback when offline.",
+                tags: ["testing", "infra"],
+                status: "todo"
+            },
+            {
+                id: 23,
+                name: "Offline Fallback Messaging",
+                desc: "Review all sync-fail alerts: replace generic messages with specific guidance (offline vs storage error vs auth error).",
+                tags: ["ux", "code"],
+                status: "todo"
+            }
+        ]
+    },
+    {
+        id: "qa-launch",
+        label: "Phase 10",
+        name: "QA, Beta & Launch",
+        color: "green",
+        tasks: [
+            {
+                id: 24,
+                name: "Mobile Responsive QA",
+                desc: "Verify all pages on 375px, 768px, 1024px, and 1440px viewports. Fix overflow issues, touch target sizes, and font scaling.",
+                tags: ["testing", "ux"],
+                status: "todo"
+            },
+            {
+                id: 25,
+                name: "Cross-browser Testing",
+                desc: "Test on Chrome, Safari, Firefox, and Edge. Focus on IndexedDB API consistency, audio codec support, and CSS grid fallbacks.",
+                tags: ["testing"],
+                status: "todo"
+            },
+            {
+                id: 26,
+                name: "Beta Testing with Real Users",
+                desc: "Recruit 5–10 TOEFL ITP students. Collect feedback on UI clarity, question difficulty accuracy, timer, and AI explanations.",
+                tags: ["testing", "ux"],
+                status: "todo"
+            },
+            {
+                id: 27,
+                name: "Hosting & Deployment",
+                desc: "Deploy to a stable hosting (GitHub Pages, Vercel, or Firebase Hosting). Set up custom domain, HTTPS, and cache-control headers.",
+                tags: ["infra"],
+                status: "todo"
+            },
+            {
+                id: 28,
+                name: "Performance Optimisation",
+                desc: "Audit page load (Lighthouse). Lazy-load audio, defer non-critical scripts, compress assets, and add a service worker for caching.",
+                tags: ["code", "infra"],
+                status: "todo"
+            }
+        ]
+    }
+];
+
+// ─── Render ──────────────────────────────────────────────────────────────────
+function statusClass(s) {
+    if (s === "done") return "done";
+    if (s === "in-progress") return "in-progress";
+    if (s === "blocked") return "blocked";
+    return "";
+}
+
+function statusBadgeClass(s) {
+    if (s === "done") return "done";
+    if (s === "in-progress") return "in-progress";
+    if (s === "blocked") return "blocked";
+    return "todo";
+}
+
+function statusLabel(s) {
+    if (s === "done") return "Done";
+    if (s === "in-progress") return "In Progress";
+    if (s === "blocked") return "Blocked";
+    return "To Do";
+}
+
+function checkIcon(s) {
+    if (s === "done") return "✓";
+    if (s === "in-progress") return "◐";
+    if (s === "blocked") return "✗";
+    return "";
+}
+
+function loadState() {
+    try { return JSON.parse(localStorage.getItem("qc_roadmap_state") || "{}"); } catch { return {}; }
+}
+
+function saveState(state) {
+    localStorage.setItem("qc_roadmap_state", JSON.stringify(state));
+}
+
+let taskState = loadState();
+
+function getStatus(taskId) {
+    const key = String(taskId);
+    return taskState[key] !== undefined ? taskState[key] : PHASES.flatMap(p => p.tasks).find(t => t.id === taskId)?.status || "todo";
+}
+
+function cycleStatus(taskId) {
+    const order = ["todo", "in-progress", "done", "blocked"];
+    const cur = getStatus(taskId);
+    const next = order[(order.indexOf(cur) + 1) % order.length];
+    taskState[String(taskId)] = next;
+    saveState(taskState);
+    renderAll();
+}
+
+function renderAll() {
+    const main = document.getElementById("roadmapMain");
+    const legend = document.getElementById("legendList");
+    main.innerHTML = "";
+    legend.innerHTML = "";
+
+    const allTasks = PHASES.flatMap(p => p.tasks);
+    const doneCount = allTasks.filter(t => getStatus(t.id) === "done").length;
+    const total = allTasks.length;
+    const pct = total ? Math.round((doneCount / total) * 100) : 0;
+
+    document.getElementById("statDone").textContent = doneCount;
+    document.getElementById("statTotal").textContent = total;
+    document.getElementById("progressBar").style.width = pct + "%";
+    document.getElementById("barPct").textContent = pct + "%";
+    document.getElementById("overallPct").textContent = pct + "%";
+
+    PHASES.forEach(phase => {
+        // Legend row
+        const doneInPhase = phase.tasks.filter(t => getStatus(t.id) === "done").length;
+        const lr = document.createElement("div");
+        lr.className = "legend-row";
+        lr.innerHTML = `
+            <span class="legend-dot bg-${phase.color}"></span>
+            <span>${phase.name}</span>
+            <span class="legend-count">${doneInPhase}/${phase.tasks.length}</span>
+        `;
+        lr.addEventListener("click", () => {
+            const el = document.getElementById("phase-" + phase.id);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+        legend.appendChild(lr);
+
+        // Phase group
+        const group = document.createElement("section");
+        group.className = "phase-group";
+        group.id = "phase-" + phase.id;
+
+        const header = document.createElement("div");
+        header.className = `phase-header c-${phase.color}`;
+        header.innerHTML = `
+            <span class="phase-dot bg-${phase.color}"></span>
+            <span class="phase-label">${phase.label}</span>
+            <span class="phase-name">${phase.name}</span>
+            <span class="phase-meta">${doneInPhase}/${phase.tasks.length} done</span>
+        `;
+        group.appendChild(header);
+
+        const tl = document.createElement("div");
+        tl.className = "timeline";
+
+        phase.tasks.forEach(task => {
+            const st = getStatus(task.id);
+            const row = document.createElement("div");
+            row.className = "task-row " + statusClass(st);
+
+            const tags = (task.tags || []).map(t => `<span class="tag ${t}">${t}</span>`).join("");
+
+            row.innerHTML = `
+                <div class="task-left">
+                    <span class="task-num">TASK-${String(task.id).padStart(3, "0")}</span>
+                    <span class="task-name">${task.name}</span>
+                    <span class="task-desc">${task.desc}</span>
+                    <div class="task-tags">${tags}</div>
+                </div>
+                <div class="task-right">
+                    <span class="status-badge ${statusBadgeClass(st)}">${statusLabel(st)}</span>
+                    <button class="check-btn" title="Click to cycle status" data-id="${task.id}">${checkIcon(st)}</button>
+                </div>
+            `;
+
+            row.querySelector(".check-btn").addEventListener("click", (e) => {
+                e.stopPropagation();
+                cycleStatus(task.id);
+            });
+
+            tl.appendChild(row);
+        });
+
+        group.appendChild(tl);
+        main.appendChild(group);
+    });
+}
+
+renderAll();
+</script>
+</body>
+</html>

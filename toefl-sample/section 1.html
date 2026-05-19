@@ -1302,6 +1302,10 @@
             fileLabel.style.color = "#334155";
         }
 
+        function isPartActive(partId = 1) {
+            return Number(partId || 1) === Number(activePartId || 1);
+        }
+
         function setAudioSourceFromBlob(blob) {
             const audio = document.getElementById("cbt-audio-player");
             if (!audio || !blob) return;
@@ -1312,17 +1316,17 @@
             audio.currentTime = 0;
             audioIsLocked = false;
             updateAudioShellStatus();
+        }
 
-                function setAudioSourceFromUrl(url) {
-                    const audio = document.getElementById("cbt-audio-player");
-                    if (!audio || !url) return;
-                    revokeCurrentAudioUrl();
-                    currentAudioObjectUrl = null;
-                    audio.src = url;
-                    audio.currentTime = 0;
-                    audioIsLocked = false;
-                    updateAudioShellStatus();
-                }
+        function setAudioSourceFromUrl(url) {
+            const audio = document.getElementById("cbt-audio-player");
+            if (!audio || !url) return;
+            revokeCurrentAudioUrl();
+            currentAudioObjectUrl = null;
+            audio.src = url;
+            audio.currentTime = 0;
+            audioIsLocked = false;
+            updateAudioShellStatus();
         }
 
         async function restoreAudioForCurrentSet(partId = activePartId || 1) {
@@ -1335,7 +1339,9 @@
                 // Try Firebase Storage first (cross-machine sync)
                 const storageUrl = await window.toeflStorage.getAudioFromFirebase(currentSetId, partId).catch(() => null);
                 if (storageUrl) {
-                    setAudioSourceFromUrl(storageUrl);
+                    if (isPartActive(partId)) {
+                        setAudioSourceFromUrl(storageUrl);
+                    }
                     setAudioLabelReady(`cloud audio`, partId);
                     return true;
                 }
@@ -1367,7 +1373,9 @@
                     return false;
                 }
 
-                setAudioSourceFromBlob(record.blob);
+                if (isPartActive(partId)) {
+                    setAudioSourceFromBlob(record.blob);
+                }
                 setAudioLabelReady(record.fileName, partId);
                 return true;
             } catch (error) {
@@ -2305,42 +2313,37 @@
 
             const fileMB = (file.size / 1024 / 1024).toFixed(1);
 
-            setAudioSourceFromBlob(file);
+            // Keep audio strictly mapped per part: only preview in player if uploading for active part.
+            if (isPartActive(partId)) {
+                setAudioSourceFromBlob(file);
+            }
             setAudioLabelReady(file.name, partId);
 
+            const fileLabel = document.getElementById(getAudioFileLabelId(partId));
+            if (fileLabel) { fileLabel.innerText = `${file.name} — uploading…`; fileLabel.style.color = "#b45309"; }
+
             try {
-                // Step 1: Save to IndexedDB (local, always works)
-                const persisted = await saveAudioRecord({
-                    id: getAudioStorageKey(setId, partId),
-                    setId,
-                    module: MODULE_ID,
-                    partId,
-                    fileName: file.name,
-                    mimeType: file.type || "audio/mpeg",
-                    updatedAt: new Date().toISOString(),
-                    blob: file
-                });
-                if (!persisted) {
-                    throw new Error("IndexedDB is unavailable in this context");
-                }
+                // Save metadata, but do not block cloud upload when local persistence is unavailable.
                 await saveSectionMeta();
 
-                // Step 2: Upload to Firebase Storage for cross-device sync
-                const fileLabel = document.getElementById(getAudioFileLabelId(partId));
-                if (fileLabel) { fileLabel.innerText = `${file.name} — uploading…`; fileLabel.style.color = "#b45309"; }
-
+                // Upload to Firebase Storage for cross-device access.
                 const synced = await window.toeflStorage.saveAudioToFirebase(setId, file, partId);
 
                 if (synced) {
                     if (fileLabel) { fileLabel.innerText = `${file.name} (synced)`; fileLabel.style.color = "green"; }
                     alert(`Audio saved and synced to cloud (${fileMB} MB).\nIt will work on other devices.`);
                 } else {
-                    if (fileLabel) { fileLabel.innerText = file.name; fileLabel.style.color = "#b45309"; }
-                    alert(`Audio saved on this device only.\n\nCloud sync failed — check your internet connection.\nAudio will NOT work on other devices until sync succeeds.`);
+                    if (fileLabel) { fileLabel.innerText = `${file.name} (not synced)`; fileLabel.style.color = "#b91c1c"; }
+                    const detail = window.toeflStorage && typeof window.toeflStorage.getLastStorageError === "function"
+                        ? window.toeflStorage.getLastStorageError()
+                        : "";
+                    const detailText = detail ? `\n\nDetails: ${detail}` : "";
+                    alert(`Cloud sync failed.\n\nAudio was loaded for preview, but not uploaded to Firebase Storage.\nOther devices cannot access it until upload succeeds.${detailText}`);
                 }
             } catch (error) {
                 console.warn("[AudioPersistence] save failed:", error);
-                alert("Audio loaded, but failed to persist for reload.");
+                if (fileLabel) { fileLabel.innerText = `${file.name} (upload error)`; fileLabel.style.color = "#b91c1c"; }
+                alert("Upload failed. Please check Firebase Storage rules and internet connection.");
             }
         }
 

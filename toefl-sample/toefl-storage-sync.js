@@ -29,6 +29,7 @@ class ToeflStorageSync {
     this._setsV2LocalKey = "toefl_developer_sets_v2";
     this._draftsV2LocalKey = "toefl_developer_drafts_v2";
     this._setsLocalKey = "toefl_developer_sets_v1";
+    this._lastStorageError = "";
   }
 
   _url(path) {
@@ -358,122 +359,134 @@ class ToeflStorageSync {
     localStorage.setItem(this._draftLocalKey(module), JSON.stringify(draft || {}));
   }
 
-  // ─── AUDIO FILES (Firebase Realtime Database) ──────────────────────────────
+  // ─── AUDIO FILES (Firebase Storage + RTDB URL index) ──────────────────────
+
+  _getStorageBases() {
+    const bases = [TOEFL_STORAGE_BASE];
+    if (TOEFL_STORAGE_BUCKET.endsWith(".firebasestorage.app")) {
+      const legacyBucket = TOEFL_STORAGE_BUCKET.replace(".firebasestorage.app", ".appspot.com");
+      bases.push(`https://firebasestorage.googleapis.com/v0/b/${legacyBucket}/o`);
+    }
+    return Array.from(new Set(bases));
+  }
+
+  getLastStorageError() {
+    return this._lastStorageError || "";
+  }
 
   /**
-   * Upload audio blob to Firebase
-   * @param {string} setId - The set ID
-   * @param {Blob} audioBlob - The audio file
-   * @param {number} partId - The part ID (1, 2, or 3)
-   * @returns {Promise<boolean>} Success status
+   * Upload audio file to Firebase Storage and save download URL in RTDB.
+   * @param {string} setId
+   * @param {Blob|File} audioBlob
+   * @param {number} partId
+   * @returns {Promise<boolean>}
    */
   async saveAudioToFirebase(setId, audioBlob, partId = 1) {
     if (!setId || !audioBlob) {
-      console.warn('[ToeflSync] Missing setId or audioBlob for audio upload');
+      this._lastStorageError = "Missing setId or audioBlob";
+      console.warn("[ToeflSync] Missing setId or audioBlob for audio upload");
       return false;
     }
 
-    try {
-      // Convert blob to base64
-      const base64Data = await this._blobToBase64(audioBlob);
-      const payload = {
-        base64: base64Data,
-        partId: Number(partId || 1),
-        fileName: audioBlob.name || `audio_part${partId}.mp3`,
-        size: audioBlob.size,
-        type: audioBlob.type || 'audio/mpeg',
-        uploadedAt: new Date().toISOString()
-      };
+    const storagePath = `toefl_itp/audio/${setId}/part_${partId}`;
+    const encodedPath = encodeURIComponent(storagePath);
+    const uploadNameQuery = new URLSearchParams({ name: storagePath }).toString();
+    const errors = [];
 
-      const path = `toefl_itp/audio_v1/${setId}/part_${partId}`;
-      await this._put(path, payload);
-      this.isRemoteAvailable = true;
-      console.log('[ToeflSync] Audio saved to Firebase:', { setId, partId });
-      return true;
-    /**
-     * Upload audio file to Firebase Storage and save download URL in RTDB.
-     * Works for any file size (no 10 MB base64 limit).
-     * @param {string} setId
-     * @param {Blob|File} audioBlob
-     * @param {number} partId - 1, 2, or 3
-     * @returns {Promise<boolean>} true on success
-     */
-    async saveAudioToFirebase(setId, audioBlob, partId = 1) {
-      if (!setId || !audioBlob) {
-        console.warn('[ToeflSync] Missing setId or audioBlob for audio upload');
-        return false;
-      }
+    for (const base of this._getStorageBases()) {
       try {
-        const storagePath = `toefl_itp/audio/${setId}/part_${partId}`;
-        const encodedPath = encodeURIComponent(storagePath);
-        const uploadUrl = `${TOEFL_STORAGE_BASE}?name=${encodedPath}`;
-
-        const res = await fetch(uploadUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': audioBlob.type || 'audio/mpeg' },
+        const res = await fetch(`${base}?${uploadNameQuery}`, {
+          method: "POST",
+          headers: { "Content-Type": audioBlob.type || "audio/mpeg" },
           body: audioBlob
         });
-        if (!res.ok) throw new Error(`Storage upload failed (${res.status})`);
+
+        if (!res.ok) {
+          const errorText = await res.text().catch(() => "");
+          errors.push(`${base} -> ${res.status} ${errorText}`);
+          continue;
+        }
 
         const meta = await res.json();
-        const token = meta.downloadTokens;
-        const downloadUrl = `${TOEFL_STORAGE_BASE}/${encodedPath}?alt=media&token=${token}`;
+        const token = String(meta?.downloadTokens || "");
+        const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : "";
+        const downloadUrl = `${base}/${encodedPath}?alt=media${tokenQuery}`;
 
-        // Save the download URL in RTDB (tiny JSON – no size issues)
         await this._put(`toefl_itp/audio_urls/${setId}/part_${partId}`, {
           url: downloadUrl,
           fileName: audioBlob.name || `audio_part${partId}`,
-          size: audioBlob.size,
+          size: Number(audioBlob.size || 0),
+          type: audioBlob.type || "audio/mpeg",
           uploadedAt: new Date().toISOString()
         });
 
         this.isRemoteAvailable = true;
-        console.log('[ToeflSync] Audio uploaded to Storage:', { setId, partId, size: audioBlob.size });
+        this._lastStorageError = "";
+        console.log("[ToeflSync] Audio uploaded to Storage:", { setId, partId, size: audioBlob.size, base });
         return true;
       } catch (e) {
-        this.isRemoteAvailable = false;
-        console.warn(`[ToeflSync] Storage upload failed – ${setId} part ${partId}:`, e.message);
-        return false;
+        errors.push(`${base} -> ${e?.message || String(e)}`);
       }
     }
 
-    /**
-     * Get the Firebase Storage download URL for an audio file.
-     * Returns the URL string (set as audio.src directly – no blob download needed).
-     * @param {string} setId
-     * @param {number} partId
-     * @returns {Promise<string|null>} download URL or null
-     */
-    async getAudioFromFirebase(setId, partId = 1) {
-      if (!setId) return null;
+    this.isRemoteAvailable = false;
+    this._lastStorageError = errors.join(" | ");
+    console.warn(`[ToeflSync] Storage upload failed - ${setId} part ${partId}:`, this._lastStorageError);
+    return false;
+  }
+
+  /**
+   * Get download URL for an audio file from RTDB URL index.
+   * @param {string} setId
+   * @param {number} partId
+   * @returns {Promise<string|null>}
+   */
+  async getAudioFromFirebase(setId, partId = 1) {
+    if (!setId) return null;
+    try {
+      const data = await this._get(`toefl_itp/audio_urls/${setId}/part_${partId}`);
+      if (!data || !data.url) return null;
+      this.isRemoteAvailable = true;
+      return data.url;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Storage URL fetch failed - ${setId} part ${partId}:`, e.message);
+      return null;
+    }
+  }
+
+  /**
+   * Delete audio object and URL index entry.
+   * @param {string} setId
+   * @param {number} partId
+   * @returns {Promise<boolean>}
+   */
+  async deleteAudioFromFirebase(setId, partId = 1) {
+    if (!setId) return false;
+    const storagePath = `toefl_itp/audio/${setId}/part_${partId}`;
+    const encodedPath = encodeURIComponent(storagePath);
+    let deleted = false;
+
+    for (const base of this._getStorageBases()) {
       try {
-        const data = await this._get(`toefl_itp/audio_urls/${setId}/part_${partId}`);
-        if (!data || !data.url) return null;
-        this.isRemoteAvailable = true;
-        console.log('[ToeflSync] Audio URL fetched from Storage:', { setId, partId });
-        return data.url;   // returns a URL string, not a Blob
-      } catch (e) {
-        this.isRemoteAvailable = false;
-        console.warn(`[ToeflSync] Storage URL fetch failed – ${setId} part ${partId}:`, e.message);
-        return null;
+        const res = await fetch(`${base}/${encodedPath}`, { method: "DELETE" });
+        if (res.ok || res.status === 404) {
+          deleted = true;
+          break;
+        }
+      } catch {
+        // Try next base alias
       }
     }
 
-    /**
-     * Delete audio from Firebase Storage and remove its URL entry from RTDB.
-     */
-    async deleteAudioFromFirebase(setId, partId = 1) {
-      if (!setId) return false;
-      try {
-        const storagePath = `toefl_itp/audio/${setId}/part_${partId}`;
-        const encodedPath = encodeURIComponent(storagePath);
-        await fetch(`${TOEFL_STORAGE_BASE}/${encodedPath}`, { method: 'DELETE' });
-        await fetch(this._url(`toefl_itp/audio_urls/${setId}/part_${partId}`), { method: 'DELETE' });
-        console.log('[ToeflSync] Audio deleted from Storage:', { setId, partId });
-        return true;
-      } catch (e) {
-        console.warn(`[ToeflSync] Storage delete failed – ${setId} part ${partId}:`, e.message);
-        return false;
-      }
+    try {
+      await fetch(this._url(`toefl_itp/audio_urls/${setId}/part_${partId}`), { method: "DELETE" });
+    } catch {
+      // Ignore URL index delete failure in best-effort cleanup
     }
-    }
+
+    return deleted;
+  }
+}
+
+window.toeflStorage = window.toeflStorage || new ToeflStorageSync();
