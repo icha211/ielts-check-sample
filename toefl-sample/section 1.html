@@ -1144,7 +1144,7 @@
         <div id="dev-panels-container"></div>
     </div>
 
-    <script src="toefl-storage-sync.js?v=20260506"></script>
+    <script src="toefl-storage-sync.js?v=20260520"></script>
     <script>
         const PARTS = [
             { id: 1, name: "Part A: Short Dialogues", range: "Questions 1-30", start: 1, end: 30, instr: "<strong>Directions:</strong> In Part A, you will hear short conversations between two people. After each conversation, you will hear a question about the conversation. The conversations and questions will not be repeated. After you hear a question, choose the best answer." },
@@ -1189,6 +1189,7 @@
         let audioIsLocked = false;
         let currentAudioObjectUrl = "";
         let currentAudioFallbackUrls = [];
+        let audioAnalyzerReady = false;
 
         function getAudioStorageKey(setId, partId = 1) {
             return `${MODULE_ID}:${setId}:part-${partId}`;
@@ -1589,6 +1590,21 @@
             return null;
         }
 
+        async function resolveLatestSetIdFromAudioIndex() {
+            if (!window.toeflStorage || typeof toeflStorage.getAudioIndexMap !== "function") return "";
+            const audioIndex = await toeflStorage.getAudioIndexMap();
+            const entries = Object.entries(audioIndex || {})
+                .map(([setId, parts]) => ({ setId, parts }))
+                .filter((item) => item && typeof item.setId === "string" && item.setId.startsWith(`${MODULE_ID}_`))
+                .filter((item) => item.parts && typeof item.parts === "object" && Object.keys(item.parts).length > 0)
+                .sort((left, right) => {
+                    const leftStamp = Number(String(left.setId).split("_")[2] || 0);
+                    const rightStamp = Number(String(right.setId).split("_")[2] || 0);
+                    return rightStamp - leftStamp;
+                });
+            return entries[0]?.setId || "";
+        }
+
         function persistFlagState() {
             localStorage.setItem(FLAG_KEY, JSON.stringify(flaggedQuestions));
         }
@@ -1752,18 +1768,31 @@
 
         function ensureAudioAnalyzer() {
             const audio = document.getElementById("cbt-audio-player");
-            if (!audio) return;
-            if (audioContext && audioAnalyser && audioDataArray) return;
+            if (!audio) return false;
+            if (audioAnalyzerReady && audioContext && audioAnalyser && audioDataArray) return true;
 
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            audioSourceNode = audioContext.createMediaElementSource(audio);
-            audioAnalyser = audioContext.createAnalyser();
-            audioAnalyser.fftSize = 128;
-            audioAnalyser.smoothingTimeConstant = 0.82;
-            audioDataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioSourceNode = audioContext.createMediaElementSource(audio);
+                audioAnalyser = audioContext.createAnalyser();
+                audioAnalyser.fftSize = 128;
+                audioAnalyser.smoothingTimeConstant = 0.82;
+                audioDataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
 
-            audioSourceNode.connect(audioAnalyser);
-            audioAnalyser.connect(audioContext.destination);
+                audioSourceNode.connect(audioAnalyser);
+                audioAnalyser.connect(audioContext.destination);
+                audioAnalyzerReady = true;
+                return true;
+            } catch (error) {
+                // Do not block playback if analyzer graph cannot be created.
+                audioAnalyzerReady = false;
+                audioContext = null;
+                audioAnalyser = null;
+                audioSourceNode = null;
+                audioDataArray = null;
+                console.warn("Audio analyzer setup skipped:", error);
+                return false;
+            }
         }
 
         function renderWaveform() {
@@ -1888,9 +1917,13 @@
             }
 
             try {
-                ensureAudioAnalyzer();
-                if (audioContext && audioContext.state === "suspended") {
-                    await audioContext.resume();
+                const analyzerReady = ensureAudioAnalyzer();
+                if (analyzerReady && audioContext && audioContext.state === "suspended") {
+                    try {
+                        await audioContext.resume();
+                    } catch (resumeError) {
+                        console.warn("AudioContext resume failed, continuing with direct element playback:", resumeError);
+                    }
                 }
 
                 if (audio.paused) {
@@ -2206,10 +2239,9 @@
             const params = new URLSearchParams(window.location.search);
             const requestedDate = params.get("setDate");
             currentSetId = params.get("setId") || "";
-            const isCreateMode = !currentSetId && isDeveloperMode();
             let stored = {};
 
-            if (!currentSetId && requestedDate && !isDeveloperMode()) {
+            if (!currentSetId && requestedDate) {
                 const byDate = await resolveSetRecordByDate(requestedDate);
                 if (byDate?.setId) {
                     currentSetId = byDate.setId;
@@ -2217,11 +2249,22 @@
                 }
             }
 
-            if (!currentSetId && !requestedDate && !isDeveloperMode()) {
+            if (!currentSetId && !requestedDate) {
                 const latest = await resolveLatestUserSetRecord();
                 if (latest?.setId) {
                     currentSetId = latest.setId;
                     stored = latest;
+                }
+            }
+
+            if (!currentSetId) {
+                const latestAudioSetId = await resolveLatestSetIdFromAudioIndex();
+                if (latestAudioSetId) {
+                    currentSetId = latestAudioSetId;
+                    const parsedDate = String(latestAudioSetId).split("_")[1] || "";
+                    if (!stored.setDate && /^\d{4}-\d{2}-\d{2}$/.test(parsedDate)) {
+                        stored.setDate = parsedDate;
+                    }
                 }
             }
 
@@ -2236,13 +2279,9 @@
             }
 
             if (!stored.setDate) {
-                if (isCreateMode) {
-                    stored = {};
-                } else {
-                    const local = getStoredSetMap();
-                    if (currentSetId && local[currentSetId]) {
-                        stored = local[currentSetId];
-                    }
+                const local = getStoredSetMap();
+                if (currentSetId && local[currentSetId]) {
+                    stored = local[currentSetId];
                 }
             }
 

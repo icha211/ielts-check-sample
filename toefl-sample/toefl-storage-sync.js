@@ -398,6 +398,18 @@ class ToeflStorageSync {
     return this._buildAudioUrlCandidates(setId, partId, preferredUrl);
   }
 
+  async getAudioIndexMap() {
+    try {
+      const data = await this._get("toefl_itp/audio_urls");
+      this.isRemoteAvailable = true;
+      return (data && typeof data === "object" && !Array.isArray(data)) ? data : {};
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn("[ToeflSync] Audio index fetch failed:", e.message);
+      return {};
+    }
+  }
+
   /**
    * Upload audio file to Firebase Storage and save download URL in RTDB.
    * @param {string} setId
