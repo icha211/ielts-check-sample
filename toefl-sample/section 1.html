@@ -1144,7 +1144,7 @@
         <div id="dev-panels-container"></div>
     </div>
 
-    <script src="toefl-storage-sync.js?v=20260520"></script>
+    <script src="toefl-storage-sync.js?v=20260520b"></script>
     <script>
         const PARTS = [
             { id: 1, name: "Part A: Short Dialogues", range: "Questions 1-30", start: 1, end: 30, instr: "<strong>Directions:</strong> In Part A, you will hear short conversations between two people. After each conversation, you will hear a question about the conversation. The conversations and questions will not be repeated. After you hear a question, choose the best answer." },
@@ -1367,7 +1367,9 @@
 
             try {
                 // Try Firebase Storage first (cross-machine sync)
-                const storageUrl = await window.toeflStorage.getAudioFromFirebase(currentSetId, partId).catch(() => null);
+                const storageUrl = await (window.toeflStorage.getPlayableAudioFromFirebase
+                    ? window.toeflStorage.getPlayableAudioFromFirebase(currentSetId, partId)
+                    : window.toeflStorage.getAudioFromFirebase(currentSetId, partId)).catch(() => null);
                 if (storageUrl) {
                     if (isPartActive(partId)) {
                         setAudioSourceFromUrl(storageUrl, currentSetId, partId);
@@ -1584,7 +1586,9 @@
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
 
             for (const record of ordered) {
-                const url = await toeflStorage.getAudioFromFirebase(record.setId, partId).catch(() => null);
+                const url = await (toeflStorage.getPlayableAudioFromFirebase
+                    ? toeflStorage.getPlayableAudioFromFirebase(record.setId, partId)
+                    : toeflStorage.getAudioFromFirebase(record.setId, partId)).catch(() => null);
                 if (url) return { record, url };
             }
             return null;
@@ -1956,7 +1960,9 @@
             try {
                 // Try to get audio from Firebase for current set
                 if (currentSetId) {
-                    const storageUrl = await window.toeflStorage.getAudioFromFirebase(currentSetId, activePartId || 1).catch(() => null);
+                    const storageUrl = await (window.toeflStorage.getPlayableAudioFromFirebase
+                        ? window.toeflStorage.getPlayableAudioFromFirebase(currentSetId, activePartId || 1)
+                        : window.toeflStorage.getAudioFromFirebase(currentSetId, activePartId || 1)).catch(() => null);
                     if (storageUrl) {
                         setAudioSourceFromUrl(storageUrl, currentSetId, activePartId || 1);
                         setAudioLabelReady("cloud audio", Number(activePartId || 1));

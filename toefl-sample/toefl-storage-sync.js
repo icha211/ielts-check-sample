@@ -492,6 +492,43 @@ class ToeflStorageSync {
     }
   }
 
+  async _probeAudioUrl(url) {
+    if (!url) return false;
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { Range: "bytes=0-1023" }
+      });
+      if (!res.ok) return false;
+
+      const contentType = String(res.headers.get("content-type") || "").toLowerCase();
+      if (!contentType) return true;
+      if (contentType.startsWith("audio/")) return true;
+      if (contentType.includes("application/octet-stream")) return true;
+      if (contentType.includes("application/json") || contentType.includes("text/html") || contentType.includes("text/plain")) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async getPlayableAudioFromFirebase(setId, partId = 1) {
+    const savedUrl = await this.getAudioFromFirebase(setId, partId);
+    if (!savedUrl) return null;
+
+    const candidates = this._buildAudioUrlCandidates(setId, partId, savedUrl);
+    for (const url of candidates) {
+      if (await this._probeAudioUrl(url)) {
+        return url;
+      }
+    }
+
+    // Fallback to saved URL so caller can still attempt playback and show a clear media error.
+    return savedUrl;
+  }
+
   /**
    * Delete audio object and URL index entry.
    * @param {string} setId
