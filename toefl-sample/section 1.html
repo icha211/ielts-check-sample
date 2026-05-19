@@ -1546,6 +1546,20 @@
             return resolveLatestSetRecord();
         }
 
+        async function findLatestSetWithAudio(partId = 1) {
+            if (!window.toeflStorage || typeof toeflStorage.getSetRecords !== "function") return null;
+            const records = await toeflStorage.getSetRecords();
+            const ordered = (records || [])
+                .filter((item) => item && item.module === MODULE_ID && item.setId)
+                .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
+
+            for (const record of ordered) {
+                const url = await toeflStorage.getAudioFromFirebase(record.setId, partId).catch(() => null);
+                if (url) return { record, url };
+            }
+            return null;
+        }
+
         function persistFlagState() {
             localStorage.setItem(FLAG_KEY, JSON.stringify(flaggedQuestions));
         }
@@ -1851,12 +1865,19 @@
                 }
 
                 if (audio.paused) {
+                    // Guard against silent playback caused by accidental mute/zero volume states.
+                    audio.muted = false;
+                    if (audio.volume <= 0) {
+                        audio.volume = 1;
+                    }
                     await audio.play();
                 } else {
                     audio.pause();
                 }
             } catch (error) {
                 console.warn("Audio play toggle failed:", error);
+                const message = error?.message || String(error || "Unknown audio playback error");
+                alert(`Audio failed to play: ${message}`);
             }
 
             updateAudioShellStatus();
@@ -1879,6 +1900,24 @@
                         setAudioLabelReady("cloud audio", Number(activePartId || 1));
                         return Boolean(audio.src);
                     }
+                }
+
+                // If current set has no audio, try latest set that has cloud audio for this part.
+                const latestCloud = await findLatestSetWithAudio(activePartId || 1).catch(() => null);
+                if (latestCloud?.url && latestCloud.record?.setId) {
+                    currentSetId = latestCloud.record.setId;
+                    const dateInput = document.getElementById("set-date");
+                    if (dateInput && latestCloud.record.setDate) {
+                        dateInput.value = latestCloud.record.setDate;
+                    }
+                    if (latestCloud.record.setDate) {
+                        updatePackageLabel(latestCloud.record.setDate);
+                    }
+                    updateEditorUrl(currentSetId, latestCloud.record.setDate || "");
+                    setAudioSourceFromUrl(latestCloud.url);
+                    setAudioLabelReady("cloud audio", Number(activePartId || 1));
+                    await refreshAudioLabelsForCurrentSet();
+                    return Boolean(audio.src);
                 }
 
                 // Fallback to latest audio from IndexedDB
@@ -1927,6 +1966,21 @@
             }
             if (playControl) playControl.addEventListener("click", toggleAudioFromUserGesture);
 
+            // Allow clicking Part A/B/C titles in navigator to switch part and start that part audio.
+            const navigatorTitles = document.querySelectorAll(".navigator-group__title");
+            navigatorTitles.forEach((title, index) => {
+                title.style.cursor = "pointer";
+                title.setAttribute("title", "Switch to this part and play/pause audio");
+                title.addEventListener("click", async () => {
+                    const partId = index + 1;
+                    if (!Number.isFinite(partId)) return;
+                    if (activePartId !== partId) {
+                        setActivePart(partId, { resetScroll: false });
+                    }
+                    await toggleAudioFromUserGesture();
+                });
+            });
+
             audio.addEventListener("play", () => {
                 startWaveformRenderer();
                 updateAudioShellStatus();
@@ -1942,6 +1996,18 @@
             audio.addEventListener("ended", () => {
                 audioIsLocked = true;
                 stopWaveformRenderer();
+                updateAudioShellStatus();
+            });
+            audio.addEventListener("error", () => {
+                const mediaError = audio.error;
+                const code = mediaError?.code || 0;
+                const codeText = {
+                    1: "aborted",
+                    2: "network",
+                    3: "decode",
+                    4: "source not supported"
+                }[code] || "unknown";
+                alert(`Audio error (${codeText}). Please re-upload this part audio in Developer mode.`);
                 updateAudioShellStatus();
             });
             audio.addEventListener("timeupdate", updateAudioShellStatus);
@@ -2177,6 +2243,43 @@
                 } catch (error) {
                     console.warn("[ToeflSync] set save failed:", error);
                 }
+            }
+        }
+
+        async function handleSetDateChange() {
+            const dateInput = document.getElementById("set-date");
+            const selectedDate = dateInput?.value;
+            if (!selectedDate) return;
+
+            const existing = await resolveSetRecordByDate(selectedDate).catch(() => null);
+            if (existing?.setId) {
+                currentSetId = existing.setId;
+                upsertLocalRecord(existing);
+                updateEditorUrl(currentSetId, selectedDate);
+                updatePackageLabel(selectedDate);
+                await loadSectionDraft();
+                await restoreAudioForCurrentSet(activePartId || 1);
+                await refreshAudioLabelsForCurrentSet();
+                return;
+            }
+
+            if (isDeveloperMode()) {
+                // In developer mode, a new date can intentionally represent a new package.
+                currentSetId = "";
+                await saveSectionMeta();
+                await refreshAudioLabelsForCurrentSet();
+                return;
+            }
+
+            // In user mode, do not auto-create a new set when the selected date has no package.
+            currentSetId = "";
+            updatePackageLabel(selectedDate);
+            AUDIO_PART_IDS.forEach((id) => setAudioLabelEmpty(id));
+            const audio = document.getElementById("cbt-audio-player");
+            if (audio) {
+                audio.pause();
+                audio.removeAttribute("src");
+                audio.load();
             }
         }
 
@@ -2647,7 +2750,7 @@
             updateOnboardingVisibility();
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
-            if (setDateEl) setDateEl.addEventListener("change", saveSectionMeta);
+            if (setDateEl) setDateEl.addEventListener("change", handleSetDateChange);
             if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
             window.addEventListener("beforeunload", revokeCurrentAudioUrl);
         };
