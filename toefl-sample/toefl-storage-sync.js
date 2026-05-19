@@ -374,6 +374,38 @@ class ToeflStorageSync {
     return this._lastStorageError || "";
   }
 
+  async _isPlayableAudioUrl(url) {
+    if (!url) return false;
+    try {
+      const response = await fetch(url, { method: "GET" });
+      if (!response.ok) return false;
+      const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+      return contentType.startsWith("audio/") || contentType === "application/octet-stream";
+    } catch {
+      return false;
+    }
+  }
+
+  _buildAudioUrlCandidates(setId, partId, preferredUrl = "") {
+    const storagePath = `toefl_itp/audio/${setId}/part_${partId}`;
+    const encodedPath = encodeURIComponent(storagePath);
+    const tokenMatch = String(preferredUrl || "").match(/[?&]token=([^&]+)/i);
+    const token = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "";
+    const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : "";
+
+    const candidates = [];
+    for (const base of this._getStorageBases()) {
+      candidates.push(`${base}/${encodedPath}?alt=media${tokenQuery}`);
+      candidates.push(`${base}/${encodedPath}?alt=media`);
+    }
+
+    if (preferredUrl) {
+      candidates.unshift(preferredUrl);
+    }
+
+    return Array.from(new Set(candidates));
+  }
+
   /**
    * Upload audio file to Firebase Storage and save download URL in RTDB.
    * @param {string} setId
@@ -445,9 +477,27 @@ class ToeflStorageSync {
     if (!setId) return null;
     try {
       const data = await this._get(`toefl_itp/audio_urls/${setId}/part_${partId}`);
-      if (!data || !data.url) return null;
+      const savedUrl = data && data.url ? String(data.url) : "";
+      if (!savedUrl) return null;
+
+      const candidates = this._buildAudioUrlCandidates(setId, partId, savedUrl);
+      for (const url of candidates) {
+        // Validate that URL actually serves audio bytes before returning.
+        if (await this._isPlayableAudioUrl(url)) {
+          if (url !== savedUrl) {
+            await this._put(`toefl_itp/audio_urls/${setId}/part_${partId}`, {
+              ...(data || {}),
+              url,
+              repairedAt: new Date().toISOString()
+            });
+          }
+          this.isRemoteAvailable = true;
+          return url;
+        }
+      }
+
       this.isRemoteAvailable = true;
-      return data.url;
+      return null;
     } catch (e) {
       this.isRemoteAvailable = false;
       console.warn(`[ToeflSync] Storage URL fetch failed - ${setId} part ${partId}:`, e.message);
