@@ -374,18 +374,6 @@ class ToeflStorageSync {
     return this._lastStorageError || "";
   }
 
-  async _isPlayableAudioUrl(url) {
-    if (!url) return false;
-    try {
-      const response = await fetch(url, { method: "GET" });
-      if (!response.ok) return false;
-      const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-      return contentType.startsWith("audio/") || contentType === "application/octet-stream";
-    } catch {
-      return false;
-    }
-  }
-
   _buildAudioUrlCandidates(setId, partId, preferredUrl = "") {
     const storagePath = `toefl_itp/audio/${setId}/part_${partId}`;
     const encodedPath = encodeURIComponent(storagePath);
@@ -404,6 +392,10 @@ class ToeflStorageSync {
     }
 
     return Array.from(new Set(candidates));
+  }
+
+  getAudioUrlCandidates(setId, partId = 1, preferredUrl = "") {
+    return this._buildAudioUrlCandidates(setId, partId, preferredUrl);
   }
 
   /**
@@ -479,25 +471,8 @@ class ToeflStorageSync {
       const data = await this._get(`toefl_itp/audio_urls/${setId}/part_${partId}`);
       const savedUrl = data && data.url ? String(data.url) : "";
       if (!savedUrl) return null;
-
-      const candidates = this._buildAudioUrlCandidates(setId, partId, savedUrl);
-      for (const url of candidates) {
-        // Validate that URL actually serves audio bytes before returning.
-        if (await this._isPlayableAudioUrl(url)) {
-          if (url !== savedUrl) {
-            await this._put(`toefl_itp/audio_urls/${setId}/part_${partId}`, {
-              ...(data || {}),
-              url,
-              repairedAt: new Date().toISOString()
-            });
-          }
-          this.isRemoteAvailable = true;
-          return url;
-        }
-      }
-
       this.isRemoteAvailable = true;
-      return null;
+      return savedUrl;
     } catch (e) {
       this.isRemoteAvailable = false;
       console.warn(`[ToeflSync] Storage URL fetch failed - ${setId} part ${partId}:`, e.message);

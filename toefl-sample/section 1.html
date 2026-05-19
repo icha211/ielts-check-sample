@@ -1188,6 +1188,7 @@
         let audioVisualFrame = null;
         let audioIsLocked = false;
         let currentAudioObjectUrl = "";
+        let currentAudioFallbackUrls = [];
 
         function getAudioStorageKey(setId, partId = 1) {
             return `${MODULE_ID}:${setId}:part-${partId}`;
@@ -1311,6 +1312,7 @@
             if (!audio || !blob) return;
 
             revokeCurrentAudioUrl();
+            currentAudioFallbackUrls = [];
             currentAudioObjectUrl = URL.createObjectURL(blob);
             audio.src = currentAudioObjectUrl;
             audio.currentTime = 0;
@@ -1318,15 +1320,42 @@
             updateAudioShellStatus();
         }
 
-        function setAudioSourceFromUrl(url) {
+        function setAudioSourceFromUrl(url, setId = currentSetId, partId = activePartId || 1) {
             const audio = document.getElementById("cbt-audio-player");
             if (!audio || !url) return;
             revokeCurrentAudioUrl();
             currentAudioObjectUrl = null;
+            if (window.toeflStorage && typeof toeflStorage.getAudioUrlCandidates === "function" && setId) {
+                const candidates = toeflStorage.getAudioUrlCandidates(setId, partId, url);
+                currentAudioFallbackUrls = (candidates || []).filter((item) => item && item !== url);
+            } else {
+                currentAudioFallbackUrls = [];
+            }
             audio.src = url;
             audio.currentTime = 0;
             audioIsLocked = false;
             updateAudioShellStatus();
+        }
+
+        async function tryFallbackAudioSource() {
+            const audio = document.getElementById("cbt-audio-player");
+            if (!audio || currentAudioFallbackUrls.length === 0) return false;
+
+            while (currentAudioFallbackUrls.length > 0) {
+                const nextUrl = currentAudioFallbackUrls.shift();
+                if (!nextUrl || nextUrl === audio.src) continue;
+                audio.src = nextUrl;
+                audio.currentTime = 0;
+                try {
+                    await audio.play();
+                    updateAudioShellStatus();
+                    return true;
+                } catch {
+                    // Try the next candidate URL.
+                }
+            }
+
+            return false;
         }
 
         async function restoreAudioForCurrentSet(partId = activePartId || 1) {
@@ -1340,7 +1369,7 @@
                 const storageUrl = await window.toeflStorage.getAudioFromFirebase(currentSetId, partId).catch(() => null);
                 if (storageUrl) {
                     if (isPartActive(partId)) {
-                        setAudioSourceFromUrl(storageUrl);
+                        setAudioSourceFromUrl(storageUrl, currentSetId, partId);
                     }
                     setAudioLabelReady(`cloud audio`, partId);
                     return true;
@@ -1896,7 +1925,7 @@
                 if (currentSetId) {
                     const storageUrl = await window.toeflStorage.getAudioFromFirebase(currentSetId, activePartId || 1).catch(() => null);
                     if (storageUrl) {
-                        setAudioSourceFromUrl(storageUrl);
+                        setAudioSourceFromUrl(storageUrl, currentSetId, activePartId || 1);
                         setAudioLabelReady("cloud audio", Number(activePartId || 1));
                         return Boolean(audio.src);
                     }
@@ -1914,7 +1943,7 @@
                         updatePackageLabel(latestCloud.record.setDate);
                     }
                     updateEditorUrl(currentSetId, latestCloud.record.setDate || "");
-                    setAudioSourceFromUrl(latestCloud.url);
+                    setAudioSourceFromUrl(latestCloud.url, currentSetId, activePartId || 1);
                     setAudioLabelReady("cloud audio", Number(activePartId || 1));
                     await refreshAudioLabelsForCurrentSet();
                     return Boolean(audio.src);
@@ -2007,8 +2036,13 @@
                     3: "decode",
                     4: "source not supported"
                 }[code] || "unknown";
-                alert(`Audio error (${codeText}). Please re-upload this part audio in Developer mode.`);
-                updateAudioShellStatus();
+                void (async () => {
+                    const recovered = await tryFallbackAudioSource();
+                    if (!recovered) {
+                        alert(`Audio error (${codeText}). Please re-upload this part audio in Developer mode.`);
+                    }
+                    updateAudioShellStatus();
+                })();
             });
             audio.addEventListener("timeupdate", updateAudioShellStatus);
 
