@@ -2829,51 +2829,7 @@
             if (setDateEl) setDateEl.addEventListener("change", handleSetDateChange);
             if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
             window.addEventListener("beforeunload", revokeCurrentAudioUrl);
-            createAudioDiagnosticsPanel();
-            setInterval(updateAudioDiagnostics, 500);
         };
-
-        function createAudioDiagnosticsPanel() {
-            const panel = document.createElement("div");
-            panel.id = "audio-diagnostics-panel";
-            panel.style.cssText = `
-                position: fixed;
-                bottom: 16px;
-                right: 16px;
-                width: 320px;
-                background: #1e293b;
-                color: #e2e8f0;
-                border: 1px solid #475569;
-                border-radius: 8px;
-                padding: 12px;
-                font-family: monospace;
-                font-size: 11px;
-                max-height: 240px;
-                overflow-y: auto;
-                z-index: 9999;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            `;
-            document.body.appendChild(panel);
-        }
-
-        function updateAudioDiagnostics() {
-            const panel = document.getElementById("audio-diagnostics-panel");
-            if (!panel) return;
-            const audio = document.getElementById("cbt-audio-player");
-            if (!audio) { panel.innerText = "Audio element not found"; return; }
-
-            const lines = [];
-            lines.push(`URL: ${audio.src ? audio.src.slice(0, 60) + "..." : "(none)"}`);
-            lines.push(`State: ${audio.paused ? "paused" : "playing"} | Ready: ${audio.readyState}/4`);
-            lines.push(`Muted: ${audio.muted} | Volume: ${(audio.volume * 100).toFixed(0)}%`);
-            lines.push(`Error: ${audio.error ? `code=${audio.error.code}` : "none"}`);
-            lines.push(`Duration: ${audio.duration ? audio.duration.toFixed(0) : "?"}s | Current: ${audio.currentTime.toFixed(1)}s`);
-            lines.push(`Network: ${audio.networkState || "?"}${audio.networkState === 3 ? " (loading)" : audio.networkState === 2 ? " (idle)" : ""}`);
-            lines.push(`SetID: ${typeof window.currentSetId !== 'undefined' ? (window.currentSetId || "(empty)") : "?"}`);
-            lines.push(`Part: ${typeof window.activePartId !== 'undefined' ? window.activePartId : "?"}`);
-
-            panel.innerHTML = `<div style="color:#94e2d5;">🔊 AUDIO DIAGNOSTICS</div><div style="margin-top:4px;">${lines.join("<br>")}</div>`;
-        }
     </script>
 </body>
 </html>
