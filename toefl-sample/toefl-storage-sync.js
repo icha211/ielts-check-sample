@@ -374,17 +374,66 @@ class ToeflStorageSync {
     return this._lastStorageError || "";
   }
 
-  _buildAudioUrlCandidates(setId, partId, preferredUrl = "") {
-    const storagePath = `toefl_itp/audio/${setId}/part_${partId}`;
+  _extractPrimaryDownloadToken(rawTokenValue) {
+    const raw = String(rawTokenValue || "").trim();
+    if (!raw) return "";
+    // Firebase can return multiple tokens as a comma-separated string.
+    return raw.split(",").map((item) => item.trim()).filter(Boolean)[0] || "";
+  }
+
+  _extractTokenFromUrl(url) {
+    if (!url) return "";
+    const tokenMatch = String(url).match(/[?&]token=([^&]+)/i);
+    if (!tokenMatch) return "";
+    return this._extractPrimaryDownloadToken(decodeURIComponent(tokenMatch[1] || ""));
+  }
+
+  _buildStorageDownloadUrl(base, storagePath, token = "") {
+    if (!base || !storagePath) return "";
     const encodedPath = encodeURIComponent(storagePath);
-    const tokenMatch = String(preferredUrl || "").match(/[?&]token=([^&]+)/i);
-    const token = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "";
-    const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : "";
+    const normalizedToken = this._extractPrimaryDownloadToken(token);
+    const tokenQuery = normalizedToken ? `&token=${encodeURIComponent(normalizedToken)}` : "";
+    return `${base}/${encodedPath}?alt=media${tokenQuery}`;
+  }
+
+  _extractStoragePathFromUrl(url) {
+    const text = String(url || "");
+    const marker = "/o/";
+    const markerIndex = text.indexOf(marker);
+    if (markerIndex < 0) return "";
+    const encodedPath = text.slice(markerIndex + marker.length).split("?")[0] || "";
+    if (!encodedPath) return "";
+    try {
+      return decodeURIComponent(encodedPath);
+    } catch {
+      return "";
+    }
+  }
+
+  _guessAudioExtension(fileName = "", mimeType = "") {
+    const safeName = String(fileName || "").trim();
+    const fromName = safeName.includes(".") ? safeName.split(".").pop().toLowerCase() : "";
+    if (fromName) return fromName;
+
+    const type = String(mimeType || "").toLowerCase();
+    if (type.includes("mpeg")) return "mp3";
+    if (type.includes("mp4") || type.includes("m4a")) return "m4a";
+    if (type.includes("wav")) return "wav";
+    if (type.includes("ogg")) return "ogg";
+    if (type.includes("aac")) return "aac";
+    if (type.includes("webm")) return "webm";
+    return "mp3";
+  }
+
+  _buildAudioUrlCandidates(setId, partId, preferredUrl = "", storagePathOverride = "") {
+    const fallbackPath = `toefl_itp/audio/${setId}/part_${partId}`;
+    const storagePath = String(storagePathOverride || "").trim() || this._extractStoragePathFromUrl(preferredUrl) || fallbackPath;
+    const token = this._extractTokenFromUrl(preferredUrl);
 
     const candidates = [];
     for (const base of this._getStorageBases()) {
-      candidates.push(`${base}/${encodedPath}?alt=media${tokenQuery}`);
-      candidates.push(`${base}/${encodedPath}?alt=media`);
+      candidates.push(this._buildStorageDownloadUrl(base, storagePath, token));
+      candidates.push(this._buildStorageDownloadUrl(base, storagePath));
     }
 
     if (preferredUrl) {
@@ -424,14 +473,14 @@ class ToeflStorageSync {
       return false;
     }
 
-    const storagePath = `toefl_itp/audio/${setId}/part_${partId}`;
-    const encodedPath = encodeURIComponent(storagePath);
+    const extension = this._guessAudioExtension(audioBlob.name || "", audioBlob.type || "");
+    const storagePath = `toefl_itp/audio/${setId}/part_${partId}.${extension}`;
     const uploadNameQuery = new URLSearchParams({ name: storagePath }).toString();
     const errors = [];
 
     for (const base of this._getStorageBases()) {
       try {
-        const res = await fetch(`${base}?${uploadNameQuery}`, {
+        const res = await fetch(`${base}?uploadType=media&${uploadNameQuery}`, {
           method: "POST",
           headers: { "Content-Type": audioBlob.type || "audio/mpeg" },
           body: audioBlob
@@ -444,12 +493,27 @@ class ToeflStorageSync {
         }
 
         const meta = await res.json();
-        const token = String(meta?.downloadTokens || "");
-        const tokenQuery = token ? `&token=${encodeURIComponent(token)}` : "";
-        const downloadUrl = `${base}/${encodedPath}?alt=media${tokenQuery}`;
+        const token = this._extractPrimaryDownloadToken(
+          meta?.downloadTokens ||
+          meta?.downloadToken ||
+          meta?.metadata?.firebaseStorageDownloadTokens ||
+          ""
+        );
+        const downloadUrl = this._buildStorageDownloadUrl(base, storagePath, token);
+        const candidateUrls = Array.from(new Set([
+          meta?.mediaLink,
+          meta?.downloadUrl,
+          meta?.downloadURL,
+          downloadUrl,
+          ...this._buildAudioUrlCandidates(setId, partId, downloadUrl, storagePath)
+        ].map((item) => String(item || "").trim()).filter(Boolean)));
 
         await this._put(`toefl_itp/audio_urls/${setId}/part_${partId}`, {
           url: downloadUrl,
+          mediaLink: String(meta?.mediaLink || ""),
+          storagePath,
+          token,
+          candidateUrls,
           fileName: audioBlob.name || `audio_part${partId}`,
           size: Number(audioBlob.size || 0),
           type: audioBlob.type || "audio/mpeg",
@@ -492,6 +556,16 @@ class ToeflStorageSync {
     }
   }
 
+  async getAudioRecordFromFirebase(setId, partId = 1) {
+    if (!setId) return null;
+    try {
+      const data = await this._get(`toefl_itp/audio_urls/${setId}/part_${partId}`);
+      return (data && typeof data === "object" && !Array.isArray(data)) ? data : null;
+    } catch {
+      return null;
+    }
+  }
+
   async _probeAudioUrl(url) {
     if (!url) return false;
     try {
@@ -515,18 +589,28 @@ class ToeflStorageSync {
   }
 
   async getPlayableAudioFromFirebase(setId, partId = 1) {
-    const savedUrl = await this.getAudioFromFirebase(setId, partId);
-    if (!savedUrl) return null;
+    const record = await this.getAudioRecordFromFirebase(setId, partId);
+    const savedUrl = String(record?.url || "").trim();
+    const storagePath = String(record?.storagePath || "").trim();
+    const storedCandidates = Array.isArray(record?.candidateUrls) ? record.candidateUrls : [];
+    const candidates = Array.from(new Set([
+      savedUrl,
+      String(record?.mediaLink || "").trim(),
+      ...storedCandidates,
+      ...this._buildAudioUrlCandidates(setId, partId, savedUrl, storagePath)
+    ].filter(Boolean)));
 
-    const candidates = this._buildAudioUrlCandidates(setId, partId, savedUrl);
+    if (candidates.length === 0) return null;
+
+    const fallbackCandidate = candidates.find((url) => url && url !== savedUrl) || savedUrl;
     for (const url of candidates) {
       if (await this._probeAudioUrl(url)) {
         return url;
       }
     }
 
-    // Fallback to saved URL so caller can still attempt playback and show a clear media error.
-    return savedUrl;
+    // Probing can fail because of CORS even when media playback succeeds in <audio>.
+    return fallbackCandidate;
   }
 
   /**

@@ -1315,6 +1315,7 @@
             revokeCurrentAudioUrl();
             currentAudioFallbackUrls = [];
             currentAudioObjectUrl = URL.createObjectURL(blob);
+            audio.removeAttribute("crossorigin");
             audio.src = currentAudioObjectUrl;
             audio.currentTime = 0;
             audioIsLocked = false;
@@ -1332,10 +1333,24 @@
             } else {
                 currentAudioFallbackUrls = [];
             }
+            audio.removeAttribute("crossorigin");
             audio.src = url;
             audio.currentTime = 0;
             audioIsLocked = false;
             updateAudioShellStatus();
+        }
+
+        function canUseWebAudioAnalyzer(audio) {
+            if (!audio) return false;
+            const src = String(audio.currentSrc || audio.src || "");
+            if (!src) return false;
+            if (src.startsWith("blob:")) return true;
+            try {
+                const srcUrl = new URL(src, window.location.href);
+                return srcUrl.origin === window.location.origin;
+            } catch {
+                return false;
+            }
         }
 
         async function tryFallbackAudioSource() {
@@ -1921,7 +1936,8 @@
             }
 
             try {
-                const analyzerReady = ensureAudioAnalyzer();
+                const shouldUseAnalyzer = canUseWebAudioAnalyzer(audio);
+                const analyzerReady = shouldUseAnalyzer ? ensureAudioAnalyzer() : false;
                 if (analyzerReady && audioContext && audioContext.state === "suspended") {
                     try {
                         await audioContext.resume();
