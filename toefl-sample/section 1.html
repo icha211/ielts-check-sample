@@ -1304,6 +1304,19 @@
             fileLabel.style.color = "#334155";
         }
 
+        function clearAudioSource() {
+            const audio = document.getElementById("cbt-audio-player");
+            if (!audio) return;
+            audio.pause();
+            revokeCurrentAudioUrl();
+            currentAudioFallbackUrls = [];
+            audio.removeAttribute("src");
+            audio.load();
+            audio.currentTime = 0;
+            audioIsLocked = false;
+            updateAudioShellStatus();
+        }
+
         function isPartActive(partId = 1) {
             return Number(partId || 1) === Number(activePartId || 1);
         }
@@ -1377,6 +1390,7 @@
         async function restoreAudioForCurrentSet(partId = activePartId || 1) {
             if (!currentSetId) {
                 AUDIO_PART_IDS.forEach((id) => setAudioLabelEmpty(id));
+                if (isPartActive(partId)) clearAudioSource();
                 return false;
             }
 
@@ -1417,6 +1431,7 @@
                 }
                 if (!record || !record.blob) {
                     setAudioLabelEmpty(partId);
+                    if (isPartActive(partId)) clearAudioSource();
                     return false;
                 }
 
@@ -1427,6 +1442,7 @@
                 return true;
             } catch (error) {
                 console.warn("[AudioPersistence] restore failed:", error);
+                if (isPartActive(partId)) clearAudioSource();
                 return false;
             }
         }
@@ -1930,7 +1946,7 @@
             if (!audio.src) {
                 const recovered = await ensurePlayableAudioSource();
                 if (!recovered || !audio.src) {
-                    alert("No saved listening audio was found for this browser yet. Upload once from Developer mode, then click Apply + Open User View.");
+                    alert("No saved listening audio was found for this selected package/date.");
                     return;
                 }
             }
@@ -1985,42 +2001,7 @@
                         return Boolean(audio.src);
                     }
                 }
-
-                // If current set has no audio, try latest set that has cloud audio for this part.
-                const latestCloud = await findLatestSetWithAudio(activePartId || 1).catch(() => null);
-                if (latestCloud?.url && latestCloud.record?.setId) {
-                    currentSetId = latestCloud.record.setId;
-                    const dateInput = document.getElementById("set-date");
-                    if (dateInput && latestCloud.record.setDate) {
-                        dateInput.value = latestCloud.record.setDate;
-                    }
-                    if (latestCloud.record.setDate) {
-                        updatePackageLabel(latestCloud.record.setDate);
-                    }
-                    updateEditorUrl(currentSetId, latestCloud.record.setDate || "");
-                    setAudioSourceFromUrl(latestCloud.url, currentSetId, activePartId || 1);
-                    setAudioLabelReady("cloud audio", Number(activePartId || 1));
-                    await refreshAudioLabelsForCurrentSet();
-                    return Boolean(audio.src);
-                }
-
-                // Fallback to latest audio from IndexedDB
-                const latestAudio = await getLatestAudioRecordForModule(activePartId || 1);
-                if (!latestAudio || !latestAudio.blob) return false;
-
-                setAudioSourceFromBlob(latestAudio.blob);
-                setAudioLabelReady(latestAudio.fileName, Number(latestAudio.partId || activePartId || 1));
-
-                if (!currentSetId && latestAudio.setId) {
-                    currentSetId = latestAudio.setId;
-                }
-
-                if (latestAudio.setId) {
-                    const linkedRecord = await resolveSetRecordById(latestAudio.setId);
-                    if (linkedRecord?.setDate) updatePackageLabel(linkedRecord.setDate);
-                }
-
-                return Boolean(audio.src);
+                return false;
             } catch (error) {
                 console.warn("[AudioPersistence] play-time recovery failed:", error);
                 return false;
@@ -2279,7 +2260,7 @@
                 }
             }
 
-            if (!currentSetId) {
+            if (!currentSetId && !requestedDate) {
                 const latestAudioSetId = await resolveLatestSetIdFromAudioIndex();
                 if (latestAudioSetId) {
                     currentSetId = latestAudioSetId;

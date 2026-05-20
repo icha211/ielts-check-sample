@@ -197,12 +197,20 @@ class ToeflStorageSync {
   async deleteSetRecord(setId) {
     if (!setId) return;
     try {
-      await fetch(this._url(`${this._setsV2Path}/${setId}`), { method: "DELETE" });
-      await fetch(this._url(`${this._draftsV2Path}/${setId}`), { method: "DELETE" });
+      const [setRes, draftRes] = await Promise.all([
+        fetch(this._url(`${this._setsV2Path}/${setId}`), { method: "DELETE" }),
+        fetch(this._url(`${this._draftsV2Path}/${setId}`), { method: "DELETE" })
+      ]);
+      const setDeleteOk = setRes.ok || setRes.status === 404;
+      const draftDeleteOk = draftRes.ok || draftRes.status === 404;
+      if (!setDeleteOk || !draftDeleteOk) {
+        throw new Error(`Delete failed (set:${setRes.status}, draft:${draftRes.status})`);
+      }
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
       console.warn(`[ToeflSync] Offline – ${setId} delete queued locally only:`, e.message);
+      throw e;
     }
     const localSets = this._safeParse(localStorage.getItem(this._setsV2LocalKey), {});
     delete localSets[setId];
@@ -293,12 +301,20 @@ class ToeflStorageSync {
    */
   async deleteSetForModule(module) {
     try {
-      await fetch(this._url(`${this._setsPath}/${module}`), { method: "DELETE" });
-      await fetch(this._url(`${this._draftsPath}/${module}`), { method: "DELETE" });
+      const [setRes, draftRes] = await Promise.all([
+        fetch(this._url(`${this._setsPath}/${module}`), { method: "DELETE" }),
+        fetch(this._url(`${this._draftsPath}/${module}`), { method: "DELETE" })
+      ]);
+      const setDeleteOk = setRes.ok || setRes.status === 404;
+      const draftDeleteOk = draftRes.ok || draftRes.status === 404;
+      if (!setDeleteOk || !draftDeleteOk) {
+        throw new Error(`Delete failed (set:${setRes.status}, draft:${draftRes.status})`);
+      }
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
       console.warn(`[ToeflSync] Offline – ${module} delete queued locally only:`, e.message);
+      throw e;
     }
     // Remove from local cache
     const local = this._safeParse(localStorage.getItem(this._setsLocalKey), {});

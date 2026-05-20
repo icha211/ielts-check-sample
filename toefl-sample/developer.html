@@ -999,10 +999,15 @@
 
         async function deleteSet(setId, module) {
             if (!confirm(`Delete this ${MODULE_CONFIG[module]?.label || module} set? This cannot be undone.`)) return;
-            await toeflStorage.deleteSetRecord(setId);
-            updateSyncStatus(toeflStorage.online);
-            toast(`${MODULE_CONFIG[module]?.label || module} set deleted`);
-            await renderAll();
+            try {
+                await toeflStorage.deleteSetRecord(setId);
+                updateSyncStatus(toeflStorage.online);
+                toast(`${MODULE_CONFIG[module]?.label || module} set deleted`);
+                await renderAll();
+            } catch (error) {
+                updateSyncStatus(false);
+                toast(`Delete failed: ${error?.message || "unknown error"}`);
+            }
         }
 
         function toggleCreateOptions(force) {
