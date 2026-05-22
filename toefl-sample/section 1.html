@@ -221,14 +221,32 @@
         }
         .progress-meta .part-progress { padding: 0 0 12px; }
         .topbar-controls {
-            width: 92px;
+            width: auto;
             height: 64px;
             padding: 0 6px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 24px;
+            gap: 10px;
             flex-shrink: 0;
+        }
+        .zoom-btn {
+            min-width: 32px;
+            height: 32px;
+            border: 1px solid #d1dce8;
+            border-radius: 8px;
+            background: #fff;
+            color: #003560;
+            font: 700 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 8px;
+        }
+        .zoom-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
         }
         .topbar-icon {
             width: 24px;
@@ -1031,6 +1049,8 @@
                     </div>
                     <div class="topbar-controls">
                         <button class="mode-switch-btn" id="open-dev-mode-btn" type="button" onclick="openDeveloperEditor()" style="display:none;">Developer</button>
+                        <button class="zoom-btn" id="zoom-out-btn" type="button" aria-label="Zoom out" onclick="handleZoomOut()">A-</button>
+                        <button class="zoom-btn" id="zoom-in-btn" type="button" aria-label="Zoom in" onclick="handleZoomIn()">A+</button>
                         <button class="topbar-icon info" type="button" aria-hidden="true"><span>i</span></button>
                         <button class="topbar-icon play" id="audio-play-control" type="button" aria-label="Play listening audio"><span>play</span></button>
                     </div>
@@ -1155,6 +1175,7 @@
         const MODULE_LABEL = "Listening";
         const ONBOARDING_KEY = "toefl_section1_onboarding_seen_v1";
         const DRAFT_KEY = "toefl_section1_dev_draft_v1";
+        const ZOOM_KEY = "toefl_section1_zoom_v1";
         const FLAG_KEY = "toefl_section1_flagged_questions_v1";
         const AUDIO_DB_NAME = "toefl_listening_audio_db_v1";
         const AUDIO_STORE_NAME = "set_audio";
@@ -1187,6 +1208,43 @@
         let currentAudioObjectUrl = "";
         let currentAudioFallbackUrls = [];
         let audioAnalyzerReady = false;
+        let zoomLevel = 1;
+
+        const ZOOM_MIN = 0.8;
+        const ZOOM_MAX = 1.3;
+        const ZOOM_STEP = 0.1;
+
+        function clampZoom(value) {
+            return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(value) || 1));
+        }
+
+        function updateZoomButtons() {
+            const zoomInButton = document.getElementById("zoom-in-btn");
+            const zoomOutButton = document.getElementById("zoom-out-btn");
+            if (zoomInButton) zoomInButton.disabled = zoomLevel >= ZOOM_MAX;
+            if (zoomOutButton) zoomOutButton.disabled = zoomLevel <= ZOOM_MIN;
+        }
+
+        function applyZoom(value) {
+            zoomLevel = clampZoom(value);
+            const userView = document.getElementById("user-view");
+            if (userView) userView.style.zoom = String(zoomLevel);
+            localStorage.setItem(ZOOM_KEY, String(zoomLevel));
+            updateZoomButtons();
+        }
+
+        function handleZoomIn() {
+            applyZoom(zoomLevel + ZOOM_STEP);
+        }
+
+        function handleZoomOut() {
+            applyZoom(zoomLevel - ZOOM_STEP);
+        }
+
+        function initZoom() {
+            const saved = Number(localStorage.getItem(ZOOM_KEY));
+            applyZoom(Number.isFinite(saved) ? saved : 1);
+        }
 
         function getAudioStorageKey(setId, partId = 1) {
             return `${MODULE_ID}:${setId}:part-${partId}`;
@@ -2848,6 +2906,7 @@
             activateInitialTab();
             window.addEventListener("hashchange", applyViewMode);
             updateOnboardingVisibility();
+            initZoom();
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
             if (setDateEl) setDateEl.addEventListener("change", handleSetDateChange);

@@ -62,6 +62,105 @@
         .radio-group input[type="radio"] { margin-top: 4px; cursor: pointer; flex-shrink: 0;}
         .option-letter { width: 30px; flex-shrink: 0; display: inline-block; font-weight: bold;}
 
+        /* Section 1-like UI specifically for Part A (Structure) */
+        #user-part-1 .user-main {
+            max-width: 980px;
+            margin: 16px auto 30px;
+            background: transparent;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+            border-radius: 0;
+        }
+        #user-part-1 .section-instructions {
+            background: #fff;
+            border-left: none;
+            border-radius: 8px;
+            border: 1px solid #d1dce8;
+            box-shadow: 0 4px 2px rgba(0, 53, 96, 0.10);
+            margin-bottom: 10px;
+            padding: 20px 24px;
+        }
+        #user-part-1 .question-item {
+            margin-bottom: 10px;
+            border-bottom: none;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 2px rgba(0, 53, 96, 0.10);
+            padding: 25px 24px 25px 22px;
+            display: grid;
+            grid-template-columns: 40px minmax(0, 1fr);
+            gap: 24px;
+            align-items: flex-start;
+        }
+        #user-part-1 .question-item p {
+            margin: 0;
+            color: #0f172a;
+            font: 600 18px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+        #user-part-1 .question-number-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid #7a8fa6;
+            background: #fff;
+            color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font: 400 18px/1 "Plus Jakarta Sans", Arial, sans-serif;
+            margin-top: 2px;
+        }
+        #user-part-1 .question-number-badge.is-answered {
+            background: #003560;
+            border-color: #fff;
+            color: #fff;
+            box-shadow: 0 1px 4px rgba(14, 165, 233, 1);
+        }
+        #user-part-1 .question-content {
+            display: grid;
+            gap: 5px;
+        }
+        #user-part-1 .radio-group {
+            display: grid;
+            gap: 8px;
+            margin: 0;
+        }
+        #user-part-1 .radio-group label {
+            border: 1px solid #d1dce8;
+            border-radius: 8px;
+            width: min(794px, 100%);
+            height: 54px;
+            min-height: 54px;
+            padding: 9px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff;
+            color: #0f172a;
+            cursor: pointer;
+            font: 400 18px/1.3 "Times New Roman", Times, serif;
+            transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        #user-part-1 .radio-group label.selected {
+            border-color: #005faa;
+            background: rgba(14, 165, 233, 0.2);
+            box-shadow: 0 4px 4px rgba(14, 165, 233, 0.25);
+        }
+        #user-part-1 .radio-group input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+            margin: 0;
+            pointer-events: none;
+        }
+        #user-part-1 .option-letter {
+            width: 36px;
+            flex-shrink: 0;
+            font-weight: 400;
+        }
+
         /* --- DESAIN BUKU TOEFL UNTUK PART B (HURUF DI BAWAH KATA) --- */
         .inline-question-text { 
             line-height: 2.8 !important; /* Spasi lebar agar huruf A,B,C,D tidak nabrak teks bawahnya */
@@ -556,6 +655,22 @@
         let globalQuestions = {};
         let timerInterval;
 
+        function refreshStructurePartAState() {
+            const partAContainer = document.getElementById("user-part-1");
+            if (!partAContainer) return;
+
+            partAContainer.querySelectorAll(".question-item").forEach((card) => {
+                const checked = card.querySelector('.radio-group input[type="radio"]:checked');
+                const badge = card.querySelector(".question-number-badge");
+                if (badge) badge.classList.toggle("is-answered", Boolean(checked));
+
+                card.querySelectorAll(".radio-group label").forEach((label) => {
+                    const radio = label.querySelector('input[type="radio"]');
+                    label.classList.toggle("selected", Boolean(radio && radio.checked));
+                });
+            });
+        }
+
         // ENGINE PARSER BARU UNTUK INLINE CLICKABLE & HURUF DI BAWAH
         function updateUserView(shouldSaveMeta = false) {
             if (shouldSaveMeta) {
@@ -586,6 +701,7 @@
                 let cleanHtml = '';
                 let openDiv = false;
                 let currentUID = '';
+                let currentQuestionIsPartB = false;
 
                 for (let line of lines) {
                     let rawLine = line.trim();
@@ -595,15 +711,16 @@
                     let isOption = rawLine.match(/^[\(]?([A-D])[\.\)]?\s+(.*)/i);
 
                     if (qMatch && !isOption) {
-                        if (openDiv) cleanHtml += `<div class="feedback" id="feedback-${currentUID}"></div></div>`;
+                        if (openDiv) cleanHtml += currentQuestionIsPartB ? `<div class="feedback" id="feedback-${currentUID}"></div></div>` : `</div><div class="feedback" id="feedback-${currentUID}"></div></div>`;
                         let currentQuestionNum = qMatch[1];
                         currentUID = `${p}_${currentQuestionNum}`;
                         let questionText = qMatch[2];
+                        currentQuestionIsPartB = questionText.includes('<u>');
 
                         cleanHtml += `<div class="question-item" id="q-container-${currentUID}">`;
 
                         // CEK APAKAH INI SOAL PART B (Memiliki garis bawah <u>)
-                        if (questionText.includes('<u>')) {
+                        if (currentQuestionIsPartB) {
                             
                             // 1. Bersihkan pengetikan manual developer (A), (B), (C), (D) yang menempel sebelum/sesudah tag <u>
                             // Contoh: <u>word</u> (A) atau (B) <u>word</u> akan dibersihkan A dan B nya.
@@ -650,7 +767,9 @@
                         } else {
                             // SOAL PART A BIASA
                             globalQuestions[currentUID] = { questionText: `${currentQuestionNum}. ${questionText}`, options: {}, isPartB: false };
-                            cleanHtml += `<p>${currentQuestionNum}. ${questionText}</p>`;
+                            cleanHtml += `<div class="question-number-badge">${currentQuestionNum}</div>`;
+                            cleanHtml += `<div class="question-content">`;
+                            cleanHtml += `<p>${questionText}</p>`;
                             cleanHtml += `<div class="radio-group">`;
                             openDiv = true;
                         }
@@ -660,16 +779,17 @@
                             globalQuestions[currentUID].options[letter] = isOption[2];
                         }
                         cleanHtml += `<label>
-                            <input type="radio" name="q_${currentUID}" value="${letter.toLowerCase()}"> 
+                            <input type="radio" name="q_${currentUID}" value="${letter.toLowerCase()}" onchange="refreshStructurePartAState()"> 
                             <span class="option-letter">(${letter})</span> 
                             <span>${isOption[2]}</span>
                         </label>`;
                     }
                 }
-                if (openDiv) cleanHtml += `</div><div class="feedback" id="feedback-${currentUID}"></div></div>`;
+                if (openDiv) cleanHtml += currentQuestionIsPartB ? `<div class="feedback" id="feedback-${currentUID}"></div></div>` : `</div><div class="feedback" id="feedback-${currentUID}"></div></div>`;
 
                 document.getElementById(`display-questions-${p}`).innerHTML = cleanHtml;
             });
+            refreshStructurePartAState();
             startTimer();
         }
 
