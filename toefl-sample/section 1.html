@@ -551,6 +551,7 @@
             align-items: center;
             gap: 10px;
             margin-bottom: 12px;
+            cursor: pointer;
         }
         .navigator-dots {
             width: 32px;
@@ -1079,8 +1080,8 @@
 
                 <aside class="navigator-panel" id="navigator-panel">
                     <div class="navigator-card">
-                        <div class="navigator-header">
-                            <button class="navigator-toggle" type="button" aria-label="Toggle question navigator" onclick="toggleNavigatorPanel()">
+                        <div class="navigator-header" onclick="toggleNavigatorPanel()">
+                            <button class="navigator-toggle" type="button" aria-label="Toggle question navigator" onclick="handleNavigatorToggle(event)">
                                 <i class="ph ph-dots-nine" aria-hidden="true"></i>
                             </button>
                             <h3 class="navigator-title">Question Navigator</h3>
@@ -1870,6 +1871,11 @@
             if (examBody) {
                 examBody.classList.toggle("is-navigator-collapsed", isCollapsed);
             }
+        }
+
+        function handleNavigatorToggle(event) {
+            if (event) event.stopPropagation();
+            toggleNavigatorPanel();
         }
 
         function setAudioShellTitle(partId) {
