@@ -244,6 +244,9 @@
             justify-content: center;
             padding: 0 8px;
         }
+        .fullscreen-btn {
+            min-width: 46px;
+        }
         .zoom-btn:disabled {
             opacity: 0.45;
             cursor: not-allowed;
@@ -1051,6 +1054,7 @@
                         <button class="mode-switch-btn" id="open-dev-mode-btn" type="button" onclick="openDeveloperEditor()" style="display:none;">Developer</button>
                         <button class="zoom-btn" id="zoom-out-btn" type="button" aria-label="Zoom out" onclick="handleZoomOut()">A-</button>
                         <button class="zoom-btn" id="zoom-in-btn" type="button" aria-label="Zoom in" onclick="handleZoomIn()">A+</button>
+                        <button class="zoom-btn fullscreen-btn" id="fullscreen-btn" type="button" aria-label="Toggle full screen" onclick="toggleFullScreenMode()">Full</button>
                         <button class="topbar-icon info" type="button" aria-hidden="true"><span>i</span></button>
                         <button class="topbar-icon play" id="audio-play-control" type="button" aria-label="Play listening audio"><span>play</span></button>
                     </div>
@@ -1209,6 +1213,7 @@
         let currentAudioFallbackUrls = [];
         let audioAnalyzerReady = false;
         let zoomLevel = 1;
+        let zoomBeforeFullScreen = null;
 
         const ZOOM_MIN = 0.8;
         const ZOOM_MAX = 1.3;
@@ -1226,7 +1231,8 @@
             if (zoomOutButton) zoomOutButton.disabled = zoomLevel <= ZOOM_MIN;
         }
 
-        function applyZoom(value) {
+        function applyZoom(value, options = {}) {
+            const { persist = true } = options;
             zoomLevel = clampZoom(value);
             const examShell = document.querySelector("#user-view .exam-shell");
             if (examShell) {
@@ -1237,7 +1243,9 @@
                 examShell.style.height = `${100 / zoomLevel + verticalBoost}%`;
                 examShell.style.minHeight = `${100 / zoomLevel + verticalBoost}%`;
             }
-            localStorage.setItem(ZOOM_KEY, String(zoomLevel));
+            if (persist) {
+                localStorage.setItem(ZOOM_KEY, String(zoomLevel));
+            }
             updateZoomButtons();
         }
 
@@ -1252,6 +1260,40 @@
         function initZoom() {
             const saved = Number(localStorage.getItem(ZOOM_KEY));
             applyZoom(Number.isFinite(saved) ? saved : DEFAULT_ZOOM);
+        }
+
+        function updateFullScreenButton() {
+            const fullScreenButton = document.getElementById("fullscreen-btn");
+            if (!fullScreenButton) return;
+            const isFullScreen = Boolean(document.fullscreenElement);
+            fullScreenButton.innerText = isFullScreen ? "Exit" : "Full";
+            fullScreenButton.setAttribute("aria-label", isFullScreen ? "Exit full screen" : "Enter full screen");
+        }
+
+        function handleFullScreenStateChange() {
+            const isFullScreen = Boolean(document.fullscreenElement);
+            if (!isFullScreen && zoomBeforeFullScreen !== null) {
+                applyZoom(zoomBeforeFullScreen, { persist: false });
+                zoomBeforeFullScreen = null;
+            }
+            updateFullScreenButton();
+        }
+
+        async function toggleFullScreenMode() {
+            try {
+                if (!document.fullscreenElement) {
+                    const userView = document.getElementById("user-view");
+                    zoomBeforeFullScreen = zoomLevel;
+                    applyZoom(1, { persist: false });
+                    await (userView || document.documentElement).requestFullscreen();
+                } else {
+                    await document.exitFullscreen();
+                }
+            } catch (error) {
+                console.warn("[Fullscreen] Unable to toggle full screen:", error);
+            } finally {
+                handleFullScreenStateChange();
+            }
         }
 
         function getAudioStorageKey(setId, partId = 1) {
@@ -2915,6 +2957,8 @@
             window.addEventListener("hashchange", applyViewMode);
             updateOnboardingVisibility();
             initZoom();
+            updateFullScreenButton();
+            document.addEventListener("fullscreenchange", handleFullScreenStateChange);
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
             if (setDateEl) setDateEl.addEventListener("change", handleSetDateChange);
