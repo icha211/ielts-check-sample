@@ -1,1022 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TOEFL ITP Simulator - Section 1: Listening Comprehension</title>
-    <style>
-        :root {
-            --primary-color: #004b87;
-            --dev-color: #2c3e50;
-            --cbt-bg: #ececec;
-            --dev-bg: #f4f6f9;
-            --navy-dark: #003560;
-            --navy-mid: #005faa;
-            --sky-soft: #e0f2fe;
-            --line-gray: #d1dce8;
-            --mid-gray: #7a8fa6;
-            --off-white: #f4f7fb;
-            --asset-dots: url("../asset/icon/menu.png");
-            --asset-info: url("../asset/icon/Vector.svg");
-            --asset-pause: url("../asset/icon/pause 1.svg");
-            --asset-play: url("../asset/icon/play.svg");
-            --asset-clock: url("../asset/icon/timer.svg");
-        }
-
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            height: 100vh;
-            height: 100dvh;
-            overflow-x: hidden;
-            overflow-y: hidden;
-            background: var(--cbt-bg);
-            font-family: "Plus Jakarta Sans", Arial, sans-serif;
-            font-size: 14px;
-            color: #111827;
-        }
-
-        .tab-content {
-            display: none;
-            height: 100vh;
-            height: 100dvh;
-            overflow: hidden;
-            flex-direction: column;
-        }
-        .tab-content.active { display: flex; }
-
-        #user-view { background: var(--off-white); }
-        #global-score-board {
-            display: none;
-            background: var(--navy-dark);
-            color: #fff;
-            padding: 12px;
-            text-align: center;
-            font-weight: 700;
-        }
-
-        .exam-shell {
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-            height: 100%;
-        }
-
-        .exam-topbar {
-            height: 64px;
-            background: #fff;
-            box-shadow: 0 1px 1px rgba(122, 143, 166, 0.25);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 32px;
-            padding: 0 24px;
-            z-index: 3;
-            flex-shrink: 0;
-        }
-        .exam-topbar__left {
-            display: flex;
-            align-items: center;
-            gap: 24px;
-            min-width: 0;
-            flex: 1;
-        }
-        .exam-topbar__brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            min-width: 0;
-        }
-        .exam-topbar__logo {
-            width: 111px;
-            height: 42px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .exam-topbar__logo img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            display: block;
-        }
-        .exam-topbar__title-wrap {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
-        }
-        .exam-topbar__title {
-            font: 500 19px/32px "Outfit", Arial, sans-serif;
-            color: #000;
-            text-align: justify;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            overflow: hidden;
-        }
-        .exam-topbar__subtitle {
-            color: var(--mid-gray);
-            font: 500 14px/1.15 "Outfit", Arial, sans-serif;
-        }
-
-        .exam-topbar__center {
-            display: flex;
-            justify-content: center;
-            min-width: 0;
-            flex: 1;
-        }
-        .exam-timer-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 9px;
-            color: var(--navy-mid);
-        }
-        .exam-timer-pill__icon {
-            width: 24px;
-            height: 24px;
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--navy-mid);
-        }
-        .exam-timer-pill__icon .ph-clock {
-            width: 24px;
-            height: 24px;
-            display: block;
-            background-image: var(--asset-clock);
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: contain;
-        }
-        .exam-timer-pill__icon .ph-clock::before,
-        .exam-timer-pill__icon .ph-clock::after {
-            content: none;
-        }
-        .exam-timer {
-            font: 500 35px/1 "JetBrains Mono", Consolas, monospace;
-            letter-spacing: 0.02em;
-            color: var(--navy-mid);
-            min-width: 105px;
-            text-align: center;
-        }
-
-        .exam-topbar__status {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 2px;
-            width: 613px;
-            max-width: 100%;
-        }
-        .progress-duo {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            width: 495px;
-            min-width: 0;
-        }
-        .part-progress {
-            width: 144px;
-            display: flex;
-            align-items: center;
-            padding: 24px 0 12px;
-        }
-        .progress-track {
-            height: 12px;
-            width: 100%;
-            padding: 1px 2px;
-            box-sizing: border-box;
-            border-radius: 32px;
-            background: #E0F2FE;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-        }
-        .progress-fill {
-            position: relative;
-            width: 0;
-            min-width: 8px;
-            height: 8px;
-            border-radius: 100px;
-            background: linear-gradient(90deg, #0EA5E9 0%, #0D9488 100%);
-            background-size: 180% 100%;
-            animation: progress-sheen 2.1s ease-in-out infinite alternate;
-            transition: width 0.35s ease-in-out;
-        }
-        .progress-meta {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            width: 160px;
-        }
-        .answer-caption {
-            text-align: right;
-            color: var(--mid-gray);
-            font: 400 12px/24px "Plus Jakarta Sans", Arial, sans-serif;
-            width: 100%;
-            padding-right: 6px;
-        }
-        .progress-meta .part-progress { padding: 0 0 12px; }
-        .topbar-controls {
-            width: auto;
-            height: 64px;
-            padding: 0 6px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            flex-shrink: 0;
-        }
-        .zoom-btn {
-            min-width: 32px;
-            height: 32px;
-            border: 1px solid #d1dce8;
-            border-radius: 8px;
-            background: #fff;
-            color: #003560;
-            font: 700 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 8px;
-        }
-        .fullscreen-btn {
-            min-width: 46px;
-        }
-        .zoom-btn:disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
-        .topbar-icon {
-            width: 24px;
-            height: 24px;
-            border: none;
-            padding: 0;
-            background-color: transparent;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            user-select: none;
-            background-repeat: no-repeat;
-            background-position: center;
-            background-size: contain;
-            cursor: pointer;
-        }
-        .topbar-icon.info { background-image: var(--asset-info); }
-        .topbar-icon.play { background-image: var(--asset-play); }
-        .topbar-icon.pause { background-image: var(--asset-pause); }
-        .topbar-icon.disabled { opacity: 0.35; cursor: not-allowed; }
-        .topbar-icon span { display: none; }
-
-        .exam-body {
-            flex: 1;
-            min-height: 0;
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) auto;
-            gap: 12px;
-            padding: 0 0 0 24px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .exam-body.is-navigator-collapsed {
-            grid-template-columns: minmax(0, 1fr);
-        }
-
-        .exam-main {
-            min-height: 0;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-            padding-top: 16px;
-            padding-right: 8px;
-            padding-bottom: calc(max(96px, env(safe-area-inset-bottom)) + 24px);
-            scroll-padding-bottom: 120px;
-            scrollbar-gutter: stable;
-            overscroll-behavior: contain;
-        }
-        .audio-shell {
-            background: var(--navy-dark);
-            border-radius: 8px;
-            box-shadow: 0 4px 2px rgba(0, 53, 96, 0.10);
-            padding: 20px 22px 14px;
-            color: #fff;
-            width: min(922px, calc(100% - 113px));
-            margin-left: 113px;
-            margin-right: auto;
-            box-sizing: border-box;
-        }
-        .audio-shell__title {
-            margin: 0;
-            font: 600 32px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
-        }
-        .audio-shell__visual {
-            margin: 12px auto 10px;
-            width: min(670px, 100%);
-            height: 82px;
-            position: relative;
-            cursor: pointer;
-        }
-        .audio-progress-track {
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: 50%;
-            height: 10px;
-            border-radius: 6px;
-            background: rgba(209, 220, 232, 0.95);
-            overflow: visible;
-            transform: translateY(-50%);
-        }
-        .audio-wave-canvas {
-            position: absolute;
-            left: 0;
-            right: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            clip-path: inset(0 100% 0 0 round 6px);
-        }
-        .audio-progress-knob {
-            position: absolute;
-            left: 0;
-            top: 50%;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: #f1f5f9;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
-            transform: translate(-12px, -50%);
-        }
-        .audio-shell__status {
-            margin: 0;
-            text-align: center;
-            color: rgba(209, 220, 232, 0.95);
-            font: 400 20px/1.3 "Outfit", Arial, sans-serif;
-        }
-        .audio-shell audio {
-            display: none;
-        }
-
-        .question-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            padding-bottom: 56px;
-        }
-        .question-section {
-            background: transparent;
-            display: none;
-            flex-direction: column;
-            gap: 24px;
-        }
-        .question-section.is-active {
-            display: flex;
-        }
-        .question-section__meta {
-            margin: 0;
-            color: var(--navy-dark);
-            font: 700 18px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
-        }
-
-        [id^="display-questions-"] {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .question-item {
-            width: min(922px, calc(100% - 113px));
-            min-height: 236px;
-            box-sizing: border-box;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 2px rgba(0, 53, 96, 0.10);
-            padding: 25px 24px 25px 22px;
-            display: grid;
-            grid-template-columns: 40px minmax(0, 1fr);
-            gap: 24px;
-            align-items: flex-start;
-            margin-left: 113px;
-            margin-right: auto;
-            scroll-margin-bottom: 120px;
-        }
-        .question-number-badge {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            border: 1px solid var(--mid-gray);
-            background: #fff;
-            color: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font: 400 18px/1 "Plus Jakarta Sans", Arial, sans-serif;
-            margin-top: 2px;
-        }
-        .question-number-badge.is-answered {
-            background: var(--navy-dark);
-            border-color: #fff;
-            color: #fff;
-            box-shadow: 0 1px 4px rgba(14, 165, 233, 1);
-        }
-        .question-content { display: grid; gap: 5px; }
-        .question-title {
-            margin: 0;
-            color: #0f172a;
-            font: 600 18px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
-        }
-
-        .radio-group {
-            display: grid;
-            gap: 8px;
-            margin: 0;
-        }
-        .radio-group label {
-            border: 1px solid var(--line-gray);
-            border-radius: 8px;
-            width: min(794px, 100%);
-            height: 54px;
-            padding: 9px 12px;
-            min-height: 46px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: #fff;
-            color: #0f172a;
-            cursor: pointer;
-            font: 400 18px/1.3 "Times New Roman", Times, serif;
-            transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        .radio-group label:hover:not(.selected) {
-            background: var(--off-white);
-            border-color: var(--line-gray);
-            box-shadow: none;
-        }
-        .radio-group label.selected {
-            border-color: var(--navy-mid);
-            background: rgba(14, 165, 233, 0.2);
-            box-shadow: 0 4px 4px rgba(14, 165, 233, 0.25);
-        }
-        .radio-group input[type="radio"] {
-            position: absolute;
-            opacity: 0;
-            width: 0;
-            height: 0;
-            pointer-events: none;
-        }
-        .option-letter {
-            width: 36px;
-            flex-shrink: 0;
-        }
-
-        .navigator-panel {
-            min-height: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 0;
-            width: 250px;
-            min-width: 250px;
-            height: 100%;
-            max-height: 100%;
-            padding: 16px;
-            box-sizing: border-box;
-            background: #fff;
-            overflow: hidden;
-            transition: width 0.25s ease, min-width 0.25s ease;
-        }
-        .navigator-panel.is-collapsed {
-            width: 121px;
-            min-width: 121px;
-            height: 100%;
-            max-height: 100%;
-            padding: 16px;
-            background: #fff;
-            box-shadow: 0 4px 4px rgba(0, 53, 96, 0.10);
-            border-top-left-radius: 8px;
-            border-bottom-left-radius: 8px;
-            outline: 1px solid rgba(209, 220, 232, 0.50);
-            outline-offset: -0.5px;
-            align-items: flex-end;
-            justify-content: flex-start;
-        }
-        .exam-body.is-navigator-collapsed .navigator-panel {
-            position: absolute;
-            top: 0;
-            right: 0;
-            z-index: 3;
-        }
-        .exam-body.is-navigator-collapsed .audio-shell,
-        .exam-body.is-navigator-collapsed .question-item {
-            width: min(922px, 100%);
-            margin-left: auto;
-            margin-right: auto;
-        }
-        .navigator-card {
-            background: transparent;
-            border: none;
-            border-radius: 0;
-            box-shadow: none;
-            padding: 0;
-            flex: 1;
-            height: auto;
-            box-sizing: border-box;
-            min-height: 0;
-            overflow-y: auto;
-            overflow-x: hidden;
-            scrollbar-gutter: stable;
-        }
-        .navigator-panel.is-collapsed .navigator-card {
-            width: 100%;
-            border: none;
-            box-shadow: none;
-            padding: 0;
-            overflow: hidden;
-            min-height: auto;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-            align-items: flex-start;
-            border-radius: 0;
-        }
-        .navigator-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 12px;
-            cursor: pointer;
-        }
-        .navigator-dots {
-            width: 32px;
-            height: 32px;
-            background-image: url("../asset/icon/menu.png");
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-        }
-        .navigator-toggle {
-            width: 32px;
-            height: 32px;
-            border: none;
-            padding: 0;
-            background: transparent;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--navy-mid);
-        }
-        .navigator-toggle .ph-dots-nine {
-            width: 32px;
-            height: 32px;
-            display: inline-block;
-            position: relative;
-        }
-        .navigator-toggle .ph-dots-nine::before {
-            content: "";
-            position: absolute;
-            left: 6px;
-            top: 6px;
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            background: currentColor;
-            box-shadow:
-                0 8px 0 currentColor,
-                0 16px 0 currentColor,
-                8px 0 0 currentColor,
-                8px 8px 0 currentColor,
-                8px 16px 0 currentColor,
-                16px 0 0 currentColor,
-                16px 8px 0 currentColor,
-                16px 16px 0 currentColor;
-        }
-        .navigator-title {
-            margin: 0;
-            font: 700 18px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
-            color: #000;
-        }
-        .navigator-panel.is-collapsed .navigator-title,
-        .navigator-panel.is-collapsed .navigator-group,
-        .navigator-panel.is-collapsed .navigator-legend,
-        .navigator-panel.is-collapsed .btn-next-question,
-        .navigator-panel.is-collapsed .btn-next-section {
-            display: none;
-        }
-        .navigator-panel.is-collapsed .navigator-header {
-            width: 73px;
-            height: 72px;
-            padding: 20px;
-            box-sizing: border-box;
-            border: 1px solid #D1DCE8;
-            border-radius: 8px;
-            margin-bottom: 24px;
-            justify-content: center;
-            align-items: center;
-        }
-        .navigator-panel.is-collapsed .navigator-card {
-            min-height: auto;
-        }
-        .navigator-panel.is-collapsed .navigator-toggle {
-            width: 32px;
-            height: 32px;
-        }
-
-        .navigator-group { margin-bottom: 14px; }
-        .navigator-group__title {
-            font: 500 18px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
-            margin-bottom: 10px;
-            color: #000;
-        }
-        .navigator-grid {
-            display: grid;
-            grid-template-columns: repeat(6, 28px);
-            gap: 10px;
-            justify-content: flex-start;
-        }
-        .navigator-btn {
-            width: 28px;
-            height: 28px;
-            padding: 1px;
-            border-radius: 8px;
-            border: 1px solid var(--navy-dark);
-            background: #fff;
-            color: var(--navy-dark);
-            font: 400 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
-            cursor: pointer;
-            overflow-y: hidden;
-            align-items: center;
-            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-        }
-        .navigator-btn.is-answered {
-            background: var(--navy-dark);
-            color: #fff;
-            border-color: #fff;
-            box-shadow: 0 1px 4px rgba(14, 165, 233, 1);
-        }
-
-        .navigator-legend {
-            margin-top: 8px;
-            display: grid;
-            gap: 6px;
-            color: var(--navy-dark);
-            font: 500 14px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .legend-swatch {
-            width: 12px;
-            height: 12px;
-            border-radius: 3px;
-            border: 1px solid var(--navy-dark);
-            flex-shrink: 0;
-        }
-        .legend-swatch.answered { background: var(--navy-dark); border-color: #fff; box-shadow: 0 1px 4px rgba(14, 165, 233, 1); }
-        .legend-swatch.unanswered { background: #fff; }
-
-        .btn-next-question,
-        .btn-next-section {
-            width: 100%;
-            height: 52px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font: 700 20px/32px "Plus Jakarta Sans", Arial, sans-serif;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            transition: transform 0.2s ease, filter 0.2s ease;
-        }
-        .btn-next-question::after,
-        .btn-next-section::after {
-            content: "";
-            width: 12px;
-            height: 22px;
-            background: url("../asst/icon/right arrow next.svg") center / contain no-repeat;
-            flex-shrink: 0;
-        }
-        .btn-next-question {
-            background: var(--navy-dark);
-            color: #fff;
-        }
-        .btn-next-section {
-            background: #7a8fa6;
-            color: #fff;
-            margin-top: 0;
-        }
-        .btn-next-section.is-enabled {
-            background: #0d9488;
-        }
-        .btn-next-section:disabled {
-            cursor: not-allowed;
-            opacity: 1;
-        }
-        .btn-next-question:hover,
-        .btn-next-section.is-enabled:hover {
-            filter: brightness(1.06);
-            transform: translateY(-1px);
-        }
-
-        #dev-view { background: var(--dev-bg); }
-        .dev-sub-nav {
-            display: flex;
-            background-color: #e2e8f0;
-            justify-content: center;
-            padding: 10px;
-            flex-wrap: wrap;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-        .dev-sub-btn {
-            padding: 8px 18px;
-            cursor: pointer;
-            border: 1px solid transparent;
-            background-color: #cbd5e1;
-            color: #334155;
-            border-radius: 6px;
-            font: 700 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
-        }
-        .dev-sub-btn.active {
-            background-color: var(--dev-color);
-            color: #fff;
-        }
-        .btn-guide { background-color: #f59e0b !important; color: #fff !important; }
-        .btn-guide.active { background-color: #d97706 !important; }
-
-        #dev-panels-container {
-            flex: 1;
-            min-height: 0;
-            overflow-y: auto;
-            padding-bottom: 24px;
-        }
-        .sub-content { display: none; }
-        #dev-panels-container .sub-content.active { display: block; }
-
-        .dev-container {
-            padding: 24px;
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-        .dev-card {
-            background: #fff;
-            padding: 22px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            margin-bottom: 18px;
-            border: 1px solid #e2e8f0;
-            border-top: 4px solid var(--dev-color);
-        }
-        .dev-card.keys-card { border-top-color: #10b981; }
-        .dev-card.guide-card { border-top-color: #f59e0b; }
-        .dev-card-title {
-            margin: 0 0 12px;
-            font: 700 18px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
-            color: #1e293b;
-        }
-        .dev-hint {
-            background: #f8fafc;
-            border-left: 4px solid #3b82f6;
-            padding: 10px 12px;
-            border-radius: 0 4px 4px 0;
-            font-size: 14px;
-            color: #475569;
-            margin-bottom: 12px;
-            line-height: 1.5;
-        }
-
-        .format-toolbar {
-            display: flex;
-            background: #f1f5f9;
-            padding: 10px;
-            border: 1px solid #cbd5e1;
-            border-bottom: none;
-            border-radius: 6px 6px 0 0;
-            align-items: center;
-        }
-        .format-toolbar.header-soal { background: #334155; color: #fff; border-color: #334155; }
-        .format-toolbar.header-kunci { background: #10b981; color: #fff; border-color: #10b981; }
-        .format-toolbar.header-bahas { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
-
-        .smart-textarea, .answer-textarea, .explanation-textarea {
-            width: 100%;
-            border: 1px solid #cbd5e1;
-            border-radius: 0 0 6px 6px;
-            padding: 14px;
-            font: 14px/1.6 Consolas, Monaco, monospace;
-            resize: vertical;
-            outline: none;
-        }
-        .smart-textarea { height: 310px; }
-        .answer-textarea, .explanation-textarea { height: 160px; }
-        .smart-textarea:focus,
-        .answer-textarea:focus,
-        .explanation-textarea:focus {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-        }
-
-        .btn-save {
-            background: #0f172a;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            padding: 10px 18px;
-            cursor: pointer;
-            font: 700 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
-        }
-        .mode-switch-btn {
-            border: 1px solid #cbd5e1;
-            background: #fff;
-            color: #0f172a;
-            border-radius: 6px;
-            padding: 9px 12px;
-            cursor: pointer;
-            font: 600 13px/1 "Plus Jakarta Sans", Arial, sans-serif;
-        }
-        .dev-header-actions {
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .onboarding-overlay {
-            position: fixed;
-            left: 0;
-            right: 0;
-            top: 64px;
-            bottom: 0;
-            z-index: 30;
-            display: none;
-            overflow-y: auto;
-            background: rgba(0, 53, 96, 0.90);
-            padding: 72px 84px 48px;
-        }
-        .onboarding-overlay.is-visible {
-            display: block;
-        }
-        .onboarding-title {
-            margin: 0 0 24px;
-            color: #fff;
-            font: 500 48px/1 "Outfit", Arial, sans-serif;
-        }
-        .onboarding-list {
-            display: grid;
-            gap: 28px;
-            max-width: 980px;
-        }
-        .onboarding-item {
-            display: grid;
-            grid-template-columns: 48px minmax(0, 1fr);
-            align-items: flex-start;
-            gap: 16px;
-        }
-        .onboarding-icon {
-            width: 45px;
-            height: 45px;
-            border-radius: 999px;
-            border: 2px solid #fff;
-            background: var(--sky-soft);
-            box-shadow: 0 1px 4px var(--sky-soft);
-            position: relative;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: #0ea5e9;
-            font: 700 18px/1 "Plus Jakarta Sans", Arial, sans-serif;
-        }
-        .onboarding-icon.play::before {
-            content: "";
-            width: 0;
-            height: 0;
-            border-top: 9px solid transparent;
-            border-bottom: 9px solid transparent;
-            border-left: 14px solid #0ea5e9;
-            margin-left: 3px;
-        }
-        .onboarding-icon.audio::before {
-            content: "\1F50A";
-            font-size: 19px;
-            line-height: 1;
-        }
-        .onboarding-icon.nav::before {
-            content: "\22EE";
-            transform: rotate(90deg);
-            font-size: 20px;
-            line-height: 1;
-        }
-        .onboarding-icon.time::before {
-            content: "\23F1";
-            font-size: 18px;
-            line-height: 1;
-        }
-        .onboarding-item__title {
-            margin: 0 0 10px;
-            color: #fff;
-            font: 700 34px/1 "Outfit", Arial, sans-serif;
-        }
-        .onboarding-item__desc {
-            margin: 0;
-            color: #fff;
-            font: 500 20px/1.28 "Plus Jakarta Sans", Arial, sans-serif;
-            max-width: 980px;
-        }
-        .onboarding-actions {
-            margin-top: 36px;
-        }
-        .btn-onboarding-start {
-            border: 1px solid #fff;
-            background: #fff;
-            color: var(--navy-dark);
-            border-radius: 10px;
-            padding: 12px 20px;
-            font: 700 18px/1 "Plus Jakarta Sans", Arial, sans-serif;
-            cursor: pointer;
-        }
-
-        .audio-upload-label {
-            display: inline-block;
-            border-radius: 8px;
-            background: #0f172a;
-            color: #fff;
-            padding: 10px 14px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .audio-upload-file { display: none; }
-
-        @keyframes blink { 50% { opacity: 0.55; } }
-        @keyframes progress-sheen {
-            0% { background-position: 0 0; }
-            100% { background-position: 100% 0; }
-        }
-
-        @media (max-width: 1200px) {
-            .exam-topbar { height: auto; gap: 14px; padding: 10px 16px; flex-wrap: wrap; }
-            .exam-topbar__left,
-            .exam-topbar__center,
-            .exam-topbar__status { width: 100%; }
-            .exam-topbar__center,
-            .exam-topbar__status { justify-content: flex-start; }
-            .navigator-card { max-height: 280px; }
-            .progress-duo { width: auto; }
-        }
-
-        @media (max-width: 768px) {
-            .exam-body { padding: 14px; gap: 14px; }
-            .audio-shell { padding: 14px; }
-            .audio-shell__title { font-size: 24px; }
-            .radio-group label { font-size: 16px; }
-            .question-item { grid-template-columns: 40px minmax(0, 1fr); gap: 10px; }
-            .btn-next-question,
-            .btn-next-section { font-size: 20px; }
-            .exam-topbar__title { font-size: 19px; }
-            .progress-duo { flex-wrap: wrap; }
-            .topbar-controls { width: auto; justify-content: flex-start; }
-            .navigator-panel,
-            .navigator-panel.is-collapsed {
-                width: 100%;
-                min-width: 0;
-                height: auto;
-                min-height: 0;
-                padding: 16px;
-            }
-            .audio-shell,
-            .question-item,
-            .exam-body.is-navigator-collapsed .audio-shell,
-            .exam-body.is-navigator-collapsed .question-item {
-                width: 100%;
-                margin-left: 0;
-                margin-right: 0;
-            }
-            .onboarding-overlay {
-                padding: 24px 18px 24px;
-            }
-            .onboarding-title {
-                font-size: 36px;
-                line-height: 1.1;
-            }
-            .onboarding-item__title {
-                font-size: 28px;
-                line-height: 1.1;
-            }
-            .onboarding-item__desc {
-                font-size: 17px;
-                line-height: 1.4;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="css/editor.css">
 </head>
 <body>
     <div id="user-view" class="tab-content active">
@@ -1142,6 +130,7 @@
                 <span style="font-size:13px; color:#64748b;">TOEFL ITP - Section 1</span>
             </div>
             <div class="dev-header-actions">
+                <a href="section 1-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">ðŸ“– View Explanation</a>
                 <button class="mode-switch-btn" type="button" onclick="openUserPreviewFromDeveloper()">Apply + Open User View</button>
                 <button class="btn-save" type="button" onclick="updateUserView(true)">Apply and Update View</button>
             </div>
@@ -1213,6 +202,14 @@
         let currentAudioObjectUrl = "";
         let currentAudioFallbackUrls = [];
         let audioAnalyzerReady = false;
+        let waveformEnergyState = {
+            bass: 0.06,
+            lowMid: 0.06,
+            highMid: 0.06,
+            treble: 0.06,
+            pitch: 0.22
+        };
+        let waveformShouldStopWhenSilent = false;
         let zoomLevel = 1;
         let zoomBeforeFullScreen = null;
 
@@ -1927,8 +924,8 @@
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 audioSourceNode = audioContext.createMediaElementSource(audio);
                 audioAnalyser = audioContext.createAnalyser();
-                audioAnalyser.fftSize = 128;
-                audioAnalyser.smoothingTimeConstant = 0.82;
+                audioAnalyser.fftSize = 512;
+                audioAnalyser.smoothingTimeConstant = 0.84;
                 audioDataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
 
                 audioSourceNode.connect(audioAnalyser);
@@ -1969,49 +966,111 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
             const now = performance.now() / 1000;
-            const colors = ["#3300FF", "#0EA5E9", "#00CA01"];
-            const audioLineY = canvas.height * 0.58;
-            const waveLayers = 3;
+            const colors = ["#4F46E5", "#0EA5E9", "#14B8A6", "#22C55E"];
+            const canvasRect = canvas.getBoundingClientRect();
+            const trackRect = track.getBoundingClientRect();
+            const trackBottomY = (trackRect.bottom - canvasRect.top) * dpr;
+            const audioLineY = Math.max(0, Math.min(canvas.height, trackBottomY + (0.7 * dpr)));
+            const waveLayers = 4;
 
-            let audioEnergy = 0.22;
-            let lowEnergy = audioEnergy;
-            let midEnergy = audioEnergy;
-            let highEnergy = audioEnergy;
-            if (audioAnalyser && audioDataArray) {
+            const isActivelyPlaying = !!(audio.src && !audio.paused && !audio.ended);
+            const targetState = {
+                bass: 0.0,
+                lowMid: 0.0,
+                highMid: 0.0,
+                treble: 0.0,
+                pitch: 0.0
+            };
+
+            if (isActivelyPlaying && audioAnalyser && audioDataArray) {
                 audioAnalyser.getByteFrequencyData(audioDataArray);
-                const sampleCount = Math.min(24, audioDataArray.length);
-                if (sampleCount > 0) {
-                    const sampleBandEnergy = (startRatio, endRatio) => {
-                        const startIndex = Math.floor(sampleCount * startRatio);
-                        const endIndex = Math.max(startIndex + 1, Math.floor(sampleCount * endRatio));
-                        let sum = 0;
-                        let count = 0;
-                        for (let i = startIndex; i < endIndex; i += 1) {
-                            sum += audioDataArray[i];
-                            count += 1;
-                        }
-                        return count > 0 ? sum / (count * 255) : audioEnergy;
-                    };
 
-                    lowEnergy = sampleBandEnergy(0.00, 0.34);
-                    midEnergy = sampleBandEnergy(0.34, 0.68);
-                    highEnergy = sampleBandEnergy(0.68, 1.00);
-                    audioEnergy = Math.max(0.12, Math.min(0.95, (lowEnergy + midEnergy + highEnergy) / 3));
+                const nyquist = (audioContext?.sampleRate || 44100) / 2;
+                const binHz = nyquist / Math.max(1, audioDataArray.length - 1);
+
+                const bandEnergy = (minHz, maxHz) => {
+                    const start = Math.max(0, Math.floor(minHz / binHz));
+                    const end = Math.min(audioDataArray.length - 1, Math.ceil(maxHz / binHz));
+                    let sum = 0;
+                    let count = 0;
+                    for (let i = start; i <= end; i += 1) {
+                        sum += audioDataArray[i];
+                        count += 1;
+                    }
+                    return count > 0 ? sum / (count * 255) : 0;
+                };
+
+                targetState.bass = bandEnergy(20, 180);
+                targetState.lowMid = bandEnergy(180, 900);
+                targetState.highMid = bandEnergy(900, 3000);
+                targetState.treble = bandEnergy(3000, 8000);
+
+                let weightedSum = 0;
+                let magnitudeSum = 0;
+                for (let i = 1; i < audioDataArray.length; i += 1) {
+                    const magnitude = audioDataArray[i] / 255;
+                    const hz = i * binHz;
+                    weightedSum += magnitude * hz;
+                    magnitudeSum += magnitude;
+                }
+                const centroidHz = magnitudeSum > 0 ? (weightedSum / magnitudeSum) : 1000;
+                targetState.pitch = Math.max(0, Math.min(1, centroidHz / 5000));
+            }
+
+            if (isActivelyPlaying) {
+                const measuredActivity = (targetState.bass + targetState.lowMid + targetState.highMid + targetState.treble) / 4;
+                if (measuredActivity < 0.05) {
+                    const pulseA = (Math.sin(now * 4.1) + 1) / 2;
+                    const pulseB = (Math.sin((now * 2.7) + 1.1) + 1) / 2;
+                    targetState.bass = Math.max(targetState.bass, 0.22 + (pulseA * 0.12));
+                    targetState.lowMid = Math.max(targetState.lowMid, 0.24 + (pulseB * 0.10));
+                    targetState.highMid = Math.max(targetState.highMid, 0.20 + (pulseA * 0.12));
+                    targetState.treble = Math.max(targetState.treble, 0.16 + (pulseB * 0.10));
+                    targetState.pitch = Math.max(targetState.pitch, 0.34 + (pulseA * 0.20));
                 }
             }
 
+            const ease = (current, target, factor) => current + ((target - current) * factor);
+            const attack = 0.38;
+            const release = 0.10;
+            waveformEnergyState.bass = ease(waveformEnergyState.bass, targetState.bass, targetState.bass > waveformEnergyState.bass ? attack : release);
+            waveformEnergyState.lowMid = ease(waveformEnergyState.lowMid, targetState.lowMid, targetState.lowMid > waveformEnergyState.lowMid ? attack : release);
+            waveformEnergyState.highMid = ease(waveformEnergyState.highMid, targetState.highMid, targetState.highMid > waveformEnergyState.highMid ? attack : release);
+            waveformEnergyState.treble = ease(waveformEnergyState.treble, targetState.treble, targetState.treble > waveformEnergyState.treble ? attack : release);
+            waveformEnergyState.pitch = ease(waveformEnergyState.pitch, targetState.pitch, targetState.pitch > waveformEnergyState.pitch ? 0.32 : 0.08);
+
+            const bassEnergy = waveformEnergyState.bass;
+            const lowMidEnergy = waveformEnergyState.lowMid;
+            const highMidEnergy = waveformEnergyState.highMid;
+            const trebleEnergy = waveformEnergyState.treble;
+            const pitchProxy = waveformEnergyState.pitch;
+
+            const audioEnergy = Math.max(
+                0.002,
+                Math.min(0.95, (bassEnergy * 0.34) + (lowMidEnergy * 0.28) + (highMidEnergy * 0.24) + (trebleEnergy * 0.14))
+            );
+
             const layerConfigs = [
-                { color: colors[0], energy: lowEnergy, speed: 1.05, phaseOffset: 0.0, lift: 0.00 },
-                { color: colors[1], energy: midEnergy, speed: 1.22, phaseOffset: 0.8, lift: 0.012 },
-                { color: colors[2], energy: highEnergy, speed: 1.38, phaseOffset: 1.6, lift: 0.022 }
+                // Highest layer
+                { color: colors[0], energy: bassEnergy, speed: 0.9 + (bassEnergy * 0.5), phaseOffset: 0.0, lift: 0.0, heightScale: 1.45 },
+                // Middle-high layer
+                { color: colors[1], energy: lowMidEnergy, speed: 1.0 + (lowMidEnergy * 0.6), phaseOffset: 0.72, lift: 0.010, heightScale: 1.18 },
+                // Normal layer
+                { color: colors[2], energy: Math.min(1, (highMidEnergy * 0.7) + (pitchProxy * 0.3)), speed: 1.15 + (pitchProxy * 0.7), phaseOffset: 1.48, lift: 0.018, heightScale: 0.94 },
+                // Lower texture layer
+                { color: colors[3], energy: Math.min(1, (trebleEnergy * 0.75) + (pitchProxy * 0.25)), speed: 1.3 + (pitchProxy * 0.9), phaseOffset: 2.06, lift: 0.024, heightScale: 0.76 }
             ];
 
-            const waveStep = Math.max(4, Math.floor(canvas.width / 150));
+            const duration = audio.duration || 0;
+            const timelineProgress = duration > 0 ? Math.min(1, Math.max(0, audio.currentTime / duration)) : 0;
+            const visibleEndX = Math.max(0, Math.min(canvas.width, timelineProgress * canvas.width));
+            const waveStep = Math.max(3, Math.floor(canvas.width / 190));
             for (let i = 0; i < waveLayers; i += 1) {
                 const layer = layerConfigs[i];
                 const wavelength = canvas.width / (1.7 + (layer.energy * 5.8) + (i * 0.35));
                 const frequency = (Math.PI * 2) / Math.max(28, wavelength);
-                const amplitude = canvas.height * (0.045 + (layer.energy * 0.11) + (i * 0.012));
+                const amplitudeBase = isActivelyPlaying ? 0.056 : 0.0015;
+                const amplitude = canvas.height * (amplitudeBase + (layer.energy * 0.46) + ((i * 0.024) * layer.energy)) * layer.heightScale;
                 const phase = now * layer.speed + (layer.energy * 5.2) + layer.phaseOffset;
 
                 ctx.fillStyle = layer.color;
@@ -2019,28 +1078,32 @@
                 ctx.beginPath();
                 ctx.moveTo(0, audioLineY);
 
-                for (let x = 0; x <= canvas.width; x += waveStep) {
-                    const progress = x / canvas.width;
-                    const envelope = Math.sin(progress * Math.PI);
+                for (let x = 0; x <= visibleEndX; x += waveStep) {
+                    const progress = visibleEndX > 0 ? (x / visibleEndX) : 0;
+                    const envelope = Math.pow(Math.sin(progress * Math.PI), 0.75);
                     const ripple = Math.sin((x * frequency) + phase);
-                    const crest = Math.abs(ripple) * amplitude * (0.6 + envelope * 0.5);
+                    const crest = Math.abs(ripple) * amplitude * (0.9 + envelope * 0.85);
                     const y = audioLineY - layer.lift * canvas.height - crest;
                     ctx.lineTo(x, y);
                 }
 
-                ctx.lineTo(canvas.width, audioLineY);
+                ctx.lineTo(visibleEndX, audioLineY);
                 ctx.closePath();
                 ctx.fill();
             }
             ctx.globalAlpha = 1;
 
-            const duration = audio.duration || 0;
-            const timelineProgress = duration > 0 ? Math.min(1, Math.max(0, audio.currentTime / duration)) : 0;
-            const idleReveal = !audio.src || (audio.paused && audio.currentTime === 0);
-            const visualProgress = idleReveal ? 0.68 : timelineProgress;
-            const hiddenRight = `${(1 - visualProgress) * 100}%`;
-            canvas.style.clipPath = `inset(0 ${hiddenRight} 0 0 round 6px)`;
+            canvas.style.clipPath = "none";
             knob.style.left = `${timelineProgress * 100}%`;
+
+            if (waveformShouldStopWhenSilent) {
+                const settled = audioEnergy < 0.01 && pitchProxy < 0.02;
+                if (settled) {
+                    waveformShouldStopWhenSilent = false;
+                    stopWaveformRenderer();
+                    return;
+                }
+            }
 
             audioVisualFrame = requestAnimationFrame(renderWaveform);
         }
@@ -2164,20 +1227,25 @@
             });
 
             audio.addEventListener("play", () => {
+                waveformShouldStopWhenSilent = false;
                 startWaveformRenderer();
                 updateAudioShellStatus();
             });
             audio.addEventListener("pause", () => {
+                waveformShouldStopWhenSilent = true;
+                startWaveformRenderer();
                 updateAudioShellStatus();
             });
             audio.addEventListener("loadeddata", () => {
                 audioIsLocked = false;
+                waveformShouldStopWhenSilent = false;
                 startWaveformRenderer();
                 updateAudioShellStatus();
             });
             audio.addEventListener("ended", () => {
                 audioIsLocked = true;
-                stopWaveformRenderer();
+                waveformShouldStopWhenSilent = true;
+                startWaveformRenderer();
                 updateAudioShellStatus();
             });
             audio.addEventListener("error", () => {
@@ -2639,7 +1707,7 @@
             setAudioLabelReady(file.name, partId);
 
             const fileLabel = document.getElementById(getAudioFileLabelId(partId));
-            if (fileLabel) { fileLabel.innerText = `${file.name} — uploading…`; fileLabel.style.color = "#b45309"; }
+            if (fileLabel) { fileLabel.innerText = `${file.name} â€” uploadingâ€¦`; fileLabel.style.color = "#b45309"; }
 
             try {
                 // Save metadata, but do not block cloud upload when local persistence is unavailable.
@@ -2974,3 +2042,4 @@
     </script>
 </body>
 </html>
+

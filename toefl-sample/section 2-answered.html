@@ -1,362 +1,902 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Section 2 Review – Structure | TOEFL ITP</title>
-    <style>
-        :root {
-            --primary: #004b87;
-            --bg-body: #f0f5fa;
-            --bg-surface: #ffffff;
-            --text-main: #0d1f33;
-            --text-muted: #5a6d83;
-            --border-color: #d0dde9;
-            --danger: #c44444;
-            --success: #1463ad;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
-
-        body { background: var(--bg-body); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-
-        .page-header {
-            background: linear-gradient(90deg, #003a6e, #004b87);
-            color: #e8f2ff;
-            padding: 14px 24px;
-            display: flex; justify-content: space-between; align-items: center; gap: 12px;
-            border-bottom: 2px solid #0069bd; flex-shrink: 0;
-        }
-
-        .page-header-title { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; }
-
-        .page-header-badge {
-            background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-            border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700;
-            letter-spacing: 0.06em; text-transform: uppercase;
-        }
-
-        .container {
-            flex: 1; display: flex; flex-direction: column;
-            max-width: 900px; width: 100%; margin: 0 auto;
-            padding: 24px 20px 140px; gap: 16px;
-        }
-
-        .panel {
-            background: var(--bg-surface); border: 1px solid var(--border-color);
-            border-radius: 14px; box-shadow: 0 4px 12px rgba(0,75,135,0.07); padding: 24px;
-        }
-
-        .panel-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--primary); margin-bottom: 10px; }
-
-        .question-no { font-size: 0.82rem; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
-
-        .part-badge {
-            display: inline-block; background: #e8f2ff; color: var(--primary);
-            border: 1px solid #b8d5f5; border-radius: 999px;
-            padding: 4px 12px; font-size: 12px; font-weight: 700; margin-bottom: 14px;
-        }
-
-        /* Part B sentence display */
-        .sentence-display {
-            background: #f4f8fc; border: 1px solid #c8d8e8;
-            border-radius: 10px; padding: 14px 16px;
-            font-size: 1rem; line-height: 1.8; color: var(--text-main);
-        }
-
-        .underline-word {
-            border-bottom: 2px solid var(--primary);
-            padding: 0 4px 1px; font-weight: 700;
-            position: relative;
-        }
-
-        .underline-word .letter-label {
-            display: inline-block; font-size: 0.7rem; font-weight: 700;
-            color: var(--primary); vertical-align: super; margin-left: 2px;
-        }
-
-        .underline-word.chosen { background: rgba(0,75,135,0.1); border-radius: 4px; }
-        .underline-word.correct-word { border-bottom-color: var(--success); color: var(--success); }
-        .underline-word.wrong-word { border-bottom-color: var(--danger); color: var(--danger); }
-
-        .question-text { font-size: 1rem; line-height: 1.65; color: var(--text-main); }
-
-        .answer-option {
-            display: flex; align-items: flex-start; gap: 10px;
-            padding: 10px; border-radius: 10px; margin-bottom: 8px; border: 1px solid transparent;
-        }
-        .answer-option.correct { background: rgba(20,99,173,0.08); border-color: rgba(20,99,173,0.2); }
-        .answer-option.incorrect { background: rgba(196,68,68,0.08); border-color: rgba(196,68,68,0.2); }
-        .answer-option.neutral { background: #fafcfe; border-color: #d8e8f0; }
-
-        .opt-circle {
-            width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 700; border: 2px solid #a0b8d0; background: #fff; color: var(--text-main); font-size: 0.82rem;
-        }
-        .answer-option.correct .opt-circle { background: var(--success); border-color: var(--success); color: #fff; }
-        .answer-option.incorrect .opt-circle { background: var(--danger); border-color: var(--danger); color: #fff; }
-
-        .opt-text { flex: 1; line-height: 1.5; font-size: 0.93rem; }
-        .opt-meta { font-size: 0.72rem; font-weight: 700; border-radius: 999px; padding: 3px 8px; align-self: center; white-space: nowrap; }
-        .opt-meta.user { background: #e8f2ff; color: #003a6e; }
-        .opt-meta.correct { background: #ddeeff; color: var(--success); }
-
-        /* Explanation */
-        .explanation-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
-        .explanation-text { line-height: 1.6; color: #334155; font-size: 0.93rem; display: grid; gap: 8px; }
-        .expl-position-card { background: #eaf3ff; border: 1px solid #b8d5f5; border-left: 4px solid #004b87; border-radius: 10px; padding: 12px 14px; }
-        .expl-explain-card { background: #f8fbff; border: 1px solid #ccdded; border-left: 4px solid #1463ad; border-radius: 10px; padding: 12px 14px; }
-        .expl-card-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #004b87; margin-bottom: 6px; }
-        .expl-card-body { font-size: 0.93rem; line-height: 1.65; color: #334155; }
-        .passage-highlight { background-color: #cde8ff; color: #0d3d6b; border-radius: 3px; padding: 0 2px; font-weight: 700; }
-
-        /* Footer */
-        .review-footer { position: sticky; bottom: 0; z-index: 20; background: var(--bg-surface); border-top: 1px solid var(--border-color); box-shadow: 0 -6px 20px rgba(0,75,135,0.1); }
-        .review-footer-wrap { max-width: 900px; margin: 0 auto; padding: 8px 20px; display: grid; grid-template-columns: 220px 1fr 240px; gap: 10px; align-items: center; }
-        .summary-col { display: flex; align-items: center; gap: 10px; }
-        .score-ring { --pct: 0%; width: 64px; height: 64px; border-radius: 50%; background: conic-gradient(var(--primary) var(--pct), #d0dde9 0); display: grid; place-items: center; flex-shrink: 0; position: relative; }
-        .score-ring::before { content: ""; width: 48px; height: 48px; border-radius: 50%; background: #fff; border: 1px solid #c0d0e0; position: absolute; }
-        .score-value { position: relative; z-index: 1; font-size: 1.1rem; font-weight: 700; color: var(--primary); }
-        .score-band { position: relative; z-index: 1; font-size: 0.55rem; color: var(--text-muted); font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
-        .summary-meta h1 { font-size: 0.92rem; font-weight: 700; margin-bottom: 2px; }
-        .summary-meta p { font-size: 0.74rem; color: var(--text-muted); }
-        .tracker { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; overflow: hidden; max-height: 80px; }
-        .q-circle { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #a0b8d0; background: #fff; color: #1a2840; font-size: 0.72rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .q-circle.correct { background: #d8eeff; border-color: #7db3d5; color: #0d3f70; }
-        .q-circle.incorrect { background: #fae0e0; border-color: #e8a0a0; color: #8f2020; }
-        .q-circle.active { box-shadow: inset 0 0 0 2px #fff, 0 0 0 2px var(--primary); }
-        .nav-col { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-        .nav-small { width: 40px; height: 36px; border-radius: 8px; border: 1px solid var(--border-color); background: #fff; cursor: pointer; font-size: 1rem; font-weight: 700; }
-        .nav-small:disabled { opacity: 0.4; cursor: not-allowed; }
-        .next-btn { min-width: 140px; height: 36px; border-radius: 8px; border: 1px solid #90b8d8; background: #e8f2ff; color: var(--primary); font-weight: 700; cursor: pointer; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-        .next-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        @media (max-width: 900px) {
-            .review-footer-wrap { grid-template-columns: 1fr; }
-            .summary-col, .nav-col { justify-content: center; }
-            .tracker { justify-content: center; }
-        }
-    </style>
+    <title>Section 2 Review - Structure | TOEFL ITP</title>
+    <link rel="stylesheet" href="css/explaination.css" />
 </head>
 <body>
-    <div class="page-header">
-        <div class="page-header-title">📝 Section 2: Structure and Written Expression — Answer Review</div>
-        <span class="page-header-badge">TOEFL ITP</span>
-    </div>
-
-    <div class="container">
-        <div class="panel" id="questionPanel">
-            <div class="panel-label">Question</div>
-            <div id="partBadge" class="part-badge"></div>
-            <div class="question-no" id="questionNo">Question —</div>
-            <div id="questionDisplay"></div>
-        </div>
-
-        <div class="panel" id="optionsPanel">
-            <div class="panel-label">Answer Options</div>
-            <div id="optionsBox"></div>
-        </div>
-
-        <div class="panel" id="explanationPanel">
-            <div class="explanation-title">Explanation</div>
-            <div class="explanation-text" id="explanationText">No explanation provided.</div>
-        </div>
-    </div>
-
-    <footer class="review-footer">
-        <div class="review-footer-wrap">
-            <div class="summary-col">
-                <div class="score-ring" id="scoreRing">
-                    <div>
-                        <div class="score-value" id="scaledScore">—</div>
-                        <div class="score-band">ITP Score</div>
+    <div class="explaination">
+        <header class="frame-parent9">
+            <div class="frame-parent10">
+                <img class="frame-child" src="../asset/icon/logo.png" alt="QuickCheck logo">
+                <div class="listening-comprehension-parent">
+                    <div class="listening-comprehension">Structure and Written Expression</div>
+                    <div class="package-01-jan">Package 01 Jan</div>
+                </div>
+            </div>
+            <div class="header-main">
+                <div class="header-score-ring" id="listeningScaledRing">
+                    <b class="header-score-ring-value" id="listeningScaledScore">31</b>
+                </div>
+                <div class="header-question-nav">
+                    <div class="header-part-block">
+                        <div class="header-part-title">PART A</div>
+                        <div class="header-question-grid part-a" id="partAChips"></div>
+                    </div>
+                    <div class="header-part-block">
+                        <div class="header-part-title">PART B</div>
+                        <div class="header-question-grid part-b" id="partBChips"></div>
+                    </div>
+                    <div class="header-part-block">
+                        <div class="header-part-title">PART C</div>
+                        <div class="header-question-grid part-c" id="partCChips"></div>
                     </div>
                 </div>
-                <div class="summary-meta">
-                    <h1>Section 2: Structure</h1>
-                    <p id="scoreSummary">0 correct of 0</p>
+                <div class="header-actions">
+                    <button class="header-icon-btn" type="button" aria-label="Fullscreen">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 3H3v6" />
+                            <path d="M15 3h6v6" />
+                            <path d="M21 15v6h-6" />
+                            <path d="M3 15v6h6" />
+                        </svg>
+                    </button>
+                    <button class="header-icon-btn" type="button" aria-label="Menu">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                            <path d="M4 7h16" />
+                            <path d="M4 12h16" />
+                            <path d="M4 17h16" />
+                        </svg>
+                    </button>
                 </div>
+                <button class="header-prev-btn" type="button" id="headerPrevQuestionBtn" onclick="goToPreviousReviewQuestion()" aria-label="Previous question">
+                    <img src="../asst/icon/previousbutton.svg" alt="Previous">
+                </button>
+                <button class="header-next-btn" type="button" id="headerNextQuestionBtn" onclick="goToNextReviewQuestion()">
+                    Next
+                    <svg viewBox="0 0 16 24" width="12" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2 2l10 10L2 22" />
+                    </svg>
+                </button>
             </div>
+        </header>
 
-            <div class="tracker" id="tracker"></div>
+        <main class="component-34">
+            <aside class="left-col">
+                <section class="audio" id="review-audio-player">
+                    <div class="audio-header">
+                        <div class="audio-transcribe">Audio Transcribe</div>
+                        <div class="audio-duration-badge" id="audio-total-dur">--:--</div>
+                    </div>
 
-            <div class="nav-col">
-                <button class="nav-small" id="prevBtn" type="button">&#8592;</button>
-                <div id="questionCounter" style="min-width:80px;text-align:center;font-weight:700;font-size:0.88rem;">Q 1 / 40</div>
-                <button class="next-btn" id="nextBtn" type="button">Next &#8594;</button>
-            </div>
-        </div>
-    </footer>
+                    <!-- Waveform canvas + scrubber -->
+                    <div class="wave-shell" id="wave-shell" title="Click or drag to seek">
+                        <canvas class="wave-canvas" id="review-wave-canvas"></canvas>
+                        <div class="scrubber-track" id="scrubber-track">
+                            <div class="scrubber-fill"  id="scrubber-fill"></div>
+                            <div class="scrubber-knob"  id="scrubber-knob"></div>
+                        </div>
+                    </div>
+
+                    <!-- Current / remaining time -->
+                    <div class="audio-time-row">
+                        <span id="audio-cur-time">0:00</span>
+                        <span id="audio-rem-time">-0:00</span>
+                    </div>
+
+                    <!-- Transport controls -->
+                    <div class="transport">
+                        <!-- Stop -->
+                        <button class="transport-btn sm" id="btn-stop" title="Stop" onclick="reviewAudioStop()">
+                            <svg viewBox="0 0 24 24" width="20" height="20"><rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor"/></svg>
+                        </button>
+                        <!-- -10s -->
+                        <button class="transport-btn skip-label" id="btn-back10" title="Back 10 s" onclick="reviewAudioSeekRel(-10)">
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" fill="currentColor"/>
+                                <text x="12" y="14.5" text-anchor="middle" font-size="7" font-family="sans-serif" fill="currentColor">10</text>
+                            </svg>
+                            <span>-10s</span>
+                        </button>
+                        <!-- Play / Pause -->
+                        <button class="transport-btn big" id="btn-playpause" title="Play / Pause" onclick="reviewAudioToggle()">
+                            <svg id="icon-play" viewBox="0 0 44 44" width="40" height="40">
+                                <circle cx="22" cy="22" r="21" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+                                <polygon points="17,13 33,22 17,31" fill="currentColor"/>
+                            </svg>
+                            <svg id="icon-pause" viewBox="0 0 44 44" width="40" height="40" style="display:none">
+                                <circle cx="22" cy="22" r="21" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+                                <rect x="13" y="13" width="5" height="18" rx="2" fill="currentColor"/>
+                                <rect x="26" y="13" width="5" height="18" rx="2" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <!-- +10s -->
+                        <button class="transport-btn skip-label" id="btn-fwd10" title="Forward 10 s" onclick="reviewAudioSeekRel(10)">
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z" fill="currentColor"/>
+                                <text x="12" y="14.5" text-anchor="middle" font-size="7" font-family="sans-serif" fill="currentColor">10</text>
+                            </svg>
+                            <span>+10s</span>
+                        </button>
+                        <!-- hidden native audio -->
+                        <audio id="review-audio" preload="metadata" style="display:none"></audio>
+                    </div>
+
+                    <p style="font-size:11px;color:rgba(255,255,255,0.35);text-align:center;margin-top:-4px;" id="audio-status-label">No audio loaded</p>
+                </section>
+
+                <section class="property-1default">
+                    <div class="highlighter-1-parent">
+                        <div class="highlighter-1"><img src="../asst/icon/highlight.svg" alt="Highlight"></div>
+                        <div>Click any text to see playback option and highlight</div>
+                    </div>
+
+                    <article class="frame-container">
+                        <div class="frame-div">
+                            <div class="playtranscribe-parent">
+                                <img class="playtranscribe-icon" src="../asst/icon/playtranscribe.svg" alt="Play">
+                                <div>2:41</div>
+                            </div>
+                            <img class="lightbulb-duotone-1" src="../asst/icon/lightbulb2.svg" alt="Hint">
+                        </div>
+                        <div class="frame-parent2">
+                            <div class="men-wrapper">MEN</div>
+                            <div class="are-you-going">Are you going to the movie night at the student center?</div>
+                        </div>
+                    </article>
+
+                    <article class="frame-parent3">
+                        <div class="frame-div">
+                            <div class="playtranscribe-parent">
+                                <img class="playtranscribe-icon" src="../asst/icon/playtranscribe.svg" alt="Play">
+                                <div>2:50</div>
+                            </div>
+                            <img class="lightbulb-duotone-1" src="../asst/icon/lightbulb2.svg" alt="Hint">
+                        </div>
+                        <div class="frame-parent5">
+                            <div class="men-wrapper">WOMEN</div>
+                            <div class="are-you-going">I'd love to, but I really need to hit the books for my economics exam.</div>
+                        </div>
+                    </article>
+
+                    <article class="frame-parent3">
+                        <div class="frame-div">
+                            <div class="playtranscribe-parent">
+                                <img class="playtranscribe-icon" src="../asst/icon/playtranscribe.svg" alt="Play">
+                                <div>3:00</div>
+                            </div>
+                            <img class="lightbulb-duotone-1" src="../asst/icon/lightbulb2.svg" alt="Hint">
+                        </div>
+                        <div class="frame-parent8">
+                            <div class="men-wrapper">NARR</div>
+                            <div class="what-does-the">What does the woman mean?</div>
+                        </div>
+                    </article>
+                </section>
+            </aside>
+
+            <section class="center-col">
+                    <section class="frame-parent17" id="firstExplanationBox">
+                        <div class="frame-parent18">
+                            <div class="frame-parent16">
+                                <div class="wrapper"><div id="reviewQuestionNumber">1</div></div>
+                                <div class="incorrect-parent">
+                                    <div class="incorrect" id="reviewStatusText">INCORRECT</div>
+                                    <div class="what-does-the2" id="reviewQuestionText">What does the women mean?</div>
+                                </div>
+                            </div>
+                            <img class="vector-icon13" src="../asst/icon/Vector.svg" alt="Collapse">
+                        </div>
+
+                        <div class="frame-parent20" id="firstBoxOptions"></div>
+                    </section>
+
+                <section class="detail-explaination-shell">
+                    <div class="detail-explaination-head">
+                        <div class="book-open-text-duotone-1-wrapper"><img src="../asst/icon/explaination.svg" alt="Detail explanation"></div>
+                        <div class="frame-parent19">
+                            <div class="detail-explanation-wrapper">
+                                <div class="detail-explaination">DETAIL EXPLANATION</div>
+                                <div class="why-b-is" id="detailSub">Why B is correct? Proof Transcribe</div>
+                            </div>
+                            <img class="detail-explaination-caret" src="../asst/icon/up.svg" alt="Collapse detail">
+                        </div>
+                    </div>
+
+                    <section class="frame-parent20">
+                    <div class="frame-parent21">
+                        <div class="frame-parent22">
+                            <div class="container"><div class="div9">1</div></div>
+                            <div class="identify-the-key">Identify the key phrase</div>
+                        </div>
+                        <div class="frame-parent23">
+                            <div class="frame-wrapper5">
+                                <div class="vector-parent4">
+                                    <img class="line-icon" src="../asst/icon/Line%2012.svg" alt="Divider">
+                                    <div class="frame-parent24">
+                                        <div class="group-parent">
+                                            <div class="look-closely-at-the-womans-re-wrapper">
+                                                <div class="look-closely-at">Look closely at the womanâ€™s response:</div>
+                                            </div>
+                                            <div class="frame-parent25">
+                                                <div class="vector-parent5">
+                                                    <img class="vector-icon14" src="../asst/icon/Vector.svg" alt="Arrow marker">
+                                                    <b class="w">W</b>
+                                                </div>
+                                                <div class="i-really-need-to-hit-the-books-wrapper">
+                                                    <i class="w">â€œI really need to hit the books for my economics exam.â€</i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="the-phrase-hit">The phrase "hit the books" is an English idiom.</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="next-step-parent">
+                                <div class="next-step">Next Step</div>
+                                <img class="vector-icon15" src="../asst/icon/right%20arrow%20next.svg" alt="Next">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="frame-wrapper6">
+                        <div class="frame-parent26">
+                            <div class="frame"><div class="div9">2</div></div>
+                            <div class="identify-the-key">Decode the idiom</div>
+                        </div>
+                    </div>
+                    <div class="frame-wrapper6">
+                        <div class="frame-parent26">
+                            <div class="frame"><div class="div9">3</div></div>
+                            <div class="identify-the-key">Analyze the conversational context</div>
+                        </div>
+                    </div>
+                    <div class="frame-wrapper6">
+                        <div class="frame-parent26">
+                            <div class="frame"><div class="div9">4</div></div>
+                            <div class="identify-the-key">Eliminate the literal distractors</div>
+                        </div>
+                    </div>
+                    </section>
+                </section>
+
+                <section class="frame-parent13">
+                    <div class="sparkle-duotone-1-wrapper"><img src="../asst/icon/instruction.svg" alt="Ask AI tutor"></div>
+                    <div class="frame-parent14">
+                        <div class="ask-ai-tutor-parent">
+                            <div class="ask-ai-tutor">ASK AI TUTOR</div>
+                            <div class="real-time-answer">Real-time answer</div>
+                        </div>
+                        <img class="pause-1-icon" src="../asst/icon/up.svg" alt="Expand AI">
+                    </div>
+                </section>
+            </section>
+        </main>
+    </div>
 
     <script>
-        let result = null;
-        let flatQuestions = [];
-        let currentIdx = 0;
-
-        function escapeHtml(v) { return String(v || "").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]); }
-        function escapeHtmlAttr(v) { return String(v || "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
-        function escapeRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+        /* â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        function escapeHtml(v) {
+            return String(v || '').replace(/[&<>"]/g, function (c) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+            });
+        }
 
         function renderQuotedHighlights(v) {
             return escapeHtml(v)
-                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                .replace(/"([^"]{1,})"/g, (_, i) => `<mark class="passage-highlight">"${i}"</mark>`)
+                .replace(/"([^"]{1,})"/g, function (_, phrase) {
+                    return '<strong>' + phrase + '</strong>';
+                })
                 .replace(/\n/g, '<br>');
         }
 
-        function extractFirstQuotedPhrase(text) {
-            const m = String(text || "").match(/"([^"]{2,})"/);
-            return m ? m[1].trim() : '';
+        function fmtTime(s) {
+            if (!isFinite(s) || s < 0) return '0:00';
+            var m = Math.floor(s / 60);
+            var sec = Math.floor(s % 60);
+            return m + ':' + (sec < 10 ? '0' : '') + sec;
         }
 
-        function parseSimpleExplanation(text) {
-            const raw = String(text || '').replace(/\r/g, '').replace(/<br\s*\/?>/gi, '\n').trim();
-            if (!raw) return null;
-            const multiline = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\n+\s*(?:Explain(?:ation)?|Reason)\s*:\s*([\s\S]*)$/i);
-            const inline = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\s+(?:Explain(?:ation)?|Reason)\s*:\s*([\s\S]*)$/i);
-            const match = multiline || inline;
-            if (!match) return null;
-            const positionText = String(match[1] || '').trim();
-            const explainText = String(match[2] || '').trim();
-            if (!positionText && !explainText) return null;
-            return { positionText, explainText };
-        }
+        /* â”€â”€ Review Audio Player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        var reviewAudio = null;
+        var reviewAudioCtx = null;
+        var reviewAudioAnalyser = null;
+        var reviewAudioSource = null;
+        var reviewAudioData = null;
+        var reviewWaveFrame = null;
+        var reviewWaveEnergy = { bass: 0.04, lowMid: 0.04, highMid: 0.04, treble: 0.04, pitch: 0.2 };
+        var reviewIsDragging = false;
+        var reviewResultData = null;
+        var reviewQuestionIndex = 0;
 
-        function renderExplanationText(el, text) {
-            const raw = String(text || '').replace(/\r/g, '').replace(/<br\s*\/?>/gi, '\n').trim();
-            const parsed = parseSimpleExplanation(raw);
-            if (parsed) {
-                el.innerHTML = `
-                    <div class="expl-position-card">
-                        <div class="expl-card-label">&#128205; Position</div>
-                        <div class="expl-card-body">${renderQuotedHighlights(parsed.positionText)}</div>
-                    </div>
-                    <div class="expl-explain-card">
-                        <div class="expl-card-label">&#128161; Explanation</div>
-                        <div class="expl-card-body">${renderQuotedHighlights(parsed.explainText)}</div>
-                    </div>`;
-                return;
-            }
-            el.innerHTML = renderQuotedHighlights(raw);
-        }
+        function initReviewAudio() {
+            reviewAudio = document.getElementById('review-audio');
+            if (!reviewAudio) return;
 
-        function renderQuestionDisplay(q) {
-            const el = document.getElementById('questionDisplay');
-            if (q.isPartB) {
-                // Show sentence with underlined words highlighted
-                const correctLetter = String(q.correctAnswer || '').trim().toUpperCase();
-                const userLetter = String(q.userAnswer || '').trim().toUpperCase();
-                const letters = ['A', 'B', 'C', 'D'];
-                let sentence = escapeHtml(q.questionText || '');
-                // Replace underlined words back
-                const opts = q.options || {};
-                letters.forEach(letter => {
-                    if (!opts[letter]) return;
-                    const wordEscaped = escapeHtml(opts[letter]);
-                    let cls = 'underline-word';
-                    if (letter === userLetter) cls += ' chosen';
-                    if (letter === correctLetter) cls += ' correct-word';
-                    else if (letter === userLetter) cls += ' wrong-word';
-                    sentence = sentence.replace(wordEscaped, `<span class="${cls}">${wordEscaped}<span class="letter-label">${letter}</span></span>`);
+            // Try to attach from IndexedDB (same DB as section 1)
+            var DB_NAME = 'toefl-audio-db';
+            var STORE   = 'audio-files';
+            var MODULE  = 'section2';
+
+            function openDB() {
+                return new Promise(function(res, rej) {
+                    if (!window.indexedDB) { res(null); return; }
+                    var req = indexedDB.open(DB_NAME, 1);
+                    req.onupgradeneeded = function(e) {
+                        var db = e.target.result;
+                        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
+                    };
+                    req.onsuccess  = function() { res(req.result); };
+                    req.onerror    = function() { rej(req.error); };
                 });
-                el.innerHTML = `<div class="sentence-display">${sentence}</div>`;
+            }
+
+            openDB().then(function(db) {
+                if (!db) return null;
+                return new Promise(function(res) {
+                    var tx  = db.transaction(STORE, 'readonly');
+                    var st  = tx.objectStore(STORE);
+                    var all = st.getAll();
+                    all.onsuccess = function() {
+                        var rows = (all.result || [])
+                            .filter(function(r) { return r && r.module === MODULE && r.blob; })
+                            .sort(function(a, b) { return new Date(b.updatedAt||0) - new Date(a.updatedAt||0); });
+                        db.close();
+                        res(rows[0] || null);
+                    };
+                    all.onerror = function() { db.close(); res(null); };
+                });
+            }).then(function(record) {
+                if (record && record.blob) {
+                    var url = URL.createObjectURL(record.blob);
+                    reviewAudio.src = url;
+                    reviewAudio.load();
+                    setAudioStatus('Ready â€” click â–¶ to play');
+                } else {
+                    setAudioStatus('No saved audio found');
+                }
+            }).catch(function() {
+                setAudioStatus('Audio unavailable');
+            });
+
+            reviewAudio.addEventListener('timeupdate', onReviewTimeUpdate);
+            reviewAudio.addEventListener('loadedmetadata', onReviewMetadata);
+            reviewAudio.addEventListener('ended', onReviewEnded);
+            reviewAudio.addEventListener('play',  updatePlayPauseIcon);
+            reviewAudio.addEventListener('pause', updatePlayPauseIcon);
+
+            // Scrubber mouse interaction
+            var scrubberTrack = document.getElementById('scrubber-track');
+            var scrubberKnob  = document.getElementById('scrubber-knob');
+            var waveShell     = document.getElementById('wave-shell');
+
+            function seekFromEvent(e) {
+                var rect = scrubberTrack.getBoundingClientRect();
+                var pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                if (reviewAudio && isFinite(reviewAudio.duration)) {
+                    reviewAudio.currentTime = pct * reviewAudio.duration;
+                }
+            }
+
+            scrubberKnob.addEventListener('mousedown', function(e) {
+                reviewIsDragging = true;
+                e.preventDefault();
+            });
+            scrubberTrack.addEventListener('click', seekFromEvent);
+            waveShell.addEventListener('click', function(e) {
+                var rect = waveShell.getBoundingClientRect();
+                var pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                if (reviewAudio && isFinite(reviewAudio.duration)) {
+                    reviewAudio.currentTime = pct * reviewAudio.duration;
+                }
+            });
+            document.addEventListener('mousemove', function(e) {
+                if (!reviewIsDragging) return;
+                seekFromEvent(e);
+            });
+            document.addEventListener('mouseup', function() { reviewIsDragging = false; });
+
+            startReviewWaveform();
+        }
+
+        function setAudioStatus(msg) {
+            var el = document.getElementById('audio-status-label');
+            if (el) el.textContent = msg;
+        }
+
+        function onReviewMetadata() {
+            var d = reviewAudio.duration;
+            document.getElementById('audio-total-dur').textContent = fmtTime(d);
+            document.getElementById('audio-rem-time').textContent  = '-' + fmtTime(d);
+        }
+
+        function onReviewTimeUpdate() {
+            var cur = reviewAudio.currentTime;
+            var dur = reviewAudio.duration || 0;
+            var pct = dur > 0 ? (cur / dur) : 0;
+            document.getElementById('audio-cur-time').textContent  = fmtTime(cur);
+            document.getElementById('audio-rem-time').textContent  = '-' + fmtTime(Math.max(0, dur - cur));
+            document.getElementById('scrubber-fill').style.width   = (pct * 100) + '%';
+            document.getElementById('scrubber-knob').style.left    = (pct * 100) + '%';
+        }
+
+        function onReviewEnded() {
+            updatePlayPauseIcon();
+            setAudioStatus('Playback complete');
+        }
+
+        function updatePlayPauseIcon() {
+            var playing = reviewAudio && !reviewAudio.paused && !reviewAudio.ended;
+            document.getElementById('icon-play').style.display  = playing ? 'none' : 'block';
+            document.getElementById('icon-pause').style.display = playing ? 'block' : 'none';
+        }
+
+        function ensureReviewAnalyser() {
+            if (reviewAudioCtx && reviewAudioAnalyser) return true;
+            try {
+                reviewAudioCtx    = new (window.AudioContext || window.webkitAudioContext)();
+                reviewAudioSource = reviewAudioCtx.createMediaElementSource(reviewAudio);
+                reviewAudioAnalyser = reviewAudioCtx.createAnalyser();
+                reviewAudioAnalyser.fftSize = 512;
+                reviewAudioAnalyser.smoothingTimeConstant = 0.84;
+                reviewAudioData = new Uint8Array(reviewAudioAnalyser.frequencyBinCount);
+                reviewAudioSource.connect(reviewAudioAnalyser);
+                reviewAudioAnalyser.connect(reviewAudioCtx.destination);
+                return true;
+            } catch(e) {
+                return false;
+            }
+        }
+
+        function reviewAudioToggle() {
+            if (!reviewAudio || !reviewAudio.src) return;
+            if (reviewAudio.paused || reviewAudio.ended) {
+                ensureReviewAnalyser();
+                if (reviewAudioCtx && reviewAudioCtx.state === 'suspended') reviewAudioCtx.resume();
+                reviewAudio.play().then(function() {
+                    setAudioStatus('Playingâ€¦');
+                    startReviewWaveform();
+                }).catch(function() { setAudioStatus('Playback blocked by browser'); });
             } else {
-                el.innerHTML = `<div class="question-text">${escapeHtml(q.questionText || '')}</div>`;
+                reviewAudio.pause();
+                setAudioStatus('Paused');
             }
         }
 
-        function renderOptions(q) {
-            const box = document.getElementById('optionsBox');
-            box.innerHTML = '';
-            const options = q.options || {};
-            const letters = Object.keys(options).sort();
-            if (!letters.length) {
-                box.innerHTML = '<p style="color:var(--text-muted);font-size:0.88rem;">No options stored for this question.</p>';
-                return;
+        function reviewAudioStop() {
+            if (!reviewAudio) return;
+            reviewAudio.pause();
+            reviewAudio.currentTime = 0;
+            updatePlayPauseIcon();
+            setAudioStatus('Stopped');
+        }
+
+        function reviewAudioSeekRel(delta) {
+            if (!reviewAudio) return;
+            reviewAudio.currentTime = Math.max(0, Math.min(reviewAudio.duration || 0, reviewAudio.currentTime + delta));
+        }
+
+        /* â”€â”€ Canvas waveform (identical algorithm to section 1) â”€â”€ */
+        function startReviewWaveform() {
+            if (reviewWaveFrame) return;
+            renderReviewWaveform();
+        }
+
+        function stopReviewWaveform() {
+            if (reviewWaveFrame) { cancelAnimationFrame(reviewWaveFrame); reviewWaveFrame = null; }
+        }
+
+        function renderReviewWaveform() {
+            var canvas = document.getElementById('review-wave-canvas');
+            if (!canvas) return;
+            var rect = canvas.getBoundingClientRect();
+            var dpr  = window.devicePixelRatio || 1;
+            var tw   = Math.max(1, Math.floor(rect.width  * dpr));
+            var th   = Math.max(1, Math.floor(rect.height * dpr));
+            if (canvas.width !== tw || canvas.height !== th) { canvas.width = tw; canvas.height = th; }
+
+            var ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            var now    = performance.now() / 1000;
+            var colors = ['#4F46E5', '#0EA5E9', '#14B8A6', '#22C55E'];
+            var audio  = reviewAudio;
+            var isPlaying = !!(audio && audio.src && !audio.paused && !audio.ended);
+
+            var target = { bass:0, lowMid:0, highMid:0, treble:0, pitch:0 };
+
+            if (isPlaying && reviewAudioAnalyser && reviewAudioData) {
+                reviewAudioAnalyser.getByteFrequencyData(reviewAudioData);
+                var nyquist = ((reviewAudioCtx && reviewAudioCtx.sampleRate) || 44100) / 2;
+                var binHz   = nyquist / Math.max(1, reviewAudioData.length - 1);
+                function band(lo, hi) {
+                    var s=Math.max(0,Math.floor(lo/binHz)), e=Math.min(reviewAudioData.length-1,Math.ceil(hi/binHz));
+                    var sum=0, n=0; for(var i=s;i<=e;i++){sum+=reviewAudioData[i];n++;} return n>0?sum/(n*255):0;
+                }
+                target.bass   = band(20,180);
+                target.lowMid = band(180,900);
+                target.highMid= band(900,3000);
+                target.treble = band(3000,8000);
+                var ws=0,wm=0;
+                for(var i=1;i<reviewAudioData.length;i++){var mag=reviewAudioData[i]/255;ws+=mag*i*binHz;wm+=mag;}
+                target.pitch = Math.max(0,Math.min(1,(wm>0?ws/wm:1000)/5000));
             }
-            const correctLetter = String(q.correctAnswer || '').trim().toUpperCase();
-            const userLetter = String(q.userAnswer || '').trim().toUpperCase();
-            letters.forEach(letter => {
-                const isCorrect = letter === correctLetter;
-                const row = document.createElement('div');
-                row.className = 'answer-option ' + (isCorrect ? 'correct' : 'incorrect');
-                const circle = document.createElement('div');
-                circle.className = 'opt-circle';
-                circle.textContent = letter;
-                const text = document.createElement('div');
-                text.className = 'opt-text';
-                text.textContent = q.isPartB ? `(${letter}) ${options[letter]}` : options[letter];
-                row.appendChild(circle);
-                row.appendChild(text);
-                if (userLetter === letter) { const tag = document.createElement('span'); tag.className = 'opt-meta user'; tag.textContent = 'Your answer'; row.appendChild(tag); }
-                if (isCorrect) { const tag = document.createElement('span'); tag.className = 'opt-meta correct'; tag.textContent = 'Correct'; row.appendChild(tag); }
-                box.appendChild(row);
-            });
+
+            if (isPlaying) {
+                var activity = (target.bass+target.lowMid+target.highMid+target.treble)/4;
+                if (activity < 0.05) {
+                    var pA = (Math.sin(now*4.1)+1)/2, pB = (Math.sin(now*2.7+1.1)+1)/2;
+                    target.bass   = Math.max(target.bass,   0.22+pA*0.12);
+                    target.lowMid = Math.max(target.lowMid, 0.24+pB*0.10);
+                    target.highMid= Math.max(target.highMid,0.20+pA*0.12);
+                    target.treble = Math.max(target.treble, 0.16+pB*0.10);
+                    target.pitch  = Math.max(target.pitch,  0.34+pA*0.20);
+                }
+            }
+
+            function ease(c,t,f){return c+(t-c)*f;}
+            var atk=0.38, rel=0.10;
+            reviewWaveEnergy.bass   = ease(reviewWaveEnergy.bass,   target.bass,   target.bass   > reviewWaveEnergy.bass   ? atk:rel);
+            reviewWaveEnergy.lowMid = ease(reviewWaveEnergy.lowMid, target.lowMid, target.lowMid > reviewWaveEnergy.lowMid ? atk:rel);
+            reviewWaveEnergy.highMid= ease(reviewWaveEnergy.highMid,target.highMid,target.highMid> reviewWaveEnergy.highMid? atk:rel);
+            reviewWaveEnergy.treble = ease(reviewWaveEnergy.treble, target.treble, target.treble > reviewWaveEnergy.treble ? atk:rel);
+            reviewWaveEnergy.pitch  = ease(reviewWaveEnergy.pitch,  target.pitch,  target.pitch  > reviewWaveEnergy.pitch  ? 0.32:0.08);
+
+            var W=canvas.width, H=canvas.height;
+            // baseline at bottom third
+            var audioLineY = H * 0.82;
+
+            var dur  = (audio && audio.duration) || 0;
+            var prog = dur > 0 ? Math.min(1, Math.max(0, audio.currentTime / dur)) : 0;
+            var visX = Math.max(0, Math.min(W, prog * W));
+
+            var layers = [
+                { color:colors[0], energy:reviewWaveEnergy.bass,    speed:0.9+reviewWaveEnergy.bass*0.5,    phaseOffset:0.0,  lift:0.0,  heightScale:1.45 },
+                { color:colors[1], energy:reviewWaveEnergy.lowMid,  speed:1.0+reviewWaveEnergy.lowMid*0.6,  phaseOffset:0.72, lift:0.010,heightScale:1.18 },
+                { color:colors[2], energy:Math.min(1,reviewWaveEnergy.highMid*0.7+reviewWaveEnergy.pitch*0.3), speed:1.15+reviewWaveEnergy.pitch*0.7, phaseOffset:1.48, lift:0.018,heightScale:0.94 },
+                { color:colors[3], energy:Math.min(1,reviewWaveEnergy.treble*0.75+reviewWaveEnergy.pitch*0.25),speed:1.3+reviewWaveEnergy.pitch*0.9,  phaseOffset:2.06, lift:0.024,heightScale:0.76 }
+            ];
+
+            var waveStep = Math.max(3, Math.floor(W/190));
+            for (var li=0; li<4; li++) {
+                var l = layers[li];
+                var wl = W / (1.7 + l.energy*5.8 + li*0.35);
+                var freq = (Math.PI*2) / Math.max(28, wl);
+                var ampBase = isPlaying ? 0.056 : 0.002;
+                var amp = H * (ampBase + l.energy*0.46 + li*0.024*l.energy) * l.heightScale;
+                var phase = now * l.speed + l.energy*5.2 + l.phaseOffset;
+
+                ctx.fillStyle   = l.color;
+                ctx.globalAlpha = 0.76 + l.energy*0.2;
+                ctx.beginPath();
+                ctx.moveTo(0, audioLineY);
+                for (var x=0; x<=visX; x+=waveStep) {
+                    var p   = visX > 0 ? x/visX : 0;
+                    var env = Math.pow(Math.sin(p*Math.PI), 0.75);
+                    var rip = Math.sin(x*freq+phase);
+                    var y   = audioLineY - l.lift*H - Math.abs(rip)*amp*(0.9+env*0.85);
+                    ctx.lineTo(x, y);
+                }
+                ctx.lineTo(visX, audioLineY);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1;
+
+            reviewWaveFrame = requestAnimationFrame(renderReviewWaveform);
         }
 
-        function setActiveCircle(number) {
-            document.querySelectorAll('.q-circle.active').forEach(el => el.classList.remove('active'));
-            const target = Array.from(document.querySelectorAll('.q-circle')).find(el => Number(el.dataset.num) === number);
-            if (target) { target.classList.add('active'); target.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }
+        /* â”€â”€ Question/option rendering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+        function parseSimpleExplanation(text) {
+            var raw = String(text || '').replace(/\r/g, '').replace(/<br\s*\/?>/gi, '\n').trim();
+            if (!raw) return null;
+            var multiline = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\n+\s*(?:Explain(?:ation)?|Reason)\s*:\s*([\s\S]*)$/i);
+            var inline    = raw.match(/(?:^|\n)\s*(?:\d+\.\s*)?Position\s*:\s*([\s\S]*?)\s+(?:Explain(?:ation)?|Reason)\s*:\s*([\s\S]*)$/i);
+            var match = multiline || inline;
+            if (!match) return null;
+            var pos = String(match[1]||'').trim(), exp = String(match[2]||'').trim();
+            if (!pos && !exp) return null;
+            return { positionText: pos, explainText: exp };
         }
 
-        function showQuestion(idx) {
-            if (!flatQuestions.length) return;
-            idx = Math.max(0, Math.min(idx, flatQuestions.length - 1));
-            currentIdx = idx;
-            const q = flatQuestions[currentIdx];
-            document.getElementById('partBadge').textContent = q.partName || '';
-            document.getElementById('questionNo').textContent = `Question ${q.number}`;
-            document.getElementById('questionCounter').textContent = `Q ${q.number} / ${result.totalQuestions || flatQuestions.length}`;
-            document.getElementById('prevBtn').disabled = currentIdx === 0;
-            document.getElementById('nextBtn').disabled = currentIdx === flatQuestions.length - 1;
-            renderQuestionDisplay(q);
-            renderOptions(q);
-            renderExplanationText(document.getElementById('explanationText'), q.explanation || '');
-            setActiveCircle(q.number);
+        function parseExplanationSegments(text) {
+            var raw = String(text || '').replace(/\r/g, '').replace(/<br\s*\/?>/gi, '\n').trim();
+            if (!raw) return { correctReason: 'No explanation provided.', wrongReason: '' };
+            var parsed = parseSimpleExplanation(raw);
+            if (parsed) return { correctReason: parsed.positionText || 'No explanation provided.', wrongReason: parsed.explainText || '' };
+            return { correctReason: raw, wrongReason: '' };
         }
 
-        function buildTracker() {
-            const tracker = document.getElementById('tracker');
-            tracker.innerHTML = '';
-            flatQuestions.forEach(q => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'q-circle ' + (q.isCorrect ? 'correct' : 'incorrect');
-                btn.textContent = q.number;
-                btn.dataset.num = q.number;
-                btn.addEventListener('click', () => { const fi = flatQuestions.findIndex(x => x.number === q.number); if (fi >= 0) showQuestion(fi); });
-                tracker.appendChild(btn);
-            });
+        function questionIsCorrect(q) {
+            if (!q) return false;
+            if (typeof q.isCorrect === 'boolean') return q.isCorrect;
+            var user = String(q.userAnswer || '').trim().toUpperCase();
+            var correct = String(q.correctAnswer || '').trim().toUpperCase();
+            return !!user && user === correct;
+        }
+
+        function questionStatus(q) {
+            var user = String((q && q.userAnswer) || '').trim();
+            if (!user) return 'unanswered';
+            return questionIsCorrect(q) ? 'correct' : 'wrong';
+        }
+
+        function getScaledListeningScore(rawScore, totalQuestions) {
+            var total = Math.max(1, Number(totalQuestions) || 50);
+            var raw = Number(rawScore);
+            if (!isFinite(raw)) raw = 0;
+            var normalizedRaw = Math.max(0, Math.min(50, Math.round((raw / total) * 50)));
+            var anchors = [
+                [0, 31], [5, 31], [10, 38], [15, 42], [20, 46], [25, 49],
+                [30, 52], [35, 55], [40, 58], [45, 62], [50, 68]
+            ];
+            for (var i = 1; i < anchors.length; i += 1) {
+                var left = anchors[i - 1];
+                var right = anchors[i];
+                if (normalizedRaw <= right[0]) {
+                    var ratio = (normalizedRaw - left[0]) / Math.max(1, right[0] - left[0]);
+                    return Math.round(left[1] + ((right[1] - left[1]) * ratio));
+                }
+            }
+            return 68;
+        }
+
+        function getScoreBand(scaledScore) {
+            if (scaledScore >= 62) return { color: '#0d9488', track: '#ccfbf1' };
+            if (scaledScore >= 47) return { color: '#faba0e', track: '#fef3c7' };
+            return { color: '#dc2626', track: '#fee2e2' };
+        }
+
+        function getChipPalette(status, isActive) {
+            var palette = {
+                fill: 'rgba(122, 143, 166, 0.8)',
+                border: '#d1dce8',
+                activeFill: '#7a8fa6',
+                glow: '#7a8fa6'
+            };
+            if (status === 'correct') {
+                palette = {
+                    fill: 'rgba(13, 148, 136, 0.8)',
+                    border: '#ccfbf1',
+                    activeFill: '#0d9488',
+                    glow: '#0d9488'
+                };
+            } else if (status === 'wrong') {
+                palette = {
+                    fill: 'rgba(220, 38, 38, 0.8)',
+                    border: '#fee2e2',
+                    activeFill: '#dc2626',
+                    glow: '#dc2626'
+                };
+            }
+            if (!isActive) return palette;
+            return {
+                fill: palette.activeFill,
+                border: '#ffffff',
+                activeFill: palette.activeFill,
+                glow: palette.glow
+            };
+        }
+
+        function buildQuestionChip(question, activeNumber) {
+            var qNum = Number(question.number);
+            if (!isFinite(qNum)) return '';
+            var active = qNum === Number(activeNumber);
+            var status = questionStatus(question);
+            var palette = getChipPalette(status, active);
+            var classes = 'q-chip ' + (active ? 'active' : '');
+            var style = '--chip-fill:' + palette.fill + ';--chip-border:' + palette.border + ';--chip-active-fill:' + palette.activeFill + ';--chip-glow:' + palette.glow + ';';
+            return '<button type="button" class="' + classes + '" style="' + style + '" onclick="selectReviewQuestion(' + qNum + ')"><span class="q-chip-label">' + qNum + '</span></button>';
+        }
+
+        function renderHeaderNavigator(result, activeQuestionNumber) {
+            var partA = document.getElementById('partAChips');
+            var partB = document.getElementById('partBChips');
+            var partC = document.getElementById('partCChips');
+            if (!partA || !partB || !partC) return;
+
+            var questions = (result && result.questions) || [];
+            var byNumber = {};
+            for (var i = 0; i < questions.length; i += 1) {
+                var qNum = Number(questions[i] && questions[i].number);
+                if (isFinite(qNum) && qNum >= 1 && qNum <= 50) {
+                    byNumber[qNum] = questions[i];
+                }
+            }
+
+            function buildRange(start, end) {
+                var html = '';
+                for (var num = start; num <= end; num += 1) {
+                    var q = byNumber[num] || { number: num, userAnswer: '', correctAnswer: '' };
+                    html += buildQuestionChip(q, activeQuestionNumber);
+                }
+                return html;
+            }
+
+            var htmlA = buildRange(1, 30);
+            var htmlB = buildRange(31, 38);
+            var htmlC = buildRange(39, 50);
+
+            partA.innerHTML = htmlA;
+            partB.innerHTML = htmlB;
+            partC.innerHTML = htmlC;
+        }
+
+        function renderListeningScaledScore(result) {
+            var ring = document.getElementById('listeningScaledRing');
+            var scoreText = document.getElementById('listeningScaledScore');
+            if (!ring || !scoreText) return;
+
+            var questions = (result && result.questions) || [];
+            var totalQuestions = Number(result && result.totalQuestions) || questions.length || 50;
+            var rawScore = Number(result && result.rawScore);
+            if (!isFinite(rawScore)) {
+                rawScore = 0;
+                for (var i = 0; i < questions.length; i += 1) {
+                    if (questionIsCorrect(questions[i])) rawScore += 1;
+                }
+            }
+
+            var scaled = getScaledListeningScore(rawScore, totalQuestions);
+            var band = getScoreBand(scaled);
+            var progressPct = Math.max(0, Math.min(100, (scaled / 68) * 100));
+
+            ring.style.setProperty('--score-color', band.color);
+            ring.style.setProperty('--track-color', band.track);
+            ring.style.setProperty('--pct', String(progressPct));
+            scoreText.style.color = band.color;
+            scoreText.textContent = String(scaled);
+        }
+
+        function updateHeaderNavButtons() {
+            if (!reviewResultData || !Array.isArray(reviewResultData.questions)) return;
+            var prevBtn = document.getElementById('headerPrevQuestionBtn');
+            var nextBtn = document.getElementById('headerNextQuestionBtn');
+            var atStart = reviewQuestionIndex <= 0;
+            var atEnd = reviewQuestionIndex >= reviewResultData.questions.length - 1;
+            if (prevBtn) {
+                prevBtn.disabled = atStart;
+                prevBtn.setAttribute('aria-disabled', atStart ? 'true' : 'false');
+            }
+            if (nextBtn) {
+                nextBtn.disabled = atEnd;
+                nextBtn.setAttribute('aria-disabled', atEnd ? 'true' : 'false');
+            }
+        }
+
+        function selectReviewQuestion(questionNumber) {
+            if (!reviewResultData || !Array.isArray(reviewResultData.questions)) return;
+            for (var i = 0; i < reviewResultData.questions.length; i += 1) {
+                if (Number(reviewResultData.questions[i].number || 0) === Number(questionNumber)) {
+                    renderQuestion(reviewResultData.questions[i], i);
+                    return;
+                }
+            }
+        }
+
+        function goToNextReviewQuestion() {
+            if (!reviewResultData || !Array.isArray(reviewResultData.questions)) return;
+            var nextIndex = reviewQuestionIndex + 1;
+            if (nextIndex >= reviewResultData.questions.length) return;
+            renderQuestion(reviewResultData.questions[nextIndex], nextIndex);
+        }
+
+        function goToPreviousReviewQuestion() {
+            if (!reviewResultData || !Array.isArray(reviewResultData.questions)) return;
+            var prevIndex = reviewQuestionIndex - 1;
+            if (prevIndex < 0) return;
+            renderQuestion(reviewResultData.questions[prevIndex], prevIndex);
+        }
+
+        function buildNeutralOption(letter, text) {
+            return '<div class="a-parent"><div class="a">(' + escapeHtml(letter) + ')</div><div class="a">' + escapeHtml(text||'') + '</div></div>';
+        }
+
+        function buildCorrectOption(letter, text, reason) {
+            return '<div class="frame-wrapper2">'
+                + '<div class="frame-parent21">'
+                    + '<div class="frame-parent22">'
+                        + '<div class="b-parent"><div class="a">(' + escapeHtml(letter) + ')</div><div class="a">' + escapeHtml(text||'') + '</div></div>'
+                        + '<div class="correct-parent"><div>CORRECT</div><img class="vector-icon11" src="../asst/icon/correct.svg" alt="âœ“" style="width:17px;height:12px;"></div>'
+                    + '</div>'
+                    + '<div class="the-woman-says-she-wants-to-se-wrapper"><div class="the-woman-says">' + renderQuotedHighlights(reason||'No explanation provided.') + '</div></div>'
+                + '</div>'
+                + '</div>';
+        }
+
+        function buildWrongOption(letter, text, reason) {
+            return '<div class="frame-wrapper3">'
+                + '<div class="frame-parent21">'
+                    + '<div class="frame-parent24">'
+                        + '<div class="b-parent"><div class="a">(' + escapeHtml(letter) + ')</div><div class="a">' + escapeHtml(text||'') + '</div></div>'
+                        + '<div class="frame-wrapper4"><div>INCORRECT</div><img class="vector-icon12" src="../asst/icon/issue.svg" alt="âœ—" style="width:13px;height:13px;"></div>'
+                    + '</div>'
+                    + '<div class="this-option-makes-the-mistake-wrapper"><div class="this-option-makes">' + renderQuotedHighlights(reason||"This option does not match the speaker's intent.") + '</div></div>'
+                + '</div>'
+                + '</div>';
+        }
+
+        function renderQuestion(q, indexHint) {
+            var options     = q.options || {};
+            var letters     = Object.keys(options).sort();
+            var correctLtr  = String(q.correctAnswer||'').trim().toUpperCase();
+            var userLtr     = String(q.userAnswer||'').trim().toUpperCase();
+            var isCorrect   = !!userLtr && userLtr === correctLtr;
+            var explanation = parseExplanationSegments(q.explanation||'');
+            var wrongReason = explanation.wrongReason || "This option does not match the speaker's intent in the transcript.";
+
+            document.getElementById('reviewQuestionNumber').textContent = String(q.number||'-');
+            document.getElementById('reviewQuestionText').textContent   = q.questionText || '(No question text)';
+            document.getElementById('reviewStatusText').textContent     = isCorrect ? 'CORRECT' : 'INCORRECT';
+            document.getElementById('reviewStatusText').style.color     = isCorrect ? '#0d9488' : '#dc2626';
+            document.getElementById('detailSub').textContent            = 'Why ' + (correctLtr||'B') + ' is correct? Proof Transcribe';
+
+            var html = '';
+            for (var i=0; i<letters.length; i++) {
+                var l = letters[i], t = options[l];
+                if      (l === correctLtr)                  html += buildCorrectOption(l, t, explanation.correctReason);
+                else if (l === userLtr && userLtr !== correctLtr) html += buildWrongOption(l, t, wrongReason);
+                else                                        html += buildNeutralOption(l, t);
+            }
+            if (!letters.length) html = '<div class="a-parent"><div class="a">No options stored for this question.</div></div>';
+            document.getElementById('firstBoxOptions').innerHTML = html;
+
+            if (reviewResultData && Array.isArray(reviewResultData.questions)) {
+                if (typeof indexHint === 'number') {
+                    reviewQuestionIndex = indexHint;
+                } else {
+                    for (var qi = 0; qi < reviewResultData.questions.length; qi += 1) {
+                        if (Number(reviewResultData.questions[qi].number || 0) === Number(q.number || 0)) {
+                            reviewQuestionIndex = qi;
+                            break;
+                        }
+                    }
+                }
+                renderHeaderNavigator(reviewResultData, Number(q.number || 0));
+                updateHeaderNavButtons();
+            }
         }
 
         function init() {
-            try { const raw = localStorage.getItem('toefl_section2_result'); if (raw) result = JSON.parse(raw); } catch (_) {}
+            initReviewAudio();
+
+            var result = null;
+            try { var raw = localStorage.getItem('toefl_section2_result'); if (raw) result = JSON.parse(raw); } catch(_) {}
 
             if (!result || !Array.isArray(result.questions) || !result.questions.length) {
-                document.getElementById('questionDisplay').textContent = 'No review data found. Complete Section 2 first.';
-                document.getElementById('prevBtn').disabled = true;
-                document.getElementById('nextBtn').disabled = true;
+                document.getElementById('reviewQuestionText').textContent = 'No review data found. Complete Section 1 first.';
+                document.getElementById('firstBoxOptions').innerHTML = '<div class="a-parent"><div class="a">No options stored for this question.</div></div>';
+                renderHeaderNavigator({ questions: [] }, 1);
+                var prevBtn = document.getElementById('headerPrevQuestionBtn');
+                var nextBtn = document.getElementById('headerNextQuestionBtn');
+                if (prevBtn) prevBtn.disabled = true;
+                if (nextBtn) nextBtn.disabled = true;
                 return;
             }
 
-            flatQuestions = result.questions;
-            const total = result.totalQuestions || flatQuestions.length;
-            const raw2 = result.rawScore || 0;
-            const scaled = result.scaledScore || 0;
-            const pct = scaled <= 31 ? 0 : Math.round(((scaled - 31) / (68 - 31)) * 100);
-            document.getElementById('scaledScore').textContent = scaled;
-            document.getElementById('scoreSummary').textContent = `${raw2} correct of ${total}`;
-            document.getElementById('scoreRing').style.setProperty('--pct', pct + '%');
+            result.questions = result.questions.slice().sort(function (a, b) {
+                return Number(a.number || 0) - Number(b.number || 0);
+            });
+            reviewResultData = result;
+            renderListeningScaledScore(reviewResultData);
 
-            buildTracker();
-            document.getElementById('prevBtn').addEventListener('click', () => showQuestion(currentIdx - 1));
-            document.getElementById('nextBtn').addEventListener('click', () => showQuestion(currentIdx + 1));
-            showQuestion(0);
+            var firstQuestion = result.questions[0];
+            var firstIndex = 0;
+            for (var i=0; i<result.questions.length; i++) {
+                if (!questionIsCorrect(result.questions[i])) {
+                    firstQuestion = result.questions[i];
+                    firstIndex = i;
+                    break;
+                }
+            }
+            renderQuestion(firstQuestion, firstIndex);
         }
 
         window.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
+
+

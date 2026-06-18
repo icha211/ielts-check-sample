@@ -1,805 +1,16 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TOEFL ITP Simulator - Section 2: Structure & Written Expression</title>
-    <style>
-        :root {
-            --primary-color: #004b87; 
-            --dev-color: #2c3e50;
-            --cbt-header: #e9ecef;
-            --cbt-footer: #1a252f;
-            --cbt-bg: #f4f7fb;
-            --cbt-question-bg: #ffffff;
-            --text-color: #212529;
-            --dev-bg: #f4f6f9; 
-            --navy-deep: #003560;
-            --sky-accent: #005faa;
-            --line-soft: #d1dce8;
-            --teal-submit: #0d9488;
-            --cyan-next: #0ea5e9;
-        }
-
-        ::selection { background-color: #fce28b; color: #000; }
-        *, *::before, *::after { box-sizing: border-box; }
-
-        body { font-family: "Plus Jakarta Sans", Arial, sans-serif; margin: 0; padding: 0; background-color: var(--cbt-bg); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-
-        .tab-navigation { display: flex; background-color: #fff; border-bottom: 2px solid var(--primary-color); padding: 0 20px; flex-shrink: 0;}
-        .tab-button { padding: 10px 25px; cursor: pointer; border: none; background: none; font-size: 14px; font-weight: bold; color: #555; transition: 0.3s; }
-        .tab-button.active { color: var(--primary-color); border-bottom: 3px solid var(--primary-color); }
-        .tab-content { display: none; flex: 1; overflow: hidden; flex-direction: column; min-height: 0; }
-        .tab-content.active { display: flex; }
-        
-        .cbt-header {
-            width: 100%;
-            background-color: #fff;
-            display: flex;
-            align-items: center;
-            padding: 0 24px;
-            box-sizing: border-box;
-            gap: 32px;
-            text-align: justify;
-            font-size: 19px;
-            color: #000;
-            font-family: Outfit, Arial, sans-serif;
-            height: 64px;
-            border-bottom: 1px solid rgba(122, 143, 166, 0.25);
-            box-shadow: 0 1px 1px rgba(122, 143, 166, 0.25);
-            z-index: 10;
-            flex-shrink: 0;
-        }
-        .header-left-group {
-            height: 64px;
-            width: 601px;
-            display: flex;
-            align-items: center;
-            gap: 24px;
-            flex-shrink: 0;
-        }
-        .header-logo {
-            width: 93px;
-            max-height: 100%;
-            object-fit: cover;
-        }
-        .header-left-content {
-            height: 64px;
-            display: flex;
-            align-items: center;
-            gap: 60px;
-        }
-        .header-title-wrap {
-            height: auto;
-            width: 214px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            justify-content: center;
-            gap: 2px;
-        }
-        .header-title {
-            line-height: 1.2;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-        .header-package {
-            font-size: 14px;
-            line-height: 1.2;
-            font-weight: 500;
-            color: #7a8fa6;
-            white-space: nowrap;
-        }
-        .header-timer-wrap {
-            display: flex;
-            align-items: center;
-            text-align: left;
-            font-size: 24px;
-            color: #005faa;
-            font-family: "JetBrains Mono", Consolas, monospace;
-        }
-        .header-timer {
-            display: flex;
-            align-items: center;
-            padding: 12px 16px;
-            gap: 6px;
-            line-height: 32px;
-        }
-        .header-timer-icon {
-            height: 24px;
-            width: 24px;
-            object-fit: contain;
-            flex-shrink: 0;
-        }
-
-        .progressbar-final {
-            height: 64px;
-            width: 591px;
-            display: flex;
-            align-items: center;
-            gap: 2px;
-            text-align: right;
-            font-size: 13px;
-            color: #7a8fa6;
-            font-family: "Plus Jakarta Sans", Arial, sans-serif;
-            margin-left: auto;
-            flex-shrink: 0;
-        }
-        .progress-bar-question {
-            height: 64px;
-            width: 507px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-shrink: 0;
-        }
-        .progressbar-wrapper {
-            width: 150px;
-            display: flex;
-            align-items: center;
-            padding: 23px 0 12px;
-            box-sizing: border-box;
-        }
-        .progressbar {
-            height: 13px;
-            width: 150px;
-            border-radius: 32px;
-            background-color: #e0f2fe;
-            display: flex;
-            align-items: center;
-            padding: 1px 2px;
-            box-sizing: border-box;
-        }
-        .progressbar-child {
-            height: 8px;
-            width: 8px;
-            border-radius: 100px;
-            background: linear-gradient(90deg, #0ea5e9, #0d9488);
-            transition: width 0.25s ease;
-        }
-        .progress-bar-question-inner {
-            height: 48px;
-            width: 150px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            justify-content: center;
-        }
-        .progressbar-container {
-            align-self: stretch;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            padding: 23px 0 12px;
-            box-sizing: border-box;
-        }
-        .progress-summary {
-            width: 155px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
-        .answered-wrap {
-            width: 126px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 6px 0 16px;
-            box-sizing: border-box;
-        }
-        .answered-030 {
-            line-height: 22.4px;
-        }
-        .progressbar-frame {
-            width: 155px;
-            display: flex;
-            align-items: center;
-            padding: 0 0 12px;
-            box-sizing: border-box;
-        }
-
-        .header-feature-icons {
-            height: 64px;
-            width: 92px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0 6px;
-            box-sizing: border-box;
-            gap: 24px;
-            flex-shrink: 0;
-        }
-        .header-feature-btn {
-            height: 32px;
-            width: 32px;
-            border: none;
-            background: transparent;
-            padding: 0;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .header-feature-icon {
-            width: 32px;
-            height: 32px;
-            object-fit: contain;
-            display: block;
-            flex-shrink: 0;
-        }
-
-        .submit-parent {
-            border-radius: 12px;
-            background-color: #0d9488;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 12px 24px;
-            gap: 8px;
-            text-align: left;
-            font-size: 16px;
-            color: #fff;
-            border: none;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-        .submit-parent:hover {
-            background-color: #0f7e74;
-        }
-        .submit {
-            letter-spacing: 0.01em;
-            font-weight: 600;
-        }
-        .submit-icon {
-            height: 20px;
-            width: 20px;
-            object-fit: contain;
-        }
-
-        .user-sub-nav { display: none; background-color: var(--cbt-footer); justify-content: center; padding: 12px 0; flex-shrink: 0; align-items: center; gap: 15px;}
-        .user-sub-btn { padding: 10px 30px; cursor: pointer; border: 1px solid #555; background-color: #34495e; color: #fff; font-size: 15px; border-radius: 4px; transition: 0.2s; font-weight: bold;}
-        .user-sub-btn:hover { background-color: #4dc; }
-        .user-sub-btn.active { background-color: var(--primary-color); color: #fff; border: 1px solid #fff; }
-        
-        .dev-sub-nav { display: flex; background-color: #e2e8f0; justify-content: center; padding: 10px 0; flex-shrink: 0; flex-wrap: wrap; gap: 8px;}
-        .dev-sub-btn { padding: 8px 20px; cursor: pointer; border: 1px solid transparent; background-color: #cbd5e1; color: #334155; font-weight: bold; border-radius: 6px; font-size: 14px; transition: 0.2s;}
-        .dev-sub-btn:hover { background-color: #94a3b8; color: white;}
-        .dev-sub-btn.active { background-color: var(--dev-color); color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
-        .btn-guide { background-color: #f59e0b !important; color: white !important; }
-        .btn-guide.active { background-color: #d97706 !important; border: 1px solid #fff; }
-        
-        .sub-content { display: none; flex: 1; overflow-y: auto; width: 100%; min-height: 0; }
-        #user-view .sub-content.active { display: block; } 
-        
-        .section2-layout {
-            flex: 1;
-            min-height: 0;
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) 328px;
-            gap: 0;
-            overflow: hidden;
-            background: #f4f7fb;
-        }
-        .user-main { max-width: 900px; margin: 30px auto; background: var(--cbt-question-bg); padding: 40px 50px; border: 1px solid #ccc; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-radius: 5px;}
-        #user-passages-container {
-            overflow-y: auto;
-            padding: 16px 16px 20px 20px;
-            min-height: 0;
-        }
-        #user-part-1, #user-part-2 {
-            padding-right: 12px;
-        }
-        .section-instructions { background: #f8f9fa; padding: 20px; border-left: 5px solid var(--primary-color); margin-bottom: 30px; font-family: "Times New Roman", Times, serif;}
-        .section-instructions h3 { margin-top: 0; color: var(--primary-color); font-size: 18px;}
-        .section-instructions p { font-size: 16px; line-height: 1.6; margin-bottom: 0;}
-        .question-item { margin-bottom: 35px; padding-bottom: 25px; border-bottom: 1px dashed #ccc; }
-        .question-item:last-child { border-bottom: none; }
-        .question-item p { margin: 0 0 15px 0; font-size: 18px; line-height: 1.6; color: #000; font-family: "Times New Roman", Times, serif;}
-        
-        .radio-group { display: flex; flex-direction: column; gap: 10px; margin-left: 28px; }
-        .radio-group label { cursor: pointer; display: flex; align-items: flex-start; gap: 8px; font-size: 16px; line-height: 1.5; color: #222; font-family: Arial, sans-serif;}
-        .radio-group input[type="radio"] { margin-top: 4px; cursor: pointer; flex-shrink: 0;}
-        .option-letter { width: 30px; flex-shrink: 0; display: inline-block; font-weight: bold;}
-
-        /* Section 1-like UI specifically for Part A (Structure) */
-        #user-part-1 .user-main {
-            max-width: 980px;
-            margin: 0 auto 30px;
-            background: transparent;
-            padding: 0;
-            border: none;
-            box-shadow: none;
-            border-radius: 0;
-        }
-        #user-part-1 .section-instructions {
-            background: var(--navy-deep);
-            border-left: none;
-            border-radius: 8px;
-            border: 1px solid #0b406f;
-            box-shadow: 0 4px 2px rgba(0, 53, 96, 0.10);
-            margin-bottom: 14px;
-            padding: 18px 36px 24px;
-            color: #d1dce8;
-        }
-        #user-part-1 .section-instructions h3 {
-            margin: 0 0 10px;
-            color: #fff;
-            font: 600 32px/1 "Plus Jakarta Sans", Arial, sans-serif;
-        }
-        #user-part-1 .section-instructions p {
-            margin: 0;
-            color: #d1dce8;
-            font: 500 20px/1.4 "Outfit", Arial, sans-serif;
-            max-width: 840px;
-            display: inline-block;
-        }
-        #user-part-1 .section-instructions p strong {
-            color: #fff;
-            font-weight: 700;
-        }
-        #display-questions-1 {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        #user-part-1 .question-item {
-            margin-bottom: 0;
-            border-bottom: none;
-            background: #fff;
-            border: 1px solid #d1dce8;
-            border-radius: 8px;
-            box-shadow: 0 4px 2px rgba(0, 53, 96, 0.10);
-            padding: 16px;
-            display: grid;
-            gap: 8px;
-            align-items: flex-start;
-            scroll-margin-top: 84px;
-            text-align: left;
-            color: #000;
-            font-family: "Plus Jakarta Sans", Arial, sans-serif;
-        }
-        #user-part-1 .question-item p {
-            margin: 0;
-            color: #000;
-            font: 400 18px/1.42 "Times New Roman", Times, serif;
-        }
-        #user-part-1 .question-head {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-        #user-part-1 .question-number-badge {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            border: 1px solid #7a8fa6;
-            background: #fff;
-            color: #000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font: 400 16px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
-            margin-top: 0;
-        }
-        #user-part-1 .question-number-badge.is-answered {
-            background: #003560;
-            border-color: #fff;
-            color: #fff;
-            box-shadow: 0 1px 4px rgba(14, 165, 233, 1);
-        }
-        #user-part-1 .question-content {
-            display: grid;
-            gap: 8px;
-            margin-left: 52px;
-            width: min(800px, 100%);
-        }
-        #user-part-1 .question-stem-wrap {
-            width: auto;
-            display: flex;
-            align-items: center;
-            padding: 0;
-            box-sizing: border-box;
-            text-align: justify;
-            color: #005faa;
-            font-family: "Times New Roman", Times, serif;
-        }
-        #user-part-1 .question-stem {
-            margin: 0;
-            color: #000;
-            font: 400 18px/1.35 "Times New Roman", Times, serif;
-            text-align: justify;
-        }
-        #user-part-1 .question-blank {
-            color: #005faa;
-            font-weight: 400;
-        }
-        #user-part-1 .radio-group {
-            display: grid;
-            gap: 8px;
-            margin: 0;
-        }
-        #user-part-1 .radio-group label {
-            width: 100%;
-            min-height: 40px;
-            padding: 10px 14px;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 12px;
-            background: #fff;
-            color: #000;
-            cursor: pointer;
-            font: 400 17px/1.25 "Times New Roman", Times, serif;
-            text-align: left;
-            transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        #user-part-1 .radio-group .a-parent {
-            border-radius: 8px;
-            border: 1px solid #d1dce8;
-            box-sizing: border-box;
-        }
-        #user-part-1 .radio-group .d-parent {
-            border-radius: 8px;
-            border: 1px solid #005faa;
-            box-sizing: border-box;
-            background: rgba(14, 165, 233, 0.15);
-            box-shadow: 0 4px 4px rgba(14, 165, 233, 0.25);
-        }
-        #user-part-1 .radio-group label.selected {
-            border-color: #005faa;
-            background: rgba(14, 165, 233, 0.15);
-            box-shadow: 0 4px 4px rgba(14, 165, 233, 0.25);
-        }
-        #user-part-1 .radio-group input[type="radio"] {
-            position: absolute;
-            opacity: 0;
-            width: 0;
-            height: 0;
-            margin: 0;
-            pointer-events: none;
-        }
-        #user-part-1 .option-letter {
-            width: 36px;
-            flex-shrink: 0;
-            font-weight: 400;
-        }
-        #user-part-1 .option-text {
-            flex: 1;
-            text-align: left;
-        }
-
-        .question-navigator {
-            border-radius: 8px 0 0 8px;
-            background: #fff;
-            border-left: 1px solid rgba(209, 220, 232, 0.5);
-            border-top: 1px solid rgba(209, 220, 232, 0.5);
-            border-bottom: 1px solid rgba(209, 220, 232, 0.5);
-            box-shadow: 0 4px 4px rgba(0, 53, 96, 0.10);
-            padding: 24px;
-            min-height: 0;
-            overflow: auto;
-            width: 100%;
-        }
-        .question-navigator.is-hidden {
-            display: none;
-        }
-        .section2-layout.is-nav-hidden {
-            grid-template-columns: minmax(0, 1fr);
-        }
-        .question-navigator__panel {
-            border: 1px solid var(--line-soft);
-            border-radius: 8px;
-            padding: 16px;
-            display: grid;
-            gap: 12px;
-            width: 100%;
-        }
-        .question-navigator__head {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            color: #000;
-            font: 700 18px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
-        }
-        .question-navigator__head::before {
-            content: "";
-            width: 32px;
-            height: 32px;
-            background: url('../asst/icon/navigator.svg') center/contain no-repeat;
-            flex-shrink: 0;
-        }
-        .question-navigator__section-title {
-            color: var(--navy-deep);
-            font: 500 18px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
-            margin: 0;
-        }
-        .question-navigator__divider {
-            border: 0;
-            border-top: 1px solid #d1dce8;
-            margin: 0;
-        }
-        .question-grid {
-            display: grid;
-            grid-template-columns: repeat(6, 28px);
-            gap: 10px;
-        }
-        .question-nav-btn {
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
-            border: 1px solid var(--navy-deep);
-            background: #fff;
-            color: var(--navy-deep);
-            font: 500 12px/1 "Plus Jakarta Sans", Arial, sans-serif;
-            cursor: pointer;
-            padding: 0;
-        }
-        .question-nav-btn.is-answered {
-            background: var(--navy-deep);
-            color: #fff;
-            border-color: #fff;
-            box-shadow: 0 1px 4px rgba(14, 165, 233, 1);
-        }
-        .question-nav-btn.is-current {
-            background: #fb7185;
-            border-color: #003560;
-            color: #fff;
-            outline: none;
-        }
-        .navigator-legend {
-            display: grid;
-            gap: 2px;
-            margin-top: 2px;
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: #003560;
-            font: 400 14px/22.4px "Plus Jakarta Sans", Arial, sans-serif;
-        }
-        .legend-dot {
-            width: 16px;
-            height: 16px;
-            border-radius: 4px;
-            border: 1px solid #003560;
-            box-sizing: border-box;
-            background: #fff;
-            flex-shrink: 0;
-        }
-        .legend-dot.answered {
-            background: #003560;
-        }
-        .legend-dot.unanswered {
-            background: #fff;
-        }
-        .legend-dot.flagged {
-            background: #fb7185;
-        }
-        .navigator-actions {
-            display: grid;
-            gap: 12px;
-            margin-top: 24px;
-        }
-        .navigator-action-btn {
-            border: none;
-            border-radius: 8px;
-            color: #fff;
-            font: 700 20px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
-            padding: 10px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-        .navigator-action-btn::after {
-            content: "";
-            width: 12px;
-            height: 22px;
-            background: url('../asst/icon/right arrow next.svg') center/contain no-repeat;
-        }
-        .navigator-action-btn.next-question {
-            background: var(--cyan-next);
-        }
-        .navigator-action-btn.next-section {
-            background: var(--teal-submit);
-        }
-
-        @media (max-width: 1320px) {
-            .cbt-header {
-                gap: 12px;
-                padding: 0 12px;
-            }
-            .header-left-group {
-                width: auto;
-                min-width: 0;
-                flex: 1;
-                gap: 12px;
-            }
-            .header-left-content {
-                gap: 18px;
-                min-width: 0;
-            }
-            .header-title-wrap {
-                width: auto;
-                min-width: 0;
-            }
-            .header-title {
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            .progressbar-final {
-                width: auto;
-            }
-            .progress-bar-question {
-                display: none;
-            }
-            .section2-layout {
-                grid-template-columns: minmax(0, 1fr);
-            }
-            .question-navigator {
-                position: fixed;
-                top: 64px;
-                right: 0;
-                width: min(330px, 96vw);
-                height: calc(100dvh - 64px);
-                border-radius: 8px 0 0 8px;
-                z-index: 11;
-            }
-            .question-navigator.is-hidden {
-                display: block;
-                transform: translateX(104%);
-                transition: transform 0.22s ease;
-            }
-            .question-navigator {
-                transform: translateX(0);
-                transition: transform 0.22s ease;
-            }
-        }
-
-        @media (max-width: 900px) {
-            .header-package,
-            .progressbar-final {
-                display: none;
-            }
-            .header-timer-wrap {
-                font-size: 20px;
-            }
-            .submit-parent {
-                padding: 10px 14px;
-            }
-        }
-
-        @media (min-width: 901px) and (max-height: 900px) {
-            #user-part-1 .section-instructions {
-                margin-bottom: 10px;
-                padding: 14px 24px 16px;
-            }
-            #user-part-1 .section-instructions h3 {
-                margin-bottom: 6px;
-                font-size: 28px;
-            }
-            #user-part-1 .section-instructions p {
-                font-size: 18px;
-                line-height: 1.3;
-            }
-            #user-passages-container {
-                padding-top: 12px;
-            }
-        }
-
-        /* --- DESAIN BUKU TOEFL UNTUK PART B (HURUF DI BAWAH KATA) --- */
-        .inline-question-text { 
-            line-height: 2.8 !important; /* Spasi lebar agar huruf A,B,C,D tidak nabrak teks bawahnya */
-        }
-        .inline-error-wrapper { 
-            display: inline-block; 
-            margin: 0 1px; 
-        }
-        .inline-error-wrapper input[type="radio"] { 
-            display: none; /* Sembunyikan radio button asli */
-        }
-        
-        .error-label { 
-            position: relative; /* Penting untuk huruf yang melayang */
-            display: inline-block;
-            cursor: pointer; 
-            padding: 2px 4px; 
-            border-radius: 4px; 
-            transition: 0.2s; 
-            border: 1px solid transparent;
-        }
-        .error-label:hover { 
-            background-color: #f1f5f9; 
-            border-color: #cbd5e1; 
-        }
-
-        /* Garis bawah pada kata */
-        .error-label .word-text {
-            text-decoration: underline;
-            text-underline-offset: 4px;
-            text-decoration-thickness: 1px;
-        }
-
-        /* Huruf A, B, C, D di bawah kata */
-        .error-label .letter-badge { 
-            position: absolute;
-            bottom: -1.3em; /* Dorong huruf ke bawah kata */
-            left: 50%;
-            transform: translateX(-50%); /* Posisikan tepat di tengah kata */
-            font-family: "Times New Roman", Times, serif; 
-            font-size: 15px; 
-            color: #000; 
-            font-weight: bold;
-        }
-        
-        /* Efek saat kata diklik/dipilih oleh user */
-        .inline-error-wrapper input[type="radio"]:checked + .error-label {
-            background-color: var(--primary-color);
-            color: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            border-color: var(--primary-color);
-        }
-        .inline-error-wrapper input[type="radio"]:checked + .error-label .word-text { 
-            text-decoration-color: transparent; /* Sembunyikan garis bawah saat diblok biru */
-        } 
-        .inline-error-wrapper input[type="radio"]:checked + .error-label .letter-badge { 
-            color: white; 
-        }
-
-        /* DEV PANELS */
-        #dev-view { background-color: var(--dev-bg); }
-        #dev-panels-container { flex: 1; overflow-y: auto; min-height: 0; width: 100%; padding-bottom: 40px;} 
-        #dev-panels-container .sub-content.active { display: block; } 
-        .dev-container { padding: 30px; max-width: 1000px; margin: 0 auto; width: 100%; }
-        
-        .dev-card { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; border-top: 4px solid var(--dev-color);}
-        .dev-card.keys-card { border-top-color: #10b981; } 
-        .dev-card.guide-card { border-top-color: #f59e0b; } 
-        
-        .dev-card-title { margin-top: 0; margin-bottom: 15px; font-size: 18px; color: #1e293b; display: flex; align-items: center; gap: 8px;}
-        .dev-hint { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px 15px; border-radius: 0 4px 4px 0; font-size: 14px; color: #475569; margin-bottom: 15px; line-height: 1.5; }
-
-        .smart-textarea, .answer-textarea, .explanation-textarea { 
-            border: 1px solid #cbd5e1; border-radius: 0 0 6px 6px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); 
-            line-height: 1.6; padding: 15px; width: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; 
-            resize: vertical; outline: none; transition: 0.2s;
-        }
-        .smart-textarea:focus, .answer-textarea:focus, .explanation-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
-        .smart-textarea { height: 350px; }
-        .answer-textarea { height: 160px; }
-        .explanation-textarea { height: 160px; }
-
-        .btn-save { background-color: #0f172a; color: white; padding: 10px 25px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .btn-save:hover { background-color: #334155; transform: translateY(-1px);}
-        .btn-save:active { transform: translateY(0); box-shadow: none;}
-        
-        .format-toolbar { display: flex; gap: 5px; background: #f1f5f9; padding: 10px; border: 1px solid #cbd5e1; border-bottom: none; border-radius: 6px 6px 0 0; align-items: center;}
-        .format-toolbar.header-soal { background: #334155; color: white; border-color: #334155;}
-        .format-toolbar.header-kunci { background: #10b981; color: white; border-color: #10b981;}
-        .format-toolbar.header-bahas { background: #0ea5e9; color: white; border-color: #0ea5e9;}
-        
-        .format-btn { padding: 4px 10px; cursor: pointer; border: 1px solid #cbd5e1; background: white; border-radius: 4px; font-size: 13px; color: #334155; font-weight: bold; transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);}
-        .format-btn:hover { background: #e2e8f0; }
-
-        .correct-box { border-left: 5px solid #10b981 !important; background-color: #ecfdf5 !important; padding: 15px; border-radius: 5px;}
-        .wrong-box { border-left: 5px solid #ef4444 !important; background-color: #fef2f2 !important; padding: 15px; border-radius: 5px;}
-        .feedback { font-weight: bold; display: none; margin-top: 15px; font-size: 14px; border-top: 1px dashed #ccc; padding-top: 10px;}
-        .text-correct { color: #10b981; }
-        .text-wrong { color: #ef4444; }
-        .explanation-box { margin-top: 10px; padding: 12px 15px; background-color: #f0f9ff; border-left: 4px solid #0ea5e9; font-size: 14px; color: #0f172a; font-weight: normal; display: block; text-align: left; line-height: 1.6; border-radius: 0 4px 4px 0; }
-
-        #global-score-board { display: none; background-color: var(--primary-color); color: white; padding: 15px; text-align: center; font-size: 22px; font-weight:bold; margin: 0;}
-        .btn-submit-all { background-color: var(--primary-color); color: white; border: none; padding: 15px 30px; border-radius: 4px; cursor: pointer; margin-top: 20px; font-weight: bold; font-size:16px; width: 100%; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.2);}
-        .btn-submit-all:hover { background-color: #003366; }
-    </style>
+    <link rel="stylesheet" href="css/editor.css">
 </head>
 <body>
 
     <div class="tab-navigation">
-        <button class="tab-button active" onclick="openTab(event, 'user-view')">👁️ Simulasi Ujian User</button>
-        <button class="tab-button" onclick="openTab(event, 'dev-view')">⚙️ Panel Developer</button>
+        <button class="tab-button active" onclick="openTab(event, 'user-view')">ðŸ‘ï¸ Simulasi Ujian User</button>
+        <button class="tab-button" onclick="openTab(event, 'dev-view')">âš™ï¸ Panel Developer</button>
     </div>
 
     <div id="user-view" class="tab-content active">
@@ -821,30 +32,28 @@
                 </div>
             </div>
 
-            <div class="progressbar-final">
-                <div class="progress-bar-question">
-                    <div class="progressbar-wrapper">
-                        <div class="progressbar"><div class="progressbar-child" id="progress-part-a"></div></div>
-                    </div>
-                    <div class="progress-bar-question-inner">
-                        <div class="progressbar-container">
-                            <div class="progressbar"><div class="progressbar-child" id="progress-part-b"></div></div>
+            <div class="header-right-group">
+                <div class="progressbar-final">
+                    <div class="progress-bar-question">
+                        <div class="progressbar-wrapper">
+                            <div class="progressbar"><div class="progressbar-child" id="progress-part-a"></div></div>
                         </div>
-                    </div>
-                    <div class="progress-summary">
-                        <div class="answered-wrap"><div class="answered-030" id="answered-count-label">Answered 0/0</div></div>
-                        <div class="progressbar-frame">
-                            <div class="progressbar"><div class="progressbar-child" id="progress-total"></div></div>
+                        <div class="progress-summary">
+                            <div class="answered-wrap"><div class="answered-030" id="answered-count-label">Answered 0/0</div></div>
+                            <div class="progressbar-frame">
+                                <div class="progressbar"><div class="progressbar-child" id="progress-part-b"></div></div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="header-feature-icons">
-                    <button class="header-feature-btn" type="button" id="toggle-navigator-btn" aria-label="Toggle question navigator"><img class="header-feature-icon" src="../asst/icon/more option.svg" alt=""></button>
-                    <button class="header-feature-btn" type="button" id="fullscreen-btn" aria-label="Enter fullscreen"><img class="header-feature-icon" id="fullscreen-icon" src="../asst/icon/fullscreen.svg" alt=""></button>
+                <div class="header-actions-group">
+                    <div class="header-feature-icons">
+                        <button class="header-feature-btn" type="button" id="fullscreen-btn" aria-label="Enter fullscreen"><img class="header-feature-icon" id="fullscreen-icon" src="../asst/icon/fullscreen.svg" alt=""></button>
+                        <button class="header-feature-btn" type="button" id="toggle-navigator-btn" aria-label="Toggle question navigator"><img class="header-feature-icon" src="../asst/icon/more option.svg" alt=""></button>
+                    </div>
+                    <button class="submit-parent" id="submit-header-btn" type="button"><div class="submit">Submit</div><img class="submit-icon" src="../asst/icon/submit.svg" alt=""></button>
                 </div>
             </div>
-
-            <button class="submit-parent" id="submit-header-btn" type="button"><div class="submit">Submit</div><img class="submit-icon" src="../asst/icon/submit.svg" alt=""></button>
         </header>
         <div class="section2-layout">
             <div id="user-passages-container" style="flex: 1; overflow-y: auto; background-color: var(--cbt-bg);"></div>
@@ -878,7 +87,10 @@
                 <h2 style="color: var(--dev-color); margin:0; font-size: 18px;">Content Manager</h2>
                 <span style="font-size: 13px; color: #64748b;">TOEFL ITP - Section 2</span>
             </div>
-            <button class="btn-save" onclick="updateUserView(true)">🔄 Terapkan & Update Tampilan</button>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <a href="section 2-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">ðŸ“– View Explanation</a>
+                <button class="btn-save" onclick="updateUserView(true)">ðŸ”„ Terapkan & Update Tampilan</button>
+            </div>
         </header>
 
         <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:end; padding:12px 30px; background:#f8fbff; border-bottom:1px solid #dbe7f2;">
@@ -903,7 +115,7 @@
     <script src="toefl-storage-sync.js?v=20260506"></script>
     <script>
         const PARTS = [
-            { id: 1, name: "Part A: Structure", range: "Questions 1-15", instr: "<strong>Directions:</strong> In these questions, each sentence has an incomplete phrase or missing word. Choose the one word or phrase that best completes the sentence." },
+            { id: 1, name: "Part A: Structure", range: "Questions 1-15", instr: "<strong>Directions</strong>: These questions are incomplete sentences. Beneath each sentence you will see four words or phrases, marked (A), (B), (C), and (D). Choose the one word or phrase that best completes the sentence." },
             { id: 2, name: "Part B: Written Expression", range: "Questions 16-40", instr: "<strong>Directions:</strong> In these questions, each sentence has four underlined words or phrases. Identify the one underlined word or phrase that must be changed in order for the sentence to be correct." }
         ];
         const SETS_KEY = "toefl_developer_sets_v1";
@@ -1126,7 +338,16 @@
             });
 
             const label = document.getElementById("answered-count-label");
-            if (label) label.textContent = `Answered ${answered}/${total}`;
+            if (label) {
+                const activePart = document.querySelector("#user-view .sub-content.active")?.id;
+                if (activePart === "user-part-1") {
+                    label.textContent = `Answered ${partAAnswered}/${partATotal}`;
+                } else if (activePart === "user-part-2") {
+                    label.textContent = `Answered ${partATotal + partBAnswered}/${total}`;
+                } else {
+                    label.textContent = `Answered ${answered}/${total}`;
+                }
+            }
 
             const setBar = (id, done, all) => {
                 const el = document.getElementById(id);
@@ -1141,7 +362,6 @@
 
             setBar("progress-part-a", partAAnswered, partATotal);
             setBar("progress-part-b", partBAnswered, partBTotal);
-            setBar("progress-total", answered, total);
         }
 
         function initStructure() {
@@ -1171,12 +391,12 @@
                 const devBtn = document.createElement('button');
                 devBtn.className = `dev-sub-btn ${p === 1 ? 'active' : ''}`;
                 devBtn.onclick = (e) => openSubTab(e, `dev-part-${p}`, 'dev-sub-btn');
-                devBtn.innerText = `✏️ Edit ${part.name}`;
+                devBtn.innerText = `âœï¸ Edit ${part.name}`;
                 devNavContainer.appendChild(devBtn);
 
                 let hintHTML = p === 1 
-                    ? `💡 <strong>Hint:</strong> Gunakan garis bawah beruntun <code>____</code> untuk area yang kosong (rumpang) pada kalimat.`
-                    : `💡 <strong>Desain Buku Asli:</strong> Blok kata yang salah di kalimat, lalu klik <b>U Garis Bawah</b>. Di tampilan User, huruf A, B, C, D akan otomatis muncul tepat di bawah kata yang digarisbawahi persis seperti buku TOEFL.`;
+                    ? `ðŸ’¡ <strong>Hint:</strong> Gunakan garis bawah beruntun <code>____</code> untuk area yang kosong (rumpang) pada kalimat.`
+                    : `ðŸ’¡ <strong>Desain Buku Asli:</strong> Blok kata yang salah di kalimat, lalu klik <b>U Garis Bawah</b>. Di tampilan User, huruf A, B, C, D akan otomatis muncul tepat di bawah kata yang digarisbawahi persis seperti buku TOEFL.`;
 
                 let placeholderSoal = p === 1 
                     ? `Contoh:\n1. The president _____ the election.\n(A) won\n(B) win\n(C) winning\n(D) is winning`
@@ -1187,7 +407,7 @@
                     <div class="dev-container">
                         
                         <div class="dev-card">
-                            <h3 class="dev-card-title">📝 Daftar Soal: ${part.name}</h3>
+                            <h3 class="dev-card-title">ðŸ“ Daftar Soal: ${part.name}</h3>
                             <div class="dev-hint">${hintHTML}</div>
                             
                             <div class="format-toolbar header-soal">
@@ -1198,7 +418,7 @@
                         </div>
 
                         <div class="dev-card keys-card">
-                            <h3 class="dev-card-title">✔️ Setup Kunci Jawaban & Evaluasi</h3>
+                            <h3 class="dev-card-title">âœ”ï¸ Setup Kunci Jawaban & Evaluasi</h3>
                             <div style="display:flex; gap:20px; flex-wrap: wrap;">
                                 <div style="flex:1; min-width: 250px;">
                                     <div class="format-toolbar header-kunci"><span style="font-weight:bold; font-size:14px;"><img src="../asset/icon/key.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;"> Kunci Jawaban</span></div>
@@ -1219,17 +439,17 @@
             const guideBtn = document.createElement('button');
             guideBtn.className = 'dev-sub-btn btn-guide';
             guideBtn.onclick = (e) => openSubTab(e, 'dev-guide', 'dev-sub-btn');
-            guideBtn.innerText = '📖 Panduan Syntax';
+            guideBtn.innerText = 'ðŸ“– Panduan Syntax';
             devNavContainer.appendChild(guideBtn);
 
             devContainer.innerHTML += `
             <div id="dev-guide" class="sub-content">
                 <div class="dev-container">
                     <div class="dev-card guide-card">
-                        <h2 class="dev-card-title" style="font-size:22px; color:#d97706;">📖 Panduan Clickable Sentence</h2>
+                        <h2 class="dev-card-title" style="font-size:22px; color:#d97706;">ðŸ“– Panduan Clickable Sentence</h2>
                         
                         <div style="background:#fef2f2; padding:20px; border-left:4px solid #ef4444; border-radius:4px; margin-bottom:20px;">
-                            <strong style="color:#b91c1c; font-size:16px;">🔥 Fitur Ajaib Part B (Written Expression):</strong><br><br>
+                            <strong style="color:#b91c1c; font-size:16px;">ðŸ”¥ Fitur Ajaib Part B (Written Expression):</strong><br><br>
                             Sekarang Anda tidak perlu lelah mengetik ulang opsi A, B, C, D ke bawah. Cukup ketik kalimatnya, blok kata yang ingin dijadikan opsi, lalu tekan tombol <kbd>U Garis Bawah</kbd>.<br><br>
                             Sistem akan otomatis mengatur jarak kalimat dan meletakkan huruf A, B, C, D persis di bawah garis bawah kata tersebut (seperti di kertas ujian asli).<br><br>
                             
@@ -1283,6 +503,7 @@
             navContainer.querySelectorAll(`.${btnClass}`).forEach(b => b.classList.remove("active"));
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
+            if (btnClass.includes('user')) updateHeaderProgress();
         }
 
         function formatText(areaId, openTag, closeTag) {
@@ -1672,8 +893,6 @@
             if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
         };
     </script>
-    <style>
-        @keyframes blink { 50% { opacity: 0.5; color: red; } }
-    </style>
 </body>
 </html>
+
