@@ -387,15 +387,37 @@
             return map;
         }
 
+        function inferPartIdFromQuestion(question) {
+            var explicitPart = Number((question && question.partId) || 0);
+            if (explicitPart >= 1 && explicitPart <= 3) return explicitPart;
+
+            var qNum = Number((question && question.number) || 0);
+            if (qNum >= 1 && qNum <= 30) return 1;
+            if (qNum >= 31 && qNum <= 38) return 2;
+            if (qNum >= 39 && qNum <= 50) return 3;
+            return 1;
+        }
+
         function getQuestionTranscriptSegments(question) {
             if (question && Array.isArray(question.transcriptSegments) && question.transcriptSegments.length) {
                 return question.transcriptSegments;
             }
-            var partId = Number((question && question.partId) || 1);
+            var partId = inferPartIdFromQuestion(question);
             var qNum = Number((question && question.number) || 0);
             var map = reviewTranscriptMapByPart[partId] || {};
             // Fall back to key 0 (all-segment pool for transcripts without Question markers)
-            return map[qNum] || map[0] || [];
+            var direct = map[qNum] || map[0] || [];
+            if (direct.length) return direct;
+
+            // Extra resilience: if part metadata was wrong/missing, search other parts.
+            for (var p = 1; p <= 3; p += 1) {
+                if (p === partId) continue;
+                var altMap = reviewTranscriptMapByPart[p] || {};
+                var alt = altMap[qNum] || altMap[0] || [];
+                if (alt.length) return alt;
+            }
+
+            return [];
         }
 
         function initReviewAudio() {
@@ -1631,7 +1653,7 @@
             if (!letters.length) html = '<div class="a-parent"><div class="a">No options stored for this question.</div></div>';
             document.getElementById('firstBoxOptions').innerHTML = html;
             renderTranscriptCards(q);
-            loadAudioForPart(Number(q.partId || 1));
+            loadAudioForPart(inferPartIdFromQuestion(q));
 
             if (reviewResultData && Array.isArray(reviewResultData.questions)) {
                 if (typeof indexHint === 'number') {

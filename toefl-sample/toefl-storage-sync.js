@@ -726,7 +726,7 @@ class ToeflStorageSync {
     return String(payload.transcript || "");
   }
 
-  async transcribeAudioBlob(audioBlob, fileName = "audio", mimeType = "audio/mpeg") {
+  async transcribeAudioBlob(audioBlob, fileName = "audio", mimeType = "audio/mpeg", partId = 1) {
     if (!audioBlob) throw new Error("audioBlob is required for transcription");
 
     const base64Data = await new Promise((resolve, reject) => {
@@ -746,7 +746,8 @@ class ToeflStorageSync {
           action: "transcribe-audio-bytes",
           audioData: base64String,
           fileName: String(fileName || "audio"),
-          mimeType: String(mimeType || "audio/mpeg")
+          mimeType: String(mimeType || "audio/mpeg"),
+          partId: Number(partId || 1)
         })
       });
     } catch (error) {

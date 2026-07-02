@@ -10,6 +10,7 @@ import threading
 import urllib.parse
 import base64
 import mimetypes
+import re
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime
 from pathlib import Path
@@ -24,7 +25,13 @@ AUDIO_DIR = os.path.join(DATA_DIR, "audio")
 TRANSCRIPT_DIR = os.path.join(DATA_DIR, "transcripts")
 STORAGE_PORT = int(os.getenv("STORAGE_PORT", "8788"))
 STORAGE_HOST = os.getenv("STORAGE_HOST", "127.0.0.1")
-TRANSCRIBE_MODEL = os.getenv("GEMINI_TRANSCRIBE_MODEL", "gemini-2.0-flash")
+TRANSCRIBE_MODEL = os.getenv("GEMINI_TRANSCRIBE_MODEL", "gemini-2.5-flash")
+TRANSCRIBE_FALLBACK_MODELS = [
+    m.strip() for m in os.getenv(
+        "GEMINI_TRANSCRIBE_FALLBACK_MODELS",
+        "gemini-2.5-flash,gemini-2.0-flash"
+    ).split(",") if m.strip()
+]
 
 # Storage file paths
 PROBLEMS_FILE = os.path.join(DATA_DIR, "problems.json")
@@ -244,7 +251,78 @@ def load_transcript_file(set_id, part_id=1):
     return ""
 
 
-def transcribe_audio_with_gemini(audio_bytes, mime_type="audio/mpeg"):
+def build_transcribe_prompt(part_id=1):
+    """Build a strict formatting prompt for TOEFL transcript output."""
+    part_num = int(part_id or 1)
+    if part_num == 1:
+        return (
+            "You are transcribing TOEFL ITP Listening Part A audio. "
+            "Return plain text only. Do not use markdown, bullet points, or code blocks.\n\n"
+            "Formatting rules (must follow exactly):\n"
+            "1) Use section headings on their own lines:\n"
+            "Introduction & Instructions\n"
+            "Part A: Questions 1 - 30\n"
+            "Question N\n"
+            "2) Every spoken line must start with timestamp in m:ss format, then ' - ', then content.\n"
+            "   Example: 0:05 - Narrator: Read the directions...\n"
+            "3) Keep speaker labels when present: Man:, Woman:, Narrator:.\n"
+            "4) Preserve exact order from audio. Do not summarize. Do not paraphrase.\n"
+            "5) Insert a blank line between question blocks.\n"
+            "6) If uncertain, still keep timeline lines and keep best effort wording.\n"
+        )
+
+    return (
+        f"You are transcribing TOEFL ITP Listening Part {part_num} audio. "
+        "Return plain text only. Do not use markdown, bullet points, or code blocks.\n\n"
+        "Formatting rules (must follow exactly):\n"
+        "1) Use question block headings when detectable, each on its own line: Question N\n"
+        "2) Every spoken line must start with timestamp in m:ss format, then ' - ', then content.\n"
+        "3) Keep speaker labels when present: Man:, Woman:, Narrator:.\n"
+        "4) Preserve exact order from audio. Do not summarize. Do not paraphrase.\n"
+        "5) Insert a blank line between question blocks.\n"
+    )
+
+
+def normalize_transcript_text(transcript_text):
+    """Normalize transcript lines for stable downstream parsing."""
+    text = str(transcript_text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not text:
+        return ""
+
+    normalized_lines = []
+    for raw_line in text.split("\n"):
+        line = str(raw_line or "").strip()
+        if not line:
+            normalized_lines.append("")
+            continue
+
+        # Remove common markdown wrappers that make parsing fragile.
+        line = line.replace("**", "")
+        line = line.replace("`", "")
+
+        # Normalize timestamp prefix to m:ss - ... (accepts hh:mm:ss or mm:ss, with optional brackets).
+        match = re.match(r"^\[?(\d{1,2}:\d{2}(?::\d{2})?)\]?\s*[\u2014\-]\s*(.+)$", line)
+        if match:
+            ts = match.group(1)
+            rest = match.group(2).strip()
+            parts = ts.split(":")
+            if len(parts) == 3:
+                h, m, s = parts
+                total = (int(h) * 3600) + (int(m) * 60) + int(s)
+                m2 = total // 60
+                s2 = total % 60
+                ts = f"{m2}:{s2:02d}"
+            elif len(parts) == 2:
+                m, s = parts
+                ts = f"{int(m)}:{int(s):02d}"
+            line = f"{ts} - {rest}"
+
+        normalized_lines.append(line)
+
+    return "\n".join(normalized_lines).strip()
+
+
+def transcribe_audio_with_gemini(audio_bytes, mime_type="audio/mpeg", part_id=1):
     """Transcribe audio bytes using Gemini multimodal API."""
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
@@ -253,27 +331,40 @@ def transcribe_audio_with_gemini(audio_bytes, mime_type="audio/mpeg"):
     if not audio_bytes:
         raise RuntimeError("Audio data is empty")
 
-    prompt = (
-        "Transcribe this TOEFL listening audio. Return plain text only (no markdown). "
-        "Include timestamps in mm:ss format and speaker tags when possible, example: '\n"
-        "Question 1\n"
-        "00:12 Man: ...\n"
-        "00:18 Woman: ...'. "
-        "If question boundaries are unclear, keep timestamped speaker lines in order."
-    )
+    prompt = build_transcribe_prompt(part_id)
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model=TRANSCRIBE_MODEL,
-        contents=[
-            types.Part.from_text(text=prompt),
-            types.Part.from_bytes(data=audio_bytes, mime_type=str(mime_type or "audio/mpeg"))
-        ]
-    )
-    transcript = str(getattr(response, "text", "") or "").strip()
-    if not transcript:
-        raise RuntimeError("Transcription returned empty result")
-    return transcript
+    models_to_try = []
+    for model_name in [TRANSCRIBE_MODEL] + TRANSCRIBE_FALLBACK_MODELS:
+        if model_name and model_name not in models_to_try:
+            models_to_try.append(model_name)
+
+    last_error = None
+    for model_name in models_to_try:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=[
+                    types.Part.from_text(text=prompt),
+                    types.Part.from_bytes(data=audio_bytes, mime_type=str(mime_type or "audio/mpeg"))
+                ]
+            )
+            transcript = normalize_transcript_text(getattr(response, "text", ""))
+            if transcript:
+                return transcript
+            last_error = RuntimeError(f"Transcription returned empty result (model={model_name})")
+        except Exception as exc:
+            last_error = exc
+            err_text = str(exc)
+            # If quota is exhausted, continue trying next fallback model.
+            if "RESOURCE_EXHAUSTED" in err_text or "429" in err_text:
+                continue
+            # For non-quota errors, fail fast.
+            raise
+
+    if last_error:
+        raise RuntimeError(str(last_error))
+    raise RuntimeError("Transcription failed")
 
 
 class StorageHandler(BaseHTTPRequestHandler):
@@ -440,7 +531,17 @@ class StorageHandler(BaseHTTPRequestHandler):
                     return
 
                 mime_type = mimetypes.guess_type(get_audio_file_path(set_id, part_id))[0] or "audio/mpeg"
-                transcript = transcribe_audio_with_gemini(audio_bytes, mime_type)
+                try:
+                    transcript = transcribe_audio_with_gemini(audio_bytes, mime_type, part_id=part_id)
+                except Exception as exc:
+                    err_text = str(exc)
+                    if "RESOURCE_EXHAUSTED" in err_text or "429" in err_text or "quota" in err_text.lower():
+                        self._send(429, {
+                            "error": "Gemini quota exhausted for auto-transcribe. Wait and retry, switch API key/project, or enable billing.",
+                            "details": err_text
+                        })
+                        return
+                    raise
                 save_transcript_file(set_id, part_id, transcript)
                 self._send(200, {
                     "success": True,
@@ -453,6 +554,7 @@ class StorageHandler(BaseHTTPRequestHandler):
                 audio_data = payload.get('audioData')
                 mime_type = str(payload.get('mimeType') or 'audio/mpeg')
                 file_name = str(payload.get('fileName') or 'audio')
+                part_id = int(payload.get('partId', 1) or 1)
 
                 if not audio_data:
                     self._send(400, {"error": "audioData required"})
@@ -464,10 +566,21 @@ class StorageHandler(BaseHTTPRequestHandler):
                     self._send(400, {"error": "Invalid base64 audioData"})
                     return
 
-                transcript = transcribe_audio_with_gemini(audio_bytes, mime_type)
+                try:
+                    transcript = transcribe_audio_with_gemini(audio_bytes, mime_type, part_id=part_id)
+                except Exception as exc:
+                    err_text = str(exc)
+                    if "RESOURCE_EXHAUSTED" in err_text or "429" in err_text or "quota" in err_text.lower():
+                        self._send(429, {
+                            "error": "Gemini quota exhausted for auto-transcribe. Wait and retry, switch API key/project, or enable billing.",
+                            "details": err_text
+                        })
+                        return
+                    raise
                 self._send(200, {
                     "success": True,
                     "fileName": file_name,
+                    "partId": part_id,
                     "transcript": transcript
                 })
             
