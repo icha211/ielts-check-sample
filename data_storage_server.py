@@ -9,16 +9,22 @@ import os
 import threading
 import urllib.parse
 import base64
+import mimetypes
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime
 from pathlib import Path
+
+from google import genai
+from google.genai import types
 
 
 # Configuration
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 AUDIO_DIR = os.path.join(DATA_DIR, "audio")
+TRANSCRIPT_DIR = os.path.join(DATA_DIR, "transcripts")
 STORAGE_PORT = int(os.getenv("STORAGE_PORT", "8788"))
 STORAGE_HOST = os.getenv("STORAGE_HOST", "127.0.0.1")
+TRANSCRIBE_MODEL = os.getenv("GEMINI_TRANSCRIBE_MODEL", "gemini-2.0-flash")
 
 # Storage file paths
 PROBLEMS_FILE = os.path.join(DATA_DIR, "problems.json")
@@ -33,6 +39,7 @@ def ensure_data_dir():
     """Create data directory and audio subdirectory if they don't exist"""
     Path(DATA_DIR).mkdir(exist_ok=True)
     Path(AUDIO_DIR).mkdir(exist_ok=True)
+    Path(TRANSCRIPT_DIR).mkdir(exist_ok=True)
 
 
 def read_json_file(filepath, default=None):
@@ -208,6 +215,67 @@ def delete_audio_file(set_id, part_id=1):
     return False
 
 
+def get_transcript_file_path(set_id, part_id=1):
+    """Get transcript text file path"""
+    return os.path.join(TRANSCRIPT_DIR, f"{set_id}_part{part_id}.txt")
+
+
+def save_transcript_file(set_id, part_id, transcript_text):
+    """Save transcript text file"""
+    try:
+        file_path = get_transcript_file_path(set_id, part_id)
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(str(transcript_text or ""))
+        return True
+    except Exception as e:
+        print(f"Error saving transcript file: {e}")
+        return False
+
+
+def load_transcript_file(set_id, part_id=1):
+    """Load transcript text"""
+    try:
+        file_path = get_transcript_file_path(set_id, part_id)
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return f.read()
+    except Exception as e:
+        print(f"Error loading transcript file: {e}")
+    return ""
+
+
+def transcribe_audio_with_gemini(audio_bytes, mime_type="audio/mpeg"):
+    """Transcribe audio bytes using Gemini multimodal API."""
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise RuntimeError("Set GEMINI_API_KEY or GOOGLE_API_KEY for auto transcription")
+
+    if not audio_bytes:
+        raise RuntimeError("Audio data is empty")
+
+    prompt = (
+        "Transcribe this TOEFL listening audio. Return plain text only (no markdown). "
+        "Include timestamps in mm:ss format and speaker tags when possible, example: '\n"
+        "Question 1\n"
+        "00:12 Man: ...\n"
+        "00:18 Woman: ...'. "
+        "If question boundaries are unclear, keep timestamped speaker lines in order."
+    )
+
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model=TRANSCRIBE_MODEL,
+        contents=[
+            types.Part.from_text(text=prompt),
+            types.Part.from_bytes(data=audio_bytes, mime_type=str(mime_type or "audio/mpeg"))
+        ]
+    )
+    transcript = str(getattr(response, "text", "") or "").strip()
+    if not transcript:
+        raise RuntimeError("Transcription returned empty result")
+    return transcript
+
+
 class StorageHandler(BaseHTTPRequestHandler):
     """HTTP request handler for data storage operations"""
     
@@ -269,6 +337,26 @@ class StorageHandler(BaseHTTPRequestHandler):
                         self._send(404, {"error": "Audio file not found"})
                 else:
                     self._send(400, {"error": "Invalid audio download path"})
+
+            elif self.path.startswith('/api/transcript/download/'):
+                # Download transcript text
+                # Format: /api/transcript/download/{setId}/{partId}
+                parts = self.path.split('/')
+                if len(parts) >= 5:
+                    set_id = urllib.parse.unquote(parts[4])
+                    part_id = int(parts[5]) if len(parts) > 5 else 1
+                    text = load_transcript_file(set_id, part_id)
+                    if text:
+                        payload = {
+                            "setId": set_id,
+                            "partId": part_id,
+                            "transcript": text
+                        }
+                        self._send(200, payload)
+                    else:
+                        self._send(404, {"error": "Transcript not found"})
+                else:
+                    self._send(400, {"error": "Invalid transcript path"})
             
             else:
                 self._send(404, {"error": "Not found"})
@@ -337,6 +425,51 @@ class StorageHandler(BaseHTTPRequestHandler):
                     self._send(200, {"success": True, "message": "Audio saved"})
                 else:
                     self._send(500, {"error": "Failed to save audio"})
+
+            elif action == 'transcribe-audio':
+                set_id = payload.get('setId')
+                part_id = int(payload.get('partId', 1) or 1)
+
+                if not set_id:
+                    self._send(400, {"error": "setId required"})
+                    return
+
+                audio_bytes = load_audio_file(set_id, part_id)
+                if not audio_bytes:
+                    self._send(404, {"error": "Audio not found for set/part"})
+                    return
+
+                mime_type = mimetypes.guess_type(get_audio_file_path(set_id, part_id))[0] or "audio/mpeg"
+                transcript = transcribe_audio_with_gemini(audio_bytes, mime_type)
+                save_transcript_file(set_id, part_id, transcript)
+                self._send(200, {
+                    "success": True,
+                    "setId": set_id,
+                    "partId": part_id,
+                    "transcript": transcript
+                })
+
+            elif action == 'transcribe-audio-bytes':
+                audio_data = payload.get('audioData')
+                mime_type = str(payload.get('mimeType') or 'audio/mpeg')
+                file_name = str(payload.get('fileName') or 'audio')
+
+                if not audio_data:
+                    self._send(400, {"error": "audioData required"})
+                    return
+
+                try:
+                    audio_bytes = base64.b64decode(str(audio_data))
+                except Exception:
+                    self._send(400, {"error": "Invalid base64 audioData"})
+                    return
+
+                transcript = transcribe_audio_with_gemini(audio_bytes, mime_type)
+                self._send(200, {
+                    "success": True,
+                    "fileName": file_name,
+                    "transcript": transcript
+                })
             
             else:
                 self._send(400, {"error": "Unknown action"})

@@ -5,50 +5,125 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TOEFL ITP Simulator - Section 1: Listening Comprehension</title>
     <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
 </head>
 <body>
+    <div class="view-tab-navigation" id="view-tab-navigation" style="display:none;">
+        <button class="view-tab-button active" id="tab-user-view-btn" type="button" onclick="openUserPreviewFromDeveloper()">👁️ Simulasi Ujian User</button>
+        <button class="view-tab-button" id="tab-dev-view-btn" type="button" onclick="openDeveloperEditor()">⚙️ Panel Developer</button>
+    </div>
+
     <div id="user-view" class="tab-content active">
         <div id="global-score-board"></div>
         <div class="exam-shell">
-            <header class="exam-topbar">
-                <div class="exam-topbar__left">
-                    <div class="exam-topbar__brand">
-                        <div class="exam-topbar__logo" aria-label="Quick Check">
-                            <img src="../asset/icon/logo.png" alt="Quick Check">
-                        </div>
-                        <div class="exam-topbar__title-wrap">
-                            <div class="exam-topbar__title">Listening Comprehension</div>
-                            <div class="exam-topbar__subtitle" id="package-label">Package 01 Jan</div>
+            <header class="cbt-header figma-header figma-header--listening">
+                <div class="logo-test-package-timer">
+                    <img class="logo-frame-icon" src="../asst/icon/QuickCheckLogo.png" alt="">
+                    <div class="test-package-timer">
+                        <div class="test-package-frame">
+                            <div class="structure-writing">Listening Comprehension</div>
+                            <div class="package-01-jan" id="package-label">Package 01 Jan</div>
                         </div>
                     </div>
                 </div>
-
-                <div class="exam-topbar__center">
-                    <div class="exam-timer-pill">
-                        <span class="exam-timer-pill__icon" aria-hidden="true"><i class="ph ph-clock" aria-hidden="true"></i></span>
-                        <div class="exam-timer" id="time">35:00</div>
+                <div class="timer">
+                    <div class="timer-header-parent">
+                        <img class="timer-header-icon" src="../asst/icon/timer-header.svg" alt="">
+                        <div class="div" id="time">35:00</div>
                     </div>
                 </div>
-
-                <div class="exam-topbar__status">
-                    <div class="progress-duo">
-                        <div class="part-progress"><div class="progress-track"><div class="progress-fill" id="progress-fill-a"></div></div></div>
-                        <div class="part-progress"><div class="progress-track"><div class="progress-fill" id="progress-fill-b"></div></div></div>
-                        <div class="progress-meta">
-                            <div class="answer-caption" id="answer-summary">Answered 0/30</div>
-                            <div class="part-progress"><div class="progress-track"><div class="progress-fill" id="progress-fill-c"></div></div></div>
+                <div class="progressbar-final">
+                    <div class="progress-bar-question">
+                        <div class="progress-bar-question-inner">
+                            <div class="progressbar-wrapper">
+                                <div class="progressbar"><div class="progressbar-child" id="progress-fill-a"></div></div>
+                            </div>
+                        </div>
+                        <div class="progress-bar-question-inner">
+                            <div class="progressbar-wrapper">
+                                <div class="progressbar"><div class="progressbar-child" id="progress-fill-b"></div></div>
+                            </div>
+                        </div>
+                        <div class="frame-parent">
+                            <div class="answered-030-wrapper"><div class="answered-030" id="answer-summary">Answered 0/30</div></div>
+                            <div class="progressbar-frame">
+                                <div class="progressbar"><div class="progressbar-child" id="progress-fill-c"></div></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="topbar-controls">
-                        <button class="mode-switch-btn" id="open-dev-mode-btn" type="button" onclick="openDeveloperEditor()" style="display:none;">Developer</button>
-                        <button class="zoom-btn" id="zoom-out-btn" type="button" aria-label="Zoom out" onclick="handleZoomOut()">A-</button>
-                        <button class="zoom-btn" id="zoom-in-btn" type="button" aria-label="Zoom in" onclick="handleZoomIn()">A+</button>
-                        <button class="zoom-btn fullscreen-btn" id="fullscreen-btn" type="button" aria-label="Toggle full screen" onclick="toggleFullScreenMode()">Full</button>
-                        <button class="topbar-icon info" type="button" aria-hidden="true"><span>i</span></button>
-                        <button class="topbar-icon play" id="audio-play-control" type="button" aria-label="Play listening audio"><span>play</span></button>
+                    <div class="features">
+                        <button class="header-feature-btn nav-toggle-btn" type="button" id="fullscreen-btn" aria-label="Enter fullscreen" onclick="toggleFullScreenMode()">
+                            <i class="ph ph-frame-corners icon-regular" aria-hidden="true"></i>
+                            <i class="ph-fill ph-frame-corners icon-filled" aria-hidden="true"></i>
+                        </button>
+                        <button class="header-feature-btn nav-toggle-btn" type="button" id="toggle-navigator-btn" aria-label="Open test options" onclick="toggleFeaturesMenu(event)">
+                            <i class="ph ph-list icon-regular" aria-hidden="true"></i>
+                            <i class="ph-fill ph-list icon-filled" aria-hidden="true"></i>
+                        </button>
                     </div>
                 </div>
+                <button class="submit-buttton" id="submit-header-btn" type="button" onclick="goToNextSection()">
+                    <div class="submit">Submit</div>
+                    <i class="ph ph-paper-plane-right submit-icon icon-regular" aria-hidden="true"></i>
+                    <i class="ph-fill ph-paper-plane-right submit-icon icon-filled" aria-hidden="true"></i>
+                </button>
+                <button class="mode-switch-btn" id="open-dev-mode-btn" type="button" onclick="openDeveloperEditor()" style="display:none;">Developer</button>
             </header>
+
+            <div class="features-overlay" id="features-overlay" aria-hidden="true">
+                <div class="features-panel" role="dialog" aria-modal="true" aria-labelledby="features-title">
+                    <div class="features-panel__header">
+                        <div class="features-title" id="features-title">TEST OPTIONS</div>
+                        <button class="features-close" id="features-close-btn" type="button" aria-label="Close test options" onclick="setFeaturesMenuOpen(false)">
+                            <i class="ph ph-x" aria-hidden="true"></i>
+                        </button>
+                    </div>
+
+                    <div class="features-panel__content">
+                        <div class="feature-quick-row">
+                            <div class="feature-card feature-card--dark">
+                                <div class="feature-label"><i class="ph ph-moon" aria-hidden="true"></i>Dark Mode</div>
+                                <div class="darkmode-toggle" aria-hidden="true">
+                                    <div class="darkmode-toggle__option darkmode-toggle__option--light"><i class="ph ph-sun" aria-hidden="true"></i></div>
+                                    <div class="darkmode-toggle__option darkmode-toggle__option--dark"><i class="ph ph-moon" aria-hidden="true"></i></div>
+                                </div>
+                            </div>
+
+                            <div class="feature-card feature-card--text-size">
+                                <div class="feature-label"><i class="ph ph-text-aa" aria-hidden="true"></i>Text Size</div>
+                                <div class="textsize-toggle" aria-hidden="true">
+                                    <div class="textsize-toggle__option is-active">S</div>
+                                    <div class="textsize-toggle__option">M</div>
+                                    <div class="textsize-toggle__option">L</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="feature-card feature-card--audio">
+                            <div class="feature-label"><i class="ph ph-speaker-high" aria-hidden="true"></i>Audio Volume</div>
+                            <div class="volume-control" aria-hidden="true">
+                                <button class="volume-control__btn" type="button" tabindex="-1"><i class="ph ph-minus" aria-hidden="true"></i></button>
+                                <div class="volume-control__track">
+                                    <div class="volume-control__fill"></div>
+                                </div>
+                                <button class="volume-control__btn" type="button" tabindex="-1"><i class="ph ph-plus" aria-hidden="true"></i></button>
+                            </div>
+                        </div>
+
+                        <button class="feature-link" type="button">
+                            <span class="feature-link__left"><i class="ph ph-book-open-text" aria-hidden="true"></i>Instruction</span>
+                            <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
+                        </button>
+
+                        <button class="feature-link feature-link--warn" type="button">
+                            <span class="feature-link__left"><i class="ph ph-warning-circle" aria-hidden="true"></i>Report an Issue</span>
+                            <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <div class="exam-body">
                 <main class="exam-main" id="user-passages-container">
@@ -70,7 +145,8 @@
                     <div class="navigator-card">
                         <div class="navigator-header" onclick="toggleNavigatorPanel()">
                             <button class="navigator-toggle" type="button" aria-label="Toggle question navigator" onclick="handleNavigatorToggle(event)">
-                                <i class="ph ph-dots-nine" aria-hidden="true"></i>
+                                <i class="ph ph-squares-four nav-state-icon icon-squares-four" aria-hidden="true"></i>
+                                <i class="ph ph-caret-right nav-state-icon icon-caret-right" aria-hidden="true"></i>
                             </button>
                             <h3 class="navigator-title">Question Navigator</h3>
                         </div>
@@ -80,45 +156,71 @@
                             <div class="legend-item"><span class="legend-swatch unanswered"></span> Unanswered</div>
                         </div>
                     </div>
-                    <button class="btn-next-question" type="button" onclick="scrollToNextQuestion()">Next Question</button>
-                    <button class="btn-next-section" id="btn-next-section" type="button" onclick="goToNextSection()" disabled>Next Section</button>
+                    <button class="btn-next-question" type="button" onclick="scrollToNextQuestion()">Next Question <i class="ph ph-caret-right next-question-icon icon-regular" aria-hidden="true"></i><i class="ph-fill ph-caret-right next-question-icon icon-filled" aria-hidden="true"></i></button>
                 </aside>
-            </div>
-        </div>
-        <div class="onboarding-overlay" id="onboarding-overlay" aria-hidden="true">
-            <h2 class="onboarding-title">Instruction</h2>
-            <div class="onboarding-list">
-                <section class="onboarding-item">
-                    <span class="onboarding-icon play" aria-hidden="true"></span>
-                    <div>
-                        <h3 class="onboarding-item__title">Start The Listening</h3>
-                        <p class="onboarding-item__desc">Click the Start button to begin. Note that the test environment is locked once active, if you exit or stop the session, your test will be terminated immediately and cannot be resumed.</p>
+
+                <div class="instruction-popup" id="onboarding-overlay" aria-hidden="true">
+                    <div class="instruction-popup__backdrop"></div>
+                    <div class="instruction-popup__title">Instruction</div>
+
+                    <div class="instruction-popup__content">
+                        <div class="instruction-list">
+                            <article class="instruction-item instruction-item--play">
+                                <div class="instruction-item__icon-wrap" aria-hidden="true">
+                                    <i class="ph ph-play instruction-item__icon" aria-hidden="true"></i>
+                                </div>
+                                <div class="instruction-item__content">
+                                    <h3 class="instruction-item__heading">Start The Listening</h3>
+                                    <p class="instruction-item__text">Click the Start button to begin. Note that the test environment is locked once active, if you exit or stop the session, your test will be terminated immediately and cannot be resumed.</p>
+                                </div>
+                            </article>
+
+                            <article class="instruction-item instruction-item--single">
+                                <div class="instruction-item__icon-wrap" aria-hidden="true">
+                                    <i class="ph ph-speaker-high instruction-item__icon" aria-hidden="true"></i>
+                                </div>
+                                <div class="instruction-item__content">
+                                    <h3 class="instruction-item__heading">Single Play ONLY</h3>
+                                    <p class="instruction-item__text">The audio for the entire section will play once only. There are no replay, rewind, or pause functions available. This matches authentic TOEFL ITP conditions.</p>
+                                </div>
+                            </article>
+
+                            <article class="instruction-item instruction-item--navigator">
+                                <div class="instruction-item__icon-wrap" aria-hidden="true">
+                                    <i class="ph ph-squares-four instruction-item__icon" aria-hidden="true"></i>
+                                </div>
+                                <div class="instruction-item__content">
+                                    <h3 class="instruction-item__heading">Question Navigator</h3>
+                                    <p class="instruction-item__text">Read each question and its four answer choices carefully. You must progress through the session as the audio dictates. You cannot jump ahead or return to previous questions.</p>
+                                </div>
+                            </article>
+
+                            <article class="instruction-item instruction-item--time">
+                                <div class="instruction-item__icon-wrap" aria-hidden="true">
+                                    <i class="ph ph-clock instruction-item__icon" aria-hidden="true"></i>
+                                </div>
+                                <div class="instruction-item__content">
+                                    <h3 class="instruction-item__heading">Time Management</h3>
+                                    <p class="instruction-item__text">Monitor the countdown timer in the top bar. The test will automatically transition to the next phase once the audio concludes or the time limit is reached.</p>
+                                </div>
+                            </article>
+                        </div>
+
+                        <div class="instruction-popup__cta">
+                            <div class="instruction-popup__cta-text">
+                                <div class="instruction-popup__ready">Are you ready?</div>
+                                <div class="instruction-popup__click">Click to Play</div>
+                            </div>
+                            <button class="instruction-popup__play-button" type="button" onclick="dismissOnboarding()">
+                                <span class="instruction-popup__play-icon" aria-hidden="true">
+                                    <i class="ph ph-play instruction-popup__play-icon-glyph icon-regular" aria-hidden="true"></i>
+                                    <i class="ph-fill ph-play instruction-popup__play-icon-glyph icon-filled" aria-hidden="true"></i>
+                                </span>
+                                <span class="instruction-popup__play-label">Play</span>
+                            </button>
+                        </div>
                     </div>
-                </section>
-                <section class="onboarding-item">
-                    <span class="onboarding-icon audio" aria-hidden="true"></span>
-                    <div>
-                        <h3 class="onboarding-item__title">Single Play ONLY</h3>
-                        <p class="onboarding-item__desc">The audio for the entire section will play once only. There are no replay, rewind, or pause functions available. This matches authentic TOEFL ITP conditions.</p>
-                    </div>
-                </section>
-                <section class="onboarding-item">
-                    <span class="onboarding-icon nav" aria-hidden="true"></span>
-                    <div>
-                        <h3 class="onboarding-item__title">Question Navigator</h3>
-                        <p class="onboarding-item__desc">Read each question and its four answer choices carefully. You must progress through the session as the audio dictates. You cannot jump ahead or return to previous questions.</p>
-                    </div>
-                </section>
-                <section class="onboarding-item">
-                    <span class="onboarding-icon time" aria-hidden="true"></span>
-                    <div>
-                        <h3 class="onboarding-item__title">Time Management</h3>
-                        <p class="onboarding-item__desc">Monitor the countdown timer in the top bar. The test will automatically transition to the next phase once the audio concludes or the time limit is reached.</p>
-                    </div>
-                </section>
-            </div>
-            <div class="onboarding-actions">
-                <button class="btn-onboarding-start" type="button" onclick="dismissOnboarding()">Start Test</button>
+                </div>
             </div>
         </div>
     </div>
@@ -130,7 +232,7 @@
                 <span style="font-size:13px; color:#64748b;">TOEFL ITP - Section 1</span>
             </div>
             <div class="dev-header-actions">
-                <a href="section 1-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">ðŸ“– View Explanation</a>
+                <button type="button" onclick="openExplanationFromDeveloper()" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">View Explanation</button>
                 <button class="mode-switch-btn" type="button" onclick="openUserPreviewFromDeveloper()">Apply + Open User View</button>
                 <button class="btn-save" type="button" onclick="updateUserView(true)">Apply and Update View</button>
             </div>
@@ -155,6 +257,7 @@
         <div id="dev-panels-container"></div>
     </div>
 
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="toefl-storage-sync.js?v=20260520b"></script>
     <script>
         const PARTS = [
@@ -167,7 +270,7 @@
         const SETS_KEY_V2 = "toefl_developer_sets_v2";
         const MODULE_ID = "listening";
         const MODULE_LABEL = "Listening";
-        const ONBOARDING_KEY = "toefl_section1_onboarding_seen_v1";
+        const ONBOARDING_KEY_BASE = "toefl_section1_onboarding_seen_v1";
         const DRAFT_KEY = "toefl_section1_dev_draft_v1";
         const ZOOM_KEY = "toefl_section1_zoom_v1";
         const FLAG_KEY = "toefl_section1_flagged_questions_v1";
@@ -211,6 +314,7 @@
         };
         let waveformShouldStopWhenSilent = false;
         let zoomLevel = 1;
+        let frameFitScale = 1;
         let zoomBeforeFullScreen = null;
 
         const ZOOM_MIN = 0.8;
@@ -234,12 +338,14 @@
             zoomLevel = clampZoom(value);
             const examShell = document.querySelector("#user-view .exam-shell");
             if (examShell) {
-                const verticalBoost = zoomLevel < 1 ? 0.75 : 0;
+                const safeFrameFitScale = Math.max(frameFitScale, 0.01);
+                const combinedScale = zoomLevel * safeFrameFitScale;
+                const verticalBoost = combinedScale < 1 ? 0.75 : 0;
                 examShell.style.transformOrigin = "top left";
-                examShell.style.transform = `scale(${zoomLevel})`;
-                examShell.style.width = `${100 / zoomLevel}%`;
-                examShell.style.height = `${100 / zoomLevel + verticalBoost}%`;
-                examShell.style.minHeight = `${100 / zoomLevel + verticalBoost}%`;
+                examShell.style.transform = `scale(${combinedScale})`;
+                examShell.style.width = `${100 / combinedScale}%`;
+                examShell.style.height = `${100 / combinedScale + verticalBoost}%`;
+                examShell.style.minHeight = `${100 / combinedScale + verticalBoost}%`;
             }
             if (persist) {
                 localStorage.setItem(ZOOM_KEY, String(zoomLevel));
@@ -264,8 +370,8 @@
             const fullScreenButton = document.getElementById("fullscreen-btn");
             if (!fullScreenButton) return;
             const isFullScreen = Boolean(document.fullscreenElement);
-            fullScreenButton.innerText = isFullScreen ? "Exit" : "Full";
             fullScreenButton.setAttribute("aria-label", isFullScreen ? "Exit full screen" : "Enter full screen");
+            fullScreenButton.classList.toggle("is-active", isFullScreen);
         }
 
         function handleFullScreenStateChange() {
@@ -391,6 +497,12 @@
 
         function getAudioFileLabelId(partId = 1) {
             return `audio-file-name-${partId}`;
+        }
+
+        function getAudioFileInputId(partId = 1) {
+            const normalizedPartId = Number(partId || 1);
+            const suffix = normalizedPartId === 2 ? "b" : (normalizedPartId === 3 ? "c" : "a");
+            return `audio-upload-file-${suffix}`;
         }
 
         function setAudioLabelReady(fileName, partId = 1) {
@@ -649,12 +761,23 @@
             return currentSetId;
         }
 
+        function normalizeDateKey(value) {
+            const raw = String(value || "").trim();
+            if (!raw) return "";
+            if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+            if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10);
+            const parsed = new Date(raw);
+            if (Number.isNaN(parsed.getTime())) return raw;
+            return parsed.toISOString().slice(0, 10);
+        }
+
         async function resolveSetRecordByDate(setDate) {
+            const normalizedTarget = normalizeDateKey(setDate);
             try {
                 if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
                     const records = await toeflStorage.getSetRecords();
                     const match = (records || [])
-                        .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
+                        .filter((item) => item && item.module === MODULE_ID && normalizeDateKey(item.setDate) === normalizedTarget)
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
                     if (match) return match;
                 }
@@ -664,7 +787,7 @@
 
             const local = getStoredSetMap();
             return Object.values(local)
-                .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
+                .filter((item) => item && item.module === MODULE_ID && normalizeDateKey(item.setDate) === normalizedTarget)
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 
@@ -703,12 +826,39 @@
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 
+        function hasListeningDraftContent(draft) {
+            if (!draft || typeof draft !== "object" || !draft.parts) return false;
+            return PARTS.some((part) => {
+                const row = draft.parts[part.id] || {};
+                return Boolean(String(row.questions || "").trim() || String(row.answerKey || "").trim() || String(row.explanation || "").trim());
+            });
+        }
+
         async function resolveLatestUserSetRecord() {
             const latestAudio = await getLatestAudioRecordForModule().catch(() => null);
             if (latestAudio?.setId) {
                 const audioLinked = await resolveSetRecordById(latestAudio.setId);
                 if (audioLinked?.setId) return audioLinked;
             }
+
+            try {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function" && typeof toeflStorage.getDraftBySetId === "function") {
+                    const records = await toeflStorage.getSetRecords();
+                    const ordered = (records || [])
+                        .filter((item) => item && item.module === MODULE_ID && item.setId)
+                        .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
+
+                    for (const record of ordered) {
+                        const draft = await toeflStorage.getDraftBySetId(record.setId).catch(() => null);
+                        if (hasListeningDraftContent(draft)) {
+                            return record;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn("[ToeflSync] latest user set by draft lookup failed:", error);
+            }
+
             return resolveLatestSetRecord();
         }
 
@@ -839,6 +989,7 @@
 
         function updatePlayControlState() {
             const playControl = document.getElementById("audio-play-control");
+            const playIcon = document.getElementById("audio-play-icon");
             const audio = document.getElementById("cbt-audio-player");
             if (!playControl || !audio) return;
 
@@ -847,6 +998,7 @@
                 playControl.classList.add("disabled");
                 playControl.disabled = true;
                 playControl.setAttribute("aria-label", "Audio already completed");
+                if (playIcon) playIcon.src = "../asst/icon/pauseaudio.svg";
                 return;
             }
 
@@ -854,20 +1006,60 @@
             if (!audio.paused && !audio.ended) {
                 playControl.classList.add("pause");
                 playControl.setAttribute("aria-label", "Pause listening audio");
+                if (playIcon) playIcon.src = "../asst/icon/pauseaudio.svg";
             } else {
                 playControl.classList.add("play");
                 playControl.setAttribute("aria-label", "Play listening audio");
+                if (playIcon) playIcon.src = "../asst/icon/play.svg";
+            }
+        }
+
+        function setNavigatorPanelCollapsed(collapsed) {
+            const panel = document.getElementById("navigator-panel");
+            const examBody = document.querySelector(".exam-body");
+            if (!panel) return;
+            const isCollapsed = Boolean(collapsed);
+            panel.classList.toggle("is-collapsed", isCollapsed);
+            if (examBody) {
+                examBody.classList.toggle("is-navigator-collapsed", isCollapsed);
+            }
+        }
+
+        function setFeaturesMenuOpen(open) {
+            const overlay = document.getElementById("features-overlay");
+            const triggerButton = document.getElementById("toggle-navigator-btn");
+            if (!overlay) return;
+            const shouldOpen = Boolean(open);
+            overlay.classList.toggle("is-open", shouldOpen);
+            overlay.setAttribute("aria-hidden", shouldOpen ? "false" : "true");
+            if (triggerButton) {
+                triggerButton.classList.toggle("is-active", shouldOpen);
+            }
+        }
+
+        function toggleFeaturesMenu(event) {
+            if (event) event.stopPropagation();
+            const overlay = document.getElementById("features-overlay");
+            if (!overlay) return;
+            setFeaturesMenuOpen(!overlay.classList.contains("is-open"));
+        }
+
+        function handleFeaturesOverlayClick(event) {
+            if (event.target === event.currentTarget) {
+                setFeaturesMenuOpen(false);
+            }
+        }
+
+        function handleFeaturesMenuKeydown(event) {
+            if (event.key === "Escape") {
+                setFeaturesMenuOpen(false);
             }
         }
 
         function toggleNavigatorPanel() {
             const panel = document.getElementById("navigator-panel");
-            const examBody = document.querySelector(".exam-body");
             if (!panel) return;
-            const isCollapsed = panel.classList.toggle("is-collapsed");
-            if (examBody) {
-                examBody.classList.toggle("is-navigator-collapsed", isCollapsed);
-            }
+            setNavigatorPanelCollapsed(!panel.classList.contains("is-collapsed"));
         }
 
         function handleNavigatorToggle(event) {
@@ -933,7 +1125,6 @@
                 audioAnalyzerReady = true;
                 return true;
             } catch (error) {
-                // Do not block playback if analyzer graph cannot be created.
                 audioAnalyzerReady = false;
                 audioContext = null;
                 audioAnalyser = null;
@@ -1143,7 +1334,6 @@
                 }
 
                 if (audio.paused) {
-                    // Guard against silent playback caused by accidental mute/zero volume states.
                     audio.muted = false;
                     if (audio.volume <= 0) {
                         audio.volume = 1;
@@ -1330,15 +1520,28 @@
 
         function updateNextSectionButtonState() {
             const nextSectionButton = document.getElementById("btn-next-section");
-            if (!nextSectionButton) return;
+            const headerSubmitButton = document.getElementById("submit-header-btn");
+            if (!nextSectionButton && !headerSubmitButton) return;
 
             const canProceed = isPartComplete(activePartId);
             const nextPartId = findNextAvailablePart(activePartId);
             const isFinalPart = !nextPartId;
+            const sideButtonLabel = isFinalPart ? "Submit Section 1" : "Next Section";
+            const headerButtonLabel = "Submit";
 
-            nextSectionButton.disabled = !canProceed;
-            nextSectionButton.classList.toggle("is-enabled", canProceed);
-            nextSectionButton.innerText = isFinalPart ? "Submit Section 1" : "Next Section";
+            if (nextSectionButton) {
+                nextSectionButton.disabled = !canProceed;
+                nextSectionButton.classList.toggle("is-enabled", canProceed);
+                nextSectionButton.innerText = sideButtonLabel;
+            }
+
+            if (headerSubmitButton) {
+                headerSubmitButton.disabled = !canProceed;
+                headerSubmitButton.style.opacity = canProceed ? "1" : "0.5";
+                headerSubmitButton.style.cursor = canProceed ? "pointer" : "not-allowed";
+                const labelElement = headerSubmitButton.querySelector(".submit");
+                if (labelElement) labelElement.textContent = headerButtonLabel;
+            }
         }
 
         function toggleQuestionFlag(uid) {
@@ -1409,7 +1612,8 @@
                 draft.parts[p] = {
                     questions: (document.getElementById(`input-magic-questions-${p}`) || {}).value || "",
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
-                    explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || ""
+                    explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || "",
+                    transcript: (document.getElementById(`input-transcript-${p}`) || {}).value || ""
                 };
             });
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -1438,9 +1642,11 @@
                 const questionsElement = document.getElementById(`input-magic-questions-${p}`);
                 const answerElement = document.getElementById(`input-answer-key-${p}`);
                 const explanationElement = document.getElementById(`input-explanation-${p}`);
+                const transcriptElement = document.getElementById(`input-transcript-${p}`);
                 if (questionsElement && typeof row.questions === "string") questionsElement.value = row.questions;
                 if (answerElement && typeof row.answerKey === "string") answerElement.value = row.answerKey;
                 if (explanationElement && typeof row.explanation === "string") explanationElement.value = row.explanation;
+                if (transcriptElement && typeof row.transcript === "string") transcriptElement.value = row.transcript;
             });
         }
 
@@ -1544,6 +1750,8 @@
                 await loadSectionDraft();
                 await restoreAudioForCurrentSet(activePartId || 1);
                 await refreshAudioLabelsForCurrentSet();
+                updateUserView();
+                updateOnboardingVisibility();
                 return;
             }
 
@@ -1552,6 +1760,8 @@
                 currentSetId = "";
                 await saveSectionMeta();
                 await refreshAudioLabelsForCurrentSet();
+                updateUserView();
+                updateOnboardingVisibility();
                 return;
             }
 
@@ -1565,6 +1775,8 @@
                 audio.removeAttribute("src");
                 audio.load();
             }
+            updateUserView();
+            updateOnboardingVisibility();
         }
 
         function initStructure() {
@@ -1578,33 +1790,48 @@
             const audioBtn = document.createElement("button");
             audioBtn.className = "dev-sub-btn active";
             audioBtn.onclick = (event) => openSubTab(event, "dev-audio-setup", "dev-sub-btn");
-            audioBtn.innerText = "Setup Main Audio";
+            audioBtn.innerText = "Setup Audio Utama";
             devNavContainer.appendChild(audioBtn);
 
             devContainer.innerHTML += `
             <div id="dev-audio-setup" class="sub-content active">
                 <div class="dev-container">
                     <div class="dev-card">
-                        <h2 class="dev-card-title">Audio Configuration</h2>
-                        <p style="font-size:14px; color:#475569; line-height:1.6;">Choose local MP3/WAV files for each listening part. Each part uses its own audio in User Simulator mode.</p>
-                        <div style="margin-top:12px; display:grid; gap:12px;">
+                        <h2 class="dev-card-title">Setup Audio Utama</h2>
+                        <p style="font-size:14px; color:#475569; line-height:1.6;">Upload local MP3/WAV files for each listening part. Audio is linked per part and synced to Firebase for cross-device consistency.</p>
+                        <div style="margin-top:12px; display:grid; grid-template-columns:repeat(3, minmax(220px, 1fr)); gap:12px;">
                             <div style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
                                 <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part A Audio</div>
                                 <label for="audio-upload-file-a" class="audio-upload-label">Choose Local Audio File</label>
                                 <input type="file" class="audio-upload-file" id="audio-upload-file-a" accept="audio/*" onchange="handleAudioUpload(event, 1)">
                                 <div id="audio-file-name-1" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
+                                <div style="margin-top:12px; font-size:12px; color:#475569; text-align:left;">Transcript (.txt/.md)</div>
+                                <button type="button" class="audio-upload-label" style="margin-top:6px; padding:8px 12px; font-size:13px;" onclick="autoTranscribePart(1)">Auto Transcribe Part A</button>
+                                <div id="transcript-status-1" style="margin-top:6px; color:#64748b; font-size:12px; text-align:left;">No transcript generated yet.</div>
+                                <input type="file" id="transcript-upload-file-1" accept=".txt,.md,.markdown,text/plain" onchange="handleTranscriptUpload(event, 1)" style="margin-top:6px; width:100%; font-size:12px;">
+                                <textarea id="input-transcript-1" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript timeline for Part A"></textarea>
                             </div>
                             <div style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
                                 <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part B Audio</div>
                                 <label for="audio-upload-file-b" class="audio-upload-label">Choose Local Audio File</label>
                                 <input type="file" class="audio-upload-file" id="audio-upload-file-b" accept="audio/*" onchange="handleAudioUpload(event, 2)">
                                 <div id="audio-file-name-2" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
+                                <div style="margin-top:12px; font-size:12px; color:#475569; text-align:left;">Transcript (.txt/.md)</div>
+                                <button type="button" class="audio-upload-label" style="margin-top:6px; padding:8px 12px; font-size:13px;" onclick="autoTranscribePart(2)">Auto Transcribe Part B</button>
+                                <div id="transcript-status-2" style="margin-top:6px; color:#64748b; font-size:12px; text-align:left;">No transcript generated yet.</div>
+                                <input type="file" id="transcript-upload-file-2" accept=".txt,.md,.markdown,text/plain" onchange="handleTranscriptUpload(event, 2)" style="margin-top:6px; width:100%; font-size:12px;">
+                                <textarea id="input-transcript-2" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript timeline for Part B"></textarea>
                             </div>
                             <div style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
                                 <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part C Audio</div>
                                 <label for="audio-upload-file-c" class="audio-upload-label">Choose Local Audio File</label>
                                 <input type="file" class="audio-upload-file" id="audio-upload-file-c" accept="audio/*" onchange="handleAudioUpload(event, 3)">
                                 <div id="audio-file-name-3" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
+                                <div style="margin-top:12px; font-size:12px; color:#475569; text-align:left;">Transcript (.txt/.md)</div>
+                                <button type="button" class="audio-upload-label" style="margin-top:6px; padding:8px 12px; font-size:13px;" onclick="autoTranscribePart(3)">Auto Transcribe Part C</button>
+                                <div id="transcript-status-3" style="margin-top:6px; color:#64748b; font-size:12px; text-align:left;">No transcript generated yet.</div>
+                                <input type="file" id="transcript-upload-file-3" accept=".txt,.md,.markdown,text/plain" onchange="handleTranscriptUpload(event, 3)" style="margin-top:6px; width:100%; font-size:12px;">
+                                <textarea id="input-transcript-3" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript timeline for Part C"></textarea>
                             </div>
                         </div>
                     </div>
@@ -1670,14 +1897,14 @@
             const guideBtn = document.createElement("button");
             guideBtn.className = "dev-sub-btn btn-guide";
             guideBtn.onclick = (event) => openSubTab(event, "dev-guide", "dev-sub-btn");
-            guideBtn.innerText = "Smart Paste Guide";
+            guideBtn.innerText = "Cara Smart Paste";
             devNavContainer.appendChild(guideBtn);
 
             devContainer.innerHTML += `
             <div id="dev-guide" class="sub-content">
                 <div class="dev-container">
                     <div class="dev-card guide-card">
-                        <h2 class="dev-card-title">Smart Paste Guide</h2>
+                        <h2 class="dev-card-title">Cara Smart Paste</h2>
                         <div style="background:#fef2f2; padding:16px; border-left:4px solid #ef4444; border-radius:4px;">
                             <strong>Use this fast input format:</strong><br><br>
                             1. Start each question with number + dot (example: <code>1.</code> or <code>25.</code>).<br>
@@ -1734,6 +1961,147 @@
             }
         }
 
+        async function handleTranscriptUpload(event, partId = 1) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+
+            const text = await file.text().catch(() => "");
+            const transcriptElement = document.getElementById(`input-transcript-${partId}`);
+            if (transcriptElement) transcriptElement.value = text;
+
+            const dateInput = document.getElementById("set-date");
+            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
+            const setId = ensureCurrentSetId(setDate);
+
+            await saveSectionMeta();
+            saveSectionDraft();
+
+            if (window.toeflStorage && typeof window.toeflStorage.saveTranscriptTextToFirebase === "function") {
+                await window.toeflStorage.saveTranscriptTextToFirebase(setId, text, partId).catch(() => null);
+            }
+
+            const statusElement = document.getElementById(`transcript-status-${partId}`);
+            if (statusElement) {
+                statusElement.innerText = `Loaded from file: ${file.name}`;
+                statusElement.style.color = "#0f766e";
+            }
+        }
+
+        async function autoTranscribePart(partId = 1) {
+            const statusElement = document.getElementById(`transcript-status-${partId}`);
+            if (statusElement) {
+                statusElement.innerText = "Transcribing audio with AI...";
+                statusElement.style.color = "#1d4ed8";
+            }
+
+            try {
+                const dateInput = document.getElementById("set-date");
+                const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
+                const setId = ensureCurrentSetId(setDate);
+
+                if (!window.toeflStorage || typeof window.toeflStorage.transcribeAudioBySetPart !== "function") {
+                    throw new Error("Transcription API is not available.");
+                }
+
+                let transcriptText = "";
+                const fileInput = document.getElementById(getAudioFileInputId(partId));
+                const selectedFile = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+
+                if (selectedFile && typeof window.toeflStorage.transcribeAudioBlob === "function") {
+                    transcriptText = await window.toeflStorage.transcribeAudioBlob(selectedFile, selectedFile.name, selectedFile.type || "audio/mpeg");
+                } else {
+                    transcriptText = await window.toeflStorage.transcribeAudioBySetPart(setId, partId);
+                }
+
+                if (!transcriptText.trim()) {
+                    throw new Error("Transcription result is empty.");
+                }
+
+                const transcriptElement = document.getElementById(`input-transcript-${partId}`);
+                if (transcriptElement) transcriptElement.value = transcriptText;
+
+                await saveSectionMeta();
+                saveSectionDraft();
+
+                if (window.toeflStorage && typeof window.toeflStorage.saveTranscriptTextToFirebase === "function") {
+                    await window.toeflStorage.saveTranscriptTextToFirebase(setId, transcriptText, partId).catch(() => null);
+                }
+
+                if (statusElement) {
+                    statusElement.innerText = "Transcript generated automatically.";
+                    statusElement.style.color = "#15803d";
+                }
+            } catch (error) {
+                if (statusElement) {
+                    statusElement.innerText = `Auto-transcribe failed: ${error?.message || "Unknown error"}`;
+                    statusElement.style.color = "#b91c1c";
+                }
+            }
+        }
+
+        function parseTimestampToSeconds(value) {
+            const text = String(value || "").trim();
+            if (!text) return 0;
+            const parts = text.split(":").map((part) => Number(part));
+            if (parts.some((part) => Number.isNaN(part))) return 0;
+            if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+            if (parts.length === 2) return (parts[0] * 60) + parts[1];
+            return parts[0] || 0;
+        }
+
+        function parseTranscriptSpeakerLine(rawLine) {
+            const line = String(rawLine || "").replace(/\*\*/g, "").trim();
+            const speakerMatch = line.match(/^(Man|Woman|Narrator|Narr)\s*:\s*(.*)$/i);
+            if (speakerMatch) {
+                return {
+                    speaker: speakerMatch[1].toUpperCase().startsWith("NARR") ? "NARR" : speakerMatch[1].toUpperCase(),
+                    text: speakerMatch[2].trim()
+                };
+            }
+            return { speaker: "NARR", text: line };
+        }
+
+        function mapTranscriptByQuestion(rawText) {
+            const map = {};
+            const lines = String(rawText || "").split(/\r?\n/);
+            let currentQuestion = 0;
+
+            lines.forEach((line) => {
+                const questionMatch = line.match(/question\s*(\d+)/i);
+                if (questionMatch) {
+                    currentQuestion = Number(questionMatch[1]);
+                    if (!map[currentQuestion]) map[currentQuestion] = [];
+                    return;
+                }
+
+                if (!currentQuestion) return;
+
+                const segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[—-]\s*(.+)$/);
+                if (!segmentMatch) return;
+
+                const timestamp = segmentMatch[1];
+                const parsedLine = parseTranscriptSpeakerLine(segmentMatch[2]);
+                map[currentQuestion].push({
+                    timestamp,
+                    start: parseTimestampToSeconds(timestamp),
+                    speaker: parsedLine.speaker,
+                    text: parsedLine.text,
+                    end: 0
+                });
+            });
+
+            Object.keys(map).forEach((questionKey) => {
+                const segments = map[questionKey].sort((left, right) => left.start - right.start);
+                for (let index = 0; index < segments.length; index += 1) {
+                    const current = segments[index];
+                    const next = segments[index + 1];
+                    current.end = next ? Math.max(current.start + 1, next.start) : (current.start + 8);
+                }
+            });
+
+            return map;
+        }
+
         function openTab(evt, tabName) {
             document.querySelectorAll(".tab-content").forEach((content) => content.classList.remove("active"));
             document.querySelectorAll(".tab-button").forEach((button) => button.classList.remove("active"));
@@ -1743,7 +2111,8 @@
         }
 
         function isDeveloperMode() {
-            return window.location.hash === "#dev-view";
+            const params = new URLSearchParams(window.location.search);
+            return window.location.hash === "#dev-view" || params.get("mode") === "dev";
         }
 
         function isDeveloperPreviewMode() {
@@ -1767,9 +2136,42 @@
             developerButton.style.display = isDeveloperPreviewMode() ? "inline-flex" : "none";
         }
 
+        function updateViewTabNavigation() {
+            const nav = document.getElementById("view-tab-navigation");
+            const userBtn = document.getElementById("tab-user-view-btn");
+            const devBtn = document.getElementById("tab-dev-view-btn");
+            if (!nav || !userBtn || !devBtn) return;
+
+            const inEditorFlow = isDeveloperMode() || isDeveloperPreviewMode();
+            nav.style.display = inEditorFlow ? "flex" : "none";
+
+            const showUserPreview = inEditorFlow && (window.location.hash === "#user-view" || isDeveloperPreviewMode());
+            userBtn.classList.toggle("active", showUserPreview);
+            devBtn.classList.toggle("active", !showUserPreview);
+        }
+
+        function getOnboardingKey() {
+            const params = new URLSearchParams(window.location.search);
+            const scopedDate = params.get("setDate") || (document.getElementById("set-date") || {}).value || "";
+            const scope = scopedDate || currentSetId || "default";
+            return `${ONBOARDING_KEY_BASE}:${scope}`;
+        }
+
         function shouldShowOnboarding() {
             if (isDeveloperMode() || isDeveloperPreviewMode()) return false;
-            return localStorage.getItem(ONBOARDING_KEY) !== "1";
+            return localStorage.getItem(getOnboardingKey()) !== "1";
+        }
+
+        function setOnboardingScrollLock(isLocked) {
+            const questionBody = document.getElementById("user-passages-container");
+            if (!questionBody) return;
+            questionBody.classList.toggle("onboarding-open", Boolean(isLocked));
+        }
+
+        function updateOnboardingScale() {
+            const overlay = document.getElementById("onboarding-overlay");
+            if (!overlay) return;
+            overlay.style.setProperty("--onboarding-scale", "1");
         }
 
         function dismissOnboarding() {
@@ -1777,7 +2179,11 @@
             if (!overlay) return;
             overlay.classList.remove("is-visible");
             overlay.setAttribute("aria-hidden", "true");
-            localStorage.setItem(ONBOARDING_KEY, "1");
+            setOnboardingScrollLock(false);
+            localStorage.setItem(getOnboardingKey(), "1");
+            if (!questionOrder.length) {
+                updateUserView();
+            }
         }
 
         function updateOnboardingVisibility() {
@@ -1786,10 +2192,14 @@
             if (!isDeveloperMode() && shouldShowOnboarding()) {
                 overlay.classList.add("is-visible");
                 overlay.setAttribute("aria-hidden", "false");
+                setOnboardingScrollLock(true);
+                setNavigatorPanelCollapsed(true);
+                updateOnboardingScale();
                 return;
             }
             overlay.classList.remove("is-visible");
             overlay.setAttribute("aria-hidden", "true");
+            setOnboardingScrollLock(false);
         }
 
         function openUserPreviewFromDeveloper() {
@@ -1800,7 +2210,22 @@
             syncAudioPanelFromView();
         }
 
+        async function openExplanationFromDeveloper() {
+            // Ensure the current package is persisted before opening the answered page.
+            await saveSectionMeta();
+            saveSectionDraft();
+
+            const params = new URLSearchParams();
+            const dateValue = (document.getElementById("set-date") || {}).value || "";
+            if (currentSetId) params.set("setId", currentSetId);
+            if (dateValue) params.set("setDate", dateValue);
+
+            const query = params.toString();
+            window.location.href = `section 1-answered.html${query ? `?${query}` : ""}`;
+        }
+
         function openDeveloperEditor() {
+            setDeveloperPreviewMode(false);
             window.location.hash = "#dev-view";
             applyViewMode();
         }
@@ -1809,23 +2234,25 @@
             const userView = document.getElementById("user-view");
             const devView = document.getElementById("dev-view");
             updateDeveloperButtonVisibility();
-            if (isDeveloperMode()) {
+            const inEditorFlow = isDeveloperMode() || isDeveloperPreviewMode();
+            const showUserPreview = inEditorFlow && (window.location.hash === "#user-view" || isDeveloperPreviewMode());
+
+            if (inEditorFlow && !showUserPreview) {
                 if (userView) userView.classList.remove("active");
                 if (devView) devView.classList.add("active");
                 updateOnboardingVisibility();
+                updateViewTabNavigation();
                 return;
             }
+
             if (devView) devView.classList.remove("active");
             if (userView) userView.classList.add("active");
             updateOnboardingVisibility();
+            updateViewTabNavigation();
         }
 
         function activateInitialTab() {
-            if (!isDeveloperMode()) return;
-            const userView = document.getElementById("user-view");
-            const devView = document.getElementById("dev-view");
-            if (userView) userView.classList.remove("active");
-            if (devView) devView.classList.add("active");
+            applyViewMode();
         }
 
         function openSubTab(evt, tabName, btnClass) {
@@ -1958,6 +2385,14 @@
                 if (userAnswer === globalAnswerKey[uid]) score += 1;
             }
 
+            const transcriptMapsByPart = {};
+            const transcriptTextsByPart = {};
+            PARTS.forEach((part) => {
+                const transcriptText = (document.getElementById(`input-transcript-${part.id}`) || {}).value || "";
+                transcriptTextsByPart[part.id] = transcriptText;
+                transcriptMapsByPart[part.id] = mapTranscriptByQuestion(transcriptText);
+            });
+
             const scaledScore = Math.round(31 + ((score / total) * (68 - 31)));
 
             const answeredQs = Object.keys(globalAnswerKey).map((uid) => {
@@ -1968,6 +2403,7 @@
                 const correct = globalAnswerKey[uid];
                 const q = globalQuestions[uid] || {};
                 const part = PARTS.find((item) => item.id === pId) || {};
+                const transcriptSegments = ((transcriptMapsByPart[pId] || {})[qNum] || []).map((segment) => ({ ...segment }));
                 return {
                     uid,
                     number: qNum,
@@ -1978,13 +2414,19 @@
                     correctAnswer: correct,
                     userAnswer,
                     isCorrect: userAnswer === correct,
-                    explanation: globalExplanations[uid] || ""
+                    explanation: globalExplanations[uid] || "",
+                    transcriptSegments
                 };
             }).sort((left, right) => left.number - right.number);
+
+            const selectedDate = (document.getElementById("set-date") || {}).value || "";
 
             const result = {
                 sectionTitle: "Section 1: Listening Comprehension",
                 sectionKey: "listening",
+                setId: currentSetId || "",
+                setDate: selectedDate,
+                transcriptsByPart: transcriptTextsByPart,
                 totalQuestions: total,
                 rawScore: score,
                 scaledScore,
@@ -2019,20 +2461,68 @@
             }, 1000);
         }
 
+        function applyFigmaFrameScale() {
+            const userView = document.getElementById("user-view");
+            if (!userView) return;
+            const frameWidth = 1438;
+            const frameHeight = 900;
+            const viewportWidth = window.innerWidth || frameWidth;
+            const viewportHeight = window.innerHeight || frameHeight;
+            frameFitScale = Math.min(viewportWidth / frameWidth, viewportHeight / frameHeight, 1);
+            userView.style.setProperty("--figma-scale", String(frameFitScale));
+            applyZoom(zoomLevel, { persist: false });
+            updateOnboardingScale();
+            positionListeningHeaderTimer();
+        }
+
+        function positionListeningHeaderTimer() {
+            const header = document.querySelector(".figma-header--listening");
+            const timer = header ? header.querySelector(".timer") : null;
+            const packageFrame = header ? header.querySelector(".test-package-frame") : null;
+            const progressBlock = header ? header.querySelector(".progressbar-final") : null;
+            if (!header || !timer || !packageFrame || !progressBlock) return;
+
+            const packageRight = packageFrame.offsetLeft + packageFrame.offsetWidth;
+            const progressLeft = progressBlock.offsetLeft;
+            const timerWidth = timer.offsetWidth || 0;
+            const sidePadding = 16;
+
+            const targetCenterX = (packageRight + progressLeft) / 2;
+            const minCenterX = packageRight + (timerWidth / 2) + sidePadding;
+            const maxCenterX = progressLeft - (timerWidth / 2) - sidePadding;
+            const clampedCenterX = Math.min(Math.max(targetCenterX, minCenterX), maxCenterX);
+
+            timer.style.left = `${clampedCenterX}px`;
+        }
+
         window.onload = async () => {
             initStructure();
-            await loadSectionMeta();
-            await loadSectionDraft();
-            updateUserView();
+            applyViewMode();
+            activateInitialTab();
+            initZoom();
+            applyFigmaFrameScale();
+            updateFullScreenButton();
+            document.addEventListener("fullscreenchange", handleFullScreenStateChange);
+            window.addEventListener("resize", applyFigmaFrameScale);
+            try {
+                await loadSectionMeta();
+                await loadSectionDraft();
+                updateUserView();
+            } catch (error) {
+                console.warn("[Init] Failed to fully restore section data:", error);
+            }
+            positionListeningHeaderTimer();
+            setTimeout(positionListeningHeaderTimer, 60);
+            const featuresOverlay = document.getElementById("features-overlay");
+            if (featuresOverlay) {
+                featuresOverlay.addEventListener("click", handleFeaturesOverlayClick);
+            }
+            document.addEventListener("keydown", handleFeaturesMenuKeydown);
             setupAudioInteractions();
             syncAudioPanelFromView();
             applyViewMode();
-            activateInitialTab();
             window.addEventListener("hashchange", applyViewMode);
             updateOnboardingVisibility();
-            initZoom();
-            updateFullScreenButton();
-            document.addEventListener("fullscreenchange", handleFullScreenStateChange);
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
             if (setDateEl) setDateEl.addEventListener("change", handleSetDateChange);
@@ -2042,4 +2532,3 @@
     </script>
 </body>
 </html>
-

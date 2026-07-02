@@ -6,7 +6,7 @@ from google import genai
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("AI_REVIEW_PORT", "8787"))
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 
 
 def build_prompt(payload: dict) -> str:
@@ -28,6 +28,100 @@ def build_prompt(payload: dict) -> str:
     }
 
     return f"{instructions}\n\nDATA:\n{json.dumps(body, ensure_ascii=True)}"
+
+
+def build_explanation_prompt(payload: dict) -> str:
+    question_text = payload.get("questionText", "")
+    options = payload.get("options", {})
+    correct_answer = payload.get("correctAnswer", "")
+    transcript = payload.get("transcript", "")
+
+    options_lines = "\n".join(
+        f"  ({letter}) {text}" for letter, text in sorted(options.items())
+    )
+
+    return f"""Please provide a step-by-step explanation for the following TOEFL ITP listening question.
+
+CRITICAL RULE: Do not use generic headers like "Step 1: Find the Idiom" for every question. Instead, change the text of the step headers so they are perfectly customized to the specific question type (e.g., Idioms, Suggestions, Tone/Emotions, Main Topic, Details).
+
+Use this EXACT Markdown structure, but change the bracketed text in the headers based on the question:
+
+### Step 1: [Custom Action Verb based on the question type]
+Look at the [man's/woman's] response: *"[Quote the sentence containing the clue with key words in **bold**]"*
+
+💡 **Test Tip:** [Provide a short, high-value beginner tip about listening cues or patterns specific to this question type].
+
+### Step 2: [Custom Question explaining the core meaning or concept]
+* **"[Key Term/Concept]"** [Explain the meaning, suggestion, or situation in simple English].
+* *Note: [Explain what a beginner might get confused by or why the literal words shouldn't be misinterpreted].*
+
+### Step 3: Why the other answers are wrong
+The test tries to trick you by using words from the conversation out of context:
+
+* ❌ **([Letter]) is wrong:** [Explain the specific trap].
+* ❌ **([Letter]) is wrong:** [Explain the specific trap].
+* ❌ **([Letter]) is wrong:** [Explain the specific trap].
+
+---
+QUESTION DATA:
+
+Question: {question_text}
+
+Answer choices:
+{options_lines}
+
+Correct answer: ({correct_answer})
+
+Conversation transcript:
+{transcript}
+
+IMPORTANT: Output ONLY the three steps in the exact Markdown format above. No extra headings or text outside the three steps.
+"""
+
+
+def explanation_has_required_shape(text: str) -> bool:
+    body = str(text or "").strip()
+    if not body:
+        return False
+
+    # Must have exactly Step 1/2/3 headings in markdown style.
+    step_headers = [m.group(1) for m in __import__("re").finditer(r"(?im)^\s*#{2,4}\s*Step\s*(\d+)\s*:\s*.+$", body)]
+    if step_headers != ["1", "2", "3"]:
+        return False
+
+    # Must include test tip marker.
+    if "test tip" not in body.lower():
+        return False
+
+    # Must include a Step 2 note line.
+    if "note:" not in body.lower():
+        return False
+
+    # Step 3 needs at least 3 wrong-option bullets like (A) is wrong: ...
+    wrong_lines = __import__("re").findall(r"(?im)^\s*[-*]\s*(?:❌\s*)?\*\*\(([A-D])\)\s*is\s*wrong\s*:\*\*\s*.+$", body)
+    return len(wrong_lines) >= 3
+
+
+def build_explanation_fix_prompt(previous_output: str) -> str:
+    return f"""Rewrite the output below so it STRICTLY matches the required TOEFL explanation format.
+
+Requirements:
+1) Exactly 3 step headers in this order:
+   ### Step 1: ...
+   ### Step 2: ...
+   ### Step 3: Why the other answers are wrong
+2) Include a Test Tip line in Step 1 using: 💡 **Test Tip:** ...
+3) Step 3 must include exactly 3 bullet lines for wrong options, with this syntax:
+   - ❌ **(A) is wrong:** ...
+   - ❌ **(B) is wrong:** ...
+   - ❌ **(C) is wrong:** ...
+   (Use the actual wrong letters for this question.)
+4) Keep the explanation specific to the transcript and answer options. No generic filler.
+5) Output only the final markdown explanation.
+
+OUTPUT TO REWRITE:
+{previous_output}
+"""
 
 
 def parse_json_from_text(text: str) -> dict:
@@ -65,14 +159,21 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _send_text(self, status: int, text: str):
+        data = text.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.end_headers()
+        self.wfile.write(data)
+
     def do_OPTIONS(self):
         self._send(200, {"ok": True})
 
     def do_POST(self):
-        if self.path != "/api/ai-review":
-            self._send(404, {"error": "Not found"})
-            return
-
         api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         if not api_key:
             self._send(500, {"error": "Set GEMINI_API_KEY or GOOGLE_API_KEY before starting the server."})
@@ -82,17 +183,43 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(length)
             payload = json.loads(raw.decode("utf-8"))
-
-            client = genai.Client(api_key=api_key)
-            prompt = build_prompt(payload)
-            response = client.models.generate_content(model=MODEL, contents=prompt)
-            text = response.text or "{}"
-
-            parsed = parse_json_from_text(text)
-            review = sanitize_review(parsed)
-            self._send(200, review)
         except Exception as exc:
-            self._send(500, {"error": str(exc)})
+            self._send(400, {"error": f"Bad request: {exc}"})
+            return
+
+        if self.path == "/api/ai-review":
+            try:
+                client = genai.Client(api_key=api_key)
+                prompt = build_prompt(payload)
+                response = client.models.generate_content(model=MODEL, contents=prompt)
+                text = response.text or "{}"
+                parsed = parse_json_from_text(text)
+                review = sanitize_review(parsed)
+                self._send(200, review)
+            except Exception as exc:
+                self._send(500, {"error": str(exc)})
+
+        elif self.path == "/api/toefl-explanation":
+            try:
+                client = genai.Client(api_key=api_key)
+                prompt = build_explanation_prompt(payload)
+                response = client.models.generate_content(model=MODEL, contents=prompt)
+                text = (response.text or "").strip()
+
+                # If the first pass doesn't match the required format, retry once with a strict rewrite prompt.
+                if not explanation_has_required_shape(text):
+                    retry_prompt = build_explanation_fix_prompt(text)
+                    retry_response = client.models.generate_content(model=MODEL, contents=retry_prompt)
+                    retry_text = (retry_response.text or "").strip()
+                    if retry_text:
+                        text = retry_text
+
+                self._send_text(200, text)
+            except Exception as exc:
+                self._send(500, {"error": str(exc)})
+
+        else:
+            self._send(404, {"error": "Not found"})
 
 
 if __name__ == "__main__":

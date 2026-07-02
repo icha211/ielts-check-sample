@@ -5,58 +5,185 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TOEFL ITP Simulator - Section 2: Structure & Written Expression</title>
     <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
 </head>
 <body>
 
     <div class="tab-navigation">
-        <button class="tab-button active" onclick="openTab(event, 'user-view')">ðŸ‘ï¸ Simulasi Ujian User</button>
-        <button class="tab-button" onclick="openTab(event, 'dev-view')">âš™ï¸ Panel Developer</button>
+        <button class="tab-button active" onclick="openTab(event, 'user-view')">Simulasi Ujian User</button>
+        <button class="tab-button" onclick="openTab(event, 'dev-view')">Panel Developer</button>
     </div>
 
     <div id="user-view" class="tab-content active">
         <div id="global-score-board"></div>
-        <header class="cbt-header">
-            <div class="header-left-group">
-                <img class="header-logo" src="../asset/icon/logo.png" alt="QuickCheck logo">
-                <div class="header-left-content">
-                    <div class="header-title-wrap">
-                        <div class="header-title">Structure &amp; Writing</div>
-                        <div class="header-package" id="header-package-label">Package 01 Jan</div>
-                    </div>
-                    <div class="header-timer-wrap">
-                        <div class="header-timer">
-                            <img class="header-timer-icon" src="../asst/icon/timer.svg" alt="">
-                            <div id="time">25:00</div>
-                        </div>
+        <header class="cbt-header figma-header figma-header--listening">
+            <div class="logo-test-package-timer">
+                <img class="logo-frame-icon" src="../asst/icon/QuickCheckLogo.png" alt="">
+                <div class="test-package-timer">
+                    <div class="test-package-frame">
+                        <div class="structure-writing">Structure &amp; Writing</div>
+                        <div class="package-01-jan" id="header-package-label">Package 01 Jan</div>
                     </div>
                 </div>
             </div>
-
-            <div class="header-right-group">
-                <div class="progressbar-final">
-                    <div class="progress-bar-question">
+            <div class="timer">
+                <div class="timer-header-parent">
+                    <img class="timer-header-icon" src="../asst/icon/timer-header.svg" alt="">
+                    <div class="div" id="time">25:00</div>
+                </div>
+            </div>
+            <div class="progressbar-final">
+                <div class="progress-bar-question">
+                    <div class="progress-bar-question-inner">
                         <div class="progressbar-wrapper">
-                            <div class="progressbar"><div class="progressbar-child" id="progress-part-a"></div></div>
+                            <div class="progressbar">
+                                <div class="progressbar-child" id="progress-part-a"></div>
+                            </div>
                         </div>
-                        <div class="progress-summary">
-                            <div class="answered-wrap"><div class="answered-030" id="answered-count-label">Answered 0/0</div></div>
-                            <div class="progressbar-frame">
-                                <div class="progressbar"><div class="progressbar-child" id="progress-part-b"></div></div>
+                    </div>
+                    <div class="progress-bar-question-inner">
+                        <div class="progressbar-wrapper">
+                            <div class="progressbar">
+                                <div class="progressbar-child" id="progress-part-b"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="frame-parent">
+                        <div class="answered-030-wrapper">
+                            <div class="answered-030" id="answered-count-label">Answered 0/0</div>
+                        </div>
+                        <div class="progressbar-frame">
+                            <div class="progressbar">
+                                <div class="progressbar-child" id="progress-part-c"></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="header-actions-group">
-                    <div class="header-feature-icons">
-                        <button class="header-feature-btn" type="button" id="fullscreen-btn" aria-label="Enter fullscreen"><img class="header-feature-icon" id="fullscreen-icon" src="../asst/icon/fullscreen.svg" alt=""></button>
-                        <button class="header-feature-btn" type="button" id="toggle-navigator-btn" aria-label="Toggle question navigator"><img class="header-feature-icon" src="../asst/icon/more option.svg" alt=""></button>
-                    </div>
-                    <button class="submit-parent" id="submit-header-btn" type="button"><div class="submit">Submit</div><img class="submit-icon" src="../asst/icon/submit.svg" alt=""></button>
+                <div class="features">
+                    <button class="header-feature-btn nav-toggle-btn" type="button" id="fullscreen-btn" aria-label="Enter fullscreen" onclick="toggleFullScreenMode()">
+                        <i class="ph ph-frame-corners icon-regular" aria-hidden="true"></i>
+                        <i class="ph-fill ph-frame-corners icon-filled" aria-hidden="true"></i>
+                    </button>
+                    <button class="header-feature-btn nav-toggle-btn" type="button" id="toggle-navigator-btn" aria-label="Open test options" onclick="toggleFeaturesMenu(event)">
+                        <i class="ph ph-list icon-regular" aria-hidden="true"></i>
+                        <i class="ph-fill ph-list icon-filled" aria-hidden="true"></i>
+                    </button>
                 </div>
             </div>
+            <button class="submit-buttton submit-parent" id="submit-header-btn" type="button">
+                <div class="submit">Submit</div>
+                <img class="untouch-submiticon submit-icon" src="../asst/icon/untouch-submiticon.svg" alt="">
+            </button>
         </header>
+        <div class="features-overlay" id="features-overlay" aria-hidden="true">
+            <div class="features-panel" role="dialog" aria-modal="true" aria-labelledby="features-title">
+                <div class="features-panel__header">
+                    <div class="features-title" id="features-title">TEST OPTIONS</div>
+                    <button class="features-close" id="features-close-btn" type="button" aria-label="Close test options" onclick="setFeaturesMenuOpen(false)">
+                        <i class="ph ph-x" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <div class="features-panel__content">
+                    <div class="feature-quick-row">
+                        <div class="feature-card feature-card--dark">
+                            <div class="feature-label"><i class="ph ph-moon" aria-hidden="true"></i>Dark Mode</div>
+                            <div class="darkmode-toggle" aria-hidden="true">
+                                <div class="darkmode-toggle__option darkmode-toggle__option--light"><i class="ph ph-sun" aria-hidden="true"></i></div>
+                                <div class="darkmode-toggle__option darkmode-toggle__option--dark"><i class="ph ph-moon" aria-hidden="true"></i></div>
+                            </div>
+                        </div>
+
+                        <div class="feature-card feature-card--text-size">
+                            <div class="feature-label"><i class="ph ph-text-aa" aria-hidden="true"></i>Text Size</div>
+                            <div class="textsize-toggle" aria-hidden="true">
+                                <div class="textsize-toggle__option is-active">S</div>
+                                <div class="textsize-toggle__option">M</div>
+                                <div class="textsize-toggle__option">L</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-card feature-card--audio">
+                        <div class="feature-label"><i class="ph ph-speaker-high" aria-hidden="true"></i>Audio Volume</div>
+                        <div class="volume-control" aria-hidden="true">
+                            <button class="volume-control__btn" type="button" tabindex="-1"><i class="ph ph-minus" aria-hidden="true"></i></button>
+                            <div class="volume-control__track">
+                                <div class="volume-control__fill"></div>
+                            </div>
+                            <button class="volume-control__btn" type="button" tabindex="-1"><i class="ph ph-plus" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
+
+                    <button class="feature-link" type="button">
+                        <span class="feature-link__left"><i class="ph ph-book-open-text" aria-hidden="true"></i>Instruction</span>
+                        <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
+                    </button>
+
+                    <button class="feature-link feature-link--warn" type="button">
+                        <span class="feature-link__left"><i class="ph ph-warning-circle" aria-hidden="true"></i>Report an Issue</span>
+                        <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
         <div class="section2-layout">
-            <div id="user-passages-container" style="flex: 1; overflow-y: auto; background-color: var(--cbt-bg);"></div>
+            <div id="user-passages-container" style="flex: 1; overflow-y: auto; background-color: var(--cbt-bg); position: relative;">
+                <div class="instruction-popup" id="onboarding-overlay" aria-hidden="true">
+                    <div class="instruction-background"></div>
+                    <div class="start-the-listening">
+                        <div class="play-icon">
+                            <img class="play-instruction-icon" src="../asst/icon/play-instruction.svg" alt="">
+                        </div>
+                        <div class="start-the-listening-text">
+                            <b class="start-the-listening2">Start The Listening </b>
+                            <div class="click-the-start">Click the Start button to begin. Note that the test environment is locked once active, <br>if you exit or stop the session, your test will be terminated immediately and cannot be resumed.</div>
+                        </div>
+                    </div>
+                    <div class="single-play-only">
+                        <div class="sound-icon">
+                            <img class="speaker-instruction-icon" src="../asst/icon/speaker-instruction.svg" alt="">
+                        </div>
+                        <div class="start-the-listening-text">
+                            <b class="start-the-listening2">Single Play ONLY</b>
+                            <div class="click-the-start">The audio for the entire section will play once only. There are no replay, rewind, or pause functions available. This matches authentic TOEFL ITP conditions.</div>
+                        </div>
+                    </div>
+                    <div class="question-navigator">
+                        <div class="sound-icon">
+                            <img class="questionnav-instruction-icon" src="../asst/icon/questionnav-instruction.svg" alt="">
+                        </div>
+                        <div class="start-the-listening-text">
+                            <b class="start-the-listening2">Question Navigator</b>
+                            <div class="click-the-start">Read each question and its four answer choices carefully. You must progress through the session as the audio dictates. You cannot jump ahead or return to previous questions.</div>
+                        </div>
+                    </div>
+                    <div class="time-management">
+                        <div class="sound-icon">
+                            <img class="time-instruction-icon" src="../asst/icon/time-instruction.svg" alt="">
+                        </div>
+                        <div class="start-the-listening-text">
+                            <b class="start-the-listening2">Time Management</b>
+                            <div class="click-the-start">Monitor the countdown timer in the top bar. The test will automatically transition to the next phase once the audio concludes or the time limit is reached.</div>
+                        </div>
+                    </div>
+                    <div class="instruction">Instruction</div>
+                    <div class="cta-play-frame">
+                        <div class="cta-text">
+                            <div class="are-you-ready">Are you ready? </div>
+                            <div class="click-to-play">Click to Play </div>
+                        </div>
+                        <button class="play-button" type="button" onclick="dismissOnboarding()">
+                            <div class="pause-1">
+                                <img class="playicon-instruction" src="../asst/icon/playicon-instruction.svg" alt="">
+                            </div>
+                            <div class="play">Play</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
             <aside class="question-navigator" id="question-navigator">
                 <div class="question-navigator__panel">
                     <div class="question-navigator__head">Question Navigator</div>
@@ -112,6 +239,7 @@
         <div id="dev-panels-container"></div>
     </div>
 
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="toefl-storage-sync.js?v=20260506"></script>
     <script>
         const PARTS = [
@@ -123,6 +251,7 @@
         const MODULE_ID = "structure";
         const MODULE_LABEL = "Structure";
         const DRAFT_KEY = "toefl_section2_dev_draft_v1";
+        const ONBOARDING_KEY_BASE = "toefl_section2_onboarding_seen_v1";
         let currentSetId = "";
 
         function safeParse(raw, fallback) {
@@ -195,6 +324,59 @@
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 
+        async function resolveLatestSetRecord() {
+            try {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
+                    const records = await toeflStorage.getSetRecords();
+                    const latest = (records || [])
+                        .filter((item) => item && item.module === MODULE_ID)
+                        .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
+                    if (latest) return latest;
+                }
+            } catch (error) {
+                console.warn("[ToeflSync] latest-set lookup failed:", error);
+            }
+
+            const local = getStoredSetMap();
+            return Object.values(local)
+                .filter((item) => item && item.module === MODULE_ID)
+                .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
+        }
+
+        function clearSectionDraftInputs() {
+            PARTS.forEach((part) => {
+                const p = part.id;
+                const qEl = document.getElementById(`input-magic-questions-${p}`);
+                const aEl = document.getElementById(`input-answer-key-${p}`);
+                const eEl = document.getElementById(`input-explanation-${p}`);
+                if (qEl) qEl.value = "";
+                if (aEl) aEl.value = "";
+                if (eEl) eEl.value = "";
+            });
+        }
+
+        async function handleSetDateChange() {
+            const dateInput = document.getElementById("set-date");
+            const selectedDate = dateInput?.value;
+            if (!selectedDate) return;
+
+            const existing = await resolveSetRecordByDate(selectedDate).catch(() => null);
+            if (existing?.setId) {
+                currentSetId = existing.setId;
+                upsertLocalRecord(existing);
+                updateEditorUrl(currentSetId, selectedDate);
+                updateHeaderPackageLabel(selectedDate);
+                await loadSectionDraft();
+                updateUserView();
+                return;
+            }
+
+            currentSetId = "";
+            clearSectionDraftInputs();
+            await saveSectionMeta();
+            updateUserView();
+        }
+
         function saveSectionDraft() {
             const draft = { parts: {} };
             PARTS.forEach((part) => {
@@ -246,13 +428,19 @@
             const params = new URLSearchParams(window.location.search);
             const requestedDate = params.get("setDate");
             currentSetId = params.get("setId") || "";
-            const isCreateMode = !currentSetId && isDeveloperMode();
             let stored = {};
-            if (!currentSetId && requestedDate && !isDeveloperMode()) {
+            if (!currentSetId && requestedDate) {
                 const byDate = await resolveSetRecordByDate(requestedDate);
                 if (byDate?.setId) {
                     currentSetId = byDate.setId;
                     stored = byDate;
+                }
+            }
+            if (!currentSetId && !requestedDate) {
+                const latest = await resolveLatestSetRecord();
+                if (latest?.setId) {
+                    currentSetId = latest.setId;
+                    stored = latest;
                 }
             }
             if (window.toeflStorage) {
@@ -263,13 +451,9 @@
                 } catch { /* fallback below */ }
             }
             if (!stored.setDate) {
-                if (isCreateMode) {
-                    stored = {};
-                } else {
-                    const local = getStoredSetMap();
-                    if (currentSetId && local[currentSetId]) {
-                        stored = local[currentSetId];
-                    }
+                const local = getStoredSetMap();
+                if (currentSetId && local[currentSetId]) {
+                    stored = local[currentSetId];
                 }
             }
             const today = new Date().toISOString().split("T")[0];
@@ -362,6 +546,7 @@
 
             setBar("progress-part-a", partAAnswered, partATotal);
             setBar("progress-part-b", partBAnswered, partBTotal);
+            setBar("progress-part-c", answered, total);
         }
 
         function initStructure() {
@@ -372,15 +557,26 @@
 
             PARTS.forEach((part) => {
                 const p = part.id;
+                const instructionsMarkup = p === 1
+                    ? `<div class="structure-parta-directions">
+                            <div class="structure-parta-directions__inner">
+                                <div class="structure-parta-directions__title">Part A: Structure</div>
+                                <div class="structure-parta-directions__text">
+                                    <span class="structure-parta-directions__label">Directions</span>
+                                    <span>: These questions are incomplete sentences. Beneath each sentence you will see four words or phrases, marked (A), (B), (C), and (D). Choose the one word or phrase that best completes the sentence.</span>
+                                </div>
+                            </div>
+                        </div>`
+                    : `<div class="section-instructions">
+                            <h3>${part.name} (${part.range})</h3>
+                            <p>${part.instr}</p>
+                        </div>`;
                 
                 // USER VIEW BUILDER
                 userContainer.innerHTML += `
                 <div id="user-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
                     <div class="user-main">
-                        <div class="section-instructions">
-                            <h3>${part.name} (${part.range})</h3>
-                            <p>${part.instr}</p>
-                        </div>
+                        ${instructionsMarkup}
                         <div id="display-questions-${p}"></div>
                     </div>
                 </div>`;
@@ -468,10 +664,155 @@
             document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
+            updateOnboardingVisibility();
+        }
+
+        function getOnboardingKey() {
+            const params = new URLSearchParams(window.location.search);
+            const setDateEl = document.getElementById("set-date");
+            const scopedDate = params.get("setDate") || (setDateEl ? setDateEl.value : "") || "";
+            const scope = scopedDate || currentSetId || "default";
+            return `${ONBOARDING_KEY_BASE}:${scope}`;
+        }
+
+        function shouldShowOnboarding() {
+            if (isDeveloperMode()) return false;
+            return localStorage.getItem(getOnboardingKey()) !== "1";
+        }
+
+        function setNavigatorPanelHidden(hidden) {
+            const nav = document.getElementById("question-navigator");
+            const layout = document.querySelector(".section2-layout");
+            if (!nav) return;
+            const isHidden = Boolean(hidden);
+            nav.classList.toggle("is-hidden", isHidden);
+            if (layout) layout.classList.toggle("is-nav-hidden", isHidden);
+        }
+
+        function updateFullScreenButton() {
+            const fullScreenButton = document.getElementById("fullscreen-btn");
+            if (!fullScreenButton) return;
+            const isFullScreen = Boolean(document.fullscreenElement);
+            fullScreenButton.setAttribute("aria-label", isFullScreen ? "Exit full screen" : "Enter full screen");
+            fullScreenButton.classList.toggle("is-active", isFullScreen);
+        }
+
+        function handleFullScreenStateChange() {
+            updateFullScreenButton();
+        }
+
+        async function toggleFullScreenMode() {
+            try {
+                if (!document.fullscreenElement) {
+                    await document.documentElement.requestFullscreen();
+                } else {
+                    await document.exitFullscreen();
+                }
+            } catch (error) {
+                console.warn("[Fullscreen] Unable to toggle full screen:", error);
+            } finally {
+                handleFullScreenStateChange();
+            }
+        }
+
+        function setFeaturesMenuOpen(open) {
+            const overlay = document.getElementById("features-overlay");
+            const triggerButton = document.getElementById("toggle-navigator-btn");
+            if (!overlay) return;
+            const shouldOpen = Boolean(open);
+            overlay.classList.toggle("is-open", shouldOpen);
+            overlay.setAttribute("aria-hidden", shouldOpen ? "false" : "true");
+            if (triggerButton) triggerButton.classList.toggle("is-active", shouldOpen);
+        }
+
+        function toggleFeaturesMenu(event) {
+            if (event) event.stopPropagation();
+            const overlay = document.getElementById("features-overlay");
+            if (!overlay) return;
+            setFeaturesMenuOpen(!overlay.classList.contains("is-open"));
+        }
+
+        function handleFeaturesOverlayClick(event) {
+            if (event.target === event.currentTarget) {
+                setFeaturesMenuOpen(false);
+            }
+        }
+
+        function handleFeaturesMenuKeydown(event) {
+            if (event.key === "Escape") {
+                setFeaturesMenuOpen(false);
+            }
+        }
+
+        function positionListeningHeaderTimer() {
+            const header = document.querySelector(".figma-header--listening");
+            const timer = header ? header.querySelector(".timer") : null;
+            const packageFrame = header ? header.querySelector(".test-package-frame") : null;
+            const progressBlock = header ? header.querySelector(".progressbar-final") : null;
+            if (!header || !timer || !packageFrame || !progressBlock) return;
+
+            const packageRight = packageFrame.offsetLeft + packageFrame.offsetWidth;
+            const progressLeft = progressBlock.offsetLeft;
+            const timerWidth = timer.offsetWidth || 0;
+            const sidePadding = 16;
+
+            const targetCenterX = (packageRight + progressLeft) / 2;
+            const minCenterX = packageRight + (timerWidth / 2) + sidePadding;
+            const maxCenterX = progressLeft - (timerWidth / 2) - sidePadding;
+            const defaultCenterX = header.offsetWidth / 2;
+            const clampedCenterX = maxCenterX < minCenterX
+                ? defaultCenterX
+                : Math.min(Math.max(targetCenterX, minCenterX), maxCenterX);
+
+            timer.style.left = `${clampedCenterX}px`;
+        }
+
+        function setOnboardingScrollLock(isLocked) {
+            const container = document.getElementById("user-passages-container");
+            if (!container) return;
+            container.classList.toggle("onboarding-open", Boolean(isLocked));
+        }
+
+        function updateOnboardingScale() {
+            const overlay = document.getElementById("onboarding-overlay");
+            const container = document.getElementById("user-passages-container");
+            if (!overlay || !container) return;
+            const baseWidth = 1373;
+            const baseHeight = 843;
+            const availableWidth = Math.max(320, container.clientWidth - 8);
+            const availableHeight = Math.max(320, container.clientHeight - 32);
+            const fitScale = Math.min(availableWidth / baseWidth, availableHeight / baseHeight, 1);
+            overlay.style.setProperty("--onboarding-scale", fitScale.toFixed(4));
+        }
+
+        function dismissOnboarding() {
+            const overlay = document.getElementById("onboarding-overlay");
+            if (!overlay) return;
+            overlay.classList.remove("is-visible");
+            overlay.setAttribute("aria-hidden", "true");
+            setOnboardingScrollLock(false);
+            localStorage.setItem(getOnboardingKey(), "1");
+        }
+
+        function updateOnboardingVisibility() {
+            const overlay = document.getElementById("onboarding-overlay");
+            if (!overlay) return;
+            if (shouldShowOnboarding()) {
+                overlay.classList.add("is-visible");
+                overlay.setAttribute("aria-hidden", "false");
+                setOnboardingScrollLock(true);
+                setNavigatorPanelHidden(true);
+                updateOnboardingScale();
+                return;
+            }
+            overlay.classList.remove("is-visible");
+            overlay.setAttribute("aria-hidden", "true");
+            setOnboardingScrollLock(false);
         }
 
         function isDeveloperMode() {
-            return window.location.hash === "#dev-view";
+            const params = new URLSearchParams(window.location.search);
+            return window.location.hash === "#dev-view" || params.get("mode") === "dev";
         }
 
         function applyViewMode() {
@@ -623,45 +964,7 @@
             const submitBtn = document.getElementById("submit-header-btn");
             const nextQBtn = document.getElementById("navigator-next-question");
             const nextSectionBtn = document.getElementById("navigator-next-section");
-            const moreBtn = document.getElementById("toggle-navigator-btn");
-            const nav = document.getElementById("question-navigator");
-            const fullBtn = document.getElementById("fullscreen-btn");
-            const fullIcon = document.getElementById("fullscreen-icon");
             const userContainer = document.getElementById("user-passages-container");
-            const fullscreenEnterIcon = "../asst/icon/fullscreen.svg";
-            const fullscreenExitIcons = [
-                "../asst/icon/corner-inside.svg",
-                "../asst/icon/corners-in.svg",
-                "../asst/icon/corner-in.svg"
-            ];
-
-            const setFullscreenIcon = (isFullscreen) => {
-                if (!fullIcon) return;
-                if (!isFullscreen) {
-                    fullIcon.onerror = null;
-                    fullIcon.src = fullscreenEnterIcon;
-                    return;
-                }
-
-                let fallbackIndex = 0;
-                const tryNextExitIcon = () => {
-                    if (fallbackIndex >= fullscreenExitIcons.length) {
-                        fullIcon.onerror = null;
-                        return;
-                    }
-                    fullIcon.src = fullscreenExitIcons[fallbackIndex++];
-                };
-
-                fullIcon.onerror = tryNextExitIcon;
-                tryNextExitIcon();
-            };
-
-            const syncFullscreenIcon = () => {
-                if (!fullBtn || !fullIcon) return;
-                const isFullscreen = Boolean(document.fullscreenElement);
-                setFullscreenIcon(isFullscreen);
-                fullBtn.setAttribute("aria-label", isFullscreen ? "Exit fullscreen" : "Enter fullscreen");
-            };
 
             if (submitBtn) submitBtn.addEventListener("click", submitAnswers);
             if (nextQBtn) nextQBtn.addEventListener("click", goToNextQuestion);
@@ -671,25 +974,6 @@
                 const firstB = getPartQuestionNumbers(2)[0];
                 if (firstB) scrollToQuestion(firstB.uid);
             });
-            if (moreBtn && nav) {
-                moreBtn.addEventListener("click", () => {
-                    nav.classList.toggle("is-hidden");
-                    const layout = document.querySelector(".section2-layout");
-                    if (layout) layout.classList.toggle("is-nav-hidden", nav.classList.contains("is-hidden"));
-                });
-            }
-            if (fullBtn) {
-                fullBtn.addEventListener("click", async () => {
-                    if (!document.fullscreenElement) {
-                        await document.documentElement.requestFullscreen();
-                    } else {
-                        await document.exitFullscreen();
-                    }
-                });
-            }
-            document.removeEventListener("fullscreenchange", syncFullscreenIcon);
-            document.addEventListener("fullscreenchange", syncFullscreenIcon);
-            syncFullscreenIcon();
             if (userContainer) {
                 userContainer.addEventListener("change", (event) => {
                     const target = event.target;
@@ -881,18 +1165,36 @@
 
         window.onload = async () => {
             initStructure();
-            bindUserToolbarActions();
-            await loadSectionMeta();
-            await loadSectionDraft();
-            updateUserView();
             applyViewMode();
             activateInitialTab();
+            bindUserToolbarActions();
+            updateFullScreenButton();
+            document.addEventListener("fullscreenchange", handleFullScreenStateChange);
+            try {
+                await loadSectionMeta();
+                await loadSectionDraft();
+                updateUserView();
+            } catch (error) {
+                console.warn("[Init] Failed to fully restore section data:", error);
+            }
+            positionListeningHeaderTimer();
+            setTimeout(positionListeningHeaderTimer, 60);
+            updateOnboardingVisibility();
+            updateOnboardingScale();
+            window.addEventListener("resize", () => {
+                updateOnboardingScale();
+                positionListeningHeaderTimer();
+            });
+            const featuresOverlay = document.getElementById("features-overlay");
+            if (featuresOverlay) {
+                featuresOverlay.addEventListener("click", handleFeaturesOverlayClick);
+            }
+            document.addEventListener("keydown", handleFeaturesMenuKeydown);
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
-            if (setDateEl) setDateEl.addEventListener("change", saveSectionMeta);
+            if (setDateEl) setDateEl.addEventListener("change", handleSetDateChange);
             if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
         };
     </script>
 </body>
 </html>
-

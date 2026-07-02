@@ -5,32 +5,31 @@ const SETS_KEY_V2 = "toefl_developer_sets_v2";
 const MODULE_CONFIG = {
     listening: {
         editorPage: "section 1.html",
-        createPage: "section 1.html#dev-view",
+        createPage: "section 1.html?mode=dev#dev-view",
         icon: `<img src="../asset/icon/headset.png" style="width:18px;height:18px;vertical-align:middle;" alt="">`,
         label: "Listening"
     },
     structure: {
         editorPage: "section 2.html",
-        createPage: "section 2.html#dev-view",
+        createPage: "section 2.html?mode=dev#dev-view",
         icon: `<img src="../asset/icon/paper-pencil.png" style="width:18px;height:18px;vertical-align:middle;" alt="">`,
         label: "Structure"
     },
     reading: {
         editorPage: "section 3.html",
-        createPage: "section 3.html#dev-view",
+        createPage: "section 3.html?mode=dev#dev-view",
         icon: `<img src="../asset/icon/blue-book.png" style="width:18px;height:18px;vertical-align:middle;" alt="">`,
         label: "Reading"
     }
 };
 const MONTH_LABELS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
 const MODULES = ["listening", "structure", "reading"];
+
 const DIFFICULTY_LABELS = {
     beginner: "Beginner",
     intermediate: "Intermediate",
     advanced: "Advanced"
 };
-
-let sectionSets = [];
 
 function safeParse(raw, fallback) {
     try {
@@ -103,6 +102,7 @@ function normalizeSetsMapToList(raw) {
             return tRight - tLeft;
         });
 }
+
 
 function getStoredSets() {
     const parsedV2 = safeParse(localStorage.getItem(SETS_KEY_V2), {});
@@ -187,6 +187,7 @@ function buildEditorUrl(moduleId, setDate, setId) {
     const params = new URLSearchParams();
     if (setDate) params.set("setDate", setDate);
     if (setId) params.set("setId", setId);
+    params.set("mode", "dev");
     const query = params.toString();
     if (!query) return MODULE_CONFIG[moduleId].createPage;
     return `${MODULE_CONFIG[moduleId].editorPage}?${query}#dev-view`;

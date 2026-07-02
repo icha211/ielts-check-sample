@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IELTS Listening Practice Test - Ultimate Dynamic</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500&display=swap">
     <style>
         /* Modern CSS Reset & Variables */
         :root {
@@ -63,17 +65,75 @@
         .panel::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         /* Question Navigator */
-        .question-navigator { background: var(--bg-surface); border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 30px; position: sticky; top: -10px; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.3s ease; }
+        .question-navigator {
+            background: var(--bg-surface);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 30px;
+            position: sticky;
+            top: -10px;
+            z-index: 20;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
         .nav-header { padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid transparent; transition: border-color 0.3s ease; }
         .nav-header:hover { background: var(--bg-body); border-radius: 8px 8px 0 0; }
         .question-navigator.open .nav-header { border-bottom-color: var(--border-color); }
         .nav-title-wrapper { display: flex; align-items: center; gap: 10px; }
         .nav-title { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
         .nav-progress { font-size: 0.85rem; font-weight: 600; color: var(--primary); background: #eff6ff; padding: 2px 8px; border-radius: 12px; }
-        .nav-toggle-btn { background: none; border: none; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; transition: transform 0.3s ease; pointer-events: none; }
-        .question-navigator.open .nav-toggle-btn { transform: rotate(180deg); }
+        .nav-toggle-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            background: var(--bg-surface);
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.3s ease;
+            flex-shrink: 0;
+        }
+        .nav-toggle-btn:hover { background: var(--bg-body); border-color: #cbd5e1; }
+        .nav-toggle-icon { width: 32px; height: 32px; display: block; }
         .nav-content { padding: 0 20px; max-height: 0; overflow: hidden; opacity: 0; transition: all 0.3s ease; }
         .question-navigator.open .nav-content { padding: 15px 20px; max-height: 500px; opacity: 1; }
+        .question-navigator:not(.open) {
+            width: 100%;
+            min-height: 88px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0px 4px 4px rgba(0, 53, 96, 0.1);
+            border-radius: 8px 0px 0px 8px;
+            background-color: #fff;
+            border-top: 1px solid #d1dce8;
+            border-bottom: 1px solid #d1dce8;
+            border-left: 1px solid #d1dce8;
+            box-sizing: border-box;
+            padding: 24px 12px;
+        }
+        .question-navigator:not(.open) .nav-header {
+            width: 100%;
+            justify-content: center;
+            padding: 0;
+            border-bottom: 0;
+            background: transparent;
+        }
+        .question-navigator:not(.open) .nav-title-wrapper,
+        .question-navigator:not(.open) .nav-content {
+            display: none;
+        }
+        .question-navigator:not(.open) .nav-toggle-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            border: 1px solid #d1dce8;
+            box-shadow: none;
+        }
         
         .nav-grid { display: flex; flex-wrap: wrap; gap: 8px; }
         .nav-item { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid var(--border-color); font-weight: 600; font-size: 0.95rem; color: var(--text-main); cursor: pointer; background: var(--bg-body); transition: all 0.2s; }
@@ -88,7 +148,7 @@
         .question-text { font-weight: 500; margin-bottom: 12px; font-size: calc(1.05rem * var(--text-zoom)); }
         .question-text .question-bullet-list { margin: 8px 0; padding-left: 0; list-style: none; }
         .question-text .question-bullet-list li { margin: 4px 0; padding-left: 1.1em; position: relative; }
-        .question-text .question-bullet-list li::before { content: "•"; position: absolute; left: 0; top: 0; color: currentColor; }
+        .question-text .question-bullet-list li::before { content: "ï¿½"; position: absolute; left: 0; top: 0; color: currentColor; }
 
         .options { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
         .option-label { display: flex; align-items: center; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s ease; background: var(--bg-surface); font-size: calc(0.95rem * var(--text-zoom)); }
@@ -118,6 +178,154 @@
         #result { margin-top: 20px; padding: 16px; border-radius: 8px; font-weight: 600; font-size: 1.1rem; text-align: center; display: none; }
         .result-good { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
         .result-bad { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        .instruction-popup {
+            width: 100%;
+            height: 100vh;
+            position: fixed;
+            inset: 0;
+            text-align: left;
+            font-size: 34px;
+            color: #fff;
+            font-family: Outfit, sans-serif;
+            z-index: 1200;
+            display: none;
+        }
+        .instruction-popup.is-visible {
+            display: block;
+        }
+        .instruction-popup .instruction-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: rgba(0, 53, 96, 0.85);
+            width: 100%;
+            height: 100%;
+        }
+        .instruction-popup .start-the-listening {
+            position: absolute;
+            top: 197px;
+            left: 94px;
+            display: flex;
+            align-items: flex-start;
+            gap: 26px;
+        }
+        .instruction-popup .play-icon {
+            height: 45px;
+            width: 45px;
+            box-shadow: 0 1px 4px #e0f2fe;
+            border-radius: 30px;
+            background-color: #e0f2fe;
+            border: 2px solid #fff;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+        .instruction-popup .vector-icon {
+            width: 20px;
+            height: 24px;
+            display: none;
+        }
+        .instruction-popup .start-the-listening-parent {
+            width: min(967px, calc(100vw - 220px));
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 15px;
+        }
+        .instruction-popup .start-the-listening2 {
+            align-self: stretch;
+            position: relative;
+            line-height: 25.6px;
+            font-size: 34px;
+        }
+        .instruction-popup .click-the-start {
+            align-self: stretch;
+            position: relative;
+            font-size: 20px;
+            line-height: 25.6px;
+            font-weight: 500;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .instruction-popup .single-play-only {
+            position: absolute;
+            top: 334px;
+            left: 94px;
+            display: flex;
+            align-items: flex-start;
+            gap: 27px;
+        }
+        .instruction-popup .sound-icon {
+            height: 45px;
+            width: 45px;
+            box-shadow: 0 1px 4px #e0f2fe;
+            border-radius: 30px;
+            background-color: #e0f2fe;
+            border: 2px solid #fff;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .instruction-popup .speaker-high-1-2 {
+            width: 32px;
+            height: 32px;
+            display: none;
+        }
+        .instruction-popup .question-navigator {
+            position: absolute;
+            top: 466px;
+            left: 94px;
+            display: flex;
+            align-items: flex-start;
+            gap: 26px;
+        }
+        .instruction-popup .vector-icon2 {
+            width: 20px;
+            height: 20px;
+            display: none;
+        }
+        .instruction-popup .time-management {
+            position: absolute;
+            top: 596px;
+            left: 94px;
+            display: flex;
+            align-items: flex-start;
+            gap: 26px;
+        }
+        .instruction-popup .vector-icon3 {
+            width: 24px;
+            height: 24px;
+            display: none;
+        }
+        .instruction-popup .instruction {
+            position: absolute;
+            top: 96px;
+            left: 84px;
+            font-size: 48px;
+            line-height: 1;
+            font-weight: 500;
+            text-align: justify;
+        }
+        .instruction-popup .play-to-start {
+            position: absolute;
+            top: 34px;
+            right: 84px;
+            font-size: 32px;
+            font-weight: 600;
+            background: #e0f2fe;
+            color: #003560;
+            border: 0;
+            border-radius: 12px;
+            padding: 10px 18px;
+            cursor: pointer;
+        }
+        .instruction-popup .play-to-start:hover {
+            filter: brightness(0.96);
+        }
 
         @media (max-width: 768px) {
             .container { flex-direction: column; }
@@ -161,13 +369,15 @@
         <div class="panel question-section" id="rightPanel">
             <form id="ieltsForm">
                 
-                <div class="question-navigator open" id="questionNavigator">
+                <div class="question-navigator" id="questionNavigator">
                     <div class="nav-header" onclick="toggleNavigator()">
                         <div class="nav-title-wrapper">
                             <span class="nav-title">Questions Tracker</span>
                             <span class="nav-progress" id="navProgress">(0/0)</span>
                         </div>
-                        <button type="button" class="nav-toggle-btn"></button>
+                        <button type="button" class="nav-toggle-btn" aria-label="Toggle question navigator">
+                            <img class="nav-toggle-icon" src="asst/icon/closed-questionnavigation-icon.svg" alt="">
+                        </button>
                     </div>
                     <div class="nav-content" id="navContent">
                         <div class="nav-grid" id="navGrid"></div>
@@ -185,11 +395,46 @@
         </div>
     </div>
 
+    <div class="instruction-popup" id="instructionPopup" aria-hidden="true">
+        <div class="instruction-background"></div>
+        <div class="start-the-listening">
+            <div class="play-icon" aria-hidden="true">&gt;</div>
+            <div class="start-the-listening-parent">
+                <b class="start-the-listening2">Start The Listening</b>
+                <div class="click-the-start">Click the Start button to begin. Note that the test environment is locked once active,<br>if you exit or stop the session, your test will be terminated immediately and cannot be resumed.</div>
+            </div>
+        </div>
+        <div class="single-play-only">
+            <div class="sound-icon" aria-hidden="true">S</div>
+            <div class="start-the-listening-parent">
+                <b class="start-the-listening2">Single Play ONLY</b>
+                <div class="click-the-start">The audio for the entire section will play once only. There are no replay, rewind, or pause functions available. This matches authentic IELTS conditions.</div>
+            </div>
+        </div>
+        <div class="question-navigator">
+            <div class="sound-icon" aria-hidden="true">N</div>
+            <div class="start-the-listening-parent">
+                <b class="start-the-listening2">Question Navigator</b>
+                <div class="click-the-start">Read each question and its four answer choices carefully. You must progress through the session as the audio dictates. You cannot jump ahead or return to previous questions.</div>
+            </div>
+        </div>
+        <div class="time-management">
+            <div class="sound-icon" aria-hidden="true">T</div>
+            <div class="start-the-listening-parent">
+                <b class="start-the-listening2">Time Management</b>
+                <div class="click-the-start">Monitor the countdown timer in the top bar. The test will automatically transition to the next phase once the audio concludes or the time limit is reached.</div>
+            </div>
+        </div>
+        <div class="instruction">Instruction</div>
+        <button class="play-to-start" type="button" onclick="dismissInstructionPopup()">Play To Start</button>
+    </div>
+
     <script src="storage-sync.js"></script>
     <script>
         const STORAGE_KEY = "prephaven_problems_listening_v1";
         const TEST_RESULTS_KEY = "prephaven_test_results_v1";
         const DAILY_TEST_KEY = "prephaven_daily_tests_v1";
+        const INSTRUCTION_POPUP_KEY = "ielts_listening_instruction_seen_v1";
         const params = new URLSearchParams(window.location.search);
         const PACKAGE_MODE = params.get("package") === "1";
         const RETURN_TO = params.get("returnTo");
@@ -319,11 +564,20 @@
             document.getElementById('navGrid').innerHTML = navHtml;
             attachTrackingListeners();
             updateProgressInit();
+            const nav = document.getElementById('questionNavigator');
+            syncNavigatorToggleIcon(nav ? nav.classList.contains('open') : true);
         }
 
         function toggleNavigator() {
             const nav = document.getElementById('questionNavigator');
             nav.classList.toggle('open');
+            syncNavigatorToggleIcon(nav.classList.contains('open'));
+        }
+
+        function syncNavigatorToggleIcon(isOpen) {
+            const toggleIcon = document.querySelector('#questionNavigator .nav-toggle-icon');
+            if (!toggleIcon) return;
+            toggleIcon.src = isOpen ? 'asset/icon/expand-hide-tracker.png' : 'asst/icon/closed-questionnavigation-icon.svg';
         }
 
         function extractBlankAnswer(text) {
@@ -337,9 +591,9 @@
 
         function renderQuestionTextBlock(text) {
             const rawText = String(text || "");
-            const inlineBulletMatches = rawText.match(/\s(?:-|\*|•)\s+[A-Z0-9]/g);
+            const inlineBulletMatches = rawText.match(/\s(?:-|\*|ï¿½)\s+[A-Z0-9]/g);
             const normalizedText = !/\r?\n/.test(rawText) && inlineBulletMatches && inlineBulletMatches.length >= 2
-                ? rawText.replace(/\s([\-\*•])\s+/g, "\n$1 ")
+                ? rawText.replace(/\s([\-\*ï¿½])\s+/g, "\n$1 ")
                 : rawText;
             const lines = normalizedText.split(/\r?\n/);
             const chunks = [];
@@ -352,7 +606,7 @@
             };
 
             lines.forEach((line) => {
-                const bulletMatch = line.match(/^\s*(?:[-*•])\s+(.+)$/);
+                const bulletMatch = line.match(/^\s*(?:[-*ï¿½])\s+(.+)$/);
                 if (bulletMatch) {
                     listItems.push(formatQuestionText(bulletMatch[1]));
                     return;
@@ -552,6 +806,35 @@
             if (!btn) return;
             btn.style.display = "inline-flex";
             btn.textContent = RETURN_TO ? "Back" : "Back to Study Plan";
+        }
+
+        function shouldShowInstructionPopup() {
+            return localStorage.getItem(INSTRUCTION_POPUP_KEY) !== "1";
+        }
+
+        function dismissInstructionPopup() {
+            const popup = document.getElementById("instructionPopup");
+            if (!popup) return;
+            popup.classList.remove("is-visible");
+            popup.setAttribute("aria-hidden", "true");
+            localStorage.setItem(INSTRUCTION_POPUP_KEY, "1");
+            startTimer();
+        }
+
+        function initializeInstructionPopup() {
+            const popup = document.getElementById("instructionPopup");
+            if (!popup) {
+                startTimer();
+                return;
+            }
+            if (shouldShowInstructionPopup()) {
+                popup.classList.add("is-visible");
+                popup.setAttribute("aria-hidden", "false");
+                return;
+            }
+            popup.classList.remove("is-visible");
+            popup.setAttribute("aria-hidden", "true");
+            startTimer();
         }
 
         function escapeHtml(value) {
@@ -773,11 +1056,8 @@
         (async () => {
             initializeBackToDeveloper();
             await loadProblem();
-            startTimer();
+            initializeInstructionPopup();
         })();
     </script>
 </body>
 </html>
-
-
-

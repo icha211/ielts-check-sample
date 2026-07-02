@@ -629,6 +629,157 @@ class ToeflStorageSync {
     return fallbackCandidate;
   }
 
+  async saveTranscriptTextToFirebase(setId, transcriptText, partId = 1) {
+    if (!setId) return false;
+    const textPayload = String(transcriptText || "");
+    const storagePath = `toefl_itp/transcripts/${setId}/part_${partId}.txt`;
+    const uploadNameQuery = new URLSearchParams({ name: storagePath }).toString();
+
+    for (const base of this._getStorageBases()) {
+      try {
+        const res = await fetch(`${base}?uploadType=media&${uploadNameQuery}`, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+          body: textPayload
+        });
+        if (!res.ok) continue;
+
+        const meta = await res.json();
+        const token = this._extractPrimaryDownloadToken(
+          meta?.downloadTokens ||
+          meta?.downloadToken ||
+          meta?.metadata?.firebaseStorageDownloadTokens ||
+          ""
+        );
+        const downloadUrl = this._buildStorageDownloadUrl(base, storagePath, token);
+
+        await this._put(`toefl_itp/transcript_urls/${setId}/part_${partId}`, {
+          url: downloadUrl,
+          storagePath,
+          token,
+          uploadedAt: new Date().toISOString()
+        });
+
+        this.isRemoteAvailable = true;
+        return true;
+      } catch {
+        // Try next base alias
+      }
+    }
+
+    this.isRemoteAvailable = false;
+    return false;
+  }
+
+  async getTranscriptTextFromFirebase(setId, partId = 1) {
+    if (!setId) return "";
+    try {
+      const data = await this._get(`toefl_itp/transcript_urls/${setId}/part_${partId}`);
+      const url = String(data?.url || "").trim();
+      if (!url) return "";
+      const res = await fetch(url, { method: "GET" });
+      if (!res.ok) return "";
+      this.isRemoteAvailable = true;
+      return await res.text();
+    } catch {
+      this.isRemoteAvailable = false;
+      return "";
+    }
+  }
+
+  _getLocalStorageServerBase() {
+    const host = localStorage.getItem("toefl_storage_server_host") || "127.0.0.1";
+    const port = localStorage.getItem("toefl_storage_server_port") || "8788";
+    return `http://${host}:${port}`;
+  }
+
+  async transcribeAudioBySetPart(setId, partId = 1) {
+    if (!setId) throw new Error("setId is required for transcription");
+    let response;
+    try {
+      response = await fetch(`${this._getLocalStorageServerBase()}/api/problems`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "transcribe-audio",
+          setId: String(setId),
+          partId: Number(partId || 1)
+        })
+      });
+    } catch (error) {
+      const reason = error && error.message ? String(error.message) : "Network request failed";
+      throw new Error(`Cannot reach local storage server at ${this._getLocalStorageServerBase()}. Start data_storage_server.py first. (${reason})`);
+    }
+
+    let payload = {};
+    try {
+      payload = await response.json();
+    } catch {
+      payload = {};
+    }
+
+    if (!response.ok || payload.success !== true) {
+      const message = String(payload.error || `Transcription failed (${response.status})`);
+      throw new Error(message);
+    }
+
+    return String(payload.transcript || "");
+  }
+
+  async transcribeAudioBlob(audioBlob, fileName = "audio", mimeType = "audio/mpeg") {
+    if (!audioBlob) throw new Error("audioBlob is required for transcription");
+
+    const base64Data = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = reject;
+      reader.readAsDataURL(audioBlob);
+    });
+    const base64String = base64Data.split(",")[1] || base64Data;
+
+    let response;
+    try {
+      response = await fetch(`${this._getLocalStorageServerBase()}/api/problems`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "transcribe-audio-bytes",
+          audioData: base64String,
+          fileName: String(fileName || "audio"),
+          mimeType: String(mimeType || "audio/mpeg")
+        })
+      });
+    } catch (error) {
+      const reason = error && error.message ? String(error.message) : "Network request failed";
+      throw new Error(`Cannot reach local storage server at ${this._getLocalStorageServerBase()}. Start data_storage_server.py first. (${reason})`);
+    }
+
+    let payload = {};
+    try {
+      payload = await response.json();
+    } catch {
+      payload = {};
+    }
+
+    if (!response.ok || payload.success !== true) {
+      const message = String(payload.error || `Transcription failed (${response.status})`);
+      throw new Error(message);
+    }
+
+    return String(payload.transcript || "");
+  }
+
+  async getTranscriptTextFromLocalServer(setId, partId = 1) {
+    if (!setId) return "";
+    const response = await fetch(
+      `${this._getLocalStorageServerBase()}/api/transcript/download/${encodeURIComponent(setId)}/${Number(partId || 1)}`,
+      { method: "GET" }
+    );
+    if (!response.ok) return "";
+    const payload = await response.json().catch(() => ({}));
+    return String(payload.transcript || "");
+  }
+
   /**
    * Delete audio object and URL index entry.
    * @param {string} setId

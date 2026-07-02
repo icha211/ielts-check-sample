@@ -15,10 +15,118 @@
 
     <div id="user-view" class="tab-content active">
         <div id="global-score-board"></div>
-        <header class="cbt-header">
-            <h2>Section 3: Reading Comprehension</h2>
-            <div class="timer" id="time">55:00</div>
+        <header class="cbt-header figma-header figma-header--listening">
+            <div class="logo-test-package-timer">
+                <img class="logo-frame-icon" src="../asst/icon/QuickCheckLogo.png" alt="">
+                <div class="test-package-timer">
+                    <div class="test-package-frame">
+                        <div class="structure-writing">Reading Comprehension</div>
+                        <div class="package-01-jan" id="header-package-label">Package 01 Jan</div>
+                    </div>
+                </div>
+            </div>
+            <div class="timer">
+                <div class="timer-header-parent">
+                    <img class="timer-header-icon" src="../asst/icon/timer-header.svg" alt="">
+                    <div class="div" id="time">55:00</div>
+                </div>
+            </div>
+            <div class="progressbar-final">
+                <div class="progress-bar-question">
+                    <div class="progress-bar-question-inner">
+                        <div class="progressbar-wrapper">
+                            <div class="progressbar">
+                                <div class="progressbar-child" id="progress-part-a"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="progress-bar-question-inner">
+                        <div class="progressbar-wrapper">
+                            <div class="progressbar">
+                                <div class="progressbar-child" id="progress-part-b"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="frame-parent">
+                        <div class="answered-030-wrapper">
+                            <div class="answered-030" id="answered-count-label">Answered 0/0</div>
+                        </div>
+                        <div class="progressbar-frame">
+                            <div class="progressbar">
+                                <div class="progressbar-child" id="progress-part-c"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="features">
+                    <button class="header-feature-btn nav-toggle-btn" type="button" id="fullscreen-btn" aria-label="Enter fullscreen" onclick="toggleFullScreenMode()">
+                        <i class="ph ph-frame-corners icon-regular" aria-hidden="true"></i>
+                        <i class="ph-fill ph-frame-corners icon-filled" aria-hidden="true"></i>
+                    </button>
+                    <button class="header-feature-btn nav-toggle-btn" type="button" id="toggle-navigator-btn" aria-label="Open test options" onclick="toggleFeaturesMenu(event)">
+                        <i class="ph ph-list icon-regular" aria-hidden="true"></i>
+                        <i class="ph-fill ph-list icon-filled" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+            <button class="submit-buttton submit-parent" id="submit-header-btn" type="button" onclick="submitAnswers()">
+                <div class="submit">Submit</div>
+                <img class="untouch-submiticon submit-icon" src="../asst/icon/untouch-submiticon.svg" alt="">
+            </button>
         </header>
+
+        <div class="features-overlay" id="features-overlay" aria-hidden="true">
+            <div class="features-panel" role="dialog" aria-modal="true" aria-labelledby="features-title">
+                <div class="features-panel__header">
+                    <div class="features-title" id="features-title">TEST OPTIONS</div>
+                    <button class="features-close" id="features-close-btn" type="button" aria-label="Close test options" onclick="setFeaturesMenuOpen(false)">
+                        <i class="ph ph-x" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <div class="features-panel__content">
+                    <div class="feature-quick-row">
+                        <div class="feature-card feature-card--dark">
+                            <div class="feature-label"><i class="ph ph-moon" aria-hidden="true"></i>Dark Mode</div>
+                            <div class="darkmode-toggle" aria-hidden="true">
+                                <div class="darkmode-toggle__option darkmode-toggle__option--light"><i class="ph ph-sun" aria-hidden="true"></i></div>
+                                <div class="darkmode-toggle__option darkmode-toggle__option--dark"><i class="ph ph-moon" aria-hidden="true"></i></div>
+                            </div>
+                        </div>
+
+                        <div class="feature-card feature-card--text-size">
+                            <div class="feature-label"><i class="ph ph-text-aa" aria-hidden="true"></i>Text Size</div>
+                            <div class="textsize-toggle" aria-hidden="true">
+                                <div class="textsize-toggle__option is-active">S</div>
+                                <div class="textsize-toggle__option">M</div>
+                                <div class="textsize-toggle__option">L</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-card feature-card--audio">
+                        <div class="feature-label"><i class="ph ph-speaker-high" aria-hidden="true"></i>Audio Volume</div>
+                        <div class="volume-control" aria-hidden="true">
+                            <button class="volume-control__btn" type="button" tabindex="-1"><i class="ph ph-minus" aria-hidden="true"></i></button>
+                            <div class="volume-control__track">
+                                <div class="volume-control__fill"></div>
+                            </div>
+                            <button class="volume-control__btn" type="button" tabindex="-1"><i class="ph ph-plus" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
+
+                    <button class="feature-link" type="button">
+                        <span class="feature-link__left"><i class="ph ph-book-open-text" aria-hidden="true"></i>Instruction</span>
+                        <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
+                    </button>
+
+                    <button class="feature-link feature-link--warn" type="button">
+                        <span class="feature-link__left"><i class="ph ph-warning-circle" aria-hidden="true"></i>Report an Issue</span>
+                        <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <div id="user-passages-container" style="display: flex; flex: 1; flex-direction: column; overflow: hidden;"></div>
 
@@ -56,6 +164,7 @@
         <div id="dev-panels-container"></div>
     </div>
 
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="toefl-storage-sync.js?v=20260506"></script>
     <script>
         const TOTAL_PASSAGES = 5; 
@@ -136,6 +245,62 @@
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 
+        async function resolveLatestSetRecord() {
+            try {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
+                    const records = await toeflStorage.getSetRecords();
+                    const latest = (records || [])
+                        .filter((item) => item && item.module === MODULE_ID)
+                        .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
+                    if (latest) return latest;
+                }
+            } catch (error) {
+                console.warn("[ToeflSync] latest-set lookup failed:", error);
+            }
+
+            const local = getStoredSetMap();
+            return Object.values(local)
+                .filter((item) => item && item.module === MODULE_ID)
+                .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
+        }
+
+        function clearSectionDraftInputs() {
+            for (let p = 1; p <= TOTAL_PASSAGES; p++) {
+                const titleEl = document.getElementById(`input-title-${p}`);
+                const passageEl = document.getElementById(`input-passage-${p}`);
+                const qEl = document.getElementById(`input-magic-questions-${p}`);
+                const aEl = document.getElementById(`input-answer-key-${p}`);
+                const eEl = document.getElementById(`input-explanation-${p}`);
+                if (titleEl) titleEl.value = "";
+                if (passageEl) passageEl.value = "";
+                if (qEl) qEl.value = "";
+                if (aEl) aEl.value = "";
+                if (eEl) eEl.value = "";
+            }
+        }
+
+        async function handleSetDateChange() {
+            const dateInput = document.getElementById("set-date");
+            const selectedDate = dateInput?.value;
+            if (!selectedDate) return;
+
+            const existing = await resolveSetRecordByDate(selectedDate).catch(() => null);
+            if (existing?.setId) {
+                currentSetId = existing.setId;
+                upsertLocalRecord(existing);
+                updateEditorUrl(currentSetId, selectedDate);
+                updateHeaderPackageLabel(selectedDate);
+                await loadSectionDraft();
+                updateUserView();
+                return;
+            }
+
+            currentSetId = "";
+            clearSectionDraftInputs();
+            await saveSectionMeta();
+            updateUserView();
+        }
+
         function saveSectionDraft() {
             const draft = { passages: {} };
             for (let p = 1; p <= TOTAL_PASSAGES; p++) {
@@ -192,13 +357,19 @@
             const params = new URLSearchParams(window.location.search);
             const requestedDate = params.get("setDate");
             currentSetId = params.get("setId") || "";
-            const isCreateMode = !currentSetId && isDeveloperMode();
             let stored = {};
-            if (!currentSetId && requestedDate && !isDeveloperMode()) {
+            if (!currentSetId && requestedDate) {
                 const byDate = await resolveSetRecordByDate(requestedDate);
                 if (byDate?.setId) {
                     currentSetId = byDate.setId;
                     stored = byDate;
+                }
+            }
+            if (!currentSetId && !requestedDate) {
+                const latest = await resolveLatestSetRecord();
+                if (latest?.setId) {
+                    currentSetId = latest.setId;
+                    stored = latest;
                 }
             }
             if (window.toeflStorage) {
@@ -209,24 +380,22 @@
                 } catch { /* fallback below */ }
             }
             if (!stored.setDate) {
-                if (isCreateMode) {
-                    stored = {};
-                } else {
-                    const local = getStoredSetMap();
-                    if (currentSetId && local[currentSetId]) {
-                        stored = local[currentSetId];
-                    }
+                const local = getStoredSetMap();
+                if (currentSetId && local[currentSetId]) {
+                    stored = local[currentSetId];
                 }
             }
             const today = new Date().toISOString().split("T")[0];
             dateInput.value = requestedDate || stored.setDate || today;
             difficultyInput.value = stored.difficulty || "intermediate";
+            updateHeaderPackageLabel(dateInput.value);
         }
 
         async function saveSectionMeta() {
             const dateInput = document.getElementById("set-date");
             const difficultyInput = document.getElementById("set-difficulty");
             const setDate = dateInput.value || new Date().toISOString().split("T")[0];
+            updateHeaderPackageLabel(setDate);
             const setId = ensureCurrentSetId(setDate);
             const record = {
                 setId,
@@ -245,6 +414,128 @@
                     console.warn("[ToeflSync] set save failed:", error);
                 }
             }
+        }
+
+        function updateHeaderPackageLabel(dateString) {
+            const label = document.getElementById("header-package-label");
+            if (!label) return;
+            if (!dateString) {
+                label.textContent = "Package";
+                return;
+            }
+            const date = new Date(dateString);
+            if (Number.isNaN(date.getTime())) {
+                label.textContent = "Package";
+                return;
+            }
+            const day = String(date.getDate()).padStart(2, "0");
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            label.textContent = `Package ${day} ${months[date.getMonth()]}`;
+        }
+
+        function updateHeaderProgress() {
+            const uids = Object.keys(globalQuestions || {});
+            const total = uids.length;
+            const answered = uids.reduce((count, uid) => {
+                const checked = document.querySelector(`input[name="q_${uid}"]:checked`);
+                return count + (checked ? 1 : 0);
+            }, 0);
+
+            const label = document.getElementById("answered-count-label");
+            if (label) label.textContent = `Answered ${answered}/${total}`;
+
+            const setBar = (id, done, all) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (!all) {
+                    el.style.width = "8px";
+                    return;
+                }
+                const width = Math.max(8, Math.round((done / all) * 146));
+                el.style.width = `${width}px`;
+            };
+
+            setBar("progress-part-a", answered, total);
+            setBar("progress-part-b", answered, total);
+            setBar("progress-part-c", answered, total);
+        }
+
+        function updateFullScreenButton() {
+            const fullScreenButton = document.getElementById("fullscreen-btn");
+            if (!fullScreenButton) return;
+            const isFullScreen = Boolean(document.fullscreenElement);
+            fullScreenButton.setAttribute("aria-label", isFullScreen ? "Exit full screen" : "Enter full screen");
+            fullScreenButton.classList.toggle("is-active", isFullScreen);
+        }
+
+        function handleFullScreenStateChange() {
+            updateFullScreenButton();
+        }
+
+        async function toggleFullScreenMode() {
+            try {
+                if (!document.fullscreenElement) {
+                    await document.documentElement.requestFullscreen();
+                } else {
+                    await document.exitFullscreen();
+                }
+            } catch (error) {
+                console.warn("[Fullscreen] Unable to toggle full screen:", error);
+            } finally {
+                handleFullScreenStateChange();
+            }
+        }
+
+        function setFeaturesMenuOpen(open) {
+            const overlay = document.getElementById("features-overlay");
+            const triggerButton = document.getElementById("toggle-navigator-btn");
+            if (!overlay) return;
+            const shouldOpen = Boolean(open);
+            overlay.classList.toggle("is-open", shouldOpen);
+            overlay.setAttribute("aria-hidden", shouldOpen ? "false" : "true");
+            if (triggerButton) triggerButton.classList.toggle("is-active", shouldOpen);
+        }
+
+        function toggleFeaturesMenu(event) {
+            if (event) event.stopPropagation();
+            const overlay = document.getElementById("features-overlay");
+            if (!overlay) return;
+            setFeaturesMenuOpen(!overlay.classList.contains("is-open"));
+        }
+
+        function handleFeaturesOverlayClick(event) {
+            if (event.target === event.currentTarget) {
+                setFeaturesMenuOpen(false);
+            }
+        }
+
+        function handleFeaturesMenuKeydown(event) {
+            if (event.key === "Escape") {
+                setFeaturesMenuOpen(false);
+            }
+        }
+
+        function positionListeningHeaderTimer() {
+            const header = document.querySelector(".figma-header--listening");
+            const timer = header ? header.querySelector(".timer") : null;
+            const packageFrame = header ? header.querySelector(".test-package-frame") : null;
+            const progressBlock = header ? header.querySelector(".progressbar-final") : null;
+            if (!header || !timer || !packageFrame || !progressBlock) return;
+
+            const packageRight = packageFrame.offsetLeft + packageFrame.offsetWidth;
+            const progressLeft = progressBlock.offsetLeft;
+            const timerWidth = timer.offsetWidth || 0;
+            const sidePadding = 16;
+
+            const targetCenterX = (packageRight + progressLeft) / 2;
+            const minCenterX = packageRight + (timerWidth / 2) + sidePadding;
+            const maxCenterX = progressLeft - (timerWidth / 2) - sidePadding;
+            const defaultCenterX = header.offsetWidth / 2;
+            const clampedCenterX = maxCenterX < minCenterX
+                ? defaultCenterX
+                : Math.min(Math.max(targetCenterX, minCenterX), maxCenterX);
+
+            timer.style.left = `${clampedCenterX}px`;
         }
 
         function initStructure() {
@@ -331,19 +622,16 @@
         }
 
         function isDeveloperMode() {
-            return window.location.hash === "#dev-view";
+            const params = new URLSearchParams(window.location.search);
+            return window.location.hash === "#dev-view" || params.get("mode") === "dev";
         }
 
         function applyViewMode() {
             if (isDeveloperMode()) return;
-            const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
-            if (devButton) devButton.remove();
-            const devView = document.getElementById("dev-view");
-            if (devView) devView.remove();
             const userButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'user-view'"));
+            if (userButton) userButton.remove();
             const userView = document.getElementById("user-view");
             if (userView) userView.classList.add("active");
-            if (userButton) userButton.classList.add("active");
         }
 
         function activateInitialTab() {
@@ -470,6 +758,7 @@
 
                 document.getElementById(`display-questions-${p}`).innerHTML = cleanHtml;
             }
+            updateHeaderProgress();
             startTimer();
         }
 
@@ -524,16 +813,43 @@
             }, 1000);
         }
 
+        function bindUserToolbarActions() {
+            const userContainer = document.getElementById("user-passages-container");
+            if (userContainer) {
+                userContainer.addEventListener("change", (event) => {
+                    const target = event.target;
+                    if (target && target.matches('input[type="radio"]')) {
+                        updateHeaderProgress();
+                    }
+                });
+            }
+        }
+
         window.onload = async () => {
             initStructure();
-            await loadSectionMeta();
-            await loadSectionDraft();
-            updateUserView();
             applyViewMode();
             activateInitialTab();
+            bindUserToolbarActions();
+            updateFullScreenButton();
+            document.addEventListener("fullscreenchange", handleFullScreenStateChange);
+            try {
+                await loadSectionMeta();
+                await loadSectionDraft();
+                updateUserView();
+            } catch (error) {
+                console.warn("[Init] Failed to fully restore section data:", error);
+            }
+            positionListeningHeaderTimer();
+            setTimeout(positionListeningHeaderTimer, 60);
+            const featuresOverlay = document.getElementById("features-overlay");
+            if (featuresOverlay) {
+                featuresOverlay.addEventListener("click", handleFeaturesOverlayClick);
+            }
+            document.addEventListener("keydown", handleFeaturesMenuKeydown);
+            window.addEventListener("resize", positionListeningHeaderTimer);
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
-            if (setDateEl) setDateEl.addEventListener("change", saveSectionMeta);
+            if (setDateEl) setDateEl.addEventListener("change", handleSetDateChange);
             if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
         };
     </script>
