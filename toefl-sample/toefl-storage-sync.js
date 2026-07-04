@@ -693,6 +693,11 @@ class ToeflStorageSync {
     return `http://${host}:${port}`;
   }
 
+  getAudioUrlFromLocalServer(setId, partId = 1) {
+    if (!setId) return "";
+    return `${this._getLocalStorageServerBase()}/api/audio/download/${encodeURIComponent(setId)}/${Number(partId || 1)}`;
+  }
+
   async transcribeAudioBySetPart(setId, partId = 1) {
     if (!setId) throw new Error("setId is required for transcription");
     let response;

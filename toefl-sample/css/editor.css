@@ -1219,6 +1219,23 @@ body {
     margin-right: auto;
 }
 
+/* Pin the waveform canvas display size. Without this, the canvas layout size
+   follows its width/height attributes, and the per-frame
+   `canvas.height = rect.height * devicePixelRatio` in renderWaveform() creates a
+   feedback loop on high-DPR displays (Windows 125%/150% scaling) that inflates
+   the canvas to millions of px, pushing the questions off-screen. */
+.audio-shell__visual {
+    position: relative;
+    width: 100%;
+    height: 82px;
+}
+
+.audio-wave-canvas {
+    display: block;
+    width: 100%;
+    height: 82px;
+}
+
 .navigator-card {
     background: transparent;
     border: none;

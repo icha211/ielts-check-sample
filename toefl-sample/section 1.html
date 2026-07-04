@@ -834,6 +834,87 @@
             });
         }
 
+        function resolveLatestLocalDraftV2ForModule(moduleId = MODULE_ID) {
+            const draftsMap = safeParse(localStorage.getItem("toefl_developer_drafts_v2"), {});
+            if (!draftsMap || typeof draftsMap !== "object") return null;
+
+            const candidates = Object.entries(draftsMap)
+                .map(([setId, draft]) => ({ setId, draft }))
+                .filter((entry) => entry && entry.setId && entry.draft && typeof entry.draft === "object")
+                .filter((entry) => {
+                    const draftModule = String(entry.draft.module || "").trim();
+                    const byModuleField = draftModule ? draftModule === moduleId : true;
+                    const bySetPrefix = String(entry.setId || "").startsWith(`${moduleId}_`);
+                    return (byModuleField || bySetPrefix) && hasListeningDraftContent(entry.draft);
+                })
+                .sort((left, right) => {
+                    const leftUpdated = new Date(left.draft?._updatedAt || 0).getTime();
+                    const rightUpdated = new Date(right.draft?._updatedAt || 0).getTime();
+                    if (rightUpdated !== leftUpdated) return rightUpdated - leftUpdated;
+                    const leftStamp = Number(String(left.setId).split("_")[2] || 0);
+                    const rightStamp = Number(String(right.setId).split("_")[2] || 0);
+                    return rightStamp - leftStamp;
+                });
+
+            return candidates[0] || null;
+        }
+
+        function applyDraftToEditorInputs(draft) {
+            if (!draft || typeof draft !== "object" || !draft.parts) return;
+
+            PARTS.forEach((part) => {
+                const p = part.id;
+                const row = draft.parts[p] || {};
+                const questionsElement = document.getElementById(`input-magic-questions-${p}`);
+                const answerElement = document.getElementById(`input-answer-key-${p}`);
+                const explanationElement = document.getElementById(`input-explanation-${p}`);
+                const transcriptElement = document.getElementById(`input-transcript-${p}`);
+
+                // Never wipe existing editor content with empty remote/local fields.
+                const questionValue = typeof row.questions === "string" ? row.questions : "";
+                const answerValue = typeof row.answerKey === "string" ? row.answerKey : "";
+                const explanationValue = typeof row.explanation === "string" ? row.explanation : "";
+                const transcriptValue = typeof row.transcript === "string" ? row.transcript : "";
+
+                if (questionsElement && (questionValue.trim() || !String(questionsElement.value || "").trim())) {
+                    questionsElement.value = questionValue;
+                }
+                if (answerElement && (answerValue.trim() || !String(answerElement.value || "").trim())) {
+                    answerElement.value = answerValue;
+                }
+                if (explanationElement && (explanationValue.trim() || !String(explanationElement.value || "").trim())) {
+                    explanationElement.value = explanationValue;
+                }
+                if (transcriptElement && (transcriptValue.trim() || !String(transcriptElement.value || "").trim())) {
+                    transcriptElement.value = transcriptValue;
+                }
+            });
+        }
+
+        function hasEditorQuestionOrAnswerContent() {
+            return PARTS.some((part) => {
+                const p = part.id;
+                const questionValue = String((document.getElementById(`input-magic-questions-${p}`) || {}).value || "").trim();
+                const answerValue = String((document.getElementById(`input-answer-key-${p}`) || {}).value || "").trim();
+                return Boolean(questionValue || answerValue);
+            });
+        }
+
+        function hydrateEditorInputsFromLocalDraftIfEmpty() {
+            if (hasEditorQuestionOrAnswerContent()) return;
+
+            const directLocal = safeParse(localStorage.getItem(DRAFT_KEY), {});
+            if (hasListeningDraftContent(directLocal)) {
+                applyDraftToEditorInputs(directLocal);
+                if (hasEditorQuestionOrAnswerContent()) return;
+            }
+
+            const latestV2 = resolveLatestLocalDraftV2ForModule(MODULE_ID);
+            if (latestV2 && hasListeningDraftContent(latestV2.draft)) {
+                applyDraftToEditorInputs(latestV2.draft);
+            }
+        }
+
         async function resolveLatestUserSetRecord() {
             const latestAudio = await getLatestAudioRecordForModule().catch(() => null);
             if (latestAudio?.setId) {
@@ -1625,29 +1706,32 @@
         }
 
         async function loadSectionDraft() {
-            if (!currentSetId) return;
             let draft = {};
-            if (window.toeflStorage) {
+            if (currentSetId && window.toeflStorage) {
                 try {
                     draft = await toeflStorage.getDraftBySetId(currentSetId);
                 } catch {
                     draft = {};
                 }
             }
-            if (!draft || typeof draft !== "object" || !draft.parts) return;
 
-            PARTS.forEach((part) => {
-                const p = part.id;
-                const row = draft.parts[p] || {};
-                const questionsElement = document.getElementById(`input-magic-questions-${p}`);
-                const answerElement = document.getElementById(`input-answer-key-${p}`);
-                const explanationElement = document.getElementById(`input-explanation-${p}`);
-                const transcriptElement = document.getElementById(`input-transcript-${p}`);
-                if (questionsElement && typeof row.questions === "string") questionsElement.value = row.questions;
-                if (answerElement && typeof row.answerKey === "string") answerElement.value = row.answerKey;
-                if (explanationElement && typeof row.explanation === "string") explanationElement.value = row.explanation;
-                if (transcriptElement && typeof row.transcript === "string") transcriptElement.value = row.transcript;
-            });
+            // Fallback 1: local V1 draft cache used by the editor save flow.
+            if (!hasListeningDraftContent(draft)) {
+                draft = safeParse(localStorage.getItem(DRAFT_KEY), {});
+            }
+
+            // Fallback 2: legacy module-scoped draft from Firebase/local cache.
+            if (!hasListeningDraftContent(draft) && window.toeflStorage && typeof toeflStorage.getDraft === "function") {
+                try {
+                    draft = await toeflStorage.getDraft("listening");
+                } catch {
+                    draft = draft || {};
+                }
+            }
+
+            if (!draft || typeof draft !== "object" || !draft.parts) return;
+            if (!hasListeningDraftContent(draft)) return;
+            applyDraftToEditorInputs(draft);
         }
 
         async function loadSectionMeta() {
@@ -1685,6 +1769,18 @@
                 }
             }
 
+            // Minimal fallback: if setId is still unknown, use latest set from Developer draft map.
+            if (!currentSetId) {
+                const draftEntry = resolveLatestLocalDraftV2ForModule(MODULE_ID);
+                if (draftEntry?.setId) {
+                    currentSetId = String(draftEntry.setId);
+                    const parsedDate = String(currentSetId).split("_")[1] || "";
+                    if (!stored.setDate && /^\d{4}-\d{2}-\d{2}$/.test(parsedDate)) {
+                        stored.setDate = parsedDate;
+                    }
+                }
+            }
+
             if (window.toeflStorage) {
                 try {
                     if (currentSetId && typeof toeflStorage.getSetRecordById === "function") {
@@ -1707,8 +1803,16 @@
             if (dateInput) dateInput.value = effectiveDate;
             if (difficultyInput) difficultyInput.value = stored.difficulty || "intermediate";
             updatePackageLabel(effectiveDate);
-            await restoreAudioForCurrentSet(activePartId || 1);
-            await refreshAudioLabelsForCurrentSet();
+            try {
+                await restoreAudioForCurrentSet(activePartId || 1);
+            } catch (error) {
+                console.warn("[AudioPersistence] restore during meta load failed:", error);
+            }
+            try {
+                await refreshAudioLabelsForCurrentSet();
+            } catch (error) {
+                console.warn("[AudioPersistence] label refresh during meta load failed:", error);
+            }
         }
 
         async function saveSectionMeta() {
@@ -2272,6 +2376,8 @@
         }
 
         function updateUserView(shouldSaveMeta = false) {
+            hydrateEditorInputsFromLocalDraftIfEmpty();
+
             if (shouldSaveMeta) {
                 saveSectionMeta();
                 saveSectionDraft();
@@ -2315,7 +2421,10 @@
 
                 for (let index = 0; index < lines.length; index += 1) {
                     const rawLine = lines[index].trim();
-                    const questionMatch = rawLine.match(/^(\d+)[\.\)]?\s*(.*)/);
+                    let questionMatch = rawLine.match(/^question\s*(\d+)\s*[:.)-]?\s*(.*)$/i);
+                    if (!questionMatch) {
+                        questionMatch = rawLine.match(/^(\d+)[\.)]\s*(.*)$/);
+                    }
                     if (questionMatch && (!currentBlock || currentBlock.lines.length >= 4)) {
                         if (currentBlock) blocks.push(currentBlock);
                         currentBlock = { num: questionMatch[1], text: questionMatch[2], lines: [] };
@@ -2325,20 +2434,101 @@
                 }
                 if (currentBlock) blocks.push(currentBlock);
 
+                // If question text is unavailable, derive question numbers from answer key as fallback.
+                if (!blocks.length) {
+                    const answerLines = String(answerKeyElement.value || "").split("\n");
+                    answerLines.forEach((line) => {
+                        const keyMatch = String(line || "").trim().match(/^(\d+)[\.\)]?\s+([a-d])/i);
+                        if (!keyMatch) return;
+                        blocks.push({
+                            num: keyMatch[1],
+                            text: `Question ${keyMatch[1]}`,
+                            lines: ["(A) Option A", "(B) Option B", "(C) Option C", "(D) Option D"]
+                        });
+                    });
+                }
+
                 const letters = ["A", "B", "C", "D"];
                 let cleanHtml = "";
 
                 blocks.forEach((block) => {
                     const questionNumber = block.num;
                     const uid = `${p}_${questionNumber}`;
-                    const questionText = escapeHtml((block.text || "").trim());
-                    const options = block.lines.slice(-4);
+                    const allBodyLines = Array.isArray(block.lines) ? block.lines : [];
+                    let optionStart = -1;
+                    const optionLinePattern = /^[\(\[]?\s*[A-D][\)\].:-]?\s+.+/i;
+                    for (let i = 0; i < allBodyLines.length; i += 1) {
+                        const chunk = allBodyLines.slice(i, i + 4);
+                        if (chunk.length < 4) break;
+                        const labels = ["A", "B", "C", "D"];
+                        const isOptionChunk = chunk.every((line, idx) => {
+                            const text = String(line || "").trim();
+                            if (!optionLinePattern.test(text)) return false;
+                            return new RegExp(`^[\\(\\[]?\\s*${labels[idx]}[\\)\\].:-]?\\s+`, "i").test(text);
+                        });
+                        if (isOptionChunk) {
+                            optionStart = i;
+                            break;
+                        }
+                    }
+
+                    let options = [];
+                    let promptLines = allBodyLines;
+                    if (optionStart >= 0) {
+                        options = allBodyLines.slice(optionStart, optionStart + 4);
+                        promptLines = allBodyLines.slice(0, optionStart);
+                    }
+
+                    if (!options.length) {
+                        options = [
+                            "(A) Option A",
+                            "(B) Option B",
+                            "(C) Option C",
+                            "(D) Option D"
+                        ];
+                    }
+
+                    function normalizePromptLine(raw) {
+                        const text = String(raw || "").trim();
+                        if (!text) return "";
+                        const speakerMatch = text.match(/^(?:Man|Woman|Narrator|Narr)\s*:\s*(.+)$/i);
+                        return String((speakerMatch ? speakerMatch[1] : text) || "").trim();
+                    }
+
+                    function pickQuestionPrompt(blockText, lines) {
+                        const blockLine = normalizePromptLine(blockText);
+                        const normalizedLines = (lines || []).map(normalizePromptLine).filter(Boolean);
+
+                        // 1) Prefer Narrator/Narr question line.
+                        for (let i = (lines || []).length - 1; i >= 0; i -= 1) {
+                            const raw = String(lines[i] || "").trim();
+                            const narr = raw.match(/^(?:Narrator|Narr)\s*:\s*(.+)$/i);
+                            if (narr && /\?$/.test(String(narr[1] || "").trim())) {
+                                return String(narr[1] || "").trim();
+                            }
+                        }
+
+                        // 2) Otherwise use last line ending with a question mark.
+                        for (let i = normalizedLines.length - 1; i >= 0; i -= 1) {
+                            if (/\?$/.test(normalizedLines[i])) return normalizedLines[i];
+                        }
+
+                        // 3) If heading text itself is a question, use it.
+                        if (/\?$/.test(blockLine)) return blockLine;
+
+                        // 4) Fallback to a neutral label.
+                        return `Question ${questionNumber}`;
+                    }
+
+                    const promptText = pickQuestionPrompt(block.text, promptLines);
+                    const questionText = escapeHtml(promptText);
+                    const showQuestionTitle = Number(p) !== 1;
                     questionOrder.push(uid);
 
                     cleanHtml += `<article class="question-item" id="q-container-${uid}" data-uid="${uid}">`;
                     cleanHtml += `<div class="question-number-badge">${questionNumber}</div>`;
                     cleanHtml += `<div class="question-content">`;
-                    if (questionText !== "") cleanHtml += `<h4 class="question-title">${questionText}</h4>`;
+                    if (showQuestionTitle && questionText !== "") cleanHtml += `<h4 class="question-title">${questionText}</h4>`;
                     cleanHtml += `<div class="radio-group">`;
 
                     options.forEach((optLine, index) => {
@@ -2354,11 +2544,26 @@
                     options.forEach((optLine, index) => {
                         qOpts[letters[index]] = optLine.replace(/^[\(]?([A-D])[\.\)]?\s*/i, "");
                     });
-                    globalQuestions[uid] = { questionText: block.text.trim() || `Question ${questionNumber}`, options: qOpts };
+                    globalQuestions[uid] = { questionText: promptText || `Question ${questionNumber}`, options: qOpts };
                 });
 
                 displayElement.innerHTML = cleanHtml;
             });
+
+            if (!questionOrder.length) {
+                const firstPartHost = document.getElementById("display-questions-1");
+                if (firstPartHost) {
+                    firstPartHost.innerHTML = `
+                        <article class="question-item" style="border:1px dashed #cbd5e1; background:#f8fafc;">
+                            <div class="question-content">
+                                <h4 class="question-title">No question set loaded yet</h4>
+                                <div style="font-size:14px; color:#475569; line-height:1.6;">
+                                    Open Developer mode, choose the correct package date, then ensure Question Input and Answer Key are saved for this set.
+                                </div>
+                            </div>
+                        </article>`;
+                }
+            }
 
             if (!PARTS.find((part) => part.id === activePartId)) {
                 activePartId = 1;
@@ -2509,12 +2714,20 @@
             updateFullScreenButton();
             document.addEventListener("fullscreenchange", handleFullScreenStateChange);
             window.addEventListener("resize", applyFigmaFrameScale);
+            // Fast first paint: render questions from locally stored draft data
+            // before the slower remote meta/audio restore runs, so the exam view
+            // is never blank while awaiting network calls that may fail/time out.
+            hydrateEditorInputsFromLocalDraftIfEmpty();
+            updateUserView(false);
             try {
                 await loadSectionMeta();
                 await loadSectionDraft();
-                updateUserView();
             } catch (error) {
                 console.warn("[Init] Failed to fully restore section data:", error);
+            } finally {
+                // Always render question cards from available draft/input data,
+                // even if non-critical startup steps (e.g. audio restore) fail.
+                updateUserView();
             }
             positionListeningHeaderTimer();
             setTimeout(positionListeningHeaderTimer, 60);

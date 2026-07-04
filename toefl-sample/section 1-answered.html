@@ -13,7 +13,7 @@
                 <img class="frame-child" src="../asset/icon/logo.png" alt="QuickCheck logo">
                 <div class="listening-comprehension-parent">
                     <div class="listening-comprehension">Listening Comprehension</div>
-                    <div class="package-01-jan">Package 01 Jan</div>
+                    <div class="package-01-jan" id="reviewPackageLabel">Package 01 Jan</div>
                 </div>
             </div>
             <div class="header-main">
@@ -222,6 +222,7 @@
         var reviewSetId = '';
         var reviewSetDate = '';
         var reviewCurrentAudioKey = '';
+        var reviewCurrentPartId = 1;
         var reviewAudioObjectUrl = null;
         var reviewTranscriptMapByPart = { 1: {}, 2: {}, 3: {} };
         var reviewDetailSteps = [];
@@ -261,6 +262,25 @@
             var parsed = new Date(raw);
             if (isNaN(parsed.getTime())) return '';
             return parsed.toISOString().slice(0, 10);
+        }
+
+        function formatReviewPackageLabel(dateValue) {
+            var normalized = normalizeDateKey(dateValue);
+            if (!normalized) return 'Package 01 Jan';
+            var parsedDate = new Date(normalized + 'T00:00:00');
+            if (isNaN(parsedDate.getTime())) return 'Package ' + normalized;
+
+            var day = String(parsedDate.getDate()).padStart(2, '0');
+            var monthName = parsedDate.toLocaleString('id-ID', { month: 'long' }) || '';
+            if (!monthName) monthName = parsedDate.toLocaleString('en-US', { month: 'short' }) || 'Jan';
+            monthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+            return 'Package ' + day + ' ' + monthName;
+        }
+
+        function renderReviewPackageLabel(dateValue) {
+            var labelEl = document.getElementById('reviewPackageLabel');
+            if (!labelEl) return;
+            labelEl.textContent = formatReviewPackageLabel(dateValue);
         }
 
         async function getSetRecordsSafe() {
@@ -446,6 +466,24 @@
             reviewAudio.addEventListener('timeupdate', onReviewTimeUpdate);
             reviewAudio.addEventListener('loadedmetadata', onReviewMetadata);
             reviewAudio.addEventListener('ended', onReviewEnded);
+            reviewAudio.addEventListener('error', function() {
+                if (!window.toeflStorage || !reviewSetId || typeof window.toeflStorage.getAudioUrlFromLocalServer !== 'function') {
+                    setAudioStatus('Audio source failed to load');
+                    return;
+                }
+
+                var fallbackUrl = window.toeflStorage.getAudioUrlFromLocalServer(reviewSetId, reviewCurrentPartId || 1);
+                if (!fallbackUrl || (reviewAudio && reviewAudio.src === fallbackUrl)) {
+                    setAudioStatus('Audio source failed to load');
+                    return;
+                }
+
+                setReviewAudioSource(
+                    fallbackUrl,
+                    'Recovered from local server',
+                    String(reviewSetId || '') + '_part_' + String(reviewCurrentPartId || 1) + '_local-retry'
+                );
+            });
             reviewAudio.addEventListener('play',  updatePlayPauseIcon);
             reviewAudio.addEventListener('pause', updatePlayPauseIcon);
 
@@ -547,6 +585,7 @@
 
         async function loadAudioForPart(partId) {
             if (!reviewAudio) return;
+            reviewCurrentPartId = Number(partId || 1) || 1;
             var key = String(reviewSetId || '') + '_part_' + String(partId || 1);
             if (reviewCurrentAudioKey === key && reviewAudio.src) return;
 
@@ -585,6 +624,14 @@
                             return;
                         }
                     } catch (_) {}
+                }
+            }
+
+            if (window.toeflStorage && reviewSetId && typeof window.toeflStorage.getAudioUrlFromLocalServer === 'function') {
+                var localServerUrl = window.toeflStorage.getAudioUrlFromLocalServer(reviewSetId, partId);
+                if (localServerUrl) {
+                    setReviewAudioSource(localServerUrl, 'Ready from local server', key + '_local');
+                    return;
                 }
             }
 
@@ -1750,8 +1797,10 @@
                 return Number(a.number || 0) - Number(b.number || 0);
             });
             reviewResultData = result;
-            reviewSetDate = String(result.setDate || '');
+            var params = new URLSearchParams(window.location.search || '');
+            reviewSetDate = String(result.setDate || params.get('setDate') || '');
             reviewSetId = await resolveReviewSetId(result);
+            renderReviewPackageLabel(reviewSetDate);
             if (reviewSetId && (!result.setId || String(result.setId) !== reviewSetId)) {
                 result.setId = reviewSetId;
                 try { localStorage.setItem('toefl_section1_result', JSON.stringify(result)); } catch (_) {}
