@@ -1224,16 +1224,147 @@ body {
    `canvas.height = rect.height * devicePixelRatio` in renderWaveform() creates a
    feedback loop on high-DPR displays (Windows 125%/150% scaling) that inflates
    the canvas to millions of px, pushing the questions off-screen. */
+.audio-shell {
+    box-shadow: 0 4px 8px rgba(0, 53, 96, 0.18);
+    border-radius: 12px;
+    background: var(--navy, #003560);
+    color: #ffffff;
+    padding: 20px 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.audio-shell__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.audio-shell__title {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.4;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #ffffff;
+}
+
+.audio-shell__duration {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.55);
+    letter-spacing: 0.06em;
+    flex: 0 0 auto;
+}
+
 .audio-shell__visual {
     position: relative;
     width: 100%;
     height: 82px;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
 }
 
 .audio-wave-canvas {
     display: block;
     width: 100%;
-    height: 82px;
+    height: 100%;
+}
+
+.audio-progress-track {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.14);
+    border-radius: 4px;
+}
+
+.audio-progress-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--sky, #0EA5E9), var(--teal, #14B8A6));
+    border-radius: 4px;
+    pointer-events: none;
+    transition: width 0.1s linear;
+}
+
+.audio-progress-knob {
+    position: absolute;
+    top: 50%;
+    left: 0%;
+    transform: translate(-50%, -50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.audio-shell__time {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.06em;
+    margin-top: -6px;
+}
+
+.audio-shell__transport {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+}
+
+.audio-transport-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.82;
+    transition: opacity 0.18s, transform 0.12s;
+    color: #ffffff;
+}
+
+.audio-transport-btn:hover { opacity: 1; transform: scale(1.1); }
+.audio-transport-btn:active { transform: scale(0.95); }
+
+.audio-transport-btn svg { display: block; fill: currentColor; }
+
+.audio-transport-btn.skip-label {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    flex-direction: column;
+    gap: 1px;
+}
+
+.audio-transport-btn.big img {
+    width: 44px;
+    height: 44px;
+    display: block;
+}
+
+.audio-shell__status {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.35);
+    text-align: center;
+    margin: -4px 0 0;
 }
 
 .navigator-card {
