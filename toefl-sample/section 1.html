@@ -30,7 +30,7 @@
                 </div>
                 <div class="timer">
                     <div class="timer-header-parent">
-                        <img class="timer-header-icon" src="../asst/icon/timer-header.svg" alt="">
+                        <i class="ph ph-clock timer-header-icon" aria-hidden="true"></i>
                         <div class="div" id="time">35:00</div>
                     </div>
                 </div>
@@ -64,7 +64,7 @@
                         </button>
                     </div>
                 </div>
-                <button class="submit-buttton" id="submit-header-btn" type="button" onclick="goToNextSection()">
+                <button class="submit-buttton" id="submit-header-btn" type="button" onclick="submitFromHeader()">
                     <div class="submit">Submit</div>
                     <i class="ph ph-paper-plane-right submit-icon icon-regular" aria-hidden="true"></i>
                     <i class="ph-fill ph-paper-plane-right submit-icon icon-filled" aria-hidden="true"></i>
@@ -85,18 +85,20 @@
                         <div class="feature-quick-row">
                             <div class="feature-card feature-card--dark">
                                 <div class="feature-label"><i class="ph ph-moon" aria-hidden="true"></i>Dark Mode</div>
-                                <div class="darkmode-toggle" aria-hidden="true">
-                                    <div class="darkmode-toggle__option darkmode-toggle__option--light"><i class="ph ph-sun" aria-hidden="true"></i></div>
-                                    <div class="darkmode-toggle__option darkmode-toggle__option--dark"><i class="ph ph-moon" aria-hidden="true"></i></div>
-                                </div>
+                                <button class="darkmode-toggle" type="button" id="darkmode-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode" onclick="toggleDarkMode()">
+                                    <span class="darkmode-toggle__thumb" aria-hidden="true"></span>
+                                    <span class="darkmode-toggle__option darkmode-toggle__option--light"><i class="ph ph-sun" aria-hidden="true"></i></span>
+                                    <span class="darkmode-toggle__option darkmode-toggle__option--dark"><i class="ph ph-moon" aria-hidden="true"></i></span>
+                                </button>
                             </div>
 
                             <div class="feature-card feature-card--text-size">
                                 <div class="feature-label"><i class="ph ph-text-aa" aria-hidden="true"></i>Text Size</div>
-                                <div class="textsize-toggle" aria-hidden="true">
-                                    <div class="textsize-toggle__option is-active">S</div>
-                                    <div class="textsize-toggle__option">M</div>
-                                    <div class="textsize-toggle__option">L</div>
+                                <div class="textsize-toggle" id="textsize-toggle" data-size="s" role="radiogroup" aria-label="Text size">
+                                    <span class="textsize-toggle__thumb" aria-hidden="true"></span>
+                                    <button class="textsize-toggle__option is-active" type="button" role="radio" aria-checked="true" data-size="s" onclick="setTextSize('s')">S</button>
+                                    <button class="textsize-toggle__option" type="button" role="radio" aria-checked="false" data-size="m" onclick="setTextSize('m')">M</button>
+                                    <button class="textsize-toggle__option" type="button" role="radio" aria-checked="false" data-size="l" onclick="setTextSize('l')">L</button>
                                 </div>
                             </div>
                         </div>
@@ -307,6 +309,8 @@
         const MODULE_LABEL = "Listening";
         const ONBOARDING_KEY_BASE = "toefl_section1_onboarding_seen_v1";
         const DRAFT_KEY = "toefl_section1_dev_draft_v1";
+        const DARK_MODE_KEY = "toefl_section1_dark_mode_v1";
+        const TEXT_SIZE_KEY = "toefl_section1_text_size_v1";
         const ZOOM_KEY = "toefl_section1_zoom_v1";
         const FLAG_KEY = "toefl_section1_flagged_questions_v1";
         const AUDIO_DB_NAME = "toefl_listening_audio_db_v1";
@@ -1153,6 +1157,74 @@
             }
         }
 
+        function applyDarkMode(enabled) {
+            const userView = document.getElementById("user-view");
+            const toggle = document.getElementById("darkmode-toggle");
+            if (userView) userView.classList.toggle("is-dark", enabled);
+            if (toggle) {
+                toggle.classList.toggle("is-dark", enabled);
+                toggle.setAttribute("aria-checked", enabled ? "true" : "false");
+            }
+            const timerElement = document.getElementById("time");
+            if (timerElement && timerElement.style.color !== "rgb(211, 47, 47)") {
+                timerElement.style.color = enabled ? "#E0F2FE" : "#005faa";
+            }
+        }
+
+        function setDarkMode(enabled) {
+            applyDarkMode(enabled);
+            try {
+                localStorage.setItem(DARK_MODE_KEY, enabled ? "1" : "0");
+            } catch (_) {}
+        }
+
+        function toggleDarkMode() {
+            const userView = document.getElementById("user-view");
+            const isDark = userView ? userView.classList.contains("is-dark") : false;
+            setDarkMode(!isDark);
+        }
+
+        function initDarkMode() {
+            let enabled = false;
+            try {
+                enabled = localStorage.getItem(DARK_MODE_KEY) === "1";
+            } catch (_) {}
+            applyDarkMode(enabled);
+        }
+
+        function applyTextSize(size) {
+            const normalized = ["s", "m", "l"].includes(size) ? size : "s";
+            const userView = document.getElementById("user-view");
+            const toggle = document.getElementById("textsize-toggle");
+            if (userView) {
+                userView.classList.remove("textsize-s", "textsize-m", "textsize-l");
+                userView.classList.add(`textsize-${normalized}`);
+            }
+            if (toggle) {
+                toggle.setAttribute("data-size", normalized);
+                toggle.querySelectorAll(".textsize-toggle__option").forEach((option) => {
+                    const isActive = option.getAttribute("data-size") === normalized;
+                    option.classList.toggle("is-active", isActive);
+                    option.setAttribute("aria-checked", isActive ? "true" : "false");
+                });
+            }
+        }
+
+        function setTextSize(size) {
+            applyTextSize(size);
+            try {
+                localStorage.setItem(TEXT_SIZE_KEY, size);
+            } catch (_) {}
+        }
+
+        function initTextSize() {
+            let size = "s";
+            try {
+                size = localStorage.getItem(TEXT_SIZE_KEY) || "s";
+            } catch (_) {}
+            applyTextSize(size);
+        }
+
         function toggleFeaturesMenu(event) {
             if (event) event.stopPropagation();
             const overlay = document.getElementById("features-overlay");
@@ -1504,61 +1576,6 @@
             updateAudioShellStatus();
         }
 
-        function formatAudioClock(seconds) {
-            const total = Math.max(0, Math.floor(Number(seconds) || 0));
-            const mins = Math.floor(total / 60);
-            const secs = total % 60;
-            return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
-        }
-
-        function updateExamAudioProgressUI() {
-            const audio = document.getElementById("cbt-audio-player");
-            if (!audio) return;
-            const duration = isFinite(audio.duration) ? audio.duration : 0;
-            const current = Math.max(0, audio.currentTime || 0);
-            const remaining = Math.max(0, duration - current);
-            const pct = duration > 0 ? Math.min(100, Math.max(0, (current / duration) * 100)) : 0;
-
-            const curEl = document.getElementById("audio-cur-time");
-            const remEl = document.getElementById("audio-rem-time");
-            const durEl = document.getElementById("audio-total-dur");
-            const fillEl = document.getElementById("audio-progress-fill");
-            if (curEl) curEl.textContent = formatAudioClock(current);
-            if (remEl) remEl.textContent = "-" + formatAudioClock(remaining);
-            if (durEl) durEl.textContent = duration > 0 ? formatAudioClock(duration) : "--:--";
-            if (fillEl) fillEl.style.width = pct + "%";
-        }
-
-        function examAudioStop() {
-            const audio = document.getElementById("cbt-audio-player");
-            if (!audio) return;
-            audio.pause();
-            audio.currentTime = 0;
-            updateAudioShellStatus();
-            updateExamAudioProgressUI();
-            startWaveformRenderer();
-        }
-
-        function examAudioSeekRel(delta) {
-            const audio = document.getElementById("cbt-audio-player");
-            if (!audio || !isFinite(audio.duration)) return;
-            audio.currentTime = Math.max(0, Math.min(audio.duration, (audio.currentTime || 0) + Number(delta || 0)));
-            updateExamAudioProgressUI();
-            startWaveformRenderer();
-        }
-
-        function examAudioSeekFromEvent(event) {
-            const audio = document.getElementById("cbt-audio-player");
-            const visual = document.getElementById("audio-visual-trigger");
-            if (!audio || !visual || !isFinite(audio.duration) || audio.duration <= 0) return;
-            const rect = visual.getBoundingClientRect();
-            if (rect.width <= 0) return;
-            const pct = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-            audio.currentTime = pct * audio.duration;
-            updateExamAudioProgressUI();
-            startWaveformRenderer();
-        }
-
         function setupAudioInteractions() {
             const audio = document.getElementById("cbt-audio-player");
             const visual = document.getElementById("audio-visual-trigger");
@@ -1694,6 +1711,10 @@
             submitAnswers();
         }
 
+        function submitFromHeader() {
+            submitAnswers();
+        }
+
         function updateNextSectionButtonState() {
             const nextSectionButton = document.getElementById("btn-next-section");
             const headerSubmitButton = document.getElementById("submit-header-btn");
@@ -1712,9 +1733,9 @@
             }
 
             if (headerSubmitButton) {
-                headerSubmitButton.disabled = !canProceed;
-                headerSubmitButton.style.opacity = canProceed ? "1" : "0.5";
-                headerSubmitButton.style.cursor = canProceed ? "pointer" : "not-allowed";
+                headerSubmitButton.disabled = false;
+                headerSubmitButton.style.opacity = "1";
+                headerSubmitButton.style.cursor = "pointer";
                 const labelElement = headerSubmitButton.querySelector(".submit");
                 if (labelElement) labelElement.textContent = headerButtonLabel;
             }
@@ -2617,7 +2638,7 @@
 
                     const promptText = pickQuestionPrompt(block.text, promptLines);
                     const questionText = escapeHtml(promptText);
-                    const showQuestionTitle = Number(p) !== 1;
+                    const showQuestionTitle = false;
                     questionOrder.push(uid);
 
                     cleanHtml += `<article class="question-item" id="q-container-${uid}" data-uid="${uid}">`;
@@ -2747,7 +2768,9 @@
             clearInterval(timerInterval);
             const timerElement = document.getElementById("time");
             if (timerElement) {
-                timerElement.style.color = "#005faa";
+                const isDark = document.getElementById("user-view") &&
+                    document.getElementById("user-view").classList.contains("is-dark");
+                timerElement.style.color = isDark ? "#E0F2FE" : "#005faa";
                 timerElement.style.animation = "none";
             }
             timerInterval = setInterval(() => {
@@ -2805,6 +2828,8 @@
             applyViewMode();
             activateInitialTab();
             initZoom();
+            initDarkMode();
+            initTextSize();
             applyFigmaFrameScale();
             updateFullScreenButton();
             document.addEventListener("fullscreenchange", handleFullScreenStateChange);

@@ -1115,7 +1115,7 @@
                 + '<div class="frame-parent21">'
                     + '<div class="frame-parent24">'
                         + '<div class="b-parent"><div class="a">(' + escapeHtml(letter) + ')</div><div class="a">' + escapeHtml(text||'') + '</div></div>'
-                        + '<div class="frame-wrapper4"><div>INCORRECT</div><img class="vector-icon12" src="../asst/icon/issue.svg" alt="âœ—" style="width:13px;height:13px;"></div>'
+                        + '<div class="frame-wrapper4"><div>INCORRECT</div><span class="incorrect-square" aria-hidden="true"></span></div>'
                     + '</div>'
                     + '<div class="this-option-makes-the-mistake-wrapper"><div class="this-option-makes">' + renderQuotedHighlights(reason||"This option does not match the speaker's intent.") + '</div></div>'
                 + '</div>'
@@ -1682,7 +1682,15 @@
             var wrongReason = explanation.wrongReason || "This option does not match the speaker's intent in the transcript.";
 
             document.getElementById('reviewQuestionNumber').textContent = String(q.number||'-');
-            document.getElementById('reviewQuestionText').textContent   = q.questionText || '(No question text)';
+            var reviewQuestionTextEl = document.getElementById('reviewQuestionText');
+            var reviewPartId = inferPartIdFromQuestion(q);
+            if (reviewPartId === 2 || reviewPartId === 3) {
+                reviewQuestionTextEl.textContent = '';
+                reviewQuestionTextEl.style.display = 'none';
+            } else {
+                reviewQuestionTextEl.textContent = q.questionText || '(No question text)';
+                reviewQuestionTextEl.style.display = '';
+            }
             document.getElementById('reviewStatusText').textContent     = isCorrect ? 'CORRECT' : 'INCORRECT';
             document.getElementById('reviewStatusText').style.color     = isCorrect ? '#0d9488' : '#dc2626';
             document.getElementById('detailSub').textContent            = 'Why ' + (correctLtr||'B') + ' is correct? Proof Transcribe';

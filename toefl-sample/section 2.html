@@ -30,7 +30,7 @@
             </div>
             <div class="timer">
                 <div class="timer-header-parent">
-                    <img class="timer-header-icon" src="../asst/icon/timer-header.svg" alt="">
+                    <i class="ph ph-clock timer-header-icon" aria-hidden="true"></i>
                     <div class="div" id="time">25:00</div>
                 </div>
             </div>
@@ -43,20 +43,13 @@
                             </div>
                         </div>
                     </div>
-                    <div class="progress-bar-question-inner">
-                        <div class="progressbar-wrapper">
-                            <div class="progressbar">
-                                <div class="progressbar-child" id="progress-part-b"></div>
-                            </div>
-                        </div>
-                    </div>
                     <div class="frame-parent">
                         <div class="answered-030-wrapper">
                             <div class="answered-030" id="answered-count-label">Answered 0/0</div>
                         </div>
                         <div class="progressbar-frame">
                             <div class="progressbar">
-                                <div class="progressbar-child" id="progress-part-c"></div>
+                                <div class="progressbar-child" id="progress-part-b"></div>
                             </div>
                         </div>
                     </div>
@@ -90,18 +83,20 @@
                     <div class="feature-quick-row">
                         <div class="feature-card feature-card--dark">
                             <div class="feature-label"><i class="ph ph-moon" aria-hidden="true"></i>Dark Mode</div>
-                            <div class="darkmode-toggle" aria-hidden="true">
-                                <div class="darkmode-toggle__option darkmode-toggle__option--light"><i class="ph ph-sun" aria-hidden="true"></i></div>
-                                <div class="darkmode-toggle__option darkmode-toggle__option--dark"><i class="ph ph-moon" aria-hidden="true"></i></div>
-                            </div>
+                            <button class="darkmode-toggle" type="button" id="darkmode-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode" onclick="toggleDarkMode()">
+                                <span class="darkmode-toggle__thumb" aria-hidden="true"></span>
+                                <span class="darkmode-toggle__option darkmode-toggle__option--light"><i class="ph ph-sun" aria-hidden="true"></i></span>
+                                <span class="darkmode-toggle__option darkmode-toggle__option--dark"><i class="ph ph-moon" aria-hidden="true"></i></span>
+                            </button>
                         </div>
 
                         <div class="feature-card feature-card--text-size">
                             <div class="feature-label"><i class="ph ph-text-aa" aria-hidden="true"></i>Text Size</div>
-                            <div class="textsize-toggle" aria-hidden="true">
-                                <div class="textsize-toggle__option is-active">S</div>
-                                <div class="textsize-toggle__option">M</div>
-                                <div class="textsize-toggle__option">L</div>
+                            <div class="textsize-toggle" id="textsize-toggle" data-size="s" role="radiogroup" aria-label="Text size">
+                                <span class="textsize-toggle__thumb" aria-hidden="true"></span>
+                                <button class="textsize-toggle__option is-active" type="button" role="radio" aria-checked="true" data-size="s" onclick="setTextSize('s')">S</button>
+                                <button class="textsize-toggle__option" type="button" role="radio" aria-checked="false" data-size="m" onclick="setTextSize('m')">M</button>
+                                <button class="textsize-toggle__option" type="button" role="radio" aria-checked="false" data-size="l" onclick="setTextSize('l')">L</button>
                             </div>
                         </div>
                     </div>
@@ -130,63 +125,17 @@
             </div>
         </div>
         <div class="section2-layout">
-            <div id="user-passages-container" style="flex: 1; overflow-y: auto; background-color: var(--cbt-bg); position: relative;">
-                <div class="instruction-popup" id="onboarding-overlay" aria-hidden="true">
-                    <div class="instruction-background"></div>
-                    <div class="start-the-listening">
-                        <div class="play-icon">
-                            <img class="play-instruction-icon" src="../asst/icon/play-instruction.svg" alt="">
-                        </div>
-                        <div class="start-the-listening-text">
-                            <b class="start-the-listening2">Start The Listening </b>
-                            <div class="click-the-start">Click the Start button to begin. Note that the test environment is locked once active, <br>if you exit or stop the session, your test will be terminated immediately and cannot be resumed.</div>
-                        </div>
-                    </div>
-                    <div class="single-play-only">
-                        <div class="sound-icon">
-                            <img class="speaker-instruction-icon" src="../asst/icon/speaker-instruction.svg" alt="">
-                        </div>
-                        <div class="start-the-listening-text">
-                            <b class="start-the-listening2">Single Play ONLY</b>
-                            <div class="click-the-start">The audio for the entire section will play once only. There are no replay, rewind, or pause functions available. This matches authentic TOEFL ITP conditions.</div>
-                        </div>
-                    </div>
-                    <div class="question-navigator">
-                        <div class="sound-icon">
-                            <img class="questionnav-instruction-icon" src="../asst/icon/questionnav-instruction.svg" alt="">
-                        </div>
-                        <div class="start-the-listening-text">
-                            <b class="start-the-listening2">Question Navigator</b>
-                            <div class="click-the-start">Read each question and its four answer choices carefully. You must progress through the session as the audio dictates. You cannot jump ahead or return to previous questions.</div>
-                        </div>
-                    </div>
-                    <div class="time-management">
-                        <div class="sound-icon">
-                            <img class="time-instruction-icon" src="../asst/icon/time-instruction.svg" alt="">
-                        </div>
-                        <div class="start-the-listening-text">
-                            <b class="start-the-listening2">Time Management</b>
-                            <div class="click-the-start">Monitor the countdown timer in the top bar. The test will automatically transition to the next phase once the audio concludes or the time limit is reached.</div>
-                        </div>
-                    </div>
-                    <div class="instruction">Instruction</div>
-                    <div class="cta-play-frame">
-                        <div class="cta-text">
-                            <div class="are-you-ready">Are you ready? </div>
-                            <div class="click-to-play">Click to Play </div>
-                        </div>
-                        <button class="play-button" type="button" onclick="dismissOnboarding()">
-                            <div class="pause-1">
-                                <img class="playicon-instruction" src="../asst/icon/playicon-instruction.svg" alt="">
-                            </div>
-                            <div class="play">Play</div>
-                        </button>
-                    </div>
-                </div>
+            <div id="user-passages-container" style="flex: 1; overflow-y: auto; position: relative;">
             </div>
             <aside class="question-navigator" id="question-navigator">
                 <div class="question-navigator__panel">
-                    <div class="question-navigator__head">Question Navigator</div>
+                    <div class="question-navigator__head">
+                        <button class="navigator-toggle" type="button" aria-label="Toggle question navigator" onclick="toggleSection2Navigator(event)">
+                            <i class="ph ph-squares-four nav-state-icon icon-squares-four" aria-hidden="true"></i>
+                            <i class="ph ph-caret-right nav-state-icon icon-caret-right" aria-hidden="true"></i>
+                        </button>
+                        <span class="question-navigator__title">Question Navigator</span>
+                    </div>
                     <h4 class="question-navigator__section-title">Part A - Structure</h4>
                     <div class="question-grid" id="question-grid-part-a"></div>
                     <hr class="question-navigator__divider">
@@ -196,7 +145,6 @@
                     <div class="navigator-legend">
                         <div class="legend-item"><span class="legend-dot answered"></span><span>Answered</span></div>
                         <div class="legend-item"><span class="legend-dot unanswered"></span><span>Unanswered</span></div>
-                        <div class="legend-item"><span class="legend-dot flagged"></span><span>Flagged</span></div>
                     </div>
                 </div>
                 <div class="navigator-actions">
@@ -216,6 +164,7 @@
             </div>
             <div style="display: flex; gap: 12px; align-items: center;">
                 <a href="section 2-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">ðŸ“– View Explanation</a>
+                <button class="mode-switch-btn" type="button" onclick="openUserPreviewFromDeveloper()">ðŸ‘ï¸ Apply + Open User View</button>
                 <button class="btn-save" onclick="updateUserView(true)">ðŸ”„ Terapkan & Update Tampilan</button>
             </div>
         </header>
@@ -252,6 +201,8 @@
         const MODULE_LABEL = "Structure";
         const DRAFT_KEY = "toefl_section2_dev_draft_v1";
         const ONBOARDING_KEY_BASE = "toefl_section2_onboarding_seen_v1";
+        const DARK_MODE_KEY = "toefl_section2_dark_mode_v1";
+        const TEXT_SIZE_KEY = "toefl_section2_text_size_v1";
         let currentSetId = "";
 
         function safeParse(raw, fallback) {
@@ -457,9 +408,10 @@
                 }
             }
             const today = new Date().toISOString().split("T")[0];
-            dateInput.value = requestedDate || stored.setDate || today;
-            difficultyInput.value = stored.difficulty || "intermediate";
-            updateHeaderPackageLabel(dateInput.value);
+            const effectiveDate = requestedDate || stored.setDate || today;
+            if (dateInput) dateInput.value = effectiveDate;
+            if (difficultyInput) difficultyInput.value = stored.difficulty || "intermediate";
+            updateHeaderPackageLabel(effectiveDate);
         }
 
         async function saveSectionMeta() {
@@ -546,7 +498,6 @@
 
             setBar("progress-part-a", partAAnswered, partATotal);
             setBar("progress-part-b", partBAnswered, partBTotal);
-            setBar("progress-part-c", answered, total);
         }
 
         function initStructure() {
@@ -557,19 +508,21 @@
 
             PARTS.forEach((part) => {
                 const p = part.id;
-                const instructionsMarkup = p === 1
-                    ? `<div class="structure-parta-directions">
-                            <div class="structure-parta-directions__inner">
-                                <div class="structure-parta-directions__title">Part A: Structure</div>
-                                <div class="structure-parta-directions__text">
-                                    <span class="structure-parta-directions__label">Directions</span>
-                                    <span>: These questions are incomplete sentences. Beneath each sentence you will see four words or phrases, marked (A), (B), (C), and (D). Choose the one word or phrase that best completes the sentence.</span>
-                                </div>
+                const directionsTitle = p === 1
+                    ? "Part A: Structure"
+                    : "Part B: Written Expression Questions";
+                const directionsBody = p === 1
+                    ? ": These questions are incomplete sentences. Beneath each sentence you will see four words or phrases, marked (A), (B), (C), and (D). Choose the one word or phrase that best completes the sentence."
+                    : ": In this section, each sentence has four underlined words or phrases marked (A), (B), (C), and (D). Identify the one underlined word or phrase that must be changed in order for the sentence to be grammatically correct.";
+                const instructionsMarkup = `<div class="structure-parta-directions" id="part${p === 1 ? 'a' : 'b'}-directions">
+                            <button class="structure-parta-directions__close" type="button" aria-label="Dismiss directions" onclick="dismissDirections(this)">
+                                <i class="ph ph-x-circle" aria-hidden="true"></i>
+                            </button>
+                            <div class="structure-parta-directions__title">${directionsTitle}</div>
+                            <div class="structure-parta-directions__text">
+                                <span class="structure-parta-directions__label">Directions</span>
+                                <span>${directionsBody}</span>
                             </div>
-                        </div>`
-                    : `<div class="section-instructions">
-                            <h3>${part.name} (${part.range})</h3>
-                            <p>${part.instr}</p>
                         </div>`;
                 
                 // USER VIEW BUILDER
@@ -660,11 +613,33 @@
         }
 
         function openTab(evt, tabName) {
+            // In the developer editor, switching to the User tab should re-apply the
+            // latest edits so the exam preview always reflects current textarea content
+            // (mirrors the reference engine that keeps the user view live).
+            if (tabName === "user-view" && isDeveloperMode()) {
+                updateUserView(true);
+            }
             document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
             document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
             updateOnboardingVisibility();
+            if (tabName === "user-view") window.scrollTo(0, 0);
+        }
+
+        // Apply the developer's current edits and jump to the User (exam) view so the
+        // developer can preview exactly what the test-taker sees, then use the top
+        // "Panel Developer" tab to return to the editor.
+        function openUserPreviewFromDeveloper() {
+            updateUserView(true);
+            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+            document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
+            const userView = document.getElementById("user-view");
+            if (userView) userView.classList.add("active");
+            const userButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'user-view'"));
+            if (userButton) userButton.classList.add("active");
+            updateOnboardingVisibility();
+            window.scrollTo(0, 0);
         }
 
         function getOnboardingKey() {
@@ -713,6 +688,74 @@
             } finally {
                 handleFullScreenStateChange();
             }
+        }
+
+        function applyDarkMode(enabled) {
+            const userView = document.getElementById("user-view");
+            const toggle = document.getElementById("darkmode-toggle");
+            if (userView) userView.classList.toggle("is-dark", enabled);
+            if (toggle) {
+                toggle.classList.toggle("is-dark", enabled);
+                toggle.setAttribute("aria-checked", enabled ? "true" : "false");
+            }
+            const timerElement = document.getElementById("time");
+            if (timerElement && timerElement.style.color !== "rgb(211, 47, 47)") {
+                timerElement.style.color = enabled ? "#E0F2FE" : "#005faa";
+            }
+        }
+
+        function setDarkMode(enabled) {
+            applyDarkMode(enabled);
+            try {
+                localStorage.setItem(DARK_MODE_KEY, enabled ? "1" : "0");
+            } catch (_) {}
+        }
+
+        function toggleDarkMode() {
+            const userView = document.getElementById("user-view");
+            const isDark = userView ? userView.classList.contains("is-dark") : false;
+            setDarkMode(!isDark);
+        }
+
+        function initDarkMode() {
+            let enabled = false;
+            try {
+                enabled = localStorage.getItem(DARK_MODE_KEY) === "1";
+            } catch (_) {}
+            applyDarkMode(enabled);
+        }
+
+        function applyTextSize(size) {
+            const normalized = ["s", "m", "l"].includes(size) ? size : "s";
+            const userView = document.getElementById("user-view");
+            const toggle = document.getElementById("textsize-toggle");
+            if (userView) {
+                userView.classList.remove("textsize-s", "textsize-m", "textsize-l");
+                userView.classList.add(`textsize-${normalized}`);
+            }
+            if (toggle) {
+                toggle.setAttribute("data-size", normalized);
+                toggle.querySelectorAll(".textsize-toggle__option").forEach((option) => {
+                    const isActive = option.getAttribute("data-size") === normalized;
+                    option.classList.toggle("is-active", isActive);
+                    option.setAttribute("aria-checked", isActive ? "true" : "false");
+                });
+            }
+        }
+
+        function setTextSize(size) {
+            applyTextSize(size);
+            try {
+                localStorage.setItem(TEXT_SIZE_KEY, size);
+            } catch (_) {}
+        }
+
+        function initTextSize() {
+            let size = "s";
+            try {
+                size = localStorage.getItem(TEXT_SIZE_KEY) || "s";
+            } catch (_) {}
+            applyTextSize(size);
         }
 
         function setFeaturesMenuOpen(open) {
@@ -821,12 +864,20 @@
             if (tabNav) tabNav.remove();
             const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
             if (devButton) devButton.remove();
+            // Keep the dev-view in the DOM (just hidden) so its question/answer
+            // textareas survive for updateUserView() to parse. Removing it entirely
+            // breaks the user view (set-date and input-* fields become null).
             const devView = document.getElementById("dev-view");
-            if (devView) devView.remove();
+            if (devView) devView.classList.remove("active");
             const userButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'user-view'"));
             const userView = document.getElementById("user-view");
             if (userView) userView.classList.add("active");
             if (userButton) userButton.classList.add("active");
+            // Real users (opened via the student panel) navigate parts through the
+            // Question Navigator + "Next Section" button, so hide the bottom
+            // Part A / Part B sub-tab toggle. It stays for developer preview.
+            const userSubNav = document.getElementById("user-sub-nav-container");
+            if (userSubNav) userSubNav.style.display = "none";
         }
 
         function activateInitialTab() {
@@ -949,6 +1000,21 @@
             });
         }
 
+        function toggleSection2Navigator(event) {
+            if (event) event.stopPropagation();
+            const nav = document.getElementById("question-navigator");
+            const layout = document.querySelector(".section2-layout");
+            if (!nav) return;
+            const collapsed = !nav.classList.contains("is-collapsed");
+            nav.classList.toggle("is-collapsed", collapsed);
+            if (layout) layout.classList.toggle("is-nav-collapsed", collapsed);
+        }
+
+        function dismissDirections(btn) {
+            const box = btn ? btn.closest(".structure-parta-directions") : null;
+            if (box) box.remove();
+        }
+
         function goToNextQuestion() {
             const all = [
                 ...getPartQuestionNumbers(1).map((entry) => entry.uid),
@@ -998,19 +1064,25 @@
             PARTS.forEach((part) => {
                 let p = part.id;
 
-                document.getElementById(`input-answer-key-${p}`).value.split('\n').forEach(l => {
+                const answerKeyEl = document.getElementById(`input-answer-key-${p}`);
+                const explanationEl = document.getElementById(`input-explanation-${p}`);
+                const questionsEl = document.getElementById(`input-magic-questions-${p}`);
+                const displayEl = document.getElementById(`display-questions-${p}`);
+                if (!answerKeyEl || !explanationEl || !questionsEl || !displayEl) return;
+
+                answerKeyEl.value.split('\n').forEach(l => {
                     let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
                     if(m) globalAnswerKey[`${p}_${m[1]}`] = m[2].trim().toLowerCase();
                 });
 
                 let currentExpNum = null;
-                document.getElementById(`input-explanation-${p}`).value.split('\n').forEach(l => {
+                explanationEl.value.split('\n').forEach(l => {
                     let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
                     if(m) { currentExpNum = `${p}_${m[1]}`; globalExplanations[currentExpNum] = m[2].trim(); }
                     else if(currentExpNum && l.trim()) globalExplanations[currentExpNum] += "<br>" + l.trim();
                 });
 
-                const lines = document.getElementById(`input-magic-questions-${p}`).value.split('\n');
+                const lines = questionsEl.value.split('\n');
                 let cleanHtml = '';
                 let openDiv = false;
                 let currentUID = '';
@@ -1081,11 +1153,9 @@
                             // SOAL PART A BIASA
                             globalQuestions[currentUID] = { questionText: `${currentQuestionNum}. ${questionText}`, options: {}, isPartB: false };
                             const displayQuestion = questionText.replace(/_{3,}/, '<span class="question-blank">_____</span>');
-                            cleanHtml += `<div class="question-head">`;
                             cleanHtml += `<div class="question-number-badge">${currentQuestionNum}</div>`;
-                            cleanHtml += `<div class="question-stem-wrap"><p class="question-stem">${displayQuestion}</p></div>`;
-                            cleanHtml += `</div>`;
                             cleanHtml += `<div class="question-content">`;
+                            cleanHtml += `<p class="question-stem">${displayQuestion}</p>`;
                             cleanHtml += `<div class="radio-group">`;
                             openDiv = true;
                         }
@@ -1147,7 +1217,9 @@
         function startTimer() {
             let t = 1500; 
             clearInterval(timerInterval);
-            document.getElementById('time').style.color = "#005faa";
+            const timerElement = document.getElementById('time');
+            const isDark = document.getElementById("user-view")?.classList.contains("is-dark");
+            timerElement.style.color = isDark ? "#E0F2FE" : "#005faa";
             timerInterval = setInterval(() => {
                 let m = Math.floor(t/60), s = t%60;
                 document.getElementById('time').innerText = `${m<10?'0'+m:m}:${s<10?'0'+s:s}`;
@@ -1168,6 +1240,8 @@
             applyViewMode();
             activateInitialTab();
             bindUserToolbarActions();
+            initDarkMode();
+            initTextSize();
             updateFullScreenButton();
             document.addEventListener("fullscreenchange", handleFullScreenStateChange);
             try {
