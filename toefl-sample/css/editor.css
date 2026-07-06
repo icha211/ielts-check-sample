@@ -950,7 +950,7 @@ body {
     height: 836px;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
     padding: 0 0 0 24px;
     overflow: hidden;
@@ -1198,6 +1198,7 @@ body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 18px;
     padding-top: 16px;
     padding-right: 8px;
@@ -1214,7 +1215,9 @@ body {
 .question-stack {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 16px;
+    width: 100%;
     padding-bottom: 56px;
 }
 
@@ -1255,6 +1258,26 @@ body {
     margin-left: 113px;
     margin-right: auto;
     scroll-margin-bottom: 120px;
+}
+
+/* Section 1: keep audio + question cards on one centered content track so both
+   have the same width while the right navigator opens/collapses. */
+.exam-body .audio-shell,
+.exam-body .question-section {
+    width: min(1188px, 100%);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.exam-body [id^="display-questions-"] {
+    width: 100%;
+}
+
+.exam-body .question-item {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
 }
 
 .question-number-badge {
@@ -1478,6 +1501,10 @@ body {
 }
 
 .navigator-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 3;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -1510,13 +1537,8 @@ body {
     justify-content: flex-start;
 }
 
-.exam-body.is-navigator-collapsed .navigator-panel {
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 3;
-}
-
+.audio-shell,
+.question-item,
 .exam-body.is-navigator-collapsed .audio-shell,
 .exam-body.is-navigator-collapsed .question-item {
     width: min(922px, 100%);
