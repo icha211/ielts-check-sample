@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import socket
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -190,13 +191,56 @@ STRICT RULES:
    - "Test Tip:"
    - "Note:"
    - bullet syntax for wrong answers: - ❌ **(X) is wrong:**
-3) Translate only the explanatory sentence content into natural, beginner-friendly Indonesian.
-4) Do not add extra sections, introductions, or conclusions.
-5) Output only the translated markdown.
+3) Translate ALL natural-language content into natural, beginner-friendly Indonesian, including the quoted transcript sentence in Step 1.
+4) Keep punctuation/markdown markers intact (quotes, *, **, bullet symbols) while translating the words inside them.
+5) Do not add extra sections, introductions, or conclusions.
+6) Output only the translated markdown.
 
 MARKDOWN TO TRANSLATE:
 {explanation_markdown}
 """
+
+
+def build_quote_translation_prompt(quote_text: str, target_language: str) -> str:
+    return f"""Translate this short TOEFL listening transcript quote into {target_language}.
+
+Rules:
+1) Output only the translated quote text.
+2) Do not add explanations.
+3) Keep the meaning and tone faithful.
+
+QUOTE:
+{quote_text}
+"""
+
+
+def extract_first_markdown_quote(markdown: str) -> str:
+    body = str(markdown or "")
+    match = re.search(r'["\u201c](.+?)["\u201d]', body, flags=re.DOTALL)
+    if not match:
+        return ""
+    return str(match.group(1) or "").strip()
+
+
+def replace_first_markdown_quote(markdown: str, new_quote: str) -> str:
+    body = str(markdown or "")
+    quote = str(new_quote or "").strip()
+    if not body or not quote:
+        return body
+
+    return re.sub(
+        r'(["\u201c])(.+?)(["\u201d])',
+        lambda m: f"{m.group(1)}{quote}{m.group(3)}",
+        body,
+        count=1,
+        flags=re.DOTALL,
+    )
+
+
+def is_likely_same_quote(source_quote: str, translated_quote: str) -> bool:
+    src = re.sub(r'\s+', ' ', str(source_quote or '').strip().lower())
+    dst = re.sub(r'\s+', ' ', str(translated_quote or '').strip().lower())
+    return bool(src) and src == dst
 
 
 def parse_json_from_text(text: str) -> dict:
@@ -310,6 +354,16 @@ class Handler(BaseHTTPRequestHandler):
                 prompt = build_translation_prompt(payload)
                 response = generate_with_retry(client, prompt)
                 text = (response.text or "").strip()
+
+                source_quote = extract_first_markdown_quote(explanation_markdown)
+                translated_quote = extract_first_markdown_quote(text)
+                if source_quote and (not translated_quote or is_likely_same_quote(source_quote, translated_quote)):
+                    quote_prompt = build_quote_translation_prompt(source_quote, str(payload.get("targetLanguage", "Bahasa Indonesia") or "Bahasa Indonesia"))
+                    quote_response = generate_with_retry(client, quote_prompt)
+                    forced_quote = (quote_response.text or "").strip().strip('"').strip('“').strip('”').strip()
+                    if forced_quote:
+                        text = replace_first_markdown_quote(text, forced_quote)
+
                 self._send_text(200, text)
             except Exception as exc:
                 self._send(500, {"error": str(exc)})

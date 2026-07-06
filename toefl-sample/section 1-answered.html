@@ -1926,7 +1926,7 @@
             var btn = document.getElementById('aiTranslateExplanationBtn');
             var label = document.getElementById('aiTranslateBtnLabel');
 
-            if (question.explanationId) {
+            if (question.explanationId && question.showBahasaExplanation) {
                 question.showBahasaExplanation = !question.showBahasaExplanation;
                 persistExplanationTranslationToResult(question.number, question.explanationId, question.showBahasaExplanation);
                 var switchedExplanation = parseExplanationSegments(getDisplayedExplanationText(question));
@@ -1935,6 +1935,13 @@
                 renderDetailSteps();
                 updateTranslateButtonState(question);
                 return;
+            }
+
+            // If an older translation exists but user is currently on English mode,
+            // regenerate Bahasa translation so improvements on the backend are applied.
+            if (question.explanationId && !question.showBahasaExplanation) {
+                question.explanationId = '';
+                persistExplanationTranslationToResult(question.number, '', false);
             }
 
             if (!String(question.explanation || '').trim()) {
