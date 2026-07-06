@@ -584,6 +584,8 @@
             currentAudioFallbackUrls = [];
             currentAudioObjectUrl = URL.createObjectURL(blob);
             audio.removeAttribute("crossorigin");
+            audio.muted = false;
+            audio.volume = 1;
             audio.src = currentAudioObjectUrl;
             audio.currentTime = 0;
             audioIsLocked = false;
@@ -602,6 +604,8 @@
                 currentAudioFallbackUrls = [];
             }
             audio.removeAttribute("crossorigin");
+            audio.muted = false;
+            audio.volume = 1;
             audio.src = url;
             audio.currentTime = 0;
             audioIsLocked = false;
@@ -651,9 +655,7 @@
 
             try {
                 // Try Firebase Storage first (cross-machine sync)
-                const storageUrl = await (window.toeflStorage.getPlayableAudioFromFirebase
-                    ? window.toeflStorage.getPlayableAudioFromFirebase(currentSetId, partId)
-                    : window.toeflStorage.getAudioFromFirebase(currentSetId, partId)).catch(() => null);
+                const storageUrl = await getCloudAudioUrl(currentSetId, partId);
                 if (storageUrl) {
                     if (isPartActive(partId)) {
                         setAudioSourceFromUrl(storageUrl, currentSetId, partId);
@@ -736,6 +738,28 @@
             } catch {
                 return fallback;
             }
+        }
+
+        async function withTimeout(promise, ms, fallbackValue) {
+            let timerId;
+            try {
+                return await Promise.race([
+                    promise,
+                    new Promise((resolve) => {
+                        timerId = setTimeout(() => resolve(fallbackValue), ms);
+                    })
+                ]);
+            } finally {
+                if (timerId) clearTimeout(timerId);
+            }
+        }
+
+        async function getCloudAudioUrl(setId, partId = 1, timeoutMs = 3500) {
+            if (!window.toeflStorage || !setId) return null;
+            const fetchPromise = (window.toeflStorage.getPlayableAudioFromFirebase
+                ? window.toeflStorage.getPlayableAudioFromFirebase(setId, partId)
+                : window.toeflStorage.getAudioFromFirebase(setId, partId)).catch(() => null);
+            return await withTimeout(fetchPromise, timeoutMs, null);
         }
 
         function escapeHtml(value = "") {
@@ -991,9 +1015,7 @@
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
 
             for (const record of ordered) {
-                const url = await (toeflStorage.getPlayableAudioFromFirebase
-                    ? toeflStorage.getPlayableAudioFromFirebase(record.setId, partId)
-                    : toeflStorage.getAudioFromFirebase(record.setId, partId)).catch(() => null);
+                const url = await getCloudAudioUrl(record.setId, partId);
                 if (url) return { record, url };
             }
             return null;
@@ -1528,6 +1550,8 @@
                         audio.volume = 1;
                     }
                     await audio.play();
+                    if (audio.muted) audio.muted = false;
+                    if (audio.volume <= 0) audio.volume = 1;
                 } else {
                     audio.pause();
                 }
@@ -1551,9 +1575,7 @@
             try {
                 // Try to get audio from Firebase for current set
                 if (currentSetId) {
-                    const storageUrl = await (window.toeflStorage.getPlayableAudioFromFirebase
-                        ? window.toeflStorage.getPlayableAudioFromFirebase(currentSetId, activePartId || 1)
-                        : window.toeflStorage.getAudioFromFirebase(currentSetId, activePartId || 1)).catch(() => null);
+                    const storageUrl = await getCloudAudioUrl(currentSetId, activePartId || 1);
                     if (storageUrl) {
                         setAudioSourceFromUrl(storageUrl, currentSetId, activePartId || 1);
                         setAudioLabelReady("cloud audio", Number(activePartId || 1));

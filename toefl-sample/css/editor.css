@@ -967,7 +967,7 @@ body {
     min-height: 0;
     max-height: 836px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 250px;
+    grid-template-columns: minmax(0, 1fr);
     gap: 12px;
     padding: 0 0 0 24px;
     overflow: hidden;
@@ -981,6 +981,8 @@ body {
 .section2-layout #user-passages-container {
     min-height: 0;
     position: relative;
+    padding-right: 250px;
+    box-sizing: border-box;
     background: var(--off-white, #f4f7fb);
 }
 
@@ -993,7 +995,14 @@ body {
 }
 
 .section2-layout > .question-navigator {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 3;
     min-height: 0;
+    width: 250px;
+    min-width: 250px;
+    height: 100%;
 }
 
 .section2-layout > .question-navigator.is-hidden {
@@ -1162,10 +1171,12 @@ body {
 
 /* Collapsed navigator: narrow 64px rail showing only the squares-four toggle */
 .section2-layout.is-nav-collapsed {
-    grid-template-columns: minmax(0, 1fr) 64px;
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .question-navigator.is-collapsed {
+    width: 64px;
+    min-width: 64px;
     padding: 24px 12px;
     align-items: center;
 }
@@ -1274,6 +1285,26 @@ body {
 }
 
 .exam-body .question-item {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+/* Section 2: mirror Section 1 card positioning model (centered content track,
+   no legacy 113px left offset on cards/directions). */
+.section2-layout #user-passages-container .user-main {
+    width: min(922px, 100%);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.section2-layout #user-passages-container [id^="display-questions-"] {
+    width: 100%;
+}
+
+.section2-layout #user-passages-container .question-item,
+.section2-layout #user-passages-container .structure-parta-directions {
     width: 100%;
     max-width: 100%;
     margin-left: 0;

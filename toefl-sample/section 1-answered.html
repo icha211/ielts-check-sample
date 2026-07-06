@@ -271,6 +271,28 @@
             return parsed.toISOString().slice(0, 10);
         }
 
+        async function withTimeout(promise, ms, fallbackValue) {
+            var timerId;
+            try {
+                return await Promise.race([
+                    promise,
+                    new Promise(function(resolve) {
+                        timerId = setTimeout(function() { resolve(fallbackValue); }, ms);
+                    })
+                ]);
+            } finally {
+                if (timerId) clearTimeout(timerId);
+            }
+        }
+
+        async function getCloudAudioUrlWithTimeout(setId, partId, timeoutMs) {
+            if (!window.toeflStorage || !setId || typeof window.toeflStorage.getPlayableAudioFromFirebase !== 'function') {
+                return null;
+            }
+            var fetchPromise = window.toeflStorage.getPlayableAudioFromFirebase(setId, partId).catch(function() { return null; });
+            return await withTimeout(fetchPromise, Number(timeoutMs || 3500), null);
+        }
+
         function formatReviewPackageLabel(dateValue) {
             var normalized = normalizeDateKey(dateValue);
             if (!normalized) return 'Package 01 Jan';
@@ -293,7 +315,7 @@
         async function getSetRecordsSafe() {
             if (window.toeflStorage && typeof window.toeflStorage.getSetRecords === 'function') {
                 try {
-                    var records = await window.toeflStorage.getSetRecords();
+                    var records = await withTimeout(window.toeflStorage.getSetRecords(), 3000, []);
                     if (Array.isArray(records) && records.length) return records;
                 } catch (_) {}
             }
@@ -540,6 +562,8 @@
                 reviewAudioObjectUrl = null;
             }
 
+            reviewAudio.muted = false;
+            reviewAudio.volume = 1;
             reviewAudio.src = url;
             reviewAudio.load();
             updatePlayPauseIcon();
@@ -598,7 +622,7 @@
 
             if (window.toeflStorage && reviewSetId && typeof window.toeflStorage.getPlayableAudioFromFirebase === 'function') {
                 try {
-                    var audioUrl = await window.toeflStorage.getPlayableAudioFromFirebase(reviewSetId, partId);
+                    var audioUrl = await getCloudAudioUrlWithTimeout(reviewSetId, partId, 3500);
                     if (audioUrl) {
                         setReviewAudioSource(audioUrl, 'Ready from cloud', key);
                         return;
@@ -624,7 +648,7 @@
                     var candidateSetId = String(candidates[i].setId || '');
                     if (!candidateSetId) continue;
                     try {
-                        var candidateUrl = await window.toeflStorage.getPlayableAudioFromFirebase(candidateSetId, partId);
+                        var candidateUrl = await getCloudAudioUrlWithTimeout(candidateSetId, partId, 2500);
                         if (candidateUrl) {
                             reviewSetId = candidateSetId;
                             setReviewAudioSource(candidateUrl, 'Ready from cloud', candidateSetId + '_part_' + String(partId || 1));
@@ -705,7 +729,11 @@
             if (reviewAudio.paused || reviewAudio.ended) {
                 ensureReviewAnalyser();
                 if (reviewAudioCtx && reviewAudioCtx.state === 'suspended') reviewAudioCtx.resume();
+                reviewAudio.muted = false;
+                if (reviewAudio.volume <= 0) reviewAudio.volume = 1;
                 reviewAudio.play().then(function() {
+                    if (reviewAudio.muted) reviewAudio.muted = false;
+                    if (reviewAudio.volume <= 0) reviewAudio.volume = 1;
                     setAudioStatus('Playingâ€¦');
                     startReviewWaveform();
                 }).catch(function() { setAudioStatus('Playback blocked by browser'); });
