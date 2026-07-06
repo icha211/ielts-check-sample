@@ -359,7 +359,7 @@
         const ZOOM_MIN = 0.8;
         const ZOOM_MAX = 1.3;
         const ZOOM_STEP = 0.1;
-        const DEFAULT_ZOOM = 1;
+        const DEFAULT_ZOOM = 1.1;
 
         function clampZoom(value) {
             return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Number(value) || 1));
@@ -402,7 +402,7 @@
 
         function initZoom() {
             const saved = Number(localStorage.getItem(ZOOM_KEY));
-            const migratedSaved = Number.isFinite(saved) && Math.abs(saved - 0.8) > 0.001 ? saved : DEFAULT_ZOOM;
+            const migratedSaved = Number.isFinite(saved) && saved > 1 ? saved : DEFAULT_ZOOM;
             applyZoom(migratedSaved);
         }
 
