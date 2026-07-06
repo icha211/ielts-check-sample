@@ -1840,6 +1840,39 @@
             return String(question.explanation || '');
         }
 
+        function looksLikeIndonesianText(text) {
+            var s = String(text || '').toLowerCase();
+            if (!s.trim()) return false;
+            return /(yang|dan|tidak|adalah|ini|itu|dengan|untuk|karena|dalam|transkrip|petunjuk|jawaban|salah)/.test(s);
+        }
+
+        function normalizeTranslationState(question) {
+            if (!question) return;
+            var base = String(question.explanation || '').trim();
+            var translated = String(question.explanationId || '').trim();
+            if (!translated) {
+                question.showBahasaExplanation = false;
+                return;
+            }
+
+            // Old cached translation entries may still be English. Clear them so
+            // the next Translate click regenerates from the backend.
+            var sameAsBase = base && translated && (base === translated);
+            var clearlyEnglish = /look at the|test tip:\s*when|why the other answers are wrong/i.test(translated) && !looksLikeIndonesianText(translated);
+            if (sameAsBase || clearlyEnglish) {
+                question.explanationId = '';
+                question.showBahasaExplanation = false;
+                persistExplanationTranslationToResult(question.number, '', false);
+                return;
+            }
+
+            // If translation exists and mode flag is missing, default to Bahasa on reload.
+            if (typeof question.showBahasaExplanation !== 'boolean') {
+                question.showBahasaExplanation = true;
+                persistExplanationTranslationToResult(question.number, translated, true);
+            }
+        }
+
         function updateTranslateButtonState(question) {
             var btn = document.getElementById('aiTranslateExplanationBtn');
             var label = document.getElementById('aiTranslateBtnLabel');
@@ -1998,6 +2031,7 @@
 
         function renderQuestion(q, indexHint) {
             reviewCurrentQuestion = q;
+            normalizeTranslationState(reviewCurrentQuestion);
             var options     = q.options || {};
             var letters     = Object.keys(options).sort();
             var correctLtr  = String(q.correctAnswer||'').trim().toUpperCase();
