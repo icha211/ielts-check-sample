@@ -1,12 +1,22 @@
 import json
 import os
+import socket
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from google import genai
 
-HOST = "127.0.0.1"
+HOST = os.environ.get("AI_REVIEW_HOST", "0.0.0.0")
 PORT = int(os.environ.get("AI_REVIEW_PORT", "8787"))
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+
+
+def get_lan_ip() -> str:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("8.8.8.8", 80))
+            return sock.getsockname()[0]
+    except Exception:
+        return "127.0.0.1"
 
 
 def build_prompt(payload: dict) -> str:
@@ -155,7 +165,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
         self.wfile.write(data)
 
@@ -166,12 +176,18 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
         self.wfile.write(data)
 
     def do_OPTIONS(self):
         self._send(200, {"ok": True})
+
+    def do_GET(self):
+        if self.path in ("/", "/api/health"):
+            self._send(200, {"ok": True, "model": MODEL})
+        else:
+            self._send(404, {"error": "Not found"})
 
     def do_POST(self):
         api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
@@ -224,5 +240,8 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     server = HTTPServer((HOST, PORT), Handler)
+    lan_ip = get_lan_ip()
     print(f"AI review server running on http://{HOST}:{PORT}")
+    print(f"Local: http://127.0.0.1:{PORT}/api/health")
+    print(f"LAN:   http://{lan_ip}:{PORT}/api/health")
     server.serve_forever()

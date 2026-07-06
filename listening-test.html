@@ -440,7 +440,12 @@
         const RETURN_TO = params.get("returnTo");
         const DAY_VALUE = params.get("day");
         const NEXT_URL = PACKAGE_MODE ? "reading-test.html?package=1" : (RETURN_TO || "index.html");
-        const AI_REVIEW_ENDPOINT = "http://127.0.0.1:8787/api/ai-review";
+        function resolveAiEndpoint(path) {
+            const host = params.get("aiHost") || localStorage.getItem("ai_review_host") || (window.location.hostname || "127.0.0.1");
+            const port = params.get("aiPort") || localStorage.getItem("ai_review_port") || "8787";
+            return `http://${host}:${port}${path}`;
+        }
+        const AI_REVIEW_ENDPOINT = resolveAiEndpoint("/api/ai-review");
 
         function formatContentText(text) {
             const trimmed = String(text || "").trim();
