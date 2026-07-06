@@ -1,6 +1,7 @@
 import json
 import os
 import socket
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from google import genai
@@ -8,6 +9,48 @@ from google import genai
 HOST = os.environ.get("AI_REVIEW_HOST", "0.0.0.0")
 PORT = int(os.environ.get("AI_REVIEW_PORT", "8787"))
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+FALLBACK_MODEL = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-2.0-flash")
+
+
+def is_transient_model_error(exc: Exception) -> bool:
+    msg = str(exc or "").upper()
+    transient_markers = (
+        "503",
+        "UNAVAILABLE",
+        "429",
+        "RESOURCE_EXHAUSTED",
+        "DEADLINE_EXCEEDED",
+        "TIMEOUT",
+        "TIMED OUT",
+        "CONNECTION RESET",
+        "CONNECTION ABORTED",
+    )
+    return any(marker in msg for marker in transient_markers)
+
+
+def generate_with_retry(client: genai.Client, prompt: str):
+    models = [MODEL]
+    if FALLBACK_MODEL and FALLBACK_MODEL != MODEL:
+        models.append(FALLBACK_MODEL)
+
+    delays = [0.8, 1.6, 3.2, 6.0]
+    last_exc = None
+
+    for model_name in models:
+        for attempt in range(len(delays) + 1):
+            try:
+                return client.models.generate_content(model=model_name, contents=prompt)
+            except Exception as exc:
+                last_exc = exc
+                if not is_transient_model_error(exc):
+                    raise
+
+                if attempt >= len(delays):
+                    break
+
+                time.sleep(delays[attempt])
+
+    raise last_exc if last_exc else RuntimeError("Model generation failed")
 
 
 def get_lan_ip() -> str:
@@ -134,6 +177,28 @@ OUTPUT TO REWRITE:
 """
 
 
+def build_translation_prompt(payload: dict) -> str:
+    explanation_markdown = str(payload.get("explanationMarkdown", "") or "").strip()
+    target_language = str(payload.get("targetLanguage", "Bahasa Indonesia") or "Bahasa Indonesia").strip()
+
+    return f"""Translate the TOEFL explanation markdown below into {target_language}.
+
+STRICT RULES:
+1) Keep the markdown structure EXACTLY the same.
+2) Keep these labels in English EXACTLY as-is so the app parser keeps working:
+   - Step headers (### Step 1:, ### Step 2:, ### Step 3: Why the other answers are wrong)
+   - "Test Tip:"
+   - "Note:"
+   - bullet syntax for wrong answers: - ❌ **(X) is wrong:**
+3) Translate only the explanatory sentence content into natural, beginner-friendly Indonesian.
+4) Do not add extra sections, introductions, or conclusions.
+5) Output only the translated markdown.
+
+MARKDOWN TO TRANSLATE:
+{explanation_markdown}
+"""
+
+
 def parse_json_from_text(text: str) -> dict:
     text = text.strip()
     if text.startswith("{") and text.endswith("}"):
@@ -207,7 +272,7 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 client = genai.Client(api_key=api_key)
                 prompt = build_prompt(payload)
-                response = client.models.generate_content(model=MODEL, contents=prompt)
+                response = generate_with_retry(client, prompt)
                 text = response.text or "{}"
                 parsed = parse_json_from_text(text)
                 review = sanitize_review(parsed)
@@ -219,17 +284,32 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 client = genai.Client(api_key=api_key)
                 prompt = build_explanation_prompt(payload)
-                response = client.models.generate_content(model=MODEL, contents=prompt)
+                response = generate_with_retry(client, prompt)
                 text = (response.text or "").strip()
 
                 # If the first pass doesn't match the required format, retry once with a strict rewrite prompt.
                 if not explanation_has_required_shape(text):
                     retry_prompt = build_explanation_fix_prompt(text)
-                    retry_response = client.models.generate_content(model=MODEL, contents=retry_prompt)
+                    retry_response = generate_with_retry(client, retry_prompt)
                     retry_text = (retry_response.text or "").strip()
                     if retry_text:
                         text = retry_text
 
+                self._send_text(200, text)
+            except Exception as exc:
+                self._send(500, {"error": str(exc)})
+
+        elif self.path == "/api/translate-explanation":
+            try:
+                explanation_markdown = str(payload.get("explanationMarkdown", "") or "").strip()
+                if not explanation_markdown:
+                    self._send(400, {"error": "explanationMarkdown is required"})
+                    return
+
+                client = genai.Client(api_key=api_key)
+                prompt = build_translation_prompt(payload)
+                response = generate_with_retry(client, prompt)
+                text = (response.text or "").strip()
                 self._send_text(200, text)
             except Exception as exc:
                 self._send(500, {"error": str(exc)})

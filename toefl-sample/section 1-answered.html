@@ -212,6 +212,10 @@
                                 <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2a1 1 0 0 1 .94.66l1.4 3.75 3.75 1.4a1 1 0 0 1 0 1.88l-3.75 1.4-1.4 3.75a1 1 0 0 1-1.88 0l-1.4-3.75-3.75-1.4a1 1 0 0 1 0-1.88l3.75-1.4 1.4-3.75A1 1 0 0 1 10 2Z"/></svg>
                                 <span id="aiGenBtnLabel">Generate AI</span>
                             </button>
+                            <button type="button" class="ai-translate-btn" id="aiTranslateExplanationBtn" onclick="triggerTranslateExplanation()">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10"/><path d="M4 10h6"/><path d="M10 6c0 4.2-2.2 7.8-6 10"/><path d="M14 14h6"/><path d="m17 12 3 8"/><path d="m14 20 3-8"/></svg>
+                                <span id="aiTranslateBtnLabel">Translate ID</span>
+                            </button>
                             <button type="button" class="section-caret-toggle is-open" id="detailHeaderToggle" onclick="toggleSectionBody('detailStepsContainer', 'detailHeaderToggle')" aria-label="Toggle detail explanation"></button>
                         </div>
                     </div>
@@ -242,11 +246,57 @@
             });
         }
 
+        function buildAiEndpointCandidates(path) {
+            var params = new URLSearchParams(window.location.search || '');
+            var port = String(params.get('aiPort') || localStorage.getItem('ai_review_port') || '8787');
+            var hosts = [];
+
+            function pushHost(value) {
+                var host = String(value || '').trim();
+                if (!host) return;
+                if (hosts.indexOf(host) !== -1) return;
+                hosts.push(host);
+            }
+
+            pushHost(params.get('aiHost'));
+            pushHost(localStorage.getItem('ai_review_host'));
+            pushHost(localStorage.getItem('toefl_storage_server_host'));
+            pushHost(window.location.hostname);
+            pushHost('127.0.0.1');
+            pushHost('localhost');
+
+            return hosts.map(function(host) {
+                return 'http://' + host + ':' + port + path;
+            });
+        }
+
         function resolveAiEndpoint(path) {
-            var params = new URLSearchParams(window.location.search);
-            var host = params.get('aiHost') || localStorage.getItem('ai_review_host') || (window.location.hostname || '127.0.0.1');
-            var port = params.get('aiPort') || localStorage.getItem('ai_review_port') || '8787';
-            return 'http://' + host + ':' + port + path;
+            var candidates = buildAiEndpointCandidates(path);
+            return candidates[0] || ('http://127.0.0.1:8787' + path);
+        }
+
+        async function fetchAiWithFallback(path, init) {
+            var candidates = buildAiEndpointCandidates(path);
+            var lastError = null;
+
+            for (var i = 0; i < candidates.length; i += 1) {
+                var endpoint = candidates[i];
+                try {
+                    var response = await fetch(endpoint, init);
+                    if (response && response.ok) {
+                        try {
+                            var parsed = new URL(endpoint);
+                            localStorage.setItem('ai_review_host', parsed.hostname || '');
+                            localStorage.setItem('ai_review_port', parsed.port || '8787');
+                        } catch (_) {}
+                    }
+                    return { response: response, endpoint: endpoint };
+                } catch (err) {
+                    lastError = err;
+                }
+            }
+
+            throw (lastError || new Error('Failed to fetch AI endpoint'));
         }
 
         function renderQuotedHighlights(v) {
@@ -1756,6 +1806,56 @@
             } catch (_) {}
         }
 
+        function persistExplanationTranslationToResult(questionNumber, translatedText, showBahasa) {
+            try {
+                var raw = localStorage.getItem('toefl_section1_result');
+                if (!raw) return;
+                var result = JSON.parse(raw);
+                if (!result || !Array.isArray(result.questions)) return;
+                for (var i = 0; i < result.questions.length; i += 1) {
+                    if (Number(result.questions[i].number || 0) === Number(questionNumber)) {
+                        result.questions[i].explanationId = translatedText || '';
+                        result.questions[i].showBahasaExplanation = !!showBahasa;
+                        break;
+                    }
+                }
+                localStorage.setItem('toefl_section1_result', JSON.stringify(result));
+                if (reviewResultData && Array.isArray(reviewResultData.questions)) {
+                    for (var j = 0; j < reviewResultData.questions.length; j += 1) {
+                        if (Number(reviewResultData.questions[j].number || 0) === Number(questionNumber)) {
+                            reviewResultData.questions[j].explanationId = translatedText || '';
+                            reviewResultData.questions[j].showBahasaExplanation = !!showBahasa;
+                            break;
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
+
+        function getDisplayedExplanationText(question) {
+            if (!question) return '';
+            if (question.showBahasaExplanation && question.explanationId) {
+                return String(question.explanationId || '');
+            }
+            return String(question.explanation || '');
+        }
+
+        function updateTranslateButtonState(question) {
+            var btn = document.getElementById('aiTranslateExplanationBtn');
+            var label = document.getElementById('aiTranslateBtnLabel');
+            if (!btn || !label) return;
+
+            var hasBaseExplanation = !!(question && String(question.explanation || '').trim());
+            btn.disabled = reviewAiGenerating || reviewAiTranslating;
+
+            if (question && question.explanationId) {
+                label.textContent = question.showBahasaExplanation ? 'Show English' : 'Show Bahasa';
+                return;
+            }
+
+            label.textContent = hasBaseExplanation ? 'Translate ID' : 'Translate ID';
+        }
+
         async function triggerAiExplanation() {
             var question = reviewCurrentQuestion;
             if (!question) return;
@@ -1776,11 +1876,12 @@
                     transcript: transcript
                 };
 
-                var resp = await fetch(resolveAiEndpoint('/api/toefl-explanation'), {
+                var requestResult = await fetchAiWithFallback('/api/toefl-explanation', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+                var resp = requestResult.response;
 
                 if (!resp.ok) {
                     var errJson = {};
@@ -1792,12 +1893,16 @@
                 if (!generatedText || !generatedText.trim()) throw new Error('Empty response from AI server');
 
                 question.explanation = generatedText.trim();
+                question.explanationId = '';
+                question.showBahasaExplanation = false;
                 persistExplanationToResult(question.number, question.explanation);
+                persistExplanationTranslationToResult(question.number, '', false);
 
                 var explanation = parseExplanationSegments(question.explanation);
                 reviewDetailSteps = buildDetailSteps(question, explanation);
                 reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
                 renderDetailSteps();
+                updateTranslateButtonState(question);
 
                 if (label) label.textContent = 'Regenerate AI';
             } catch (err) {
@@ -1807,6 +1912,80 @@
             } finally {
                 reviewAiGenerating = false;
                 if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
+                updateTranslateButtonState(question);
+            }
+        }
+
+        var reviewAiTranslating = false;
+
+        async function triggerTranslateExplanation() {
+            var question = reviewCurrentQuestion;
+            if (!question) return;
+            if (reviewAiGenerating || reviewAiTranslating) return;
+
+            var btn = document.getElementById('aiTranslateExplanationBtn');
+            var label = document.getElementById('aiTranslateBtnLabel');
+
+            if (question.explanationId) {
+                question.showBahasaExplanation = !question.showBahasaExplanation;
+                persistExplanationTranslationToResult(question.number, question.explanationId, question.showBahasaExplanation);
+                var switchedExplanation = parseExplanationSegments(getDisplayedExplanationText(question));
+                reviewDetailSteps = buildDetailSteps(question, switchedExplanation);
+                reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
+                renderDetailSteps();
+                updateTranslateButtonState(question);
+                return;
+            }
+
+            if (!String(question.explanation || '').trim()) {
+                await triggerAiExplanation();
+                if (!String(question.explanation || '').trim()) {
+                    updateTranslateButtonState(question);
+                    return;
+                }
+            }
+
+            reviewAiTranslating = true;
+            if (btn) { btn.disabled = true; btn.classList.add('loading'); }
+            if (label) label.textContent = 'Translating…';
+
+            try {
+                var payload = {
+                    explanationMarkdown: String(question.explanation || ''),
+                    targetLanguage: 'Bahasa Indonesia'
+                };
+
+                var requestResult = await fetchAiWithFallback('/api/translate-explanation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                var resp = requestResult.response;
+
+                if (!resp.ok) {
+                    var errJson = {};
+                    try { errJson = await resp.json(); } catch(_) {}
+                    throw new Error(errJson.error || ('Server error ' + resp.status));
+                }
+
+                var translatedText = await resp.text();
+                if (!translatedText || !translatedText.trim()) throw new Error('Empty translation response from AI server');
+
+                question.explanationId = translatedText.trim();
+                question.showBahasaExplanation = true;
+                persistExplanationTranslationToResult(question.number, question.explanationId, true);
+
+                var translatedExplanation = parseExplanationSegments(question.explanationId);
+                reviewDetailSteps = buildDetailSteps(question, translatedExplanation);
+                reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
+                renderDetailSteps();
+            } catch (err) {
+                console.error('[AI Translate]', err);
+                alert('AI translation failed: ' + String(err.message || err));
+            } finally {
+                reviewAiTranslating = false;
+                if (btn) { btn.classList.remove('loading'); }
+                updateTranslateButtonState(question);
             }
         }
 
@@ -1835,6 +2014,9 @@
             }
             var wrongReason = explanation.wrongReason || "This option does not match the speaker's intent in the transcript.";
 
+            var activeExplanationMarkdown = getDisplayedExplanationText(q);
+            explanation = parseExplanationSegments(activeExplanationMarkdown || '');
+
             document.getElementById('reviewQuestionNumber').textContent = String(q.number||'-');
             var reviewQuestionTextEl = document.getElementById('reviewQuestionText');
             var reviewPartId = inferPartIdFromQuestion(q);
@@ -1851,6 +2033,7 @@
             reviewDetailSteps = buildDetailSteps(q, explanation);
             reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
             renderDetailSteps();
+            updateTranslateButtonState(q);
 
             var html = '';
             for (var i=0; i<letters.length; i++) {
