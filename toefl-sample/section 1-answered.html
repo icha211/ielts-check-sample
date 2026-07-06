@@ -34,21 +34,14 @@
                         <div class="header-question-grid part-c" id="partCChips"></div>
                     </div>
                 </div>
-                <div class="header-actions">
-                    <button class="header-icon-btn" type="button" aria-label="Fullscreen">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M9 3H3v6" />
-                            <path d="M15 3h6v6" />
-                            <path d="M21 15v6h-6" />
-                            <path d="M3 15v6h6" />
-                        </svg>
+                <div class="features">
+                    <button class="header-feature-btn nav-toggle-btn" type="button" id="fullscreen-btn" aria-label="Enter fullscreen" onclick="toggleReviewFullScreenMode()">
+                        <i class="ph ph-frame-corners icon-regular" aria-hidden="true"></i>
+                        <i class="ph-fill ph-frame-corners icon-filled" aria-hidden="true"></i>
                     </button>
-                    <button class="header-icon-btn" type="button" aria-label="Menu">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                            <path d="M4 7h16" />
-                            <path d="M4 12h16" />
-                            <path d="M4 17h16" />
-                        </svg>
+                    <button class="header-feature-btn nav-toggle-btn" type="button" id="toggle-navigator-btn" aria-label="Open test options" onclick="toggleFeaturesMenu(event)">
+                        <i class="ph ph-list icon-regular" aria-hidden="true"></i>
+                        <i class="ph-fill ph-list icon-filled" aria-hidden="true"></i>
                     </button>
                 </div>
                 <button class="header-prev-btn" type="button" id="headerPrevQuestionBtn" onclick="goToPreviousReviewQuestion()" aria-label="Previous question">
@@ -62,6 +55,61 @@
                 </button>
             </div>
         </header>
+
+        <div class="features-overlay" id="features-overlay" aria-hidden="true">
+            <div class="features-panel" role="dialog" aria-modal="true" aria-labelledby="features-title">
+                <div class="features-panel__header">
+                    <div class="features-title" id="features-title">TEST OPTIONS</div>
+                    <button class="features-close" id="features-close-btn" type="button" aria-label="Close test options" onclick="setFeaturesMenuOpen(false)">
+                        <i class="ph ph-x" aria-hidden="true"></i>
+                    </button>
+                </div>
+
+                <div class="features-panel__content">
+                    <div class="feature-quick-row">
+                        <div class="feature-card feature-card--dark">
+                            <div class="feature-label"><i class="ph ph-moon" aria-hidden="true"></i>Dark Mode</div>
+                            <button class="darkmode-toggle" type="button" id="darkmode-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode" onclick="toggleDarkMode()">
+                                <span class="darkmode-toggle__thumb" aria-hidden="true"></span>
+                                <span class="darkmode-toggle__option darkmode-toggle__option--light"><i class="ph ph-sun" aria-hidden="true"></i></span>
+                                <span class="darkmode-toggle__option darkmode-toggle__option--dark"><i class="ph ph-moon" aria-hidden="true"></i></span>
+                            </button>
+                        </div>
+
+                        <div class="feature-card feature-card--text-size">
+                            <div class="feature-label"><i class="ph ph-text-aa" aria-hidden="true"></i>Text Size</div>
+                            <div class="textsize-toggle" id="textsize-toggle" data-size="s" role="radiogroup" aria-label="Text size">
+                                <span class="textsize-toggle__thumb" aria-hidden="true"></span>
+                                <button class="textsize-toggle__option is-active" type="button" role="radio" aria-checked="true" data-size="s" onclick="setTextSize('s')">S</button>
+                                <button class="textsize-toggle__option" type="button" role="radio" aria-checked="false" data-size="m" onclick="setTextSize('m')">M</button>
+                                <button class="textsize-toggle__option" type="button" role="radio" aria-checked="false" data-size="l" onclick="setTextSize('l')">L</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="feature-card feature-card--audio">
+                        <div class="feature-label"><i class="ph ph-speaker-high" aria-hidden="true"></i>Audio Volume</div>
+                        <div class="volume-control" aria-hidden="true">
+                            <button class="volume-control__btn" type="button" tabindex="-1"><i class="ph ph-minus" aria-hidden="true"></i></button>
+                            <div class="volume-control__track">
+                                <div class="volume-control__fill"></div>
+                            </div>
+                            <button class="volume-control__btn" type="button" tabindex="-1"><i class="ph ph-plus" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
+
+                    <button class="feature-link" type="button">
+                        <span class="feature-link__left"><i class="ph ph-book-open-text" aria-hidden="true"></i>Instruction</span>
+                        <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
+                    </button>
+
+                    <button class="feature-link feature-link--warn" type="button">
+                        <span class="feature-link__left"><i class="ph ph-warning-circle" aria-hidden="true"></i>Report an Issue</span>
+                        <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <main class="component-34">
             <aside class="left-col">
@@ -185,6 +233,7 @@
         </main>
     </div>
 
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="toefl-storage-sync.js"></script>
     <script>
         function escapeHtml(v) {
@@ -259,6 +308,84 @@
             if (!toggle) return;
             var isOpen = toggle.classList.contains('is-open');
             setSectionCaretIcon(toggle, !isOpen);
+        }
+
+        function setFeaturesMenuOpen(isOpen) {
+            var overlay = document.getElementById('features-overlay');
+            var btn = document.getElementById('toggle-navigator-btn');
+            if (!overlay) return;
+            overlay.classList.toggle('is-open', !!isOpen);
+            overlay.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            if (btn) {
+                btn.classList.toggle('is-active', !!isOpen);
+                btn.setAttribute('aria-label', isOpen ? 'Close test options' : 'Open test options');
+            }
+        }
+
+        function toggleFeaturesMenu(event) {
+            if (event) event.stopPropagation();
+            var overlay = document.getElementById('features-overlay');
+            if (!overlay) return;
+            var isOpen = overlay.classList.contains('is-open');
+            setFeaturesMenuOpen(!isOpen);
+        }
+
+        function handleFeaturesOverlayClick(event) {
+            var overlay = document.getElementById('features-overlay');
+            if (!overlay || event.target !== overlay) return;
+            setFeaturesMenuOpen(false);
+        }
+
+        function handleFeaturesMenuKeydown(event) {
+            if (event.key !== 'Escape') return;
+            setFeaturesMenuOpen(false);
+        }
+
+        function updateReviewFullScreenButton() {
+            var button = document.getElementById('fullscreen-btn');
+            if (!button) return;
+            var isFullScreen = Boolean(document.fullscreenElement);
+            button.setAttribute('aria-label', isFullScreen ? 'Exit fullscreen' : 'Enter fullscreen');
+            button.classList.toggle('is-active', isFullScreen);
+        }
+
+        async function toggleReviewFullScreenMode() {
+            try {
+                if (!document.fullscreenElement) {
+                    var shell = document.querySelector('.explaination') || document.documentElement;
+                    await shell.requestFullscreen();
+                } else {
+                    await document.exitFullscreen();
+                }
+            } catch (_) {
+                // Ignore fullscreen API errors for unsupported environments.
+            } finally {
+                updateReviewFullScreenButton();
+            }
+        }
+
+        function toggleDarkMode() {
+            var body = document.body;
+            var toggle = document.getElementById('darkmode-toggle');
+            if (!body || !toggle) return;
+            var next = !body.classList.contains('review-dark');
+            body.classList.toggle('review-dark', next);
+            toggle.setAttribute('aria-checked', next ? 'true' : 'false');
+        }
+
+        function setTextSize(size) {
+            var host = document.getElementById('textsize-toggle');
+            if (!host) return;
+            var next = (size === 'm' || size === 'l') ? size : 's';
+            host.setAttribute('data-size', next);
+            var options = host.querySelectorAll('.textsize-toggle__option');
+            for (var i = 0; i < options.length; i += 1) {
+                var option = options[i];
+                var isActive = option.getAttribute('data-size') === next;
+                option.classList.toggle('is-active', isActive);
+                option.setAttribute('aria-checked', isActive ? 'true' : 'false');
+            }
+            document.body.setAttribute('data-review-text-size', next);
         }
 
         function normalizeDateKey(value) {
@@ -708,29 +835,21 @@
         }
 
         function ensureReviewAnalyser() {
-            if (reviewAudioCtx && reviewAudioAnalyser) return true;
-            try {
-                reviewAudioCtx    = new (window.AudioContext || window.webkitAudioContext)();
-                reviewAudioSource = reviewAudioCtx.createMediaElementSource(reviewAudio);
-                reviewAudioAnalyser = reviewAudioCtx.createAnalyser();
-                reviewAudioAnalyser.fftSize = 512;
-                reviewAudioAnalyser.smoothingTimeConstant = 0.84;
-                reviewAudioData = new Uint8Array(reviewAudioAnalyser.frequencyBinCount);
-                reviewAudioSource.connect(reviewAudioAnalyser);
-                reviewAudioAnalyser.connect(reviewAudioCtx.destination);
-                return true;
-            } catch(e) {
-                return false;
-            }
+            reviewAudioCtx = null;
+            reviewAudioSource = null;
+            reviewAudioAnalyser = null;
+            reviewAudioData = null;
+            return false;
         }
 
         function reviewAudioToggle() {
             if (!reviewAudio || !reviewAudio.src) return;
             if (reviewAudio.paused || reviewAudio.ended) {
-                ensureReviewAnalyser();
-                if (reviewAudioCtx && reviewAudioCtx.state === 'suspended') reviewAudioCtx.resume();
                 reviewAudio.muted = false;
                 if (reviewAudio.volume <= 0) reviewAudio.volume = 1;
+                if (reviewAudio.ended || (isFinite(reviewAudio.duration) && reviewAudio.duration > 0 && reviewAudio.currentTime >= (reviewAudio.duration - 0.05))) {
+                    reviewAudio.currentTime = 0;
+                }
                 reviewAudio.play().then(function() {
                     if (reviewAudio.muted) reviewAudio.muted = false;
                     if (reviewAudio.volume <= 0) reviewAudio.volume = 1;
@@ -1817,6 +1936,14 @@
 
         async function init() {
             initReviewAudio();
+            updateReviewFullScreenButton();
+            document.addEventListener('fullscreenchange', updateReviewFullScreenButton);
+
+            var featuresOverlay = document.getElementById('features-overlay');
+            if (featuresOverlay) {
+                featuresOverlay.addEventListener('click', handleFeaturesOverlayClick);
+            }
+            document.addEventListener('keydown', handleFeaturesMenuKeydown);
 
             setSectionCaretIcon(document.getElementById('questionHeaderToggle'), true);
             setSectionCaretIcon(document.getElementById('detailHeaderToggle'), true);

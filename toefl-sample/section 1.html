@@ -159,7 +159,7 @@
                                 </svg>
                                 <span>-10s</span>
                             </button>
-                            <button type="button" class="audio-transport-btn big" id="audio-play-control" title="Play / Pause" aria-label="Play listening audio">
+                            <button type="button" class="audio-transport-btn big" id="audio-play-control" title="Play / Pause" aria-label="Play listening audio" onclick="toggleAudioFromUserGesture()">
                                 <img id="audio-play-icon" src="../asst/icon/play.svg" alt="">
                             </button>
                             <button type="button" class="audio-transport-btn skip-label" id="audio-fwd10-btn" title="Forward 10 s" aria-label="Forward 10 seconds" onclick="examAudioSeekRel(10)">
@@ -248,7 +248,7 @@
                                 <div class="instruction-popup__ready">Are you ready?</div>
                                 <div class="instruction-popup__click">Click to Play</div>
                             </div>
-                            <button class="instruction-popup__play-button" type="button" onclick="dismissOnboarding()">
+                            <button class="instruction-popup__play-button" type="button" onclick="startFromOnboarding()">
                                 <span class="instruction-popup__play-icon" aria-hidden="true">
                                     <i class="ph ph-play instruction-popup__play-icon-glyph icon-regular" aria-hidden="true"></i>
                                     <i class="ph-fill ph-play instruction-popup__play-icon-glyph icon-filled" aria-hidden="true"></i>
@@ -830,6 +830,44 @@
             if (!raw) return "";
             if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
             if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw.slice(0, 10);
+
+            // Support Indonesian date labels like "1 Juli" or "1 Juli 2026".
+            const indoMatch = raw.match(/^(\d{1,2})\s+([A-Za-z\.]+)(?:\s+(\d{4}))?$/);
+            if (indoMatch) {
+                const day = Number(indoMatch[1]);
+                const monthRaw = String(indoMatch[2] || "").toLowerCase().replace(/\./g, "");
+                const monthMap = {
+                    januari: 1,
+                    februari: 2,
+                    maret: 3,
+                    april: 4,
+                    mei: 5,
+                    juni: 6,
+                    juli: 7,
+                    agustus: 8,
+                    september: 9,
+                    oktober: 10,
+                    november: 11,
+                    desember: 12,
+                    jan: 1,
+                    feb: 2,
+                    mar: 3,
+                    apr: 4,
+                    jun: 6,
+                    jul: 7,
+                    agu: 8,
+                    sep: 9,
+                    okt: 10,
+                    nov: 11,
+                    des: 12
+                };
+                const month = monthMap[monthRaw];
+                if (day >= 1 && day <= 31 && month) {
+                    const year = Number(indoMatch[3]) || new Date().getFullYear();
+                    return `${year.toString().padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                }
+            }
+
             const parsed = new Date(raw);
             if (Number.isNaN(parsed.getTime())) return raw;
             return parsed.toISOString().slice(0, 10);
@@ -1321,29 +1359,12 @@
         function ensureAudioAnalyzer() {
             const audio = document.getElementById("cbt-audio-player");
             if (!audio) return false;
-            if (audioAnalyzerReady && audioContext && audioAnalyser && audioDataArray) return true;
-
-            try {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                audioSourceNode = audioContext.createMediaElementSource(audio);
-                audioAnalyser = audioContext.createAnalyser();
-                audioAnalyser.fftSize = 512;
-                audioAnalyser.smoothingTimeConstant = 0.84;
-                audioDataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
-
-                audioSourceNode.connect(audioAnalyser);
-                audioAnalyser.connect(audioContext.destination);
-                audioAnalyzerReady = true;
-                return true;
-            } catch (error) {
-                audioAnalyzerReady = false;
-                audioContext = null;
-                audioAnalyser = null;
-                audioSourceNode = null;
-                audioDataArray = null;
-                console.warn("Audio analyzer setup skipped:", error);
-                return false;
-            }
+            audioAnalyzerReady = false;
+            audioContext = null;
+            audioAnalyser = null;
+            audioSourceNode = null;
+            audioDataArray = null;
+            return false;
         }
 
         function renderWaveform() {
@@ -1523,7 +1544,13 @@
 
         async function toggleAudioFromUserGesture() {
             const audio = document.getElementById("cbt-audio-player");
-            if (!audio || audioIsLocked) return;
+            if (!audio) return;
+
+            const onboardingOverlay = document.getElementById("onboarding-overlay");
+            if (onboardingOverlay && onboardingOverlay.classList.contains("is-visible")) {
+                onboardingOverlay.classList.remove("is-visible");
+                onboardingOverlay.setAttribute("aria-hidden", "true");
+            }
 
             if (!audio.src) {
                 const recovered = await ensurePlayableAudioSource();
@@ -1545,9 +1572,13 @@
                 }
 
                 if (audio.paused) {
+                    audioIsLocked = false;
                     audio.muted = false;
                     if (audio.volume <= 0) {
                         audio.volume = 1;
+                    }
+                    if (audio.ended || (isFinite(audio.duration) && audio.duration > 0 && audio.currentTime >= (audio.duration - 0.05))) {
+                        audio.currentTime = 0;
                     }
                     await audio.play();
                     if (audio.muted) audio.muted = false;
@@ -1610,7 +1641,7 @@
                 visual.title = "Click to seek";
                 visual.addEventListener("click", examAudioSeekFromEvent);
             }
-            if (playControl) playControl.addEventListener("click", toggleAudioFromUserGesture);
+            if (playControl && !playControl.onclick) playControl.addEventListener("click", toggleAudioFromUserGesture);
 
             // Allow clicking Part A/B/C titles in navigator to switch part and start that part audio.
             const navigatorTitles = document.querySelectorAll(".navigator-group__title");
@@ -1644,7 +1675,7 @@
                 updateAudioShellStatus();
             });
             audio.addEventListener("ended", () => {
-                audioIsLocked = true;
+                audioIsLocked = false;
                 waveformShouldStopWhenSilent = true;
                 startWaveformRenderer();
                 updateAudioShellStatus();
@@ -1878,11 +1909,12 @@
             const difficultyInput = document.getElementById("set-difficulty");
             const params = new URLSearchParams(window.location.search);
             const requestedDate = params.get("setDate");
+            const normalizedRequestedDate = normalizeDateKey(requestedDate);
             currentSetId = params.get("setId") || "";
             let stored = {};
 
             if (!currentSetId && requestedDate) {
-                const byDate = await resolveSetRecordByDate(requestedDate);
+                const byDate = await resolveSetRecordByDate(normalizedRequestedDate || requestedDate);
                 if (byDate?.setId) {
                     currentSetId = byDate.setId;
                     stored = byDate;
@@ -1938,7 +1970,7 @@
             }
 
             const today = new Date().toISOString().split("T")[0];
-            const effectiveDate = requestedDate || stored.setDate || today;
+            const effectiveDate = normalizedRequestedDate || requestedDate || stored.setDate || today;
             if (dateInput) dateInput.value = effectiveDate;
             if (difficultyInput) difficultyInput.value = stored.difficulty || "intermediate";
             updatePackageLabel(effectiveDate);
@@ -2434,6 +2466,15 @@
             }
         }
 
+        async function startFromOnboarding() {
+            dismissOnboarding();
+            try {
+                await toggleAudioFromUserGesture();
+            } catch (_) {
+                // toggleAudioFromUserGesture already handles user-facing errors.
+            }
+        }
+
         function updateOnboardingVisibility() {
             const overlay = document.getElementById("onboarding-overlay");
             if (!overlay) return;
@@ -2516,6 +2557,12 @@
 
         function updateUserView(shouldSaveMeta = false) {
             hydrateEditorInputsFromLocalDraftIfEmpty();
+
+            const onboardingOverlay = document.getElementById("onboarding-overlay");
+            if (onboardingOverlay) {
+                onboardingOverlay.classList.remove("is-visible");
+                onboardingOverlay.setAttribute("aria-hidden", "true");
+            }
 
             if (shouldSaveMeta) {
                 saveSectionMeta();
