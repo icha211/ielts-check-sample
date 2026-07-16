@@ -2,7 +2,10 @@ import json
 import os
 import re
 import socket
+import base64
+import smtplib
 import time
+from email.message import EmailMessage
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from google import genai
@@ -10,7 +13,13 @@ from google import genai
 HOST = os.environ.get("AI_REVIEW_HOST", "0.0.0.0")
 PORT = int(os.environ.get("AI_REVIEW_PORT", "8787"))
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-FALLBACK_MODEL = os.environ.get("GEMINI_FALLBACK_MODEL", "gemini-2.0-flash")
+FALLBACK_MODEL = str(os.environ.get("GEMINI_FALLBACK_MODEL", "") or "").strip()
+REPORT_ISSUE_TO = str(os.environ.get("REPORT_ISSUE_TO", "quickcheck.edu@gmail.com") or "quickcheck.edu@gmail.com").strip()
+REPORT_SMTP_HOST = str(os.environ.get("REPORT_SMTP_HOST", "smtp.gmail.com") or "smtp.gmail.com").strip()
+REPORT_SMTP_PORT = int(os.environ.get("REPORT_SMTP_PORT", "587"))
+REPORT_SMTP_USER = str(os.environ.get("REPORT_SMTP_USER", "quickcheck.edu@gmail.com") or "quickcheck.edu@gmail.com").strip()
+REPORT_SMTP_PASS = str(os.environ.get("REPORT_SMTP_PASS", "") or "").strip()
+REPORT_QUEUE_FILE = str(os.environ.get("REPORT_QUEUE_FILE", "data/report_issue_queue.jsonl") or "data/report_issue_queue.jsonl").strip()
 
 
 def is_transient_model_error(exc: Exception) -> bool:
@@ -27,6 +36,41 @@ def is_transient_model_error(exc: Exception) -> bool:
         "CONNECTION ABORTED",
     )
     return any(marker in msg for marker in transient_markers)
+
+
+def is_quota_exceeded_error(exc: Exception) -> bool:
+    msg = str(exc or "").upper()
+    markers = (
+        "RESOURCE_EXHAUSTED",
+        "QUOTA EXCEEDED",
+        "RATE LIMIT",
+        "GENERATE_CONTENT_FREE_TIER",
+        "429",
+    )
+    return any(marker in msg for marker in markers)
+
+
+def parse_retry_after_seconds(exc: Exception):
+    msg = str(exc or "")
+    match = re.search(r"retry\s+in\s+([0-9]+(?:\.[0-9]+)?)s", msg, flags=re.IGNORECASE)
+    if not match:
+        return None
+    try:
+        return float(match.group(1))
+    except Exception:
+        return None
+
+
+def friendly_model_error(exc: Exception) -> str:
+    if is_quota_exceeded_error(exc):
+        retry_after = parse_retry_after_seconds(exc)
+        wait_hint = f" Retry after about {int(retry_after) + 1}s." if retry_after else ""
+        return (
+            "Gemini quota/rate limit reached for the current API key. "
+            "Please wait a moment and try again, or use a key/project with available quota."
+            + wait_hint
+        )
+    return str(exc)
 
 
 def generate_with_retry(client: genai.Client, prompt: str):
@@ -49,7 +93,13 @@ def generate_with_retry(client: genai.Client, prompt: str):
                 if attempt >= len(delays):
                     break
 
-                time.sleep(delays[attempt])
+                wait_seconds = delays[attempt]
+                retry_after = parse_retry_after_seconds(exc)
+                if retry_after is not None:
+                    # Respect provider backoff hints when available.
+                    wait_seconds = max(wait_seconds, min(retry_after + 0.25, 20.0))
+
+                time.sleep(wait_seconds)
 
     raise last_exc if last_exc else RuntimeError("Model generation failed")
 
@@ -94,7 +144,17 @@ def build_explanation_prompt(payload: dict) -> str:
         f"  ({letter}) {text}" for letter, text in sorted(options.items())
     )
 
+    explanation_language = str(
+        payload.get("explanationLanguage")
+        or payload.get("targetLanguage")
+        or "Bahasa Indonesia"
+    ).strip()
+
     return f"""Please provide a step-by-step explanation for the following TOEFL ITP listening question.
+
+IMPORTANT LANGUAGE RULE:
+- Write all explanatory content in {explanation_language}.
+- Keep only parser-critical markers in English exactly as written below (Step headers, "Test Tip:", "Note:", and "is wrong:").
 
 CRITICAL RULE: Do not use generic headers like "Step 1: Find the Idiom" for every question. Instead, change the text of the step headers so they are perfectly customized to the specific question type (e.g., Idioms, Suggestions, Tone/Emotions, Main Topic, Details).
 
@@ -134,63 +194,57 @@ IMPORTANT: Output ONLY the three steps in the exact Markdown format above. No ex
 
 
 def build_step_timeline_prompt(payload: dict) -> str:
-    question_text = str(payload.get("questionText", "") or "")
+    question_text = str(payload.get("questionText", "") or "").strip()
     options = payload.get("options", {}) or {}
     correct_answer = str(payload.get("correctAnswer", "") or "").strip().upper()
-    transcript = str(payload.get("transcript", "") or "")
-    raw_transcript = str(payload.get("rawTranscript", "") or "")
-    question_number = payload.get("questionNumber", "")
-
-    if raw_transcript and str(question_number).strip():
-        transcript_payload = extract_question_transcript_payload(raw_transcript, question_number)
-        transcript_blocks = transcript_payload.get("transcript_blocks") or []
-        if transcript_blocks:
-            transcript = "\n".join(
-                f'{block.get("speaker_name", "Speaker")}: "{block.get("dialogue_text", "")}"'
-                for block in transcript_blocks
-            )
+    transcript = str(payload.get("transcript", "") or "").strip()
 
     options_lines = "\n".join(
-        f"  ({letter}) {text}" for letter, text in sorted(options.items())
+        f'  "{letter}": "{text}"' for letter, text in sorted(options.items())
     )
 
-    return f"""You are a backend content engine for a TOEFL ITP preparation application. Your task is to analyze a single TOEFL listening question and output a highly specific structured JSON object that maps perfectly to a 4-step timeline UI component.
+    return f"""You are a backend content engine for a TOEFL ITP preparation application. Your task is to analyze a TOEFL listening question, its corresponding transcript snippet, and output a structured JSON object that maps perfectly to a 4-step timeline UI component.
 
-### TRANSCRIPT PARSING RULE:
-You MUST isolate and extract your quotes and strategies ONLY from the provided transcript block for the active question. Do NOT use generic placeholder text.
+### STEP-BY-STEP ANALYSIS & LOGIC RULES:
+You must break down the explanation into exactly 4 logical steps that replicate a master tutor's mental process:
+1. **Targeted Listening Strategy**: Teach the student what specific markers, positions in the dialogue, or verbal cues to listen for based on the question type.
+2. **Contextual Confirmation**: Trace how the dialogue develops immediately around that clue to secure the context.
+3. **Paraphrase/Synonym Matching**: Map the literal words spoken in the transcript directly to the abstract or summarized terms in the correct answer choice.
+4. **Distractor Deconstruction**: Systematically eliminate all three wrong options by pointing out classic TOEFL traps (e.g., too narrow, out of context, factually reversed).
 
 ### COLOR & STYLING RULES:
-You must strictly embed inline styling HTML tags directly inside the text values (`description`, `quote`, and `reasoning`) when referring to speakers or key vocabulary:
-1. For the Male speaker: Wrap their role name in `<span style="color: #F3934F; font-weight: bold;">Role Name</span>`.
-2. For the Female speaker: Wrap their role name in `<span style="color: #676CFF; font-weight: bold;">Role Name</span>`.
-3. For key audio clues or critical matched vocabulary: Wrap the phrase in `<mark style="background-color: #FFDE00; color: #000000; font-weight: 500;">highlighted phrase</mark>`.
+You must strictly embed inline styling HTML tags directly inside the text strings (`description`, `quote`, and `reasoning`) when referring to speakers or key vocabulary so the frontend can parse them:
+1. **Identify the exact roles**: Look at the transcript to see who the actors are (e.g., Student, Librarian, Man, Woman).
+2. **Male Speaker Styling**: Wrap the role name exactly in: <span style="color: #F3934F; font-weight: bold;">Role Name</span>
+3. **Female Speaker Styling**: Wrap the role name exactly in: <span style="color: #676CFF; font-weight: bold;">Role Name</span>
+4. **Key Clue Highlighting**: Wrap the exact target keywords/phrases from the audio or option text in: <mark style="background-color: #FFDE00; color: #000000; font-weight: 500;">highlighted text</mark>
 
 ### DYNAMIC STRATEGY RULE:
-- If the question asks for the MAIN IDEA:
-  - Step 1 Title: "Listen for the Topic Opener"
-  - Step 2 Title: "Identify the Location Solution"
-- If the question asks for a SPECIFIC DETAIL, METHOD, or REASON:
-  - Step 1 Title: "Listen for the Core Clue"
-  - Step 2 Title: "Identify the Supporting Detail"
+You must dynamically adjust the titles and analytical approach in Step 1 and Step 2 based on the question's focus:
+*   **If Main Idea** (e.g., "mainly discussing"):
+    *   `step_1.title` = "Listen for the Topic Opener"
+    *   `step_2.title` = "Identify the Development/Resolution"
+*   **If Detail / Reason / Method** (e.g., "Why...", "How...", "What does the speaker recommend"):
+    *   `step_1.title` = "Listen for the Core Clue"
+    *   `step_2.title` = "Identify the Supporting Detail"
 
-### LOGIC RULE:
-- In `step_4`, each incorrect option reasoning must start with "because..." and must be unique and specific to the transcript.
+### OUTPUT SCHEMA:
+Respond ONLY with a valid JSON object matching this schema. Do not include markdown code block backticks (```json) or conversational introduction/outro fluff.
 
-Respond ONLY with a valid JSON object matching this schema:
 {{
   "step_1": {{
-    "title": "[Dynamic Title]",
-    "description": "[Strategy text with inline speaker color tags]",
-    "quote": "[Exact transcript quote with <mark> highlights]"
+    "title": "Dynamic Title String",
+    "description": "Strategy text explaining what targeted information to listen for. Apply speaker color tags.",
+    "quote": "The raw quote containing the initial clue. Apply the yellow <mark> tag to the exact phrase."
   }},
   "step_2": {{
-    "title": "[Dynamic Title]",
-    "description": "[Context tracking text with inline speaker color tags]",
-    "quote": "[Exact secondary quote with <mark> highlights]"
+    "title": "Dynamic Title String",
+    "description": "Context tracking text explaining how the surrounding dialogue supports the clue. Apply speaker color tags.",
+    "quote": "The contextual supporting raw quote. Apply the yellow <mark> tag to important keywords."
   }},
   "step_3": {{
     "title": "Connect the Synonyms",
-    "description": "Look at the choices. Match the student's problem to the specific option letter.",
+    "description": "Brief instruction showing how keywords from the audio clue map directly to the correct option.",
     "correct_option_letter": "A, B, C, or D",
     "correct_option_text": "The full exact text of the correct answer choice.",
     "closing_thought": "A brief conclusion sentence showing they mean the exact same thing."
@@ -201,17 +255,17 @@ Respond ONLY with a valid JSON object matching this schema:
       {{
         "letter": "Option letter",
         "text": "Full text of option",
-        "reasoning": "because..."
+        "reasoning": "A single-sentence explanation starting with 'because...' detailing why this choice fails. Apply speaker color tags if referenced."
       }},
       {{
         "letter": "Option letter",
         "text": "Full text of option",
-        "reasoning": "because..."
+        "reasoning": "A single-sentence explanation starting with 'because...' detailing why this choice fails. Apply speaker color tags if referenced."
       }},
       {{
         "letter": "Option letter",
         "text": "Full text of option",
-        "reasoning": "because..."
+        "reasoning": "A single-sentence explanation starting with 'because...' detailing why this choice fails. Apply speaker color tags if referenced."
       }}
     ]
   }}
@@ -220,13 +274,13 @@ Respond ONLY with a valid JSON object matching this schema:
 QUESTION:
 {question_text}
 
-ANSWER CHOICES:
+OPTIONS:
 {options_lines}
 
 CORRECT ANSWER:
-({correct_answer})
+{correct_answer}
 
-ACTIVE QUESTION TRANSCRIPT:
+TRANSCRIPT:
 {transcript}
 """
 
@@ -257,6 +311,10 @@ def explanation_has_required_shape(text: str) -> bool:
 def build_explanation_fix_prompt(previous_output: str) -> str:
     return f"""Rewrite the output below so it STRICTLY matches the required TOEFL explanation format.
 
+LANGUAGE REQUIREMENT:
+- Write explanatory content in Bahasa Indonesia.
+- Keep parser markers in English exactly as required.
+
 Requirements:
 1) Exactly 3 step headers in this order:
    ### Step 1: ...
@@ -279,48 +337,81 @@ OUTPUT TO REWRITE:
 def step_timeline_has_required_shape(data: dict) -> bool:
     if not isinstance(data, dict):
         return False
-    step_1 = data.get("step_1")
-    step_2 = data.get("step_2")
-    step_3 = data.get("step_3")
-    step_4 = data.get("step_4")
-    if not all(isinstance(step, dict) for step in (step_1, step_2, step_3, step_4)):
+
+    for key in ("step_1", "step_2", "step_3", "step_4"):
+        if not isinstance(data.get(key), dict):
+            return False
+
+    step_1 = data["step_1"]
+    step_2 = data["step_2"]
+    step_3 = data["step_3"]
+    step_4 = data["step_4"]
+
+    if not str(step_1.get("title", "")).strip():
         return False
-    required_text_fields = [
-        step_1.get("title"), step_1.get("description"), step_1.get("quote"),
-        step_2.get("title"), step_2.get("description"), step_2.get("quote"),
-        step_3.get("title"), step_3.get("description"), step_3.get("correct_option_letter"),
-        step_3.get("correct_option_text"), step_3.get("closing_thought"),
-        step_4.get("title"),
-    ]
-    if any(not str(value or "").strip() for value in required_text_fields):
+    if not str(step_1.get("description", "")).strip():
         return False
-    incorrect = step_4.get("incorrect_options")
-    if not isinstance(incorrect, list) or len(incorrect) != 3:
+    if not str(step_1.get("quote", "")).strip():
         return False
-    for item in incorrect:
+
+    if not str(step_2.get("title", "")).strip():
+        return False
+    if not str(step_2.get("description", "")).strip():
+        return False
+    if not str(step_2.get("quote", "")).strip():
+        return False
+
+    if str(step_3.get("title", "")).strip() != "Connect the Synonyms":
+        return False
+    if not str(step_3.get("description", "")).strip():
+        return False
+    if not re.fullmatch(r"[A-D]", str(step_3.get("correct_option_letter", "")).strip().upper()):
+        return False
+    if not str(step_3.get("correct_option_text", "")).strip():
+        return False
+    if not str(step_3.get("closing_thought", "")).strip():
+        return False
+
+    if str(step_4.get("title", "")).strip() != "Eliminate the Wrong Answer":
+        return False
+    incorrect_options = step_4.get("incorrect_options")
+    if not isinstance(incorrect_options, list) or len(incorrect_options) != 3:
+        return False
+
+    seen_letters = set()
+    for item in incorrect_options:
         if not isinstance(item, dict):
             return False
-        if not str(item.get("letter") or "").strip():
+        letter = str(item.get("letter", "")).strip().upper()
+        reasoning = str(item.get("reasoning", "")).strip()
+        if not re.fullmatch(r"[A-D]", letter):
             return False
-        if not str(item.get("text") or "").strip():
+        if letter in seen_letters:
             return False
-        reasoning = str(item.get("reasoning") or "").strip()
-        if not reasoning or not reasoning.lower().startswith("because"):
+        seen_letters.add(letter)
+        if not str(item.get("text", "")).strip():
             return False
+        if not reasoning.lower().startswith("because"):
+            return False
+
     return True
 
 
 def build_step_timeline_fix_prompt(previous_output: str) -> str:
-    return f"""Rewrite the output below so it is a valid JSON object matching the required 4-step TOEFL timeline schema.
+    return f"""Rewrite the output below so it STRICTLY matches the required 4-step TOEFL JSON schema.
 
-Rules:
-1. Return ONLY JSON.
-2. Include keys: step_1, step_2, step_3, step_4.
-3. step_1 and step_2 must each include title, description, quote.
-4. step_3 must include title, description, correct_option_letter, correct_option_text, closing_thought.
-5. step_4 must include title and exactly 3 incorrect_options.
-6. Each incorrect option must include letter, text, and reasoning that starts with "because".
-7. Preserve any inline <span> and <mark> formatting where appropriate.
+Requirements:
+1) Output must be valid JSON only.
+2) Include exactly the keys step_1, step_2, step_3, step_4.
+3) step_3.title must be exactly "Connect the Synonyms".
+4) step_4.title must be exactly "Eliminate the Wrong Answer".
+5) step_4.incorrect_options must contain exactly 3 objects.
+6) Each incorrect option reasoning must start with "because...".
+7) Preserve the required inline HTML styling:
+   - male speaker roles in <span style="color: #F3934F; font-weight: bold;">...</span>
+   - female speaker roles in <span style="color: #676CFF; font-weight: bold;">...</span>
+   - key phrases in <mark style="background-color: #FFDE00; color: #000000; font-weight: 500;">...</mark>
+8) Do not add markdown fences or commentary.
 
 OUTPUT TO REWRITE:
 {previous_output}
@@ -347,6 +438,89 @@ STRICT RULES:
 
 MARKDOWN TO TRANSLATE:
 {explanation_markdown}
+"""
+
+
+def build_explanation_json_prompt(payload: dict) -> str:
+        q_num = int(payload.get("active_question_number") or 0)
+        question_text = str(payload.get("question_text") or "").strip()
+        correct_letter = str(payload.get("correct_option_letter") or "").strip().upper()
+        user_letter = str(payload.get("user_selected_letter") or "").strip().upper()
+        isolated_block = str(payload.get("isolated_transcript_block") or "").strip()
+        options_array = payload.get("options_array") or {}
+
+        options_map = {"A": "", "B": "", "C": "", "D": ""}
+        if isinstance(options_array, list):
+                for raw in options_array:
+                        text = str(raw or "").strip()
+                        m = re.match(r"^\(?([A-D])\)?[\).:\-\s]*(.+)$", text, flags=re.IGNORECASE)
+                        if m:
+                                options_map[str(m.group(1)).upper()] = str(m.group(2) or "").strip()
+        elif isinstance(options_array, dict):
+                for key in ("A", "B", "C", "D"):
+                        options_map[key] = str(options_array.get(key, "") or "").strip()
+
+        return f"""You are the primary content intelligence engine for a premium TOEFL ITP test preparation application.
+
+You are given:
+1) question metadata
+2) options A-D
+3) an isolated transcript block that is the ONLY allowed evidence
+
+STRICT RULES:
+- Use ONLY evidence inside isolated_transcript_block.
+- No hallucination, no generic placeholders, no unrelated dialogue.
+- Inject highlight tags exactly as:
+    <mark style=\"background-color: #FFDE00; color: #000000; font-weight: 500;\">...<\/mark>
+- Output VALID JSON ONLY. No markdown fences.
+
+INPUT:
+question_number: {q_num}
+question_text: {question_text}
+correct_option_letter: {correct_letter}
+user_selected_letter: {user_letter}
+options:
+    A: {options_map['A']}
+    B: {options_map['B']}
+    C: {options_map['C']}
+    D: {options_map['D']}
+
+isolated_transcript_block:
+{isolated_block}
+
+OUTPUT SCHEMA (EXACT KEYS):
+{{
+    "question_metadata": {{
+        "question_number": {q_num},
+        "question_text": "{question_text}",
+        "user_was_correct": {str(user_letter == correct_letter).lower()}
+    }},
+    "options_status": [
+        {{"letter":"A","text":"{options_map['A']}","is_correct_choice":{str(correct_letter == 'A').lower()},"is_user_answer":{str(user_letter == 'A').lower()}}},
+        {{"letter":"B","text":"{options_map['B']}","is_correct_choice":{str(correct_letter == 'B').lower()},"is_user_answer":{str(user_letter == 'B').lower()}}},
+        {{"letter":"C","text":"{options_map['C']}","is_correct_choice":{str(correct_letter == 'C').lower()},"is_user_answer":{str(user_letter == 'C').lower()}}},
+        {{"letter":"D","text":"{options_map['D']}","is_correct_choice":{str(correct_letter == 'D').lower()},"is_user_answer":{str(user_letter == 'D').lower()}}}
+    ],
+    "explanation_payload": {{
+        "header_title": "Why ({correct_letter})?",
+        "main_explanation_html": "...",
+        "dialogue_blocks": [
+            {{
+                "speaker_name": "Student",
+                "speaker_gender": "male",
+                "introduction_label": "For instance, if we look directly at the spoken dialogue, the Student clearly explains his situation by stating:",
+                "quote_text_html": "..."
+            }},
+            {{
+                "speaker_name": "Librarian",
+                "speaker_gender": "female",
+                "introduction_label": "The Librarian immediately solves this by responding:",
+                "quote_text_html": "..."
+            }}
+        ],
+        "closing_analysis_html": "..."
+    }}
+}}
 """
 
 
@@ -405,121 +579,6 @@ def parse_json_from_text(text: str) -> dict:
     raise ValueError("No JSON object in model output")
 
 
-def format_timestamp_display(value: str) -> str:
-    raw = str(value or "").strip()
-    match = re.match(r"^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.(\d+))?$", raw)
-    if not match:
-        return raw
-    first = int(match.group(1))
-    second = int(match.group(2))
-    third = match.group(3)
-    if third is not None:
-        total_seconds = (first * 3600) + (second * 60) + int(third)
-        minutes = total_seconds // 60
-        seconds = total_seconds % 60
-        return f"{minutes:02d}:{seconds:02d}"
-    return f"{first:02d}:{second:02d}"
-
-
-def timestamp_to_milliseconds(value: str) -> int:
-    raw = str(value or "").strip()
-    match = re.match(r"^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.(\d+))?$", raw)
-    if not match:
-        return 0
-    first = int(match.group(1))
-    second = int(match.group(2))
-    third = match.group(3)
-    fraction = (match.group(4) or "0") + "000"
-    ms = int(fraction[:3])
-    if third is not None:
-        base_seconds = (first * 3600) + (second * 60) + int(third)
-    else:
-        base_seconds = (first * 60) + second
-    return (base_seconds * 1000) + ms
-
-
-def infer_speaker_gender_and_name(speaker: str) -> tuple[str, str]:
-    value = str(speaker or "").strip()
-    upper = value.upper()
-    if upper in ("STUDENT", "MAN", "STUDENT A", "MALE STUDENT"):
-        return "male", "Student" if upper.startswith("STUDENT") else "Man"
-    if upper in ("LIBRARIAN", "WOMAN", "STUDENT B", "FEMALE STUDENT"):
-        return "female", "Librarian" if upper == "LIBRARIAN" else "Woman"
-    if upper.startswith("NARR"):
-        return "unknown", "Narrator"
-    if upper.startswith("MAN"):
-        return "male", "Man"
-    if upper.startswith("WOM"):
-        return "female", "Woman"
-    if upper.startswith("STUDENT"):
-        return "male", "Student"
-    return "unknown", value or "Narrator"
-
-
-def extract_question_transcript_payload(raw_transcript: str, question_number: int | str) -> dict:
-    body = str(raw_transcript or "")
-    q_num = str(question_number or "").strip()
-    if not q_num:
-        return {"active_question": "", "transcript_blocks": []}
-
-    active_question = int(q_num) if q_num.isdigit() else q_num
-    active_question_text = str(active_question)
-    block_text = ""
-
-    tagged_pattern = re.compile(
-        rf"<Question\s*{re.escape(active_question_text)}>\s*([\s\S]*?)\s*</Question\s*{re.escape(active_question_text)}>",
-        flags=re.I,
-    )
-    tagged_match = tagged_pattern.search(body)
-    if tagged_match:
-        block_text = tagged_match.group(1)
-    else:
-        plain_pattern = re.compile(
-            rf"(^|\n)\s*Question\s*{re.escape(active_question_text)}\s*\n([\s\S]*?)(?=\n\s*(?:Question\s*\d+|<Question\s*\d+>|</Question\s*{re.escape(active_question_text)}>)|\Z)",
-            flags=re.I,
-        )
-        plain_match = plain_pattern.search(body)
-        if plain_match:
-            block_text = plain_match.group(2)
-
-    if not block_text.strip():
-        return {"active_question": active_question, "transcript_blocks": []}
-
-    transcript_blocks = []
-    line_pattern = re.compile(
-        r"^\s*(?P<start>\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)\s*(?:-\s*(?P<end>\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?))?\s+(?P<speaker>[A-Za-z][A-Za-z ]*?)\s*:\s*(?P<text>.+?)\s*$"
-    )
-    for raw_line in block_text.splitlines():
-        line = str(raw_line or "").strip()
-        if not line:
-            continue
-        match = line_pattern.match(line)
-        if not match:
-            continue
-        gender, normalized_name = infer_speaker_gender_and_name(match.group("speaker"))
-        if gender not in ("male", "female"):
-            continue
-        dialogue_text = str(match.group("text") or "").strip()
-        if not dialogue_text:
-            continue
-        start_raw = str(match.group("start") or "").strip()
-        end_raw = str(match.group("end") or "").strip()
-        start_ms = timestamp_to_milliseconds(start_raw)
-        end_ms = timestamp_to_milliseconds(end_raw) if end_raw else max(start_ms + 8000, start_ms)
-        transcript_blocks.append(
-            {
-                "speaker_name": normalized_name,
-                "speaker_gender": gender,
-                "timestamp_display": format_timestamp_display(start_raw),
-                "start_ms": start_ms,
-                "end_ms": end_ms,
-                "dialogue_text": dialogue_text,
-            }
-        )
-
-    return {"active_question": active_question, "transcript_blocks": transcript_blocks}
-
-
 def sanitize_review(review: dict) -> dict:
     return {
         "summary": str(review.get("summary", "No review summary returned.")),
@@ -528,6 +587,105 @@ def sanitize_review(review: dict) -> dict:
         "improvements": [str(x) for x in (review.get("improvements") or [])][:3],
         "nextSteps": [str(x) for x in (review.get("nextSteps") or [])][:3],
     }
+
+
+def normalize_email(value: str) -> str:
+    return str(value or "").strip()
+
+
+def email_is_valid(value: str) -> bool:
+    return bool(re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", normalize_email(value)))
+
+
+def generate_report_ticket_id(epoch_seconds: float = None) -> str:
+    ts = float(time.time() if epoch_seconds is None else epoch_seconds)
+    whole = int(ts)
+    millis = int(round((ts - whole) * 1000.0))
+    if millis > 999:
+        millis = 999
+    return time.strftime("%Y%m%d-%H%M%S", time.localtime(whole)) + f"-{millis:03d}"
+
+
+def queue_report_issue(payload: dict, ticket_id: str) -> str:
+    file_path = REPORT_QUEUE_FILE
+    folder = os.path.dirname(file_path)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
+
+    row = {
+        "ticket": ticket_id,
+        "queuedAt": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime()),
+        "destination": REPORT_ISSUE_TO,
+        "payload": payload,
+    }
+    with open(file_path, "a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row, ensure_ascii=True) + "\n")
+
+    return file_path
+
+
+def send_report_issue_email(payload: dict, ticket_id: str):
+    if not REPORT_SMTP_PASS:
+        raise RuntimeError("Server email is not configured. Set REPORT_SMTP_PASS (Gmail App Password).")
+
+    user_email = normalize_email(payload.get("email", ""))
+    question = str(payload.get("question", "") or "").strip()
+    details = str(payload.get("details", "") or "").strip()
+    first_name = str(payload.get("firstName", "") or "").strip()
+    last_name = str(payload.get("lastName", "") or "").strip()
+    context = payload.get("context") or {}
+
+    message = EmailMessage()
+    message["Subject"] = f"[QuickCheck Report] Ticket {ticket_id}"
+    message["From"] = REPORT_SMTP_USER
+    message["To"] = REPORT_ISSUE_TO
+    message["Reply-To"] = user_email or REPORT_SMTP_USER
+
+    lines = [
+        f"Ticket: {ticket_id}",
+        f"User Email: {user_email or '-'}",
+        f"First Name: {first_name or '-'}",
+        f"Last Name: {last_name or '-'}",
+        f"Question Number: {context.get('questionNumber', '-')}",
+        f"Set ID: {context.get('setId', '-')}",
+        f"Set Date: {context.get('setDate', '-')}",
+        f"Module: {context.get('module', '-')}",
+        f"Path: {context.get('pathname', '-')}",
+        "",
+        "Question:",
+        question or "-",
+        "",
+        "Details:",
+        details or "-",
+    ]
+    message.set_content("\n".join(lines))
+
+    attachments = payload.get("attachments") or []
+    for attachment in attachments:
+        if not isinstance(attachment, dict):
+            continue
+        base64_data = str(attachment.get("base64", "") or "").strip()
+        name = str(attachment.get("name", "attachment") or "attachment").strip() or "attachment"
+        mime_type = str(attachment.get("type", "application/octet-stream") or "application/octet-stream").strip()
+        if not base64_data:
+            continue
+        try:
+            maintype, subtype = mime_type.split("/", 1) if "/" in mime_type else ("application", "octet-stream")
+        except Exception:
+            maintype, subtype = "application", "octet-stream"
+        message.add_attachment(base64.b64decode(base64_data), maintype=maintype, subtype=subtype, filename=name)
+
+    if REPORT_SMTP_PORT == 465:
+        with smtplib.SMTP_SSL(REPORT_SMTP_HOST, REPORT_SMTP_PORT, timeout=20) as smtp:
+            smtp.login(REPORT_SMTP_USER, REPORT_SMTP_PASS)
+            smtp.send_message(message)
+    else:
+        with smtplib.SMTP(REPORT_SMTP_HOST, REPORT_SMTP_PORT, timeout=20) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.ehlo()
+            smtp.login(REPORT_SMTP_USER, REPORT_SMTP_PASS)
+            smtp.send_message(message)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -563,17 +721,51 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "Not found"})
 
     def do_POST(self):
-        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
-            self._send(500, {"error": "Set GEMINI_API_KEY or GOOGLE_API_KEY before starting the server."})
-            return
-
         try:
             length = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(length)
             payload = json.loads(raw.decode("utf-8"))
         except Exception as exc:
             self._send(400, {"error": f"Bad request: {exc}"})
+            return
+
+        if self.path == "/api/report-issue":
+            question = str(payload.get("question", "") or "").strip()
+            email = normalize_email(payload.get("email", ""))
+
+            if not question:
+                self._send(400, {"error": "question is required"})
+                return
+            if not email_is_valid(email):
+                self._send(400, {"error": "valid email is required"})
+                return
+
+            ticket_id = generate_report_ticket_id()
+            try:
+                if REPORT_SMTP_PASS:
+                    send_report_issue_email(payload, ticket_id)
+                    self._send(200, {"ok": True, "ticket": ticket_id, "to": REPORT_ISSUE_TO, "delivery": "email"})
+                else:
+                    queue_path = queue_report_issue(payload, ticket_id)
+                    self._send(
+                        200,
+                        {
+                            "ok": True,
+                            "ticket": ticket_id,
+                            "to": REPORT_ISSUE_TO,
+                            "delivery": "queued",
+                            "queued": True,
+                            "queuePath": queue_path,
+                            "note": "SMTP is not configured. Report stored locally in queue.",
+                        },
+                    )
+            except Exception as exc:
+                self._send(500, {"error": str(exc)})
+            return
+
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            self._send(500, {"error": "Set GEMINI_API_KEY or GOOGLE_API_KEY before starting the server."})
             return
 
         if self.path == "/api/ai-review":
@@ -586,7 +778,7 @@ class Handler(BaseHTTPRequestHandler):
                 review = sanitize_review(parsed)
                 self._send(200, review)
             except Exception as exc:
-                self._send(500, {"error": str(exc)})
+                self._send(500, {"error": friendly_model_error(exc)})
 
         elif self.path == "/api/toefl-explanation":
             try:
@@ -605,7 +797,23 @@ class Handler(BaseHTTPRequestHandler):
 
                 self._send_text(200, text)
             except Exception as exc:
-                self._send(500, {"error": str(exc)})
+                self._send(500, {"error": friendly_model_error(exc)})
+
+        elif self.path == "/api/toefl-explanation-json":
+            try:
+                isolated = str(payload.get("isolated_transcript_block") or "").strip()
+                if not isolated:
+                    self._send(400, {"error": "isolated_transcript_block is required and cannot be empty"})
+                    return
+
+                client = genai.Client(api_key=api_key)
+                prompt = build_explanation_json_prompt(payload)
+                response = generate_with_retry(client, prompt)
+                text = (response.text or "").strip()
+                data = parse_json_from_text(text)
+                self._send(200, data)
+            except Exception as exc:
+                self._send(500, {"error": friendly_model_error(exc)})
 
         elif self.path == "/api/toefl-step-timeline":
             try:
@@ -613,20 +821,24 @@ class Handler(BaseHTTPRequestHandler):
                 prompt = build_step_timeline_prompt(payload)
                 response = generate_with_retry(client, prompt)
                 text = (response.text or "").strip()
-                parsed = parse_json_from_text(text)
 
-                if not step_timeline_has_required_shape(parsed):
+                try:
+                    data = parse_json_from_text(text)
+                except Exception:
+                    data = None
+
+                if not step_timeline_has_required_shape(data):
                     retry_prompt = build_step_timeline_fix_prompt(text)
                     retry_response = generate_with_retry(client, retry_prompt)
                     retry_text = (retry_response.text or "").strip()
-                    parsed = parse_json_from_text(retry_text)
+                    data = parse_json_from_text(retry_text)
 
-                if not step_timeline_has_required_shape(parsed):
-                    raise ValueError("Invalid step timeline shape returned by model")
+                if not step_timeline_has_required_shape(data):
+                    raise ValueError("Model output did not match the required step timeline JSON schema")
 
-                self._send(200, parsed)
+                self._send(200, data)
             except Exception as exc:
-                self._send(500, {"error": str(exc)})
+                self._send(500, {"error": friendly_model_error(exc)})
 
         elif self.path == "/api/translate-explanation":
             try:
@@ -651,21 +863,7 @@ class Handler(BaseHTTPRequestHandler):
 
                 self._send_text(200, text)
             except Exception as exc:
-                self._send(500, {"error": str(exc)})
-
-        elif self.path == "/api/toefl-question-transcript":
-            try:
-                raw_transcript = str(payload.get("rawTranscript", "") or "")
-                question_number = payload.get("questionNumber", "")
-                if not raw_transcript.strip():
-                    self._send(400, {"error": "rawTranscript is required"})
-                    return
-                if str(question_number).strip() == "":
-                    self._send(400, {"error": "questionNumber is required"})
-                    return
-                self._send(200, extract_question_transcript_payload(raw_transcript, question_number))
-            except Exception as exc:
-                self._send(500, {"error": str(exc)})
+                self._send(500, {"error": friendly_model_error(exc)})
 
         else:
             self._send(404, {"error": "Not found"})

@@ -2426,11 +2426,17 @@
 
         function parseTranscriptSpeakerLine(rawLine) {
             const line = String(rawLine || "").replace(/\*\*/g, "").trim();
-            const speakerMatch = line.match(/^(Man|Woman|Narrator|Narr)\s*:\s*(.*)$/i);
+            const speakerMatch = line.match(/^([A-Za-z][A-Za-z\s]*(?:\([^)]+\))?)\s*:\s*(.*)$/i);
             if (speakerMatch) {
+                const rawSpeaker = String(speakerMatch[1] || "").trim();
+                const upperSpeaker = rawSpeaker.toUpperCase();
+                let normalized = upperSpeaker;
+                if (/NARR/.test(upperSpeaker)) normalized = "NARR";
+                else if (/WOM|LIBRARIAN|FEMALE|STUDENT\s*B/.test(upperSpeaker)) normalized = "WOMEN";
+                else if (/MAN|MALE|STUDENT\s*A|STUDENT/.test(upperSpeaker)) normalized = "MEN";
                 return {
-                    speaker: speakerMatch[1].toUpperCase().startsWith("NARR") ? "NARR" : speakerMatch[1].toUpperCase(),
-                    text: speakerMatch[2].trim()
+                    speaker: normalized,
+                    text: String(speakerMatch[2] || "").trim()
                 };
             }
             return { speaker: "NARR", text: line };
@@ -2440,29 +2446,96 @@
             const map = {};
             const lines = String(rawText || "").split(/\r?\n/);
             let currentQuestion = 0;
+            let pendingTimestamp = "";
+            let pendingStart = 0;
+            let pendingEnd = 0;
 
-            lines.forEach((line) => {
-                const questionMatch = line.match(/question\s*(\d+)/i);
-                if (questionMatch) {
-                    currentQuestion = Number(questionMatch[1]);
-                    if (!map[currentQuestion]) map[currentQuestion] = [];
+            function ensureBucket(key) {
+                if (!map[key]) map[key] = [];
+            }
+
+            function pushSegment(targetQuestion, timestamp, start, end, speaker, text) {
+                const cleanText = String(text || "").trim();
+                if (!cleanText) return;
+
+                const segment = {
+                    timestamp: String(timestamp || ""),
+                    start: Number(start || 0),
+                    speaker: String(speaker || "NARR"),
+                    text: cleanText,
+                    end: Number(end || 0)
+                };
+
+                ensureBucket(0);
+                map[0].push({ ...segment });
+
+                if (targetQuestion > 0) {
+                    ensureBucket(targetQuestion);
+                    map[targetQuestion].push({ ...segment });
+                }
+            }
+
+            lines.forEach((rawLine) => {
+                const line = String(rawLine || "").trim();
+                if (!line) return;
+
+                const openTag = line.match(/<Question\s+(\d+)>/i);
+                if (openTag) {
+                    currentQuestion = Number(openTag[1] || 0);
+                    ensureBucket(currentQuestion);
                     return;
                 }
 
-                if (!currentQuestion) return;
+                const closeTag = line.match(/<\/Question\s+(\d+)>/i);
+                if (closeTag) {
+                    currentQuestion = 0;
+                    pendingTimestamp = "";
+                    pendingStart = 0;
+                    pendingEnd = 0;
+                    return;
+                }
+
+                const legacyQuestion = line.match(/^\s*Question\s*(\d+)\b/i);
+                if (legacyQuestion) {
+                    currentQuestion = Number(legacyQuestion[1] || 0);
+                    ensureBucket(currentQuestion);
+                    return;
+                }
+
+                const rangeMatch = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)\s*-\s*(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)/);
+                if (rangeMatch) {
+                    pendingTimestamp = String(rangeMatch[1] || "");
+                    pendingStart = parseTimestampToSeconds(pendingTimestamp);
+                    pendingEnd = parseTimestampToSeconds(String(rangeMatch[2] || ""));
+                    return;
+                }
 
                 const segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[—-]\s*(.+)$/);
-                if (!segmentMatch) return;
+                let matched = segmentMatch;
+                if (!matched) {
+                    matched = line.match(/(?:^\s*[-*]\s*)?\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(.+)$/);
+                }
+                if (!matched) {
+                    matched = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s*[—\-]\s*(.+)$/);
+                }
 
-                const timestamp = segmentMatch[1];
-                const parsedLine = parseTranscriptSpeakerLine(segmentMatch[2]);
-                map[currentQuestion].push({
-                    timestamp,
-                    start: parseTimestampToSeconds(timestamp),
-                    speaker: parsedLine.speaker,
-                    text: parsedLine.text,
-                    end: 0
-                });
+                if (matched) {
+                    const timestamp = String(matched[1] || "");
+                    const parsedLine = parseTranscriptSpeakerLine(matched[2]);
+                    pushSegment(currentQuestion, timestamp, parseTimestampToSeconds(timestamp), 0, parsedLine.speaker, parsedLine.text);
+                    pendingTimestamp = "";
+                    pendingStart = 0;
+                    pendingEnd = 0;
+                    return;
+                }
+
+                if (pendingTimestamp) {
+                    const parsedLine = parseTranscriptSpeakerLine(line);
+                    pushSegment(currentQuestion, pendingTimestamp, pendingStart, pendingEnd, parsedLine.speaker, parsedLine.text);
+                    pendingTimestamp = "";
+                    pendingStart = 0;
+                    pendingEnd = 0;
+                }
             });
 
             Object.keys(map).forEach((questionKey) => {
@@ -2470,7 +2543,9 @@
                 for (let index = 0; index < segments.length; index += 1) {
                     const current = segments[index];
                     const next = segments[index + 1];
-                    current.end = next ? Math.max(current.start + 1, next.start) : (current.start + 8);
+                    if (!(current.end > current.start)) {
+                        current.end = next ? Math.max(current.start + 1, next.start) : (current.start + 8);
+                    }
                 }
             });
 
@@ -2657,9 +2732,166 @@
             };
         }
 
+        function buildAiEndpointCandidates(path) {
+            const params = new URLSearchParams(window.location.search || "");
+            const port = String(params.get("aiPort") || localStorage.getItem("ai_review_port") || "8787");
+            const hosts = [];
+
+            function pushHost(value) {
+                const host = String(value || "").trim();
+                if (!host) return;
+                if (hosts.includes(host)) return;
+                hosts.push(host);
+            }
+
+            pushHost(params.get("aiHost"));
+            pushHost(localStorage.getItem("ai_review_host"));
+            pushHost(localStorage.getItem("toefl_storage_server_host"));
+            pushHost(window.location.hostname);
+            pushHost("127.0.0.1");
+            pushHost("localhost");
+
+            return hosts.map((host) => `http://${host}:${port}${path}`);
+        }
+
+        async function fetchAiWithFallback(path, init) {
+            const candidates = buildAiEndpointCandidates(path);
+            let lastError = null;
+
+            for (let i = 0; i < candidates.length; i += 1) {
+                const endpoint = candidates[i];
+                try {
+                    const response = await fetch(endpoint, init);
+                    return { response, endpoint };
+                } catch (error) {
+                    lastError = error;
+                }
+            }
+
+            throw (lastError || new Error("Failed to fetch AI endpoint"));
+        }
+
+        function extractIsolatedQuestionBlock(transcriptText, questionNumber) {
+            const qNum = Number(questionNumber || 0);
+            if (!qNum) return "";
+            const source = String(transcriptText || "");
+            if (!source.trim()) return "";
+            const pattern = new RegExp(`<Question\\s+${qNum}>([\\s\\S]*?)</Question\\s+${qNum}>`, "i");
+            const match = source.match(pattern);
+            return match ? String(match[1] || "").trim() : "";
+        }
+
+        function buildOptionsArrayForSchema(optionsMap) {
+            const options = optionsMap || {};
+            return {
+                A: String(options.A || "").trim(),
+                B: String(options.B || "").trim(),
+                C: String(options.C || "").trim(),
+                D: String(options.D || "").trim()
+            };
+        }
+
+        async function compileActiveExplanationPayloadForQuestion(fullSetDraft, questionItem, resultQuestion) {
+            const questionNumber = Number((resultQuestion && resultQuestion.number) || 0);
+            if (!questionNumber) return null;
+
+            const partId = Number((resultQuestion && resultQuestion.partId) || (questionItem && questionItem.partId) || 0);
+            const transcripts = (fullSetDraft && fullSetDraft.transcripts) || {};
+            const transcriptText = String(transcripts[`part_${partId}`] || "");
+            const isolated = extractIsolatedQuestionBlock(transcriptText, questionNumber);
+            if (!isolated) return null;
+
+            const answerKey = (fullSetDraft && fullSetDraft.answerKey) || {};
+            const correct = String(answerKey[questionNumber] || answerKey[String(questionNumber)] || (resultQuestion && resultQuestion.correctAnswer) || "").trim().toUpperCase();
+            const user = String((resultQuestion && resultQuestion.userAnswer) || "").trim().toUpperCase();
+
+            return {
+                active_question_number: questionNumber,
+                question_text: String((questionItem && (questionItem.text || questionItem.questionText)) || (resultQuestion && resultQuestion.questionText) || "").trim(),
+                options_array: buildOptionsArrayForSchema((questionItem && questionItem.options) || (resultQuestion && resultQuestion.options) || {}),
+                correct_option_letter: correct,
+                user_selected_letter: user,
+                isolated_transcript_block: isolated
+            };
+        }
+
+        async function generateExplanationSchemaFromPayload(payload) {
+            if (!payload || !payload.isolated_transcript_block) return null;
+            const request = await fetchAiWithFallback("/api/toefl-explanation-json", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const response = request && request.response;
+            if (!response || !response.ok) return null;
+
+            try {
+                const data = await response.json();
+                if (!data || !data.explanation_payload) return null;
+                return data;
+            } catch {
+                return null;
+            }
+        }
+
+        async function precomputeExplanationSchemasForResult(result) {
+            if (!result || !Array.isArray(result.questions) || !result.questions.length) return result;
+            if (!window.toeflStorage || !currentSetId || typeof toeflStorage.getDraftBySetId !== "function") return result;
+
+            let fullSetDraft = null;
+            try {
+                fullSetDraft = await toeflStorage.getDraftBySetId(currentSetId);
+            } catch {
+                fullSetDraft = null;
+            }
+            if (!fullSetDraft || !Array.isArray(fullSetDraft.questions)) return result;
+
+            const questionsByNum = {};
+            for (let i = 0; i < fullSetDraft.questions.length; i += 1) {
+                const item = fullSetDraft.questions[i] || {};
+                const num = Number(item.num || item.number || 0);
+                if (!num) continue;
+                questionsByNum[num] = item;
+            }
+
+            for (let i = 0; i < result.questions.length; i += 1) {
+                const rq = result.questions[i] || {};
+                const qNum = Number(rq.number || 0);
+                if (!qNum) continue;
+                const questionItem = questionsByNum[qNum] || null;
+                const payload = await compileActiveExplanationPayloadForQuestion(fullSetDraft, questionItem, rq);
+                if (!payload) continue;
+                const schema = await generateExplanationSchemaFromPayload(payload);
+                if (!schema) continue;
+                rq.explanationSchema = JSON.stringify(schema);
+            }
+
+            return result;
+        }
+
         function persistPreviewSectionResult() {
             const result = buildPreviewSectionResult();
             localStorage.setItem("toefl_section1_result", JSON.stringify(result));
+        }
+
+        async function persistPreviewSectionResultWithSchemas(options = {}) {
+            const { notifySync = true } = options || {};
+            const result = buildPreviewSectionResult();
+            localStorage.setItem("toefl_section1_result", JSON.stringify(result));
+
+            try {
+                const enriched = await precomputeExplanationSchemasForResult(result);
+                localStorage.setItem("toefl_section1_result", JSON.stringify(enriched));
+                if (notifySync) {
+                    localStorage.setItem(EDITOR_APPLY_SYNC_KEY, JSON.stringify({
+                        at: new Date().toISOString(),
+                        setId: String(currentSetId || ""),
+                        setDate: String((document.getElementById("set-date") || {}).value || ""),
+                        kind: "schema-refresh"
+                    }));
+                }
+            } catch (_) {}
         }
 
         async function openExplanationFromDeveloper() {
@@ -2667,7 +2899,7 @@
             await saveSectionMeta();
             saveSectionDraft();
             updateUserView(false, { preferEditedPart: false });
-            persistPreviewSectionResult();
+            await persistPreviewSectionResultWithSchemas({ notifySync: false });
 
             const params = new URLSearchParams();
             const dateValue = (document.getElementById("set-date") || {}).value || "";
@@ -2944,6 +3176,7 @@
             if (shouldSaveMeta) {
                 try {
                     persistPreviewSectionResult();
+                    persistPreviewSectionResultWithSchemas();
                     localStorage.setItem(EDITOR_APPLY_SYNC_KEY, JSON.stringify({
                         at: new Date().toISOString(),
                         setId: String(currentSetId || ""),

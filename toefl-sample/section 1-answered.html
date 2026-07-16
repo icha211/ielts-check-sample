@@ -1215,10 +1215,16 @@
 
         function parseTranscriptSpeakerLine(rawLine) {
             var line = String(rawLine || '').replace(/\*\*/g, '').trim();
-            var speakerMatch = line.match(/^(Man|Woman|Narrator|Narr)\s*:\s*(.*)$/i);
+            var speakerMatch = line.match(/^([A-Za-z][A-Za-z\s]*(?:\([^)]+\))?)\s*:\s*(.*)$/i);
             if (speakerMatch) {
+                var rawSpeaker = String(speakerMatch[1] || '').trim();
+                var upperSpeaker = rawSpeaker.toUpperCase();
+                var normalized = upperSpeaker;
+                if (/NARR/.test(upperSpeaker)) normalized = 'NARR';
+                else if (/WOM|LIBRARIAN|FEMALE|STUDENT\s*B/.test(upperSpeaker)) normalized = 'WOMEN';
+                else if (/MAN|MALE|STUDENT\s*A|STUDENT/.test(upperSpeaker)) normalized = 'MEN';
                 return {
-                    speaker: speakerMatch[1].toUpperCase().indexOf('NARR') === 0 ? 'NARR' : speakerMatch[1].toUpperCase(),
+                    speaker: normalized,
                     text: String(speakerMatch[2] || '').trim()
                 };
             }
@@ -1229,22 +1235,81 @@
             var map = {};
             var lines = String(rawText || '').split(/\r?\n/);
             var currentQuestion = 0;
-            var hasQuestionMarkers = false;
+            var pendingTimestamp = '';
+            var pendingStart = 0;
+            var pendingEnd = 0;
+
+            function ensureBucket(key) {
+                if (!map[key]) map[key] = [];
+            }
+
+            function pushSegment(targetQuestion, timestamp, start, end, speaker, text) {
+                var cleanText = String(text || '').trim();
+                if (!cleanText) return;
+                var baseSegment = {
+                    timestamp: String(timestamp || ''),
+                    start: Number(start || 0),
+                    speaker: String(speaker || 'NARR'),
+                    text: cleanText,
+                    end: Number(end || 0)
+                };
+
+                ensureBucket(0);
+                map[0].push({
+                    timestamp: baseSegment.timestamp,
+                    start: baseSegment.start,
+                    speaker: baseSegment.speaker,
+                    text: baseSegment.text,
+                    end: baseSegment.end
+                });
+
+                if (targetQuestion > 0) {
+                    ensureBucket(targetQuestion);
+                    map[targetQuestion].push({
+                        timestamp: baseSegment.timestamp,
+                        start: baseSegment.start,
+                        speaker: baseSegment.speaker,
+                        text: baseSegment.text,
+                        end: baseSegment.end
+                    });
+                }
+            }
 
             for (var i = 0; i < lines.length; i += 1) {
-                var line = lines[i] || '';
-                var questionMatch = line.match(/question\s*(\d+)/i);
-                if (questionMatch) {
-                    currentQuestion = Number(questionMatch[1]);
-                    hasQuestionMarkers = true;
-                    if (!map[currentQuestion]) map[currentQuestion] = [];
+                var line = String(lines[i] || '').trim();
+                if (!line) continue;
+
+                var openTag = line.match(/<Question\s+(\d+)>/i);
+                if (openTag) {
+                    currentQuestion = Number(openTag[1] || 0);
+                    ensureBucket(currentQuestion);
                     continue;
                 }
 
-                // Try all three timestamp formats:
-                // 1. **0:05** — Speaker: text
-                // 2. [0:05] text
-                // 3. 0:05 — text  (bare timestamp, common in Gemini auto-transcripts)
+                var closeTag = line.match(/<\/Question\s+(\d+)>/i);
+                if (closeTag) {
+                    currentQuestion = 0;
+                    pendingTimestamp = '';
+                    pendingStart = 0;
+                    pendingEnd = 0;
+                    continue;
+                }
+
+                var legacyQuestion = line.match(/^\s*Question\s*(\d+)\b/i);
+                if (legacyQuestion) {
+                    currentQuestion = Number(legacyQuestion[1] || 0);
+                    ensureBucket(currentQuestion);
+                    continue;
+                }
+
+                var rangeMatch = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)\s*-\s*(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)/);
+                if (rangeMatch) {
+                    pendingTimestamp = String(rangeMatch[1] || '');
+                    pendingStart = parseTimestampToSeconds(pendingTimestamp);
+                    pendingEnd = parseTimestampToSeconds(String(rangeMatch[2] || ''));
+                    continue;
+                }
+
                 var segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[—-]\s*(.+)$/);
                 if (!segmentMatch) {
                     segmentMatch = line.match(/(?:^\s*[-*]\s*)?\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(.+)$/);
@@ -1252,23 +1317,23 @@
                 if (!segmentMatch) {
                     segmentMatch = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s*[—\-]\s*(.+)$/);
                 }
-                if (!segmentMatch) continue;
+                if (segmentMatch) {
+                    var ts = String(segmentMatch[1] || '');
+                    var parsedInline = parseTranscriptSpeakerLine(segmentMatch[2]);
+                    pushSegment(currentQuestion, ts, parseTimestampToSeconds(ts), 0, parsedInline.speaker, parsedInline.text);
+                    pendingTimestamp = '';
+                    pendingStart = 0;
+                    pendingEnd = 0;
+                    continue;
+                }
 
-                // If no Question markers yet, accumulate in bucket 0 (all-part pool)
-                var targetQuestion = hasQuestionMarkers ? currentQuestion : 0;
-                if (!targetQuestion && !hasQuestionMarkers) targetQuestion = 0;
-                if (!map[targetQuestion]) map[targetQuestion] = [];
-                if (hasQuestionMarkers && !currentQuestion) continue; // skip before first Q marker
-
-                var timestamp = segmentMatch[1];
-                var parsed = parseTranscriptSpeakerLine(segmentMatch[2]);
-                map[targetQuestion].push({
-                    timestamp: timestamp,
-                    start: parseTimestampToSeconds(timestamp),
-                    speaker: parsed.speaker,
-                    text: parsed.text,
-                    end: 0
-                });
+                if (pendingTimestamp) {
+                    var parsed = parseTranscriptSpeakerLine(line);
+                    pushSegment(currentQuestion, pendingTimestamp, pendingStart, pendingEnd, parsed.speaker, parsed.text);
+                    pendingTimestamp = '';
+                    pendingStart = 0;
+                    pendingEnd = 0;
+                }
             }
 
             var qKeys = Object.keys(map);
@@ -1278,7 +1343,9 @@
                 for (var s = 0; s < segments.length; s += 1) {
                     var current = segments[s];
                     var next = segments[s + 1];
-                    current.end = next ? Math.max(current.start + 1, next.start) : (current.start + 8);
+                    if (!(current.end > current.start)) {
+                        current.end = next ? Math.max(current.start + 1, next.start) : (current.start + 8);
+                    }
                 }
                 map[key] = segments;
             }
@@ -1298,25 +1365,58 @@
         }
 
         function getQuestionTranscriptSegments(question) {
-            if (question && Array.isArray(question.transcriptSegments) && question.transcriptSegments.length) {
-                return question.transcriptSegments;
-            }
             var partId = inferPartIdFromQuestion(question);
             var qNum = Number((question && question.number) || 0);
             var map = reviewTranscriptMapByPart[partId] || {};
-            // Fall back to key 0 (all-segment pool for transcripts without Question markers)
-            var direct = map[qNum] || map[0] || [];
+            // Always prefer freshly hydrated transcript maps first.
+            var direct = map[qNum] || [];
+            if (direct.length) return direct;
+
+            // Fall back to per-question baked segments only when map misses.
+            if (question && Array.isArray(question.transcriptSegments) && question.transcriptSegments.length) {
+                return question.transcriptSegments;
+            }
+
+            // Then fall back to key 0 (all-segment pool for transcripts without Question markers).
+            direct = map[0] || [];
             if (direct.length) return direct;
 
             // Extra resilience: if part metadata was wrong/missing, search other parts.
             for (var p = 1; p <= 3; p += 1) {
                 if (p === partId) continue;
                 var altMap = reviewTranscriptMapByPart[p] || {};
-                var alt = altMap[qNum] || altMap[0] || [];
+                var alt = altMap[qNum] || [];
+                if (alt.length) return alt;
+                alt = altMap[0] || [];
                 if (alt.length) return alt;
             }
 
             return [];
+        }
+
+        function refreshResultQuestionTranscriptSegments() {
+            if (!reviewResultData || !Array.isArray(reviewResultData.questions)) return;
+
+            for (var i = 0; i < reviewResultData.questions.length; i += 1) {
+                var question = reviewResultData.questions[i] || {};
+                var partId = inferPartIdFromQuestion(question);
+                var qNum = Number(question.number || 0);
+                var map = reviewTranscriptMapByPart[partId] || {};
+                var fresh = map[qNum] || [];
+                if (!fresh.length) fresh = map[0] || [];
+
+                if (fresh.length) {
+                    question.transcriptSegments = fresh.map(function(seg) {
+                        return {
+                            timestamp: String(seg.timestamp || ''),
+                            start: Number(seg.start || 0),
+                            speaker: String(seg.speaker || 'NARR'),
+                            text: String(seg.text || ''),
+                            end: Number(seg.end || 0)
+                        };
+                    });
+                }
+            }
         }
 
         function initReviewAudio() {
@@ -2583,103 +2683,251 @@
             return text;
         }
 
-        function renderExplainationTabDetail(question, explanation, correctLtr) {
-            var host = document.getElementById('explainationTabContent');
-            if (!host) return;
+        function buildHighlightTermsFromAnswer(answerText) {
+            var cleaned = sanitizeFigmaOptionText(answerText || '').toLowerCase();
+            if (!cleaned) return [];
+            var stop = {
+                'the': true, 'a': true, 'an': true, 'to': true, 'of': true, 'and': true,
+                'for': true, 'in': true, 'on': true, 'with': true, 'from': true, 'how': true,
+                'where': true, 'what': true, 'who': true, 'when': true, 'why': true, 'is': true,
+                'are': true, 'be': true, 'recent': false, 'academic': false, 'research': false,
+                'materials': false
+            };
 
+            var words = cleaned.split(/\s+/);
+            var terms = [];
+            for (var i = 0; i < words.length; i += 1) {
+                var word = String(words[i] || '').replace(/[^a-z0-9]/g, '').trim();
+                if (!word) continue;
+                if (word.length < 4) continue;
+                if (stop[word] === true) continue;
+                if (terms.indexOf(word) === -1) terms.push(word);
+            }
+
+            var phrases = [];
+            if (cleaned.indexOf('recent academic research materials') !== -1) {
+                phrases.push('recent publications');
+                phrases.push('most recent academic');
+                phrases.push('specialized research databases');
+            }
+
+            return phrases.concat(terms).slice(0, 8);
+        }
+
+        function escapeRegExp(value) {
+            return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function renderTranscriptTextWithMarks(text, terms) {
+            var html = escapeHtml(text || '');
+            var list = Array.isArray(terms) ? terms : [];
+            for (var i = 0; i < list.length; i += 1) {
+                var term = String(list[i] || '').trim();
+                if (!term) continue;
+                var pattern = new RegExp('(' + escapeRegExp(term) + ')', 'ig');
+                html = html.replace(pattern, '<mark style="background-color: #FFDE00; color: #000000; font-weight: 500;">$1</mark>');
+            }
+            return html;
+        }
+
+        function buildExplanationSchemaFromQuestion(question, explanation, correctLtr) {
             var q = question || {};
             var options = q.options || {};
             var letters = Object.keys(options).sort();
             var userLtr = String(q.userAnswer || '').trim().toUpperCase();
-            var isCorrect = !!userLtr && userLtr === correctLtr;
-            var bestAnswerText = sanitizeFigmaOptionText(options[correctLtr] || '');
+            var normalizedCorrect = String(correctLtr || q.correctAnswer || '').trim().toUpperCase() || 'A';
+            var bestAnswerText = sanitizeFigmaOptionText(options[normalizedCorrect] || '');
             var partId = inferPartIdFromQuestion(q);
             var qSegments = getQuestionTranscriptSegments(q);
             var studentSeg = getFirstSpeakerSegment(qSegments, partId === 2 ? 'MEN' : 'MEN');
             var librarianSeg = getFirstSpeakerSegment(qSegments, partId === 2 ? 'WOMEN' : 'WOMEN');
-            var isQuestion31 = Number(q.number || 0) === 31;
-
+            var highlightTerms = buildHighlightTermsFromAnswer(bestAnswerText);
             var reasonText = buildFigmaWhyReason(q, explanation, bestAnswerText);
-            if (isQuestion31) {
-                reasonText = 'the main topic focuses completely on a student learning the best location to search for current scientific papers. The entire discussion is driven by this need, as the student establishes a clear problem regarding his research resources, and the librarian instantly steps in to guide him to the proper search system.';
+            var reasonHtml = renderTranscriptTextWithMarks(reasonText, highlightTerms);
+
+            var optionsStatus = [];
+            for (var i = 0; i < letters.length; i += 1) {
+                var letter = letters[i];
+                optionsStatus.push({
+                    letter: letter,
+                    text: sanitizeFigmaOptionText(options[letter] || ''),
+                    is_correct_choice: letter === normalizedCorrect,
+                    is_user_answer: letter === userLtr
+                });
             }
 
+            var dialogueBlocks = [];
+            if (studentSeg && studentSeg.text) {
+                dialogueBlocks.push({
+                    speaker_name: 'Student',
+                    speaker_gender: 'male',
+                    introduction_label: 'For instance, if we look directly at the spoken dialogue, the Student clearly explains his situation by stating:',
+                    quote_text_html: '&ldquo;' + renderTranscriptTextWithMarks(studentSeg.text || '', highlightTerms) + '&rdquo;',
+                    start_sec: Number(studentSeg.start || 0),
+                    end_sec: Number(studentSeg.end || (Number(studentSeg.start || 0) + 8))
+                });
+            }
+            if (librarianSeg && librarianSeg.text) {
+                dialogueBlocks.push({
+                    speaker_name: 'Librarian',
+                    speaker_gender: 'female',
+                    introduction_label: 'The Librarian immediately solves this by responding:',
+                    quote_text_html: '&ldquo;' + renderTranscriptTextWithMarks(librarianSeg.text || '', highlightTerms) + '&rdquo;',
+                    start_sec: Number(librarianSeg.start || 0),
+                    end_sec: Number(librarianSeg.end || (Number(librarianSeg.start || 0) + 8))
+                });
+            }
+
+            return {
+                question_metadata: {
+                    question_number: Number(q.number || 0),
+                    question_text: String(q.questionText || ''),
+                    user_was_correct: !!(userLtr && userLtr === normalizedCorrect)
+                },
+                options_status: optionsStatus,
+                explanation_payload: {
+                    header_title: 'Why (' + normalizedCorrect + ')?',
+                    main_explanation_html: 'The correct choice is <strong>(' + escapeHtml(normalizedCorrect) + ') ' + escapeHtml(bestAnswerText || 'best answer') + '</strong> because ' + reasonHtml + '.',
+                    dialogue_blocks: dialogueBlocks,
+                    closing_analysis_html: 'Because these dialogue clues align with the core idea of the correct option, the best match is <strong>(' + escapeHtml(normalizedCorrect) + ') ' + escapeHtml(bestAnswerText || '') + '</strong>.'
+                }
+            };
+        }
+
+        function buildFreshDialogueBlocksForQuestion(question, existingBlocks) {
+            var q = question || {};
+            var segments = getQuestionTranscriptSegments(q);
+            if (!Array.isArray(segments) || !segments.length) {
+                return Array.isArray(existingBlocks) ? existingBlocks : [];
+            }
+
+            var partId = inferPartIdFromQuestion(q);
+            var picks = [];
+
+            if (partId === 2) {
+                var menSeg = getFirstSpeakerSegment(segments, 'MEN');
+                var womenSeg = getFirstSpeakerSegment(segments, 'WOMEN');
+                if (menSeg && menSeg.text) picks.push(menSeg);
+                if (womenSeg && womenSeg.text) picks.push(womenSeg);
+            }
+
+            if (!picks.length) {
+                for (var i = 0; i < segments.length && picks.length < 2; i += 1) {
+                    var seg = segments[i] || {};
+                    if (!String(seg.text || '').trim()) continue;
+                    picks.push(seg);
+                }
+            }
+
+            if (!picks.length) {
+                return Array.isArray(existingBlocks) ? existingBlocks : [];
+            }
+
+            var prev = Array.isArray(existingBlocks) ? existingBlocks : [];
+            var blocks = [];
+            for (var idx = 0; idx < picks.length; idx += 1) {
+                var picked = picks[idx] || {};
+                var speakerTag = normalizeSpeakerTag(picked.speaker || 'NARR');
+                var speakerName = getTranscriptSpeakerLabel(speakerTag, partId);
+                var gender = speakerTag === 'MEN' ? 'male' : (speakerTag === 'WOMEN' ? 'female' : 'neutral');
+                var prevBlock = prev[idx] || {};
+
+                blocks.push({
+                    introduction_label: String(prevBlock.introduction_label || ('The ' + speakerName + ' says:')),
+                    speaker_name: speakerName,
+                    speaker_gender: gender,
+                    quote_text_html: '&ldquo;' + escapeHtml(String(picked.text || '')) + '&rdquo;',
+                    start_sec: Number(picked.start || 0),
+                    end_sec: Number(picked.end || (Number(picked.start || 0) + 8))
+                });
+            }
+
+            return blocks;
+        }
+
+        function renderExplanationFromSchema(schema) {
+            var model = schema || {};
+            var meta = model.question_metadata || {};
+            var optionsStatus = Array.isArray(model.options_status) ? model.options_status : [];
+            var payload = model.explanation_payload || {};
+            var dialogueBlocks = Array.isArray(payload.dialogue_blocks) ? payload.dialogue_blocks : [];
+            var isCorrect = !!meta.user_was_correct;
+            var badgeStyle = isCorrect ? '' : ' style="color:#dc2626;"';
+
             var html = '';
+            html += '<div class="rounded-xl border border-gray-200 shadow-sm p-6">';
+
             html += '<div class="explaination-figma-header">';
             html += '<div class="explaination-figma-question-wrap">';
-            html += '<div class="explaination-figma-qnum">' + escapeHtml(String(q.number || '-')) + '</div>';
-            html += '<div class="explaination-figma-qtext">' + escapeHtml(q.questionText || '') + '</div>';
+            html += '<div class="explaination-figma-qnum ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + escapeHtml(String(meta.question_number || '-')) + '</div>';
+            html += '<div class="explaination-figma-qtext">' + escapeHtml(String(meta.question_text || '')) + '</div>';
             html += '</div>';
-            html += '<b class="explaination-figma-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>';
+            html += '<b class="explaination-figma-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '"' + badgeStyle + '>' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>';
             html += '</div>';
 
             html += '<section class="explaination-answer-section">';
             html += '<div class="explaination-figma-options">';
-            for (var li = 0; li < letters.length; li += 1) {
-                var letter = letters[li];
-                var text = sanitizeFigmaOptionText(options[letter] || '');
-                var isSelected = letter === userLtr;
-                var isDense = text.length > 120;
-                html += '<div class="explaination-figma-option ' + (isSelected ? 'is-selected option-selected ' : 'option ') + (isDense ? 'is-dense' : '') + '">';
-                html += '<div class="explaination-figma-option-text option-answer-d"><span class="option-marker">(' + escapeHtml(letter) + ')</span><span class="option-text">' + escapeHtml(text) + '</span></div>';
-                if (isSelected) {
-                    html += '<div class="explaination-figma-your-answer you-answer-correct ' + (isCorrect ? 'is-correct' : 'is-wrong') + '"><span class="your-answer">Your Answer</span><i class="ph ' + (isCorrect ? 'ph-check' : 'ph-x') + '" aria-hidden="true"></i></div>';
+            for (var i = 0; i < optionsStatus.length; i += 1) {
+                var item = optionsStatus[i] || {};
+                var optionStateClass = 'option';
+                if (item.is_user_answer && !item.is_correct_choice) optionStateClass += ' is-user-wrong';
+                if (item.is_correct_choice) optionStateClass += ' is-correct-answer';
+                if (item.is_user_answer || item.is_correct_choice) optionStateClass += ' option-selected';
+
+                html += '<div class="explaination-figma-option ' + optionStateClass + '">';
+                html += '<div class="explaination-figma-option-text option-answer-d"><span class="option-marker">(' + escapeHtml(String(item.letter || '')) + ')</span><span class="option-text">' + escapeHtml(String(item.text || '')) + '</span></div>';
+
+                if (item.is_user_answer && !item.is_correct_choice) {
+                    html += '<div class="explaination-figma-your-answer is-wrong"><span class="your-answer">Your Answer ✕</span></div>';
                 }
+                if (item.is_correct_choice) {
+                    html += '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">Correct Answer ✓</span></div>';
+                }
+
                 html += '</div>';
             }
             html += '</div>';
             html += '</section>';
 
             html += '<section class="explaination-why-section">';
-            html += '<div class="explaination-figma-why-block container">';
-            html += '<div class="heading">Why (' + escapeHtml(correctLtr || 'B') + ')?</div>';
+            html += '<div class="explaination-figma-divider" aria-hidden="true"></div>';
+            html += '<div class="explaination-figma-why-block">';
+            html += '<div class="heading">' + escapeHtml(String(payload.header_title || 'Why?')) + '</div>';
             html += '<div class="main-content">';
+            html += '<div class="explanation-text">' + String(payload.main_explanation_html || '') + '</div>';
 
-            html += '<div class="explanation-text">The correct choice is <span class="b-where-to">(' + escapeHtml(correctLtr || 'B') + ') ' + escapeHtml(bestAnswerText || 'best answer') + '</span> because ' + escapeHtml(reasonText) + '</div>';
+            for (var j = 0; j < dialogueBlocks.length; j += 1) {
+                var block = dialogueBlocks[j] || {};
+                var gender = String(block.speaker_gender || '').toLowerCase();
+                var speakerColor = gender === 'male' ? '#F3934F' : (gender === 'female' ? '#676CFF' : '#111827');
+                var start = Number(block.start_sec || 0);
+                var end = Number(block.end_sec || (start + 8));
 
-            if (isQuestion31) {
-                html += '<div class="explanation-text">For instance, if we look directly at the spoken dialogue, the <span class="student">Student</span> clearly explains his situation by stating:</div>';
-                html += '<div class="speaker">'
-                    + '<div class="icon-container"><i class="ph-fill ph-speaker-high vector-icon" aria-hidden="true"></i><i class="ph ph-user vector-icon2" aria-hidden="true"></i></div>'
-                    + '<button type="button" class="quote-container" onclick="playTranscriptSegment(' + Number((studentSeg && studentSeg.start) || 0) + ',' + Number((studentSeg && studentSeg.end) || (Number((studentSeg && studentSeg.start) || 0) + 8)) + ')">'
-                        + '<div class="student-quote"><span class="student-quote-txt-container">&ldquo;I\'m <span class="looking-for">looking for</span> some materials for my research paper on renewable energy sources, specifically geothermal energy. I checked the main online catalog, but I\'m having trouble finding <span class="looking-for">recent publications</span>.&rdquo;</span></div>'
-                    + '</button>'
-                + '</div>';
-
-                html += '<div class="explanation-text">The <span class="librarian">Librarian</span> immediately solves this by responding:</div>';
-                html += '<div class="speaker">'
-                    + '<div class="icon-container2"><i class="ph-fill ph-speaker-high vector-icon" aria-hidden="true"></i><i class="ph ph-user vector-icon2" aria-hidden="true"></i></div>'
-                    + '<button type="button" class="quote-container2" onclick="playTranscriptSegment(' + Number((librarianSeg && librarianSeg.start) || 0) + ',' + Number((librarianSeg && librarianSeg.end) || (Number((librarianSeg && librarianSeg.start) || 0) + 8)) + ')">'
-                        + '<div class="student-quote"><span class="student-quote-txt-container">&ldquo;The main catalog is a good starting point for books, but for the <span class="looking-for">most recent academic</span> articles, you really need to <span class="looking-for">use the specialized research databases</span>.&rdquo;</span></div>'
-                    + '</button>'
-                + '</div>';
-            } else if (studentSeg && studentSeg.text) {
-                html += '<div class="explanation-text">For instance, if we look directly at the spoken dialogue, the <span class="student">Student</span> clearly explains his situation by stating:</div>';
-                html += '<div class="speaker">'
-                    + '<div class="icon-container"><i class="ph-fill ph-speaker-high vector-icon" aria-hidden="true"></i><i class="ph ph-user vector-icon2" aria-hidden="true"></i></div>'
-                    + '<button type="button" class="quote-container" onclick="playTranscriptSegment(' + Number(studentSeg.start || 0) + ',' + Number(studentSeg.end || (Number(studentSeg.start || 0) + 8)) + ')">'
-                        + '<div class="student-quote"><span class="student-quote-txt-container">&ldquo;' + highlightQuotePhrases(studentSeg.text || '', ['looking for', 'recent publications']) + '&rdquo;</span></div>'
-                    + '</button>'
-                + '</div>';
+                html += '<div class="explanation-text">' + escapeHtml(String(block.introduction_label || '')) + '</div>';
+                html += '<div class="speaker">';
+                html += '<div class="flex flex-row justify-between item-center" style="margin-bottom:8px;">';
+                html += '<div style="color:' + speakerColor + ';font-weight:700;">' + escapeHtml(String(block.speaker_name || 'Speaker')) + '</div>';
+                html += '</div>';
+                html += '<button type="button" class="quote-container" onclick="playTranscriptSegment(' + start + ',' + end + ')">';
+                html += '<div class="student-quote"><span class="student-quote-txt-container">' + String(block.quote_text_html || '') + '</span></div>';
+                html += '</button>';
+                html += '</div>';
             }
 
-            if (!isQuestion31 && librarianSeg && librarianSeg.text) {
-                html += '<div class="explanation-text">The <span class="librarian">Librarian</span> immediately solves this by responding:</div>';
-                html += '<div class="speaker">'
-                    + '<div class="icon-container2"><i class="ph-fill ph-speaker-high vector-icon" aria-hidden="true"></i><i class="ph ph-user vector-icon2" aria-hidden="true"></i></div>'
-                    + '<button type="button" class="quote-container2" onclick="playTranscriptSegment(' + Number(librarianSeg.start || 0) + ',' + Number(librarianSeg.end || (Number(librarianSeg.start || 0) + 8)) + ')">'
-                        + '<div class="student-quote"><span class="student-quote-txt-container">&ldquo;' + highlightQuotePhrases(librarianSeg.text || '', ['most recent academic', 'use the specialized research databases']) + '&rdquo;</span></div>'
-                    + '</button>'
-                + '</div>';
-            }
-
-            html += '<div class="explanation-text">Because these opening lines focus entirely on tracking down new scientific documents, this central idea perfectly matches the phrase <span class="b-where-to">&ldquo;' + escapeHtml(bestAnswerText || '') + '.&rdquo;</span></div>';
-
+            html += '<div class="explanation-text">' + String(payload.closing_analysis_html || '') + '</div>';
             html += '</div>';
             html += '</div>';
             html += '</section>';
+            html += '</div>';
 
-            host.innerHTML = html;
+            return html;
+        }
+
+        function renderExplainationTabDetail(question, explanation, correctLtr) {
+            var host = document.getElementById('explainationTabContent');
+            if (!host) return;
+            var schema = buildExplanationSchemaFromQuestion(question, explanation, correctLtr);
+            host.innerHTML = renderExplanationFromSchema(schema);
         }
 
         function renderStepByStepTabDetail(question) {
@@ -2692,6 +2940,13 @@
             var optionB = sanitizeFigmaOptionText(options.B || 'Where to find recent academic research materials.');
             var optionC = sanitizeFigmaOptionText(options.C || 'The economic benefits of using geothermal energy.');
             var optionD = sanitizeFigmaOptionText(options.D || 'How to pay for expensive journal subscriptions.');
+            var correctLtr = String(q.correctAnswer || '').trim().toUpperCase() || 'A';
+            var bestAnswerText = sanitizeFigmaOptionText(options[correctLtr] || '');
+            var partId = inferPartIdFromQuestion(q);
+            var qSegments = getQuestionTranscriptSegments(q);
+            var studentSeg = getFirstSpeakerSegment(qSegments, partId === 2 ? 'MEN' : 'MEN');
+            var librarianSeg = getFirstSpeakerSegment(qSegments, partId === 2 ? 'WOMEN' : 'WOMEN');
+            var wrongItems = buildFallbackWrongItems(q);
 
             var html = '';
             html += '<div class="step-figma-steps">';
@@ -2699,26 +2954,34 @@
             html += '<article class="step-figma-card">';
             html += '<header class="step-figma-head"><div class="step-figma-num">1</div><h3 class="step-figma-title">Listen for the Topic Opener</h3></header>';
             html += '<div class="step-figma-row"><div class="step-figma-line" aria-hidden="true"></div><div class="step-figma-copy">';
-            html += 'In TOEFL Part B, the main problem is always stated at the very beginning. Listen to the <span class="student">Student</span> say: <i>&ldquo;I\'m <span class="looking-for">looking for</span>... <span class="looking-for">recent publications</span>.&rdquo;</i> This instantly tells you the topic is about finding current reading materials.';
+            if (studentSeg && studentSeg.text) {
+                html += 'Start from the speaker\'s core need. The <span class="student">Student</span> signals the main problem in this line: <i>&ldquo;' + renderTranscriptTextWithMarks(studentSeg.text || '', buildHighlightTermsFromAnswer(bestAnswerText)) + '&rdquo;</i>.';
+            } else {
+                html += 'Start from the speaker\'s core need by identifying the first direct clue in the conversation.';
+            }
             html += '</div></div>';
             html += '</article>';
 
             html += '<article class="step-figma-card">';
             html += '<header class="step-figma-head"><div class="step-figma-num">2</div><h3 class="step-figma-title">Identify the Location Solution</h3></header>';
             html += '<div class="step-figma-row"><div class="step-figma-line" aria-hidden="true"></div><div class="step-figma-copy">';
-            html += 'Listen to the <span class="librarian">Librarian</span> point him to the right place: <i>&ldquo;You really need to <span class="looking-for">use the specialized research databases</span>.&rdquo;</i> Now you know the conversation will focus entirely on using these library databases.';
+            if (librarianSeg && librarianSeg.text) {
+                html += 'Then confirm the solution line. The <span class="librarian">Librarian</span> answers with: <i>&ldquo;' + renderTranscriptTextWithMarks(librarianSeg.text || '', buildHighlightTermsFromAnswer(bestAnswerText)) + '&rdquo;</i>.';
+            } else {
+                html += 'Then confirm which response resolves the problem and narrows the topic.';
+            }
             html += '</div></div>';
             html += '</article>';
 
             html += '<article class="step-figma-card">';
             html += '<header class="step-figma-head"><div class="step-figma-num">3</div><h3 class="step-figma-title">Connect the Synonyms</h3></header>';
             html += '<div class="step-figma-row"><div class="step-figma-line" aria-hidden="true"></div><div class="step-figma-copy">';
-            html += '<p class="step-figma-instruction">Look at the choices. Match the student\'s problem (&ldquo;looking for recent publications&rdquo;) to <b>Option (B)</b>:</p>';
+            html += '<p class="step-figma-instruction">Map the dialogue meaning to the option language, then select the one with equivalent intent:</p>';
             html += '<div class="step-figma-option-selected">';
-            html += '<div class="step-figma-option-answer"><span>(B)</span><span>' + escapeHtml(optionB) + '</span></div>';
+            html += '<div class="step-figma-option-answer"><span>(' + escapeHtml(correctLtr) + ')</span><span>' + escapeHtml(bestAnswerText) + '</span></div>';
             html += '<div class="step-figma-correct-answer"><span>Correct Answer</span><i class="ph ph-check" aria-hidden="true"></i></div>';
             html += '</div>';
-            html += '<p class="step-figma-instruction">They mean the exact same thing.</p>';
+            html += '<p class="step-figma-instruction">This is the only choice that directly matches the conversation\'s problem-solution chain.</p>';
             html += '</div></div>';
             html += '</article>';
 
@@ -2726,20 +2989,22 @@
             html += '<header class="step-figma-head"><div class="step-figma-num">4</div><h3 class="step-figma-title">Eliminate the Wrong Answer</h3></header>';
             html += '<div class="step-figma-wrong-list">';
 
-            html += '<div class="step-figma-wrong-item">';
-            html += '<p class="step-figma-wrong-copy"><span class="step-figma-strong">(A) is wrong: </span>because the student is not trying to register for a class</p>';
-            html += '<div class="step-figma-wrong-option"><div class="step-figma-option-answer"><span>(A)</span><span>' + escapeHtml(optionA) + '</span></div><div class="step-figma-wrong-badge"><b>Incorrect</b><i class="ph ph-x" aria-hidden="true"></i></div></div>';
-            html += '</div>';
+            for (var wi = 0; wi < wrongItems.length; wi += 1) {
+                var wrong = wrongItems[wi] || {};
+                var wrongLetter = String(wrong.letter || '').toUpperCase();
+                var wrongText = sanitizeFigmaOptionText(options[wrongLetter] || '');
+                if (!wrongLetter || !wrongText) continue;
+                html += '<div class="step-figma-wrong-item">';
+                html += '<p class="step-figma-wrong-copy"><span class="step-figma-strong">(' + escapeHtml(wrongLetter) + ') is wrong: </span>' + escapeHtml(wrong.reason || 'It does not match the speaker\'s actual intent.') + '</p>';
+                html += '<div class="step-figma-wrong-option"><div class="step-figma-option-answer"><span>(' + escapeHtml(wrongLetter) + ')</span><span>' + escapeHtml(wrongText) + '</span></div><div class="step-figma-wrong-badge"><b>Incorrect</b><i class="ph ph-x" aria-hidden="true"></i></div></div>';
+                html += '</div>';
+            }
 
-            html += '<div class="step-figma-wrong-item">';
-            html += '<p class="step-figma-wrong-copy"><span class="step-figma-strong">(C) is wrong: </span>because geothermal energy is just a single topic example, making it too narrow to be the main discussion</p>';
-            html += '<div class="step-figma-wrong-option"><div class="step-figma-option-answer"><span>(C)</span><span>' + escapeHtml(optionC) + '</span></div><div class="step-figma-wrong-badge"><b>Incorrect</b><i class="ph ph-x" aria-hidden="true"></i></div></div>';
-            html += '</div>';
-
-            html += '<div class="step-figma-wrong-item">';
-            html += '<p class="step-figma-wrong-copy"><span class="step-figma-strong">(D) is wrong: </span>because the librarian mentions the university pays for the journals, meaning it is free for the student</p>';
-            html += '<div class="step-figma-wrong-option"><div class="step-figma-option-answer"><span>(D)</span><span>' + escapeHtml(optionD) + '</span></div><div class="step-figma-wrong-badge"><b>Incorrect</b><i class="ph ph-x" aria-hidden="true"></i></div></div>';
-            html += '</div>';
+            if (!wrongItems.length) {
+                html += '<div class="step-figma-wrong-item">';
+                html += '<p class="step-figma-wrong-copy">No distractor analysis is available for this question yet.</p>';
+                html += '</div>';
+            }
 
             html += '</div>';
             html += '</article>';
@@ -2793,6 +3058,135 @@
                 var spkLabel = spk === 'WOMEN' ? 'Woman' : (spk === 'MEN' ? 'Man' : 'Narrator');
                 return spkLabel + ': "' + String(seg.text || '').trim() + '"';
             }).join('\n');
+        }
+
+        function normalizeOptionsMap(input) {
+            var out = { A: '', B: '', C: '', D: '' };
+            if (Array.isArray(input)) {
+                for (var i = 0; i < input.length; i += 1) {
+                    var raw = String(input[i] || '').trim();
+                    if (!raw) continue;
+                    var match = raw.match(/^\(?([A-D])\)?[\).:\-\s]*(.+)$/i);
+                    if (match) {
+                        out[String(match[1] || '').toUpperCase()] = String(match[2] || '').trim();
+                    }
+                }
+                return out;
+            }
+
+            var source = input || {};
+            var keys = Object.keys(source);
+            for (var k = 0; k < keys.length; k += 1) {
+                var key = String(keys[k] || '').trim().toUpperCase();
+                if (key === 'A' || key === 'B' || key === 'C' || key === 'D') {
+                    out[key] = String(source[keys[k]] || '').trim();
+                }
+            }
+            return out;
+        }
+
+        async function compileActiveExplanationPayload(setId, questionNumber, userChoice) {
+            var qNum = Number(questionNumber || 0);
+            var fallbackQuestion = null;
+            if (reviewResultData && Array.isArray(reviewResultData.questions)) {
+                for (var i = 0; i < reviewResultData.questions.length; i += 1) {
+                    if (Number(reviewResultData.questions[i].number || 0) === qNum) {
+                        fallbackQuestion = reviewResultData.questions[i];
+                        break;
+                    }
+                }
+            }
+
+            var fullSetDraft = null;
+            if (window.toeflStorage && setId && typeof window.toeflStorage.getDraftBySetId === 'function') {
+                try {
+                    fullSetDraft = await window.toeflStorage.getDraftBySetId(setId);
+                } catch (_) {
+                    fullSetDraft = null;
+                }
+            }
+
+            var questionItem = null;
+            var answerKey = '';
+            var textPayload = '';
+
+            if (fullSetDraft && Array.isArray(fullSetDraft.questions)) {
+                for (var q = 0; q < fullSetDraft.questions.length; q += 1) {
+                    var candidate = fullSetDraft.questions[q] || {};
+                    var candidateNum = Number(candidate.num || candidate.number || 0);
+                    if (candidateNum === qNum) {
+                        questionItem = candidate;
+                        break;
+                    }
+                }
+            }
+
+            if (fullSetDraft && fullSetDraft.answerKey) {
+                answerKey = String(fullSetDraft.answerKey[qNum] || fullSetDraft.answerKey[String(qNum)] || '').trim().toUpperCase();
+            }
+
+            var partId = Number((questionItem && questionItem.partId) || (fallbackQuestion && fallbackQuestion.partId) || inferPartIdFromQuestion(fallbackQuestion) || 0);
+            if (fullSetDraft && fullSetDraft.transcripts && partId) {
+                textPayload = String(fullSetDraft.transcripts['part_' + partId] || '').trim();
+            }
+
+            if (!textPayload) {
+                var map = reviewTranscriptMapByPart[partId] || {};
+                var segments = map[qNum] || [];
+                if (Array.isArray(segments) && segments.length) {
+                    var lines = [];
+                    for (var s = 0; s < segments.length; s += 1) {
+                        var seg = segments[s] || {};
+                        var label = normalizeSpeakerTag(seg.speaker || 'NARR');
+                        label = label === 'WOMEN' ? 'Librarian' : (label === 'MEN' ? 'Student' : 'Narrator');
+                        lines.push(String(seg.timestamp || fmtTime(Number(seg.start || 0))) + ' - ' + label + ': ' + String(seg.text || '').trim());
+                    }
+                    textPayload = '<Question ' + qNum + '>\n' + lines.join('\n') + '\n</Question ' + qNum + '>';
+                }
+            }
+
+            var boundaryRegex = new RegExp('<Question\\s+' + qNum + '>([\\s\\S]*?)</Question\\s+' + qNum + '>', 'i');
+            var segmentMatch = String(textPayload || '').match(boundaryRegex);
+            var cleanSnippet = segmentMatch ? String(segmentMatch[1] || '').trim() : '';
+
+            var mergedQuestionText = String((questionItem && (questionItem.text || questionItem.questionText)) || (fallbackQuestion && fallbackQuestion.questionText) || '').trim();
+            var mergedOptionsMap = normalizeOptionsMap((questionItem && questionItem.options) || (fallbackQuestion && fallbackQuestion.options) || {});
+            var resolvedCorrect = String(answerKey || (fallbackQuestion && fallbackQuestion.correctAnswer) || '').trim().toUpperCase();
+            var resolvedUser = String(userChoice || (fallbackQuestion && fallbackQuestion.userAnswer) || '').trim().toUpperCase();
+
+            return {
+                active_question_number: qNum,
+                question_text: mergedQuestionText,
+                options_array: mergedOptionsMap,
+                correct_option_letter: resolvedCorrect,
+                user_selected_letter: resolvedUser,
+                isolated_transcript_block: cleanSnippet
+            };
+        }
+
+        function persistExplanationSchemaToResult(questionNumber, schemaObject) {
+            try {
+                var schemaText = JSON.stringify(schemaObject || {});
+                var raw = localStorage.getItem('toefl_section1_result');
+                if (!raw) return;
+                var result = JSON.parse(raw);
+                if (!result || !Array.isArray(result.questions)) return;
+                for (var i = 0; i < result.questions.length; i += 1) {
+                    if (Number(result.questions[i].number || 0) === Number(questionNumber)) {
+                        result.questions[i].explanationSchema = schemaText;
+                        break;
+                    }
+                }
+                localStorage.setItem('toefl_section1_result', JSON.stringify(result));
+                if (reviewResultData && Array.isArray(reviewResultData.questions)) {
+                    for (var j = 0; j < reviewResultData.questions.length; j += 1) {
+                        if (Number(reviewResultData.questions[j].number || 0) === Number(questionNumber)) {
+                            reviewResultData.questions[j].explanationSchema = schemaText;
+                            break;
+                        }
+                    }
+                }
+            } catch (_) {}
         }
 
         function persistExplanationToResult(questionNumber, explanationText) {
@@ -2914,16 +3308,12 @@
             if (label) label.textContent = 'Generating…';
 
             try {
-                var transcript = buildTranscriptText(question);
-                var payload = {
-                    questionText: String(question.questionText || ''),
-                    options: question.options || {},
-                    correctAnswer: String(question.correctAnswer || ''),
-                    transcript: transcript,
-                    explanationLanguage: 'Bahasa Indonesia'
-                };
+                var payload = await compileActiveExplanationPayload(reviewSetId, Number(question.number || 0), String(question.userAnswer || '').trim().toUpperCase());
+                if (!payload || !String(payload.isolated_transcript_block || '').trim()) {
+                    throw new Error('No isolated transcript block found between <Question ' + String(question.number || '') + '> and </Question ' + String(question.number || '') + '>.');
+                }
 
-                var requestResult = await fetchAiWithFallback('/api/toefl-explanation', {
+                var requestResult = await fetchAiWithFallback('/api/toefl-explanation-json', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -2936,17 +3326,20 @@
                     throw new Error(errJson.error || ('Server error ' + resp.status));
                 }
 
-                var generatedText = await resp.text();
-                if (!generatedText || !generatedText.trim()) throw new Error('Empty response from AI server');
+                var schema = {};
+                try { schema = await resp.json(); } catch (_) { schema = {}; }
+                if (!schema || !schema.explanation_payload) throw new Error('Invalid explanation schema from AI server');
 
-                question.explanation = generatedText.trim();
+                question.explanationSchema = JSON.stringify(schema);
                 question.explanationId = '';
                 question.showBahasaExplanation = false;
-                persistExplanationToResult(question.number, question.explanation);
+                persistExplanationSchemaToResult(question.number, schema);
                 persistExplanationTranslationToResult(question.number, '', false);
 
-                var explanation = parseExplanationSegments(question.explanation);
-                renderExplainationTabDetail(question, explanation, String(question.correctAnswer || 'B').trim().toUpperCase() || 'B');
+                var host = document.getElementById('explainationTabContent');
+                if (host) host.innerHTML = renderExplanationFromSchema(schema);
+
+                var explanation = parseExplanationSegments((schema.explanation_payload && schema.explanation_payload.main_explanation_html) || '');
                 reviewDetailSteps = buildDetailSteps(question, explanation);
                 reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
                 renderDetailSteps();
@@ -3065,7 +3458,24 @@
 
             var detailSub = document.getElementById('detailSub');
             if (detailSub) detailSub.textContent = 'Why ' + (correctLtr||'B') + ' is correct? Proof Transcribe';
-            renderExplainationTabDetail(q, explanation, correctLtr || 'B');
+            var schemaRendered = false;
+            try {
+                if (q.explanationSchema) {
+                    var parsedSchema = JSON.parse(String(q.explanationSchema || '{}'));
+                    if (parsedSchema && parsedSchema.explanation_payload) {
+                        parsedSchema.explanation_payload.dialogue_blocks = buildFreshDialogueBlocksForQuestion(
+                            q,
+                            parsedSchema.explanation_payload.dialogue_blocks
+                        );
+                        var host = document.getElementById('explainationTabContent');
+                        if (host) host.innerHTML = renderExplanationFromSchema(parsedSchema);
+                        schemaRendered = true;
+                    }
+                }
+            } catch (_) {}
+            if (!schemaRendered) {
+                renderExplainationTabDetail(q, explanation, correctLtr || 'B');
+            }
             renderStepByStepTabDetail(q);
             reviewDetailSteps = buildDetailSteps(q, explanation);
             reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
@@ -3097,34 +3507,32 @@
             for (var p = 1; p <= 3; p += 1) {
                 var rawTranscript = '';
 
-                // Source 1: baked into the test result at submit time
-                if (result.transcriptsByPart && typeof result.transcriptsByPart[p] === 'string') {
-                    rawTranscript = result.transcriptsByPart[p];
-                }
-
-                // Source 2: V2 Firebase draft (requires setId)
-                if (!rawTranscript && window.toeflStorage && reviewSetId && typeof window.toeflStorage.getDraftBySetId === 'function') {
+                // Source 1: V2 Firebase draft (requires setId)
+                if (window.toeflStorage && reviewSetId && typeof window.toeflStorage.getDraftBySetId === 'function') {
                     try {
                         var draft = await window.toeflStorage.getDraftBySetId(reviewSetId);
                         rawTranscript = String((((draft || {}).parts || {})[p] || {}).transcript || '');
+                        if (!rawTranscript) {
+                            rawTranscript = String((((draft || {}).transcripts || {})['part_' + p] || ''));
+                        }
                     } catch (_) { rawTranscript = ''; }
                 }
 
-                // Source 3: Firebase Storage TXT (requires setId)
+                // Source 2: Firebase Storage TXT (requires setId)
                 if (!rawTranscript && window.toeflStorage && reviewSetId && typeof window.toeflStorage.getTranscriptTextFromFirebase === 'function') {
                     try {
                         rawTranscript = await window.toeflStorage.getTranscriptTextFromFirebase(reviewSetId, p);
                     } catch (_) { rawTranscript = ''; }
                 }
 
-                // Source 4: local data server (requires setId)
+                // Source 3: local data server (requires setId)
                 if (!rawTranscript && window.toeflStorage && reviewSetId && typeof window.toeflStorage.getTranscriptTextFromLocalServer === 'function') {
                     try {
                         rawTranscript = await window.toeflStorage.getTranscriptTextFromLocalServer(reviewSetId, p);
                     } catch (_) { rawTranscript = ''; }
                 }
 
-                // Source 5: V1 local draft key (toefl_section1_dev_draft_v1) – always written by saveSectionDraft()
+                // Source 4: V1 local draft key (toefl_section1_dev_draft_v1) – always written by saveSectionDraft()
                 if (!rawTranscript) {
                     try {
                         var v1Local = JSON.parse(localStorage.getItem('toefl_section1_dev_draft_v1') || '{}');
@@ -3132,12 +3540,17 @@
                     } catch (_) { rawTranscript = ''; }
                 }
 
-                // Source 6: V1 Firebase draft via toeflStorage.getDraft('listening')
+                // Source 5: V1 Firebase draft via toeflStorage.getDraft('listening')
                 if (!rawTranscript && window.toeflStorage && typeof window.toeflStorage.getDraft === 'function') {
                     try {
                         var v1FirebaseDraft = await window.toeflStorage.getDraft('listening');
                         rawTranscript = String((((v1FirebaseDraft || {}).parts || {})[p] || {}).transcript || '');
                     } catch (_) { rawTranscript = ''; }
+                }
+
+                // Source 6: baked into the test result at submit time (fallback only)
+                if (!rawTranscript && result.transcriptsByPart && typeof result.transcriptsByPart[p] === 'string') {
+                    rawTranscript = result.transcriptsByPart[p];
                 }
 
                 reviewTranscriptMapByPart[p] = mapTranscriptByQuestion(rawTranscript);
@@ -3193,6 +3606,7 @@
                 try { localStorage.setItem('toefl_section1_result', JSON.stringify(result)); } catch (_) {}
             }
             await hydrateTranscriptFallbackMaps(result);
+            refreshResultQuestionTranscriptSegments();
             renderListeningScaledScore(reviewResultData);
 
             var firstQuestion = result.questions[0];
@@ -3218,5 +3632,4 @@
     </script>
 </body>
 </html>
-
 
