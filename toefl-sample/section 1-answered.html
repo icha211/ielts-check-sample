@@ -35,14 +35,14 @@
                     </div>
                 </div>
                 <div class="features">
-                    <button class="header-feature-btn nav-toggle-btn" type="button" id="fullscreen-btn" aria-label="Enter fullscreen" onclick="toggleReviewFullScreenMode()">
-                        <i class="ph ph-frame-corners icon-regular" aria-hidden="true"></i>
-                        <i class="ph-fill ph-frame-corners icon-filled" aria-hidden="true"></i>
-                    </button>
-                    <button class="header-feature-btn nav-toggle-btn" type="button" id="toggle-navigator-btn" aria-label="Open test options" onclick="toggleFeaturesMenu(event)">
-                        <i class="ph ph-list icon-regular" aria-hidden="true"></i>
-                        <i class="ph-fill ph-list icon-filled" aria-hidden="true"></i>
-                    </button>
+                        <button class="header-feature-btn nav-toggle-btn" type="button" id="fullscreen-btn" aria-label="Enter fullscreen" onclick="toggleReviewFullScreenMode()">
+                            <i class="ph ph-frame-corners icon-regular" aria-hidden="true"></i>
+                            <i class="ph-fill ph-frame-corners icon-filled" aria-hidden="true"></i>
+                        </button>
+                        <button class="header-feature-btn nav-toggle-btn" type="button" id="toggle-navigator-btn" aria-label="Open test options" onclick="toggleFeaturesMenu(event)">
+                            <i class="ph ph-list icon-regular" aria-hidden="true"></i>
+                            <i class="ph-fill ph-list icon-filled" aria-hidden="true"></i>
+                        </button>
                 </div>
                 <button class="header-prev-btn" type="button" id="headerPrevQuestionBtn" onclick="goToPreviousReviewQuestion()" aria-label="Previous question">
                     <img src="../asst/icon/previousbutton.svg" alt="Previous">
@@ -57,58 +57,174 @@
         </header>
 
         <div class="features-overlay" id="features-overlay" aria-hidden="true">
-            <div class="features-panel" role="dialog" aria-modal="true" aria-labelledby="features-title">
-                <div class="features-panel__header">
-                    <div class="features-title" id="features-title">TEST OPTIONS</div>
-                    <button class="features-close" id="features-close-btn" type="button" aria-label="Close test options" onclick="setFeaturesMenuOpen(false)">
-                        <i class="ph ph-x" aria-hidden="true"></i>
-                    </button>
-                </div>
+                <div class="features-panel" role="dialog" aria-modal="true" aria-labelledby="features-title">
+                    <div class="features-panel__header">
+                        <div class="features-title" id="features-title">TEST OPTIONS</div>
+                        <button class="features-close" id="features-close-btn" type="button" aria-label="Close test options" onclick="setFeaturesMenuOpen(false)">
+                            <i class="ph ph-x" aria-hidden="true"></i>
+                        </button>
+                    </div>
 
-                <div class="features-panel__content">
-                    <div class="feature-quick-row">
-                        <div class="feature-card feature-card--dark">
-                            <div class="feature-label"><i class="ph ph-moon" aria-hidden="true"></i>Dark Mode</div>
-                            <button class="darkmode-toggle" type="button" id="darkmode-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode" onclick="toggleDarkMode()">
-                                <span class="darkmode-toggle__thumb" aria-hidden="true"></span>
-                                <span class="darkmode-toggle__option darkmode-toggle__option--light"><i class="ph ph-sun" aria-hidden="true"></i></span>
-                                <span class="darkmode-toggle__option darkmode-toggle__option--dark"><i class="ph ph-moon" aria-hidden="true"></i></span>
+                    <div class="features-panel__content">
+                        <div class="features-page features-page--main" id="featuresMainPage">
+                            <div class="feature-quick-row">
+                                <div class="feature-card feature-card--dark">
+                                    <div class="feature-label"><i class="ph ph-moon" aria-hidden="true"></i>Dark Mode</div>
+                                    <button class="darkmode-toggle" type="button" id="darkmode-toggle" role="switch" aria-checked="false" aria-label="Toggle dark mode" onclick="toggleDarkMode()">
+                                        <span class="darkmode-toggle__thumb" aria-hidden="true"></span>
+                                        <span class="darkmode-toggle__option darkmode-toggle__option--light"><i class="ph ph-sun" aria-hidden="true"></i></span>
+                                        <span class="darkmode-toggle__option darkmode-toggle__option--dark"><i class="ph ph-moon" aria-hidden="true"></i></span>
+                                    </button>
+                                </div>
+
+                                <div class="feature-card feature-card--text-size">
+                                    <div class="feature-label"><i class="ph ph-text-aa" aria-hidden="true"></i>Text Size</div>
+                                    <div class="textsize-toggle" id="textsize-toggle" data-size="s" role="radiogroup" aria-label="Text size">
+                                        <span class="textsize-toggle__thumb" aria-hidden="true"></span>
+                                        <button class="textsize-toggle__option is-active" type="button" role="radio" aria-checked="true" data-size="s" onclick="setTextSize('s')">S</button>
+                                        <button class="textsize-toggle__option" type="button" role="radio" aria-checked="false" data-size="m" onclick="setTextSize('m')">M</button>
+                                        <button class="textsize-toggle__option" type="button" role="radio" aria-checked="false" data-size="l" onclick="setTextSize('l')">L</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="feature-card feature-card--audio">
+                                <div class="feature-label"><i class="ph ph-speaker-high" aria-hidden="true"></i>Audio Volume</div>
+                                <div class="volume-control" role="group" aria-label="Audio volume control">
+                                    <button class="volume-control__btn" id="reviewVolumeDown" type="button" aria-label="Decrease volume by 10 percent">
+                                        <i class="ph ph-minus" aria-hidden="true"></i>
+                                    </button>
+                                    <div class="volume-control__track" id="reviewVolumeTrack" role="slider" tabindex="0" aria-label="Audio volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" aria-valuetext="50%">
+                                        <div class="volume-control__fill" id="reviewVolumeFill"></div>
+                                    </div>
+                                    <button class="volume-control__btn" id="reviewVolumeUp" type="button" aria-label="Increase volume by 10 percent">
+                                        <i class="ph ph-plus" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button class="feature-link" type="button" id="instructionSlidePageTestBtn" onclick="openInstructionSlidePage(event)" aria-expanded="false" aria-controls="instructionSlidePageTestPanel">
+                                <span class="feature-link__left"><i class="ph ph-book-open-text" aria-hidden="true"></i>Instruction</span>
+                                <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
+                            </button>
+
+                            <button class="feature-link feature-link--warn" type="button" id="reportIssueSlidePageTestBtn" onclick="openReportIssueSlidePage(event)" aria-expanded="false" aria-controls="reportIssueSlidePageTestPanel">
+                                <span class="feature-link__left"><i class="ph ph-warning-circle" aria-hidden="true"></i>Report Issue</span>
+                                <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
                             </button>
                         </div>
 
-                        <div class="feature-card feature-card--text-size">
-                            <div class="feature-label"><i class="ph ph-text-aa" aria-hidden="true"></i>Text Size</div>
-                            <div class="textsize-toggle" id="textsize-toggle" data-size="s" role="radiogroup" aria-label="Text size">
-                                <span class="textsize-toggle__thumb" aria-hidden="true"></span>
-                                <button class="textsize-toggle__option is-active" type="button" role="radio" aria-checked="true" data-size="s" onclick="setTextSize('s')">S</button>
-                                <button class="textsize-toggle__option" type="button" role="radio" aria-checked="false" data-size="m" onclick="setTextSize('m')">M</button>
-                                <button class="textsize-toggle__option" type="button" role="radio" aria-checked="false" data-size="l" onclick="setTextSize('l')">L</button>
+                        <section class="features-page features-page--detail instruction-slide-page-test-op" id="instructionSlidePageTestPanel" aria-hidden="true">
+                            <div class="instruction-slide-page-test-head">
+                                <button class="instruction-slide-page-test-close" type="button" aria-label="Back to test options" onclick="closeInstructionSlidePage(event)">
+                                    <i class="ph ph-caret-left" aria-hidden="true"></i>
+                                </button>
+                                <div class="instruction-slide-page-test-title"><i class="ph ph-info" aria-hidden="true"></i>Instruction</div>
                             </div>
-                        </div>
-                    </div>
 
-                    <div class="feature-card feature-card--audio">
-                        <div class="feature-label"><i class="ph ph-speaker-high" aria-hidden="true"></i>Audio Volume</div>
-                        <div class="volume-control" aria-hidden="true">
-                            <button class="volume-control__btn" type="button" tabindex="-1"><i class="ph ph-minus" aria-hidden="true"></i></button>
-                            <div class="volume-control__track">
-                                <div class="volume-control__fill"></div>
+                            <div class="detail-instruction-for-listening-text">Detail instruction for listening comprehension</div>
+
+                            <div class="instruction-slide-page-test-list">
+                                <article class="instruction-item">
+                                    <h4><i class="ph ph-play" aria-hidden="true"></i>Start The Listening</h4>
+                                    <p>Click the Start button to begin. The test environment is locked once active, and if you exit or stop the session, your test is terminated and cannot be resumed.</p>
+                                </article>
+
+                                <article class="instruction-item">
+                                    <h4><i class="ph ph-speaker-high" aria-hidden="true"></i>Single Play ONLY</h4>
+                                    <p>The audio for the entire section will play once only. Replay, rewind, and pause are not available to match authentic TOEFL ITP conditions.</p>
+                                </article>
+
+                                <article class="instruction-item">
+                                    <h4><i class="ph ph-squares-four" aria-hidden="true"></i>Question Navigator</h4>
+                                    <p>Read each question and all four answer choices carefully. Progress follows the audio flow, so you cannot jump ahead or return to previous questions.</p>
+                                </article>
+
+                                <article class="instruction-item">
+                                    <h4><i class="ph ph-clock" aria-hidden="true"></i>Time Management</h4>
+                                    <p>Monitor the timer in the top bar. The test moves automatically when audio ends or when time is over.</p>
+                                </article>
                             </div>
-                            <button class="volume-control__btn" type="button" tabindex="-1"><i class="ph ph-plus" aria-hidden="true"></i></button>
-                        </div>
+                        </section>
+
+                        <section class="features-page features-page--detail report-issue-slide-page-test-op" id="reportIssueSlidePageTestPanel" aria-hidden="true">
+                            <div class="report-issue-slide-page-test-head report-issue-head">
+                                <button class="report-issue-slide-page-test-close" type="button" aria-label="Back to test options" onclick="closeReportIssueSlidePage(event)">
+                                    <i class="ph ph-caret-left" aria-hidden="true"></i>
+                                </button>
+                                <div class="report-issue-slide-page-test-title"><i class="ph ph-warning-circle" aria-hidden="true"></i>Report an Issue</div>
+                            </div>
+
+                            <section class="report-issue-page report-issue-form-page" id="reportIssueFormPage">
+                                <p class="report-issue-intro">The AskQC team will respond to your enquiry within one business day.</p>
+
+                                <div class="report-issue-section">
+                                    <h3>Your Question</h3>
+                                    <label class="report-issue-field">
+                                        <span>Question</span>
+                                        <textarea id="reportIssueQuestion" rows="3" placeholder="Write your question..."></textarea>
+                                    </label>
+                                    <label class="report-issue-field">
+                                        <span>More detail/ explanation</span>
+                                        <textarea id="reportIssueDetail" rows="4" placeholder="Add details so we can help faster..."></textarea>
+                                    </label>
+                                    <div class="report-issue-field">
+                                        <span>Attach Documents</span>
+                                        <div class="report-issue-dropzone" id="reportIssueDropzone" role="button" tabindex="0" aria-label="Attach documents">
+                                            <input id="reportIssueFiles" class="report-issue-file-input" type="file" multiple aria-label="Choose files to attach">
+                                            <div class="report-issue-drop-hero">
+                                                <span class="report-issue-drop-icon" aria-hidden="true"><i class="ph ph-cloud-arrow-up"></i></span>
+                                                <p class="report-issue-drop-main">Drop anything here or browse</p>
+                                                <p class="report-issue-drop-sub">Docs, images, videos, audio files, links and more</p>
+                                            </div>
+                                            <button class="report-issue-browse-btn" id="reportIssueBrowseBtn" type="button">Browse files</button>
+                                        </div>
+                                        <div class="report-issue-files" id="reportIssueFilesList" aria-live="polite"></div>
+                                    </div>
+                                </div>
+
+                                <div class="report-issue-section">
+                                    <h3>Your details</h3>
+                                    <div class="report-issue-name-row">
+                                        <label class="report-issue-field">
+                                            <span>First name</span>
+                                            <input id="reportIssueFirstName" type="text" placeholder="First name">
+                                        </label>
+                                        <label class="report-issue-field">
+                                            <span>Last name</span>
+                                            <input id="reportIssueLastName" type="text" placeholder="Last name">
+                                        </label>
+                                    </div>
+                                    <label class="report-issue-field">
+                                        <span>Email Address</span>
+                                        <input id="reportIssueEmail" type="email" placeholder="you@example.com">
+                                    </label>
+                                </div>
+
+                                <button class="report-issue-submit" id="reportIssueSubmitBtn" type="button" onclick="submitReportIssueForm(event)">
+                                    <i class="ph ph-paper-plane-tilt" aria-hidden="true"></i>
+                                    <span>Submit</span>
+                                </button>
+
+                                <p class="report-issue-error" id="reportIssueError" role="alert" hidden></p>
+                            </section>
+
+                            <section class="report-issue-page report-issue-success-page" id="reportIssueSuccessPage" hidden>
+                                <i class="ph-fill ph-seal-check report-issue-success-icon" aria-hidden="true"></i>
+                                <div class="report-issue-success-copy">
+                                    <b class="report-issue-success-title">Issue submitted successfully</b>
+                                    <p class="report-issue-success-text">
+                                        Thank you for helping us improve. We've logged your report as
+                                        <span class="report-issue-success-accent" id="reportIssueTicketText">ticket #12845</span>.
+                                        Our AsQC will review it, and we'll email you at
+                                        <span class="report-issue-success-accent" id="reportIssueEmailText">[user@email.com]</span>
+                                        if we need more details or have an update.
+                                    </p>
+                                </div>
+                            </section>
+                        </section>
                     </div>
-
-                    <button class="feature-link" type="button">
-                        <span class="feature-link__left"><i class="ph ph-book-open-text" aria-hidden="true"></i>Instruction</span>
-                        <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
-                    </button>
-
-                    <button class="feature-link feature-link--warn" type="button">
-                        <span class="feature-link__left"><i class="ph ph-warning-circle" aria-hidden="true"></i>Report an Issue</span>
-                        <i class="ph ph-caret-right feature-link__caret" aria-hidden="true"></i>
-                    </button>
                 </div>
-            </div>
         </div>
 
         <main class="component-34">
@@ -176,61 +292,48 @@
                 </section>
 
                 <section class="property-1default" id="transcript-section">
-                    <div class="highlighter-1-parent">
-                        <div class="highlighter-1"><img src="../asst/icon/highlight.svg" alt="Highlight"></div>
-                        <div>Click transcript rows to jump and play audio by timestamp</div>
-                    </div>
                     <div id="transcript-cards-container"></div>
                 </section>
             </aside>
 
             <section class="center-col">
-                    <section class="frame-parent17" id="firstExplanationBox">
-                        <div class="frame-parent18">
-                            <div class="frame-parent16">
-                                <div class="wrapper"><div id="reviewQuestionNumber">1</div></div>
-                                <div class="incorrect-parent">
-                                    <div class="incorrect" id="reviewStatusText">INCORRECT</div>
-                                    <div class="what-does-the2" id="reviewQuestionText">What does the women mean?</div>
-                                </div>
-                            </div>
-                            <button type="button" class="section-caret-toggle is-open" id="questionHeaderToggle" onclick="toggleSectionBody('firstBoxOptions', 'questionHeaderToggle')" aria-label="Toggle question options"></button>
-                        </div>
-
-                        <div class="frame-parent20" id="firstBoxOptions"></div>
-                    </section>
-
-                <section class="detail-explaination-shell">
-                    <div class="detail-explaination-head">
-                        <div class="book-open-text-duotone-1-wrapper"><img src="../asst/icon/explaination.svg" alt="Detail explanation"></div>
-                        <div class="frame-parent19">
-                            <div class="detail-explanation-wrapper">
-                                <div class="detail-explaination">DETAIL EXPLANATION</div>
-                                <div class="why-b-is" id="detailSub">Why B is correct? Proof Transcribe</div>
-                            </div>
-                            <button type="button" class="ai-gen-explanation-btn" id="aiGenExplanationBtn" onclick="triggerAiExplanation()">
-                                <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2a1 1 0 0 1 .94.66l1.4 3.75 3.75 1.4a1 1 0 0 1 0 1.88l-3.75 1.4-1.4 3.75a1 1 0 0 1-1.88 0l-1.4-3.75-3.75-1.4a1 1 0 0 1 0-1.88l3.75-1.4 1.4-3.75A1 1 0 0 1 10 2Z"/></svg>
-                                <span id="aiGenBtnLabel">Generate AI</span>
-                            </button>
-                            <button type="button" class="ai-translate-btn" id="aiTranslateExplanationBtn" onclick="triggerTranslateExplanation()">
-                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10"/><path d="M4 10h6"/><path d="M10 6c0 4.2-2.2 7.8-6 10"/><path d="M14 14h6"/><path d="m17 12 3 8"/><path d="m14 20 3-8"/></svg>
-                                <span id="aiTranslateBtnLabel">Translate ID</span>
-                            </button>
-                            <button type="button" class="section-caret-toggle is-open" id="detailHeaderToggle" onclick="toggleSectionBody('detailStepsContainer', 'detailHeaderToggle')" aria-label="Toggle detail explanation"></button>
-                        </div>
+                <section class="section-explaination section-explaination--tabs" id="partBExplainationTabs">
+                    <div class="section-explaination-tabs" role="tablist" aria-label="Part B explanation tabs">
+                        <button type="button" class="section-explaination-tab is-active" id="partbTabExplaination" role="tab" aria-selected="true" onclick="setReviewExplainationTab('explaination')">
+                            <img src="../asst/icon/explaination tab.png" alt="Explaination tab icon">
+                            <span>Explaination</span>
+                        </button>
+                        <button type="button" class="section-explaination-tab" id="partbTabStep" role="tab" aria-selected="false" onclick="setReviewExplainationTab('step')">
+                            <img src="../asst/icon/stepbystep tab.png" alt="Step-by-step tab icon">
+                            <span>Step-by-Step</span>
+                        </button>
+                        <button type="button" class="section-explaination-tab" id="partbTabAsk" role="tab" aria-selected="false" onclick="setReviewExplainationTab('ask')">
+                            <img src="../asst/icon/Ask AIQC tab.svg" alt="Ask AIQC tab icon">
+                            <span>Ask AIQC</span>
+                        </button>
                     </div>
 
-                    <section class="detail-steps-body" id="detailStepsContainer"></section>
-                </section>
+                    <div class="section-explaination-panels">
+                        <section class="section-explaination-panel is-active" id="partbPanelExplaination" role="tabpanel" aria-labelledby="partbTabExplaination">
+                            <section class="explaination-figma" id="explainationTabContent"></section>
+                        </section>
 
-                <section class="frame-parent13">
-                    <div class="sparkle-duotone-1-wrapper"><img src="../asst/icon/instruction.svg" alt="Ask AI tutor"></div>
-                    <div class="frame-parent14">
-                        <div class="ask-ai-tutor-parent">
-                            <div class="ask-ai-tutor">ASK AI TUTOR</div>
-                            <div class="real-time-answer">Real-time answer</div>
-                        </div>
-                        <button type="button" class="section-caret-toggle" id="askTutorToggle" onclick="toggleCaretOnly('askTutorToggle')" aria-label="Toggle ask ai tutor"></button>
+                        <section class="section-explaination-panel" id="partbPanelStep" role="tabpanel" aria-labelledby="partbTabStep" hidden>
+                            <section class="step-figma-main" id="stepByStepTabContent"></section>
+                        </section>
+
+                        <section class="section-explaination-panel" id="partbPanelAsk" role="tabpanel" aria-labelledby="partbTabAsk" hidden>
+                            <section class="frame-parent13">
+                                <div class="sparkle-duotone-1-wrapper"><img src="../asst/icon/instruction.svg" alt="Ask AI tutor"></div>
+                                <div class="frame-parent14">
+                                    <div class="ask-ai-tutor-parent">
+                                        <div class="ask-ai-tutor">ASK AI TUTOR</div>
+                                        <div class="real-time-answer">Real-time answer</div>
+                                    </div>
+                                    <button type="button" class="section-caret-toggle" id="askTutorToggle" onclick="toggleCaretOnly('askTutorToggle')" aria-label="Toggle ask ai tutor"></button>
+                                </div>
+                            </section>
+                        </section>
                     </div>
                 </section>
             </section>
@@ -333,6 +436,238 @@
         var reviewTranscriptMapByPart = { 1: {}, 2: {}, 3: {} };
         var reviewDetailSteps = [];
         var reviewDetailOpenSteps = [];
+        var reportIssueTransitionTimer = null;
+        var reportIssueSelectedFiles = [];
+        var reportIssueDropActive = false;
+        var reviewTranscriptViewMode = 'full';
+        var reviewExplainationTab = 'explaination';
+        var reviewActiveTranscriptKey = '';
+
+        function escapeAttr(value) {
+            return escapeHtml(value).replace(/'/g, '&#39;');
+        }
+
+        function formatReportIssueFileSize(bytes) {
+            var size = Number(bytes) || 0;
+            if (size >= 1024 * 1024) return (size / (1024 * 1024)).toFixed(1) + ' MB';
+            if (size >= 1024) return Math.max(1, Math.round(size / 1024)) + ' KB';
+            return String(size) + ' B';
+        }
+
+        function updateReportIssueDropzoneText() {
+            var dropMain = document.querySelector('#reportIssueDropzone .report-issue-drop-main');
+            var dropSub = document.querySelector('#reportIssueDropzone .report-issue-drop-sub');
+            if (!dropMain || !dropSub) return;
+
+            if (!reportIssueSelectedFiles.length) {
+                dropMain.textContent = 'Drop anything here or browse';
+                dropSub.textContent = 'Docs, images, videos, audio files, links and more';
+                return;
+            }
+
+            dropMain.textContent = reportIssueSelectedFiles.length === 1
+                ? reportIssueSelectedFiles[0].name
+                : reportIssueSelectedFiles.length + ' files selected';
+            dropSub.textContent = 'Click browse to add more files or remove any selected item.';
+        }
+
+        function renderReportIssueSelectedFiles() {
+            var host = document.getElementById('reportIssueFilesList');
+            if (!host) return;
+
+            if (!reportIssueSelectedFiles.length) {
+                host.innerHTML = '';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < reportIssueSelectedFiles.length; i += 1) {
+                var file = reportIssueSelectedFiles[i];
+                html += '<div class="report-issue-file-chip">' +
+                    '<div class="report-issue-file-chip__info">' +
+                    '<i class="ph ph-paperclip" aria-hidden="true"></i>' +
+                    '<span title="' + escapeAttr(file.name) + '">' + escapeHtml(file.name) + '</span>' +
+                    '<small>' + formatReportIssueFileSize(file.size) + '</small>' +
+                    '</div>' +
+                    '<button type="button" class="report-issue-file-chip__remove" aria-label="Remove ' + escapeAttr(file.name) + '" onclick="removeReportIssueFile(' + i + ')">' +
+                    '<i class="ph ph-x" aria-hidden="true"></i>' +
+                    '</button>' +
+                    '</div>';
+            }
+
+            host.innerHTML = html;
+        }
+
+        function syncReportIssueFiles(files) {
+            var allowed = [];
+            var input = document.getElementById('reportIssueFiles');
+            var maxFiles = 5;
+            var maxFileSize = 5 * 1024 * 1024;
+            var incoming = Array.isArray(files) ? files : [];
+
+            for (var i = 0; i < incoming.length; i += 1) {
+                var file = incoming[i];
+                if (!file || !file.name) continue;
+                if (file.size > maxFileSize) continue;
+
+                var duplicate = false;
+                for (var j = 0; j < reportIssueSelectedFiles.length; j += 1) {
+                    var current = reportIssueSelectedFiles[j];
+                    if (current.name === file.name && current.size === file.size && current.lastModified === file.lastModified) {
+                        duplicate = true;
+                        break;
+                    }
+                }
+                if (duplicate) continue;
+                allowed.push(file);
+            }
+
+            reportIssueSelectedFiles = reportIssueSelectedFiles.concat(allowed).slice(0, maxFiles);
+
+            if (input) {
+                try {
+                    var dt = new DataTransfer();
+                    for (var k = 0; k < reportIssueSelectedFiles.length; k += 1) dt.items.add(reportIssueSelectedFiles[k]);
+                    input.files = dt.files;
+                } catch (_) {}
+            }
+
+            renderReportIssueSelectedFiles();
+            updateReportIssueDropzoneText();
+        }
+
+        function removeReportIssueFile(index) {
+            var nextFiles = [];
+            for (var i = 0; i < reportIssueSelectedFiles.length; i += 1) {
+                if (i !== index) nextFiles.push(reportIssueSelectedFiles[i]);
+            }
+            reportIssueSelectedFiles = nextFiles;
+
+            var input = document.getElementById('reportIssueFiles');
+            if (input) {
+                try {
+                    var dt = new DataTransfer();
+                    for (var j = 0; j < reportIssueSelectedFiles.length; j += 1) dt.items.add(reportIssueSelectedFiles[j]);
+                    input.files = dt.files;
+                } catch (_) {}
+            }
+
+            renderReportIssueSelectedFiles();
+            updateReportIssueDropzoneText();
+        }
+
+        function fileToBase64(file) {
+            return new Promise(function(resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function() {
+                    var result = String(reader.result || '');
+                    var commaIndex = result.indexOf(',');
+                    resolve({
+                        name: file.name,
+                        type: file.type || 'application/octet-stream',
+                        size: file.size || 0,
+                        lastModified: file.lastModified || 0,
+                        dataUrl: result,
+                        base64: commaIndex >= 0 ? result.slice(commaIndex + 1) : result
+                    });
+                };
+                reader.onerror = function() { reject(reader.error || new Error('Failed to read file')); };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function clearReportIssueFiles() {
+            reportIssueSelectedFiles = [];
+            var input = document.getElementById('reportIssueFiles');
+            if (input) input.value = '';
+            renderReportIssueSelectedFiles();
+            updateReportIssueDropzoneText();
+        }
+        var reviewVolumeLevel = 0.5;
+
+        function clampVolume(value) {
+            var next = Number(value);
+            if (!isFinite(next)) return 0.5;
+            return Math.max(0, Math.min(1, next));
+        }
+
+        function applyReviewVolume(value, persist) {
+            reviewVolumeLevel = clampVolume(value);
+
+            var fill = document.getElementById('reviewVolumeFill');
+            var track = document.getElementById('reviewVolumeTrack');
+            var downBtn = document.getElementById('reviewVolumeDown');
+            var upBtn = document.getElementById('reviewVolumeUp');
+            var pct = Math.round(reviewVolumeLevel * 100);
+
+            if (fill) fill.style.width = pct + '%';
+            if (track) {
+                track.setAttribute('aria-valuenow', String(pct));
+                track.setAttribute('aria-valuetext', pct + '%');
+            }
+            if (downBtn) downBtn.disabled = reviewVolumeLevel <= 0;
+            if (upBtn) upBtn.disabled = reviewVolumeLevel >= 1;
+
+            if (reviewAudio) {
+                reviewAudio.volume = reviewVolumeLevel;
+                reviewAudio.muted = reviewVolumeLevel <= 0;
+            }
+
+            if (persist) {
+                try { localStorage.setItem('toefl_review_volume', String(reviewVolumeLevel)); } catch (_) {}
+            }
+        }
+
+        function initVolumeControl() {
+            var downBtn = document.getElementById('reviewVolumeDown');
+            var upBtn = document.getElementById('reviewVolumeUp');
+            var track = document.getElementById('reviewVolumeTrack');
+            if (!downBtn || !upBtn || !track) return;
+
+            var savedVolume = 0.5;
+            try {
+                var rawSaved = localStorage.getItem('toefl_review_volume');
+                if (rawSaved !== null) savedVolume = Number(rawSaved);
+            } catch (_) {}
+            applyReviewVolume(savedVolume, false);
+
+            downBtn.addEventListener('click', function() {
+                applyReviewVolume(reviewVolumeLevel - 0.1, true);
+            });
+
+            upBtn.addEventListener('click', function() {
+                applyReviewVolume(reviewVolumeLevel + 0.1, true);
+            });
+
+            track.addEventListener('click', function(event) {
+                var rect = track.getBoundingClientRect();
+                if (!rect.width) return;
+                var ratio = (event.clientX - rect.left) / rect.width;
+                applyReviewVolume(ratio, true);
+            });
+
+            track.addEventListener('keydown', function(event) {
+                if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    applyReviewVolume(reviewVolumeLevel + 0.1, true);
+                    return;
+                }
+                if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    applyReviewVolume(reviewVolumeLevel - 0.1, true);
+                    return;
+                }
+                if (event.key === 'Home') {
+                    event.preventDefault();
+                    applyReviewVolume(0, true);
+                    return;
+                }
+                if (event.key === 'End') {
+                    event.preventDefault();
+                    applyReviewVolume(1, true);
+                }
+            });
+        }
 
         function setSectionCaretIcon(toggleEl, isOpen) {
             if (!toggleEl) return;
@@ -360,24 +695,328 @@
             setSectionCaretIcon(toggle, !isOpen);
         }
 
-        function setFeaturesMenuOpen(isOpen) {
+        function setFeaturesMenuOpen(open) {
             var overlay = document.getElementById('features-overlay');
-            var btn = document.getElementById('toggle-navigator-btn');
+            var triggerButton = document.getElementById('toggle-navigator-btn');
             if (!overlay) return;
-            overlay.classList.toggle('is-open', !!isOpen);
-            overlay.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
-            if (btn) {
-                btn.classList.toggle('is-active', !!isOpen);
-                btn.setAttribute('aria-label', isOpen ? 'Close test options' : 'Open test options');
+            var shouldOpen = Boolean(open);
+            overlay.classList.toggle('is-open', shouldOpen);
+            overlay.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+            document.body.classList.toggle('review-options-open', shouldOpen);
+            if (triggerButton) {
+                triggerButton.classList.toggle('is-active', shouldOpen);
+                triggerButton.setAttribute('aria-label', shouldOpen ? 'Close test options' : 'Open test options');
             }
+            if (!shouldOpen) setFeaturesDetailPage(null, null);
+        }
+
+        function setFeaturesDetailPage(pageId, triggerId) {
+            var mainPage = document.getElementById('featuresMainPage');
+            var featuresPanel = document.querySelector('.features-panel');
+            var instructionPanel = document.getElementById('instructionSlidePageTestPanel');
+            var reportPanel = document.getElementById('reportIssueSlidePageTestPanel');
+            var instructionBtn = document.getElementById('instructionSlidePageTestBtn');
+            var reportBtn = document.getElementById('reportIssueSlidePageTestBtn');
+            if (!mainPage || !featuresPanel) return;
+
+            var detailPanels = [instructionPanel, reportPanel];
+            var detailButtons = [instructionBtn, reportBtn];
+            var hasOpenDetail = false;
+
+            for (var i = 0; i < detailPanels.length; i += 1) {
+                var panel = detailPanels[i];
+                if (!panel) continue;
+                var shouldOpen = pageId && panel.id === pageId;
+                panel.classList.toggle('is-open', !!shouldOpen);
+                panel.setAttribute('aria-hidden', shouldOpen ? 'false' : 'true');
+                if (shouldOpen) hasOpenDetail = true;
+            }
+
+            for (var j = 0; j < detailButtons.length; j += 1) {
+                var button = detailButtons[j];
+                if (!button) continue;
+                var buttonOpen = triggerId && button.id === triggerId;
+                button.classList.toggle('is-open', !!buttonOpen);
+                button.setAttribute('aria-expanded', buttonOpen ? 'true' : 'false');
+            }
+
+            mainPage.classList.toggle('is-hidden', hasOpenDetail);
+            mainPage.setAttribute('aria-hidden', hasOpenDetail ? 'true' : 'false');
+            featuresPanel.classList.toggle('is-instruction', hasOpenDetail);
+            featuresPanel.classList.toggle('is-report', pageId === 'reportIssueSlidePageTestPanel');
+        }
+
+        function setInstructionSlideOpen(isOpen) {
+            setFeaturesDetailPage(
+                isOpen ? 'instructionSlidePageTestPanel' : null,
+                isOpen ? 'instructionSlidePageTestBtn' : null
+            );
+        }
+
+        function toggleInstructionSlide(event) {
+            if (event) event.stopPropagation();
+            var panel = document.getElementById('instructionSlidePageTestPanel');
+            if (!panel) return;
+            setInstructionSlideOpen(!panel.classList.contains('is-open'));
+        }
+
+        function openInstructionSlidePage(event) {
+            if (event) event.stopPropagation();
+            setInstructionSlideOpen(true);
+        }
+
+        function closeInstructionSlidePage(event) {
+            if (event) event.stopPropagation();
+            setInstructionSlideOpen(false);
+        }
+
+        function initReportIssueUpload() {
+            var dropzone = document.getElementById('reportIssueDropzone');
+            var fileInput = document.getElementById('reportIssueFiles');
+            var browseBtn = document.getElementById('reportIssueBrowseBtn');
+            if (!dropzone || !fileInput) return;
+
+            if (browseBtn) {
+                browseBtn.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    fileInput.click();
+                });
+            }
+
+            dropzone.addEventListener('click', function(event) {
+                var target = event.target;
+                if (target && (target.closest('.report-issue-file-chip__remove') || target.closest('.report-issue-file-chip__remove i') || target.closest('.report-issue-browse-btn'))) return;
+                fileInput.click();
+            });
+
+            dropzone.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', function() {
+                syncReportIssueFiles(Array.prototype.slice.call(fileInput.files || []));
+            });
+
+            dropzone.addEventListener('dragover', function(event) {
+                event.preventDefault();
+                reportIssueDropActive = true;
+                dropzone.classList.add('is-dragover');
+            });
+
+            dropzone.addEventListener('dragleave', function(event) {
+                if (event.relatedTarget && dropzone.contains(event.relatedTarget)) return;
+                reportIssueDropActive = false;
+                dropzone.classList.remove('is-dragover');
+            });
+
+            dropzone.addEventListener('drop', function(event) {
+                event.preventDefault();
+                reportIssueDropActive = false;
+                dropzone.classList.remove('is-dragover');
+                syncReportIssueFiles(Array.prototype.slice.call((event.dataTransfer && event.dataTransfer.files) || []));
+            });
+
+            updateReportIssueDropzoneText();
+        }
+
+        function setReportIssueSubmitted(isSubmitted, ticketText, emailText) {
+            if (reportIssueTransitionTimer) {
+                clearTimeout(reportIssueTransitionTimer);
+                reportIssueTransitionTimer = null;
+            }
+
+            var formPage = document.getElementById('reportIssueFormPage');
+            var successPage = document.getElementById('reportIssueSuccessPage');
+            var reportPanel = document.getElementById('reportIssueSlidePageTestPanel');
+            var ticketEl = document.getElementById('reportIssueTicketText');
+            var emailEl = document.getElementById('reportIssueEmailText');
+            if (!formPage || !successPage || !reportPanel) return;
+
+            var submitted = !!isSubmitted;
+            reportPanel.classList.toggle('is-success-open', submitted);
+
+            if (submitted) {
+                formPage.hidden = false;
+                successPage.hidden = false;
+                reportIssueTransitionTimer = setTimeout(function() {
+                    formPage.hidden = true;
+                    reportIssueTransitionTimer = null;
+                }, 280);
+            } else {
+                formPage.hidden = false;
+                successPage.hidden = false;
+                reportIssueTransitionTimer = setTimeout(function() {
+                    successPage.hidden = true;
+                    reportIssueTransitionTimer = null;
+                }, 280);
+            }
+
+            if (submitted) {
+                if (ticketEl) ticketEl.textContent = ticketText || 'ticket #12845';
+                if (emailEl) emailEl.textContent = emailText || '[user@email.com]';
+            }
+        }
+
+        function setReportIssueError(message) {
+            var errorEl = document.getElementById('reportIssueError');
+            if (!errorEl) return;
+            var text = String(message || '').trim();
+            errorEl.hidden = !text;
+            errorEl.textContent = text;
+        }
+
+        function setReportIssueFieldInvalid(input, isInvalid) {
+            if (!input) return;
+            input.setAttribute('aria-invalid', isInvalid ? 'true' : 'false');
+        }
+
+        function isValidReportIssueEmail(value) {
+            var email = String(value || '').trim();
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function buildDeterministicTicketNumber(dateObj) {
+            var d = dateObj instanceof Date ? dateObj : new Date();
+            function pad(n, size) {
+                var text = String(n);
+                while (text.length < size) text = '0' + text;
+                return text;
+            }
+            return 'QC-' +
+                String(d.getFullYear()) +
+                pad(d.getMonth() + 1, 2) +
+                pad(d.getDate(), 2) + '-' +
+                pad(d.getHours(), 2) +
+                pad(d.getMinutes(), 2) +
+                pad(d.getSeconds(), 2) +
+                pad(d.getMilliseconds(), 3);
+        }
+
+        async function submitReportIssueForm(event) {
+            if (event) event.stopPropagation();
+
+            var questionInput = document.getElementById('reportIssueQuestion');
+            var detailInput = document.getElementById('reportIssueDetail');
+            var firstNameInput = document.getElementById('reportIssueFirstName');
+            var lastNameInput = document.getElementById('reportIssueLastName');
+            var emailInput = document.getElementById('reportIssueEmail');
+            var submitBtn = document.getElementById('reportIssueSubmitBtn');
+            var submitLabel = submitBtn ? submitBtn.querySelector('span') : null;
+
+            var questionText = questionInput ? String(questionInput.value || '').trim() : '';
+            var detailText = detailInput ? String(detailInput.value || '').trim() : '';
+            var firstName = firstNameInput ? String(firstNameInput.value || '').trim() : '';
+            var lastName = lastNameInput ? String(lastNameInput.value || '').trim() : '';
+            var rawEmail = emailInput ? String(emailInput.value || '').trim() : '';
+            var attachmentPayload = [];
+
+            setReportIssueError('');
+            setReportIssueFieldInvalid(questionInput, false);
+            setReportIssueFieldInvalid(emailInput, false);
+
+            if (!questionText) {
+                setReportIssueFieldInvalid(questionInput, true);
+                setReportIssueError('Please write your question before submitting.');
+                if (questionInput) questionInput.focus();
+                return;
+            }
+
+            if (!rawEmail || !isValidReportIssueEmail(rawEmail)) {
+                setReportIssueFieldInvalid(emailInput, true);
+                setReportIssueError('Please enter a valid email address.');
+                if (emailInput) emailInput.focus();
+                return;
+            }
+
+            var fallbackTicket = buildDeterministicTicketNumber(new Date());
+
+            try {
+                if (submitBtn) submitBtn.disabled = true;
+                if (submitLabel) submitLabel.textContent = 'Submitting...';
+
+                for (var fi = 0; fi < reportIssueSelectedFiles.length; fi += 1) {
+                    attachmentPayload.push(await fileToBase64(reportIssueSelectedFiles[fi]));
+                }
+
+                var payload = {
+                    destinationEmail: 'quickcheck.edu@gmail.com',
+                    ticketHint: fallbackTicket,
+                    question: questionText,
+                    details: detailText,
+                    firstName: firstName,
+                    lastName: lastName,
+                    email: rawEmail,
+                    attachments: attachmentPayload,
+                    context: {
+                        module: 'toefl-listening-review',
+                        setId: reviewSetId || '',
+                        setDate: reviewSetDate || '',
+                        questionNumber: reviewCurrentQuestion ? Number(reviewCurrentQuestion.number || 0) : 0,
+                        pathname: window.location.pathname || ''
+                    }
+                };
+
+                var request = await fetchAiWithFallback('/api/report-issue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                var response = request && request.response;
+                if (!response || !response.ok) {
+                    var errText = '';
+                    try { errText = await response.text(); } catch (_) {}
+                    throw new Error(errText || 'Failed to submit report issue.');
+                }
+
+                var data = {};
+                try { data = await response.json(); } catch (_) { data = {}; }
+                var ticket = String((data && (data.ticket || data.ticketNumber)) || fallbackTicket);
+
+                setReportIssueSubmitted(true, 'ticket #' + ticket, '[' + rawEmail + ']');
+            } catch (err) {
+                var rawError = String((err && err.message) || '').trim();
+                var lowerError = rawError.toLowerCase();
+                if (lowerError.indexOf('failed to fetch') >= 0 || lowerError.indexOf('networkerror') >= 0) {
+                    setReportIssueError('Unable to reach the report server. Please ensure ai_review_server.py is running on port 8787, then try again.');
+                } else {
+                    setReportIssueError('Unable to submit right now. Please try again. ' + rawError);
+                }
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+                if (submitLabel) submitLabel.textContent = 'Submit';
+            }
+        }
+
+        function openReportIssueSlidePage(event) {
+            if (event) event.stopPropagation();
+            setReportIssueSubmitted(false);
+            setReportIssueError('');
+            setReportIssueFieldInvalid(document.getElementById('reportIssueQuestion'), false);
+            setReportIssueFieldInvalid(document.getElementById('reportIssueEmail'), false);
+            clearReportIssueFiles();
+            var submitBtn = document.getElementById('reportIssueSubmitBtn');
+            if (submitBtn) submitBtn.disabled = false;
+            setFeaturesDetailPage('reportIssueSlidePageTestPanel', 'reportIssueSlidePageTestBtn');
+        }
+
+        function closeReportIssueSlidePage(event) {
+            if (event) event.stopPropagation();
+            setReportIssueSubmitted(false);
+            setReportIssueError('');
+            clearReportIssueFiles();
+            var submitBtn = document.getElementById('reportIssueSubmitBtn');
+            if (submitBtn) submitBtn.disabled = false;
+            setFeaturesDetailPage(null, null);
         }
 
         function toggleFeaturesMenu(event) {
             if (event) event.stopPropagation();
-            var overlay = document.getElementById('features-overlay');
+            const overlay = document.getElementById("features-overlay");
             if (!overlay) return;
-            var isOpen = overlay.classList.contains('is-open');
-            setFeaturesMenuOpen(!isOpen);
+            setFeaturesMenuOpen(!overlay.classList.contains("is-open"));
         }
 
         function handleFeaturesOverlayClick(event) {
@@ -416,26 +1055,60 @@
 
         function toggleDarkMode() {
             var body = document.body;
+            if (!body) return;
+            setDarkMode(!body.classList.contains('review-dark'));
+        }
+
+        function applyDarkMode(enabled) {
+            var body = document.body;
             var toggle = document.getElementById('darkmode-toggle');
-            if (!body || !toggle) return;
-            var next = !body.classList.contains('review-dark');
-            body.classList.toggle('review-dark', next);
-            toggle.setAttribute('aria-checked', next ? 'true' : 'false');
+            if (!body) return;
+            body.classList.toggle('review-dark', !!enabled);
+            if (toggle) {
+                toggle.classList.toggle('is-dark', !!enabled);
+                toggle.setAttribute('aria-checked', enabled ? 'true' : 'false');
+            }
+        }
+
+        function setDarkMode(enabled) {
+            applyDarkMode(enabled);
+            try { localStorage.setItem('toefl_review_dark_mode', enabled ? '1' : '0'); } catch (_) {}
+        }
+
+        function initDarkMode() {
+            var enabled = false;
+            try { enabled = localStorage.getItem('toefl_review_dark_mode') === '1'; } catch (_) {}
+            applyDarkMode(enabled);
         }
 
         function setTextSize(size) {
+            applyTextSize(size);
+            try { localStorage.setItem('toefl_review_text_size', (size === 'm' || size === 'l') ? size : 's'); } catch (_) {}
+        }
+
+        function applyTextSize(size) {
             var host = document.getElementById('textsize-toggle');
-            if (!host) return;
             var next = (size === 'm' || size === 'l') ? size : 's';
-            host.setAttribute('data-size', next);
-            var options = host.querySelectorAll('.textsize-toggle__option');
-            for (var i = 0; i < options.length; i += 1) {
-                var option = options[i];
-                var isActive = option.getAttribute('data-size') === next;
-                option.classList.toggle('is-active', isActive);
-                option.setAttribute('aria-checked', isActive ? 'true' : 'false');
+            if (host) {
+                host.setAttribute('data-size', next);
+                var options = host.querySelectorAll('.textsize-toggle__option');
+                for (var i = 0; i < options.length; i += 1) {
+                    var option = options[i];
+                    var isActive = option.getAttribute('data-size') === next;
+                    option.classList.toggle('is-active', isActive);
+                    option.setAttribute('aria-checked', isActive ? 'true' : 'false');
+                }
             }
             document.body.setAttribute('data-review-text-size', next);
+        }
+
+        function initTextSize() {
+            var size = 's';
+            try {
+                var saved = localStorage.getItem('toefl_review_text_size');
+                if (saved === 'm' || saved === 'l') size = saved;
+            } catch (_) {}
+            applyTextSize(size);
         }
 
         function normalizeDateKey(value) {
@@ -740,7 +1413,7 @@
             }
 
             reviewAudio.muted = false;
-            reviewAudio.volume = 1;
+            applyReviewVolume(reviewVolumeLevel, false);
             reviewAudio.src = url;
             reviewAudio.load();
             updatePlayPauseIcon();
@@ -895,14 +1568,16 @@
         function reviewAudioToggle() {
             if (!reviewAudio || !reviewAudio.src) return;
             if (reviewAudio.paused || reviewAudio.ended) {
-                reviewAudio.muted = false;
-                if (reviewAudio.volume <= 0) reviewAudio.volume = 1;
+                reviewAudio.muted = reviewVolumeLevel <= 0;
+                reviewAudio.volume = reviewVolumeLevel;
                 if (reviewAudio.ended || (isFinite(reviewAudio.duration) && reviewAudio.duration > 0 && reviewAudio.currentTime >= (reviewAudio.duration - 0.05))) {
                     reviewAudio.currentTime = 0;
                 }
                 reviewAudio.play().then(function() {
-                    if (reviewAudio.muted) reviewAudio.muted = false;
-                    if (reviewAudio.volume <= 0) reviewAudio.volume = 1;
+                    if (reviewAudio) {
+                        reviewAudio.muted = reviewVolumeLevel <= 0;
+                        reviewAudio.volume = reviewVolumeLevel;
+                    }
                     setAudioStatus('Playingâ€¦');
                     startReviewWaveform();
                 }).catch(function() { setAudioStatus('Playback blocked by browser'); });
@@ -1080,39 +1755,156 @@
             });
         }
 
+        function setTranscriptViewMode(mode) {
+            reviewTranscriptViewMode = mode === 'question' ? 'question' : 'full';
+            if (reviewCurrentQuestion) renderTranscriptCards(reviewCurrentQuestion);
+        }
+
+        function playTranscriptSegmentFromCard(cardKey, startSeconds, endSeconds) {
+            reviewActiveTranscriptKey = String(cardKey || '');
+            if (reviewCurrentQuestion) renderTranscriptCards(reviewCurrentQuestion);
+            playTranscriptSegment(startSeconds, endSeconds);
+        }
+
+        function setReviewExplainationTab(mode) {
+            reviewExplainationTab = mode === 'step' || mode === 'ask' ? mode : 'explaination';
+
+            var tabs = {
+                explaination: document.getElementById('partbTabExplaination'),
+                step: document.getElementById('partbTabStep'),
+                ask: document.getElementById('partbTabAsk')
+            };
+            var panels = {
+                explaination: document.getElementById('partbPanelExplaination'),
+                step: document.getElementById('partbPanelStep'),
+                ask: document.getElementById('partbPanelAsk')
+            };
+
+            var keys = ['explaination', 'step', 'ask'];
+            for (var i = 0; i < keys.length; i += 1) {
+                var key = keys[i];
+                var isActive = key === reviewExplainationTab;
+                var tabEl = tabs[key];
+                var panelEl = panels[key];
+                if (tabEl) {
+                    tabEl.classList.toggle('is-active', isActive);
+                    tabEl.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                }
+                if (panelEl) {
+                    panelEl.classList.toggle('is-active', isActive);
+                    panelEl.hidden = !isActive;
+                }
+            }
+        }
+
+        function getTranscriptSpeakerClass(speakerTag) {
+            var speaker = normalizeSpeakerTag(speakerTag);
+            if (speaker === 'MEN') return 'men';
+            if (speaker === 'WOMEN') return 'women';
+            return 'narr';
+        }
+
+        function getTranscriptSpeakerLabel(speakerTag, partId) {
+            var speaker = normalizeSpeakerTag(speakerTag);
+            if (speaker === 'MEN') return partId === 2 ? 'Student' : 'Man';
+            if (speaker === 'WOMEN') return partId === 2 ? 'Librarian' : 'Woman';
+            return 'Narrator';
+        }
+
+        function getPartTranscriptSegments(question) {
+            var partId = inferPartIdFromQuestion(question);
+            var map = reviewTranscriptMapByPart[partId] || {};
+            var all = [];
+
+            if (Array.isArray(map[0]) && map[0].length) {
+                all = map[0].slice();
+            } else {
+                var keys = Object.keys(map);
+                for (var i = 0; i < keys.length; i += 1) {
+                    var key = keys[i];
+                    if (String(key) === '0') continue;
+                    var list = Array.isArray(map[key]) ? map[key] : [];
+                    for (var j = 0; j < list.length; j += 1) all.push(list[j]);
+                }
+            }
+
+            var unique = {};
+            var deduped = [];
+            for (var k = 0; k < all.length; k += 1) {
+                var seg = all[k] || {};
+                var uniqKey = [
+                    Number(seg.start || 0),
+                    String(seg.timestamp || ''),
+                    normalizeSpeakerTag(seg.speaker || ''),
+                    String(seg.text || '')
+                ].join('|');
+                if (unique[uniqKey]) continue;
+                unique[uniqKey] = true;
+                deduped.push(seg);
+            }
+
+            deduped.sort(function(a, b) {
+                return Number(a.start || 0) - Number(b.start || 0);
+            });
+
+            return deduped;
+        }
+
         function renderTranscriptCards(question) {
             var host = document.getElementById('transcript-cards-container');
             if (!host) return;
 
-            var segments = getQuestionTranscriptSegments(question);
-            if (!segments.length) {
-                host.innerHTML = '<article class="frame-container"><div class="frame-parent2"><div class="men-wrapper">NARR</div><div class="are-you-going">No transcript timeline available for this question yet.</div></div></article>';
-                return;
-            }
+            var qNumber = Number((question && question.number) || 0);
+            var partId = inferPartIdFromQuestion(question);
+            var fullSegments = getPartTranscriptSegments(question);
+            var questionSegments = getQuestionTranscriptSegments(question);
+            var activeSegments = reviewTranscriptViewMode === 'question' ? questionSegments : fullSegments;
 
             var html = '';
-            for (var i = 0; i < segments.length; i += 1) {
-                var seg = segments[i] || {};
-                var ts = escapeHtml(seg.timestamp || fmtTime(seg.start || 0));
-                var speaker = escapeHtml(normalizeSpeakerTag(seg.speaker));
-                var text = escapeHtml(seg.text || '');
-                var start = Number(seg.start || 0);
-                var end = Number(seg.end || (start + 8));
-                var articleClass = i === 0 ? 'frame-container' : 'frame-parent3';
-                html += '<article class="' + articleClass + '" style="cursor:pointer;" onclick="playTranscriptSegment(' + start + ',' + end + ')">'
-                    + '<div class="frame-div">'
-                        + '<div class="playtranscribe-parent">'
-                            + '<img class="playtranscribe-icon" src="../asst/icon/playtranscribe.svg" alt="Play">'
-                            + '<div>' + ts + '</div>'
-                        + '</div>'
-                        + '<img class="lightbulb-duotone-1" src="../asst/icon/lightbulb2.svg" alt="Hint">'
-                    + '</div>'
-                    + '<div class="frame-parent2">'
-                        + '<div class="men-wrapper">' + speaker + '</div>'
-                        + '<div class="are-you-going">' + text + '</div>'
-                    + '</div>'
-                + '</article>';
+            html += '<div class="transcript-modern-shell transcript-view">';
+            html += '<div class="transcript-modern-toggle" role="tablist" aria-label="Transcript scope">';
+            html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'full' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'full' ? 'true' : 'false') + '" onclick="setTranscriptViewMode(\'full\')">Full Transcript</button>';
+            html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'question' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'question' ? 'true' : 'false') + '" onclick="setTranscriptViewMode(\'question\')">Question [' + escapeHtml(String(qNumber || 'X')) + '] Only</button>';
+            html += '</div>';
+
+            html += '<div class="transcript-modern-panel content-container">';
+            html += '<div class="transcript-modern-legend">';
+            html += '<span class="transcript-modern-legend-item is-men"><i class="ph ph-user" aria-hidden="true"></i><span>' + escapeHtml(partId === 2 ? 'Student (Male)' : 'Male Speaker') + '</span></span>';
+            html += '<span class="transcript-modern-legend-item is-women"><i class="ph ph-user" aria-hidden="true"></i><span>' + escapeHtml(partId === 2 ? 'Librarian (Women)' : 'Female Speaker') + '</span></span>';
+            html += '<span class="transcript-modern-legend-item is-narr"><i class="ph ph-user" aria-hidden="true"></i><span>Narrator</span></span>';
+            html += '</div>';
+
+            html += '<div class="transcript-modern-list">';
+            if (!activeSegments.length) {
+                html += '<div class="transcript-modern-empty">'
+                    + (reviewTranscriptViewMode === 'question'
+                        ? 'No transcript lines mapped for Question [' + escapeHtml(String(qNumber || 'X')) + '] yet.'
+                        : 'No transcript timeline available for this part yet.')
+                    + '</div>';
+            } else {
+                for (var i = 0; i < activeSegments.length; i += 1) {
+                    var seg = activeSegments[i] || {};
+                    var start = Number(seg.start || 0);
+                    var end = Number(seg.end || (start + 8));
+                    var ts = escapeHtml(seg.timestamp || fmtTime(start));
+                    var speakerClass = getTranscriptSpeakerClass(seg.speaker || 'NARR');
+                    var speakerLabel = escapeHtml(getTranscriptSpeakerLabel(seg.speaker || 'NARR', partId));
+                    var text = escapeHtml(seg.text || '');
+                    var cardKey = [String(speakerClass), String(start), String(seg.timestamp || ''), String(seg.text || '')].join('|');
+                    var isActive = reviewActiveTranscriptKey === cardKey;
+                    var legacyClass = speakerClass === 'men' ? 'second-speaker' : (speakerClass === 'women' ? 'thrid-speaker' : 'first-speaker');
+                    html += '<article class="transcript-modern-item transcript-modern-item--' + speakerClass + ' ' + legacyClass + (isActive ? ' is-active' : '') + '" onclick="playTranscriptSegmentFromCard(\'' + escapeAttr(cardKey) + '\',' + start + ',' + end + ')">';
+                    html += '<div class="transcript-modern-item-head">';
+                    html += '<div class="transcript-modern-item-speaker"><button type="button" class="transcript-modern-play-btn" aria-label="Play transcript segment" onclick="event.stopPropagation();playTranscriptSegmentFromCard(\'' + escapeAttr(cardKey) + '\',' + start + ',' + end + ')"><i class="ph-fill ph-play" aria-hidden="true"></i></button><i class="ph ph-user transcript-modern-item-user" aria-hidden="true"></i><span>' + speakerLabel + '</span></div>';
+                    html += '<div class="transcript-modern-item-time">' + ts + '</div>';
+                    html += '</div>';
+                    html += '<div class="transcript-modern-item-body">' + text + '</div>';
+                    html += '</article>';
+                }
             }
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
 
             host.innerHTML = html;
         }
@@ -1736,6 +2528,227 @@
             host.innerHTML = html;
         }
 
+        function getFirstSpeakerSegment(segments, preferredSpeaker) {
+            var want = normalizeSpeakerTag(preferredSpeaker || 'NARR');
+            for (var i = 0; i < segments.length; i += 1) {
+                var speaker = normalizeSpeakerTag((segments[i] && segments[i].speaker) || 'NARR');
+                if (speaker === want) return segments[i];
+            }
+            return null;
+        }
+
+        function highlightQuotePhrases(text, phrases) {
+            var html = escapeHtml(text || '');
+            var list = Array.isArray(phrases) ? phrases : [];
+            for (var i = 0; i < list.length; i += 1) {
+                var phrase = String(list[i] || '').trim();
+                if (!phrase) continue;
+                var escaped = escapeHtml(phrase).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                html = html.replace(new RegExp(escaped, 'ig'), '<span class="looking-for">$&</span>');
+            }
+            return html;
+        }
+
+        function buildFigmaWhyReason(question, explanation, correctOptionText) {
+            var raw = String((explanation && explanation.correctReason) || (question && question.explanation) || '').trim();
+            if (!raw) {
+                return 'the main topic focuses on finding recent academic research materials and how to access them.';
+            }
+
+            var text = raw
+                .replace(/\r/g, ' ')
+                .replace(/<br\s*\/?>/gi, ' ')
+                .replace(/\*\*/g, '')
+                .replace(/`/g, '')
+                .replace(/[💡❌✅]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            if (!text) {
+                return 'the main topic focuses on finding recent academic research materials and how to access them.';
+            }
+            return text;
+        }
+
+        function sanitizeFigmaOptionText(value) {
+            var text = String(value || '')
+                .replace(/\r/g, ' ')
+                .replace(/<br\s*\/?>/gi, ' ')
+                .replace(/\*\*/g, '')
+                .replace(/`/g, '')
+                .replace(/[💡❌✅]/g, ' ')
+                .trim();
+
+            text = text.replace(/\s+/g, ' ').trim();
+            return text;
+        }
+
+        function renderExplainationTabDetail(question, explanation, correctLtr) {
+            var host = document.getElementById('explainationTabContent');
+            if (!host) return;
+
+            var q = question || {};
+            var options = q.options || {};
+            var letters = Object.keys(options).sort();
+            var userLtr = String(q.userAnswer || '').trim().toUpperCase();
+            var isCorrect = !!userLtr && userLtr === correctLtr;
+            var bestAnswerText = sanitizeFigmaOptionText(options[correctLtr] || '');
+            var partId = inferPartIdFromQuestion(q);
+            var qSegments = getQuestionTranscriptSegments(q);
+            var studentSeg = getFirstSpeakerSegment(qSegments, partId === 2 ? 'MEN' : 'MEN');
+            var librarianSeg = getFirstSpeakerSegment(qSegments, partId === 2 ? 'WOMEN' : 'WOMEN');
+            var isQuestion31 = Number(q.number || 0) === 31;
+
+            var reasonText = buildFigmaWhyReason(q, explanation, bestAnswerText);
+            if (isQuestion31) {
+                reasonText = 'the main topic focuses completely on a student learning the best location to search for current scientific papers. The entire discussion is driven by this need, as the student establishes a clear problem regarding his research resources, and the librarian instantly steps in to guide him to the proper search system.';
+            }
+
+            var html = '';
+            html += '<div class="explaination-figma-header">';
+            html += '<div class="explaination-figma-question-wrap">';
+            html += '<div class="explaination-figma-qnum">' + escapeHtml(String(q.number || '-')) + '</div>';
+            html += '<div class="explaination-figma-qtext">' + escapeHtml(q.questionText || '') + '</div>';
+            html += '</div>';
+            html += '<b class="explaination-figma-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>';
+            html += '</div>';
+
+            html += '<section class="explaination-answer-section">';
+            html += '<div class="explaination-figma-options">';
+            for (var li = 0; li < letters.length; li += 1) {
+                var letter = letters[li];
+                var text = sanitizeFigmaOptionText(options[letter] || '');
+                var isSelected = letter === userLtr;
+                var isDense = text.length > 120;
+                html += '<div class="explaination-figma-option ' + (isSelected ? 'is-selected option-selected ' : 'option ') + (isDense ? 'is-dense' : '') + '">';
+                html += '<div class="explaination-figma-option-text option-answer-d"><span class="option-marker">(' + escapeHtml(letter) + ')</span><span class="option-text">' + escapeHtml(text) + '</span></div>';
+                if (isSelected) {
+                    html += '<div class="explaination-figma-your-answer you-answer-correct ' + (isCorrect ? 'is-correct' : 'is-wrong') + '"><span class="your-answer">Your Answer</span><i class="ph ' + (isCorrect ? 'ph-check' : 'ph-x') + '" aria-hidden="true"></i></div>';
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+            html += '</section>';
+
+            html += '<section class="explaination-why-section">';
+            html += '<div class="explaination-figma-why-block container">';
+            html += '<div class="heading">Why (' + escapeHtml(correctLtr || 'B') + ')?</div>';
+            html += '<div class="main-content">';
+
+            html += '<div class="explanation-text">The correct choice is <span class="b-where-to">(' + escapeHtml(correctLtr || 'B') + ') ' + escapeHtml(bestAnswerText || 'best answer') + '</span> because ' + escapeHtml(reasonText) + '</div>';
+
+            if (isQuestion31) {
+                html += '<div class="explanation-text">For instance, if we look directly at the spoken dialogue, the <span class="student">Student</span> clearly explains his situation by stating:</div>';
+                html += '<div class="speaker">'
+                    + '<div class="icon-container"><i class="ph-fill ph-speaker-high vector-icon" aria-hidden="true"></i><i class="ph ph-user vector-icon2" aria-hidden="true"></i></div>'
+                    + '<button type="button" class="quote-container" onclick="playTranscriptSegment(' + Number((studentSeg && studentSeg.start) || 0) + ',' + Number((studentSeg && studentSeg.end) || (Number((studentSeg && studentSeg.start) || 0) + 8)) + ')">'
+                        + '<div class="student-quote"><span class="student-quote-txt-container">&ldquo;I\'m <span class="looking-for">looking for</span> some materials for my research paper on renewable energy sources, specifically geothermal energy. I checked the main online catalog, but I\'m having trouble finding <span class="looking-for">recent publications</span>.&rdquo;</span></div>'
+                    + '</button>'
+                + '</div>';
+
+                html += '<div class="explanation-text">The <span class="librarian">Librarian</span> immediately solves this by responding:</div>';
+                html += '<div class="speaker">'
+                    + '<div class="icon-container2"><i class="ph-fill ph-speaker-high vector-icon" aria-hidden="true"></i><i class="ph ph-user vector-icon2" aria-hidden="true"></i></div>'
+                    + '<button type="button" class="quote-container2" onclick="playTranscriptSegment(' + Number((librarianSeg && librarianSeg.start) || 0) + ',' + Number((librarianSeg && librarianSeg.end) || (Number((librarianSeg && librarianSeg.start) || 0) + 8)) + ')">'
+                        + '<div class="student-quote"><span class="student-quote-txt-container">&ldquo;The main catalog is a good starting point for books, but for the <span class="looking-for">most recent academic</span> articles, you really need to <span class="looking-for">use the specialized research databases</span>.&rdquo;</span></div>'
+                    + '</button>'
+                + '</div>';
+            } else if (studentSeg && studentSeg.text) {
+                html += '<div class="explanation-text">For instance, if we look directly at the spoken dialogue, the <span class="student">Student</span> clearly explains his situation by stating:</div>';
+                html += '<div class="speaker">'
+                    + '<div class="icon-container"><i class="ph-fill ph-speaker-high vector-icon" aria-hidden="true"></i><i class="ph ph-user vector-icon2" aria-hidden="true"></i></div>'
+                    + '<button type="button" class="quote-container" onclick="playTranscriptSegment(' + Number(studentSeg.start || 0) + ',' + Number(studentSeg.end || (Number(studentSeg.start || 0) + 8)) + ')">'
+                        + '<div class="student-quote"><span class="student-quote-txt-container">&ldquo;' + highlightQuotePhrases(studentSeg.text || '', ['looking for', 'recent publications']) + '&rdquo;</span></div>'
+                    + '</button>'
+                + '</div>';
+            }
+
+            if (!isQuestion31 && librarianSeg && librarianSeg.text) {
+                html += '<div class="explanation-text">The <span class="librarian">Librarian</span> immediately solves this by responding:</div>';
+                html += '<div class="speaker">'
+                    + '<div class="icon-container2"><i class="ph-fill ph-speaker-high vector-icon" aria-hidden="true"></i><i class="ph ph-user vector-icon2" aria-hidden="true"></i></div>'
+                    + '<button type="button" class="quote-container2" onclick="playTranscriptSegment(' + Number(librarianSeg.start || 0) + ',' + Number(librarianSeg.end || (Number(librarianSeg.start || 0) + 8)) + ')">'
+                        + '<div class="student-quote"><span class="student-quote-txt-container">&ldquo;' + highlightQuotePhrases(librarianSeg.text || '', ['most recent academic', 'use the specialized research databases']) + '&rdquo;</span></div>'
+                    + '</button>'
+                + '</div>';
+            }
+
+            html += '<div class="explanation-text">Because these opening lines focus entirely on tracking down new scientific documents, this central idea perfectly matches the phrase <span class="b-where-to">&ldquo;' + escapeHtml(bestAnswerText || '') + '.&rdquo;</span></div>';
+
+            html += '</div>';
+            html += '</div>';
+            html += '</section>';
+
+            host.innerHTML = html;
+        }
+
+        function renderStepByStepTabDetail(question) {
+            var host = document.getElementById('stepByStepTabContent');
+            if (!host) return;
+
+            var q = question || {};
+            var options = q.options || {};
+            var optionA = sanitizeFigmaOptionText(options.A || 'How to register for an environmental science course.');
+            var optionB = sanitizeFigmaOptionText(options.B || 'Where to find recent academic research materials.');
+            var optionC = sanitizeFigmaOptionText(options.C || 'The economic benefits of using geothermal energy.');
+            var optionD = sanitizeFigmaOptionText(options.D || 'How to pay for expensive journal subscriptions.');
+
+            var html = '';
+            html += '<div class="step-figma-steps">';
+
+            html += '<article class="step-figma-card">';
+            html += '<header class="step-figma-head"><div class="step-figma-num">1</div><h3 class="step-figma-title">Listen for the Topic Opener</h3></header>';
+            html += '<div class="step-figma-row"><div class="step-figma-line" aria-hidden="true"></div><div class="step-figma-copy">';
+            html += 'In TOEFL Part B, the main problem is always stated at the very beginning. Listen to the <span class="student">Student</span> say: <i>&ldquo;I\'m <span class="looking-for">looking for</span>... <span class="looking-for">recent publications</span>.&rdquo;</i> This instantly tells you the topic is about finding current reading materials.';
+            html += '</div></div>';
+            html += '</article>';
+
+            html += '<article class="step-figma-card">';
+            html += '<header class="step-figma-head"><div class="step-figma-num">2</div><h3 class="step-figma-title">Identify the Location Solution</h3></header>';
+            html += '<div class="step-figma-row"><div class="step-figma-line" aria-hidden="true"></div><div class="step-figma-copy">';
+            html += 'Listen to the <span class="librarian">Librarian</span> point him to the right place: <i>&ldquo;You really need to <span class="looking-for">use the specialized research databases</span>.&rdquo;</i> Now you know the conversation will focus entirely on using these library databases.';
+            html += '</div></div>';
+            html += '</article>';
+
+            html += '<article class="step-figma-card">';
+            html += '<header class="step-figma-head"><div class="step-figma-num">3</div><h3 class="step-figma-title">Connect the Synonyms</h3></header>';
+            html += '<div class="step-figma-row"><div class="step-figma-line" aria-hidden="true"></div><div class="step-figma-copy">';
+            html += '<p class="step-figma-instruction">Look at the choices. Match the student\'s problem (&ldquo;looking for recent publications&rdquo;) to <b>Option (B)</b>:</p>';
+            html += '<div class="step-figma-option-selected">';
+            html += '<div class="step-figma-option-answer"><span>(B)</span><span>' + escapeHtml(optionB) + '</span></div>';
+            html += '<div class="step-figma-correct-answer"><span>Correct Answer</span><i class="ph ph-check" aria-hidden="true"></i></div>';
+            html += '</div>';
+            html += '<p class="step-figma-instruction">They mean the exact same thing.</p>';
+            html += '</div></div>';
+            html += '</article>';
+
+            html += '<article class="step-figma-card">';
+            html += '<header class="step-figma-head"><div class="step-figma-num">4</div><h3 class="step-figma-title">Eliminate the Wrong Answer</h3></header>';
+            html += '<div class="step-figma-wrong-list">';
+
+            html += '<div class="step-figma-wrong-item">';
+            html += '<p class="step-figma-wrong-copy"><span class="step-figma-strong">(A) is wrong: </span>because the student is not trying to register for a class</p>';
+            html += '<div class="step-figma-wrong-option"><div class="step-figma-option-answer"><span>(A)</span><span>' + escapeHtml(optionA) + '</span></div><div class="step-figma-wrong-badge"><b>Incorrect</b><i class="ph ph-x" aria-hidden="true"></i></div></div>';
+            html += '</div>';
+
+            html += '<div class="step-figma-wrong-item">';
+            html += '<p class="step-figma-wrong-copy"><span class="step-figma-strong">(C) is wrong: </span>because geothermal energy is just a single topic example, making it too narrow to be the main discussion</p>';
+            html += '<div class="step-figma-wrong-option"><div class="step-figma-option-answer"><span>(C)</span><span>' + escapeHtml(optionC) + '</span></div><div class="step-figma-wrong-badge"><b>Incorrect</b><i class="ph ph-x" aria-hidden="true"></i></div></div>';
+            html += '</div>';
+
+            html += '<div class="step-figma-wrong-item">';
+            html += '<p class="step-figma-wrong-copy"><span class="step-figma-strong">(D) is wrong: </span>because the librarian mentions the university pays for the journals, meaning it is free for the student</p>';
+            html += '<div class="step-figma-wrong-option"><div class="step-figma-option-answer"><span>(D)</span><span>' + escapeHtml(optionD) + '</span></div><div class="step-figma-wrong-badge"><b>Incorrect</b><i class="ph ph-x" aria-hidden="true"></i></div></div>';
+            html += '</div>';
+
+            html += '</div>';
+            html += '</article>';
+
+            html += '</div>';
+
+            host.innerHTML = html;
+        }
+
         function openDetailStep(index) {
             var next = Number(index);
             if (!isFinite(next)) return;
@@ -1906,7 +2919,8 @@
                     questionText: String(question.questionText || ''),
                     options: question.options || {},
                     correctAnswer: String(question.correctAnswer || ''),
-                    transcript: transcript
+                    transcript: transcript,
+                    explanationLanguage: 'Bahasa Indonesia'
                 };
 
                 var requestResult = await fetchAiWithFallback('/api/toefl-explanation', {
@@ -1932,6 +2946,7 @@
                 persistExplanationTranslationToResult(question.number, '', false);
 
                 var explanation = parseExplanationSegments(question.explanation);
+                renderExplainationTabDetail(question, explanation, String(question.correctAnswer || 'B').trim().toUpperCase() || 'B');
                 reviewDetailSteps = buildDetailSteps(question, explanation);
                 reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
                 renderDetailSteps();
@@ -2016,6 +3031,7 @@
                 persistExplanationTranslationToResult(question.number, question.explanationId, true);
 
                 var translatedExplanation = parseExplanationSegments(question.explanationId);
+                renderExplainationTabDetail(question, translatedExplanation, String(question.correctAnswer || 'B').trim().toUpperCase() || 'B');
                 reviewDetailSteps = buildDetailSteps(question, translatedExplanation);
                 reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
                 renderDetailSteps();
@@ -2042,49 +3058,19 @@
             var hasExplanation = q.explanation && q.explanation.trim();
             var hasStructuredExplanation = isStructuredThreeStepExplanation(q.explanation || '');
             if (label) label.textContent = hasStructuredExplanation ? 'Regenerate AI' : 'Generate AI';
-            // Auto-generate if explanation is missing OR not in the 3-step markdown format
-            if (!hasStructuredExplanation) {
-                var _autoQ = q;
-                setTimeout(function() {
-                    if (reviewCurrentQuestion && reviewCurrentQuestion.number === _autoQ.number
-                            && !isStructuredThreeStepExplanation(reviewCurrentQuestion.explanation || '')
-                            && !reviewAiGenerating) {
-                        triggerAiExplanation();
-                    }
-                }, 600);
-            }
             var wrongReason = explanation.wrongReason || "This option does not match the speaker's intent in the transcript.";
 
             var activeExplanationMarkdown = getDisplayedExplanationText(q);
             explanation = parseExplanationSegments(activeExplanationMarkdown || '');
 
-            document.getElementById('reviewQuestionNumber').textContent = String(q.number||'-');
-            var reviewQuestionTextEl = document.getElementById('reviewQuestionText');
-            var reviewPartId = inferPartIdFromQuestion(q);
-            if (reviewPartId === 2 || reviewPartId === 3) {
-                reviewQuestionTextEl.textContent = '';
-                reviewQuestionTextEl.style.display = 'none';
-            } else {
-                reviewQuestionTextEl.textContent = q.questionText || '(No question text)';
-                reviewQuestionTextEl.style.display = '';
-            }
-            document.getElementById('reviewStatusText').textContent     = isCorrect ? 'CORRECT' : 'INCORRECT';
-            document.getElementById('reviewStatusText').style.color     = isCorrect ? '#0d9488' : '#dc2626';
-            document.getElementById('detailSub').textContent            = 'Why ' + (correctLtr||'B') + ' is correct? Proof Transcribe';
+            var detailSub = document.getElementById('detailSub');
+            if (detailSub) detailSub.textContent = 'Why ' + (correctLtr||'B') + ' is correct? Proof Transcribe';
+            renderExplainationTabDetail(q, explanation, correctLtr || 'B');
+            renderStepByStepTabDetail(q);
             reviewDetailSteps = buildDetailSteps(q, explanation);
             reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
             renderDetailSteps();
             updateTranslateButtonState(q);
-
-            var html = '';
-            for (var i=0; i<letters.length; i++) {
-                var l = letters[i], t = options[l];
-                if      (l === correctLtr)                  html += buildCorrectOption(l, t, explanation.correctReason);
-                else if (l === userLtr && userLtr !== correctLtr) html += buildWrongOption(l, t, wrongReason);
-                else                                        html += buildNeutralOption(l, t);
-            }
-            if (!letters.length) html = '<div class="a-parent"><div class="a">No options stored for this question.</div></div>';
-            document.getElementById('firstBoxOptions').innerHTML = html;
             renderTranscriptCards(q);
             loadAudioForPart(inferPartIdFromQuestion(q));
 
@@ -2160,8 +3146,12 @@
 
         async function init() {
             initReviewAudio();
+            initVolumeControl();
+            initReportIssueUpload();
             updateReviewFullScreenButton();
             document.addEventListener('fullscreenchange', updateReviewFullScreenButton);
+            initDarkMode();
+            initTextSize();
 
             var featuresOverlay = document.getElementById('features-overlay');
             if (featuresOverlay) {
@@ -2172,13 +3162,16 @@
             setSectionCaretIcon(document.getElementById('questionHeaderToggle'), true);
             setSectionCaretIcon(document.getElementById('detailHeaderToggle'), true);
             setSectionCaretIcon(document.getElementById('askTutorToggle'), false);
+            setReviewExplainationTab('explaination');
 
             var result = null;
             try { var raw = localStorage.getItem('toefl_section1_result'); if (raw) result = JSON.parse(raw); } catch(_) {}
 
             if (!result || !Array.isArray(result.questions) || !result.questions.length) {
-                document.getElementById('reviewQuestionText').textContent = 'No review data found. Complete Section 1 first.';
-                document.getElementById('firstBoxOptions').innerHTML = '<div class="a-parent"><div class="a">No options stored for this question.</div></div>';
+                var explainHost = document.getElementById('explainationTabContent');
+                if (explainHost) {
+                    explainHost.innerHTML = '<div class="explaination-figma"><div class="explaination-figma-header"><div class="explaination-figma-question-wrap"><div class="explaination-figma-qnum">-</div><div class="explaination-figma-qtext">No review data found. Complete Section 1 first.</div></div></div></div>';
+                }
                 renderHeaderNavigator({ questions: [] }, 1);
                 var prevBtn = document.getElementById('headerPrevQuestionBtn');
                 var nextBtn = document.getElementById('headerNextQuestionBtn');
@@ -2214,7 +3207,14 @@
             renderQuestion(firstQuestion, firstIndex);
         }
 
+        function handleReviewCrossTabSync(event) {
+            if (!event || !event.key) return;
+            if (event.key !== 'toefl_section1_editor_apply_sync_v1' && event.key !== 'toefl_section1_result') return;
+            window.location.reload();
+        }
+
         window.addEventListener('DOMContentLoaded', init);
+        window.addEventListener('storage', handleReviewCrossTabSync);
     </script>
 </body>
 </html>

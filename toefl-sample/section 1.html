@@ -136,6 +136,7 @@
                         </div>
 
                         <div class="audio-shell__visual" id="audio-visual-trigger" title="Click or drag to seek">
+                            <div class="audio-wave-fallback" id="audio-wave-fallback" aria-hidden="true"></div>
                             <canvas class="audio-wave-canvas" id="audio-wave-canvas" width="670" height="82"></canvas>
                             <div class="audio-progress-track" id="audio-progress-track">
                                 <div class="audio-progress-fill" id="audio-progress-fill"></div>
@@ -309,6 +310,7 @@
         const MODULE_LABEL = "Listening";
         const ONBOARDING_KEY_BASE = "toefl_section1_onboarding_seen_v1";
         const DRAFT_KEY = "toefl_section1_dev_draft_v1";
+        const EDITOR_APPLY_SYNC_KEY = "toefl_section1_editor_apply_sync_v1";
         const DARK_MODE_KEY = "toefl_section1_dark_mode_v1";
         const TEXT_SIZE_KEY = "toefl_section1_text_size_v1";
         const ZOOM_KEY = "toefl_section1_zoom_v1";
@@ -333,6 +335,7 @@
         let globalExplanations = {};
         let globalQuestions = {};
         let timerInterval = null;
+        let examSessionStarted = false;
         let flaggedQuestions = safeParse(localStorage.getItem(FLAG_KEY), {});
         let activePartId = 1;
         let audioContext = null;
@@ -342,6 +345,7 @@
         let audioVisualFrame = null;
         let audioIsLocked = false;
         let audioToggleInFlight = false;
+        let audioToggleLockUntil = 0;
         let currentAudioObjectUrl = "";
         let currentAudioFallbackUrls = [];
         let audioAnalyzerReady = false;
@@ -1327,6 +1331,7 @@
             const audio = document.getElementById("cbt-audio-player");
             const statusElement = document.getElementById("audio-shell-status");
             if (!statusElement || !audio) return;
+            updateAudioVisualPlayingState();
 
             if (audioIsLocked) {
                 statusElement.innerText = "Audio completed";
@@ -1357,15 +1362,62 @@
             updatePlayControlState();
         }
 
+        function ensureAudioWaveFallbackBars() {
+            const fallback = document.getElementById("audio-wave-fallback");
+            if (!fallback || fallback.children.length > 0) return;
+            const fragment = document.createDocumentFragment();
+            const barCount = 44;
+            for (let i = 0; i < barCount; i += 1) {
+                const bar = document.createElement("span");
+                bar.className = "audio-wave-fallback__bar";
+                bar.style.setProperty("--bar-delay", `${(i % 11) * 0.06}s`);
+                bar.style.setProperty("--bar-height", `${18 + ((i * 7) % 56)}%`);
+                fragment.appendChild(bar);
+            }
+            fallback.appendChild(fragment);
+        }
+
+        function updateAudioVisualPlayingState() {
+            const visual = document.getElementById("audio-visual-trigger");
+            const audio = document.getElementById("cbt-audio-player");
+            if (!visual || !audio) return;
+            const isPlaying = Boolean(audio.src && !audio.paused && !audio.ended);
+            visual.classList.toggle("is-playing", isPlaying);
+        }
+
         function ensureAudioAnalyzer() {
             const audio = document.getElementById("cbt-audio-player");
             if (!audio) return false;
-            audioAnalyzerReady = false;
-            audioContext = null;
-            audioAnalyser = null;
-            audioSourceNode = null;
-            audioDataArray = null;
-            return false;
+            if (!canUseWebAudioAnalyzer(audio)) return false;
+
+            const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextCtor) return false;
+
+            try {
+                if (!audioContext) {
+                    audioContext = new AudioContextCtor();
+                }
+
+                if (!audioAnalyser) {
+                    audioAnalyser = audioContext.createAnalyser();
+                    audioAnalyser.fftSize = 1024;
+                    audioAnalyser.smoothingTimeConstant = 0.85;
+                }
+
+                if (!audioSourceNode) {
+                    audioSourceNode = audioContext.createMediaElementSource(audio);
+                    audioSourceNode.connect(audioAnalyser);
+                    audioAnalyser.connect(audioContext.destination);
+                }
+
+                audioDataArray = new Uint8Array(audioAnalyser.frequencyBinCount);
+                audioAnalyzerReady = true;
+                return true;
+            } catch (error) {
+                console.warn("[AudioVisualizer] analyzer init failed:", error);
+                audioAnalyzerReady = false;
+                return false;
+            }
         }
 
         function renderWaveform() {
@@ -1487,7 +1539,7 @@
 
             const duration = audio.duration || 0;
             const timelineProgress = duration > 0 ? Math.min(1, Math.max(0, audio.currentTime / duration)) : 0;
-            const visibleEndX = Math.max(0, Math.min(canvas.width, timelineProgress * canvas.width));
+            const visibleEndX = canvas.width;
             const waveStep = Math.max(3, Math.floor(canvas.width / 190));
             for (let i = 0; i < waveLayers; i += 1) {
                 const layer = layerConfigs[i];
@@ -1514,6 +1566,34 @@
                 ctx.lineTo(visibleEndX, audioLineY);
                 ctx.closePath();
                 ctx.fill();
+            }
+
+            // Draw a bright stroke waveform on top so motion stays visible even when
+            // analyzer data is weak/flat (e.g., low-volume tracks or cross-origin sources).
+            if (isActivelyPlaying) {
+                const strokeAmplitude = Math.max(canvas.height * 0.14, (audioEnergy * canvas.height * 0.46));
+                const strokeFreq = (Math.PI * 2) / Math.max(36, canvas.width / 18);
+                const strokePhase = now * 4.2 + (pitchProxy * 7);
+                const strokeStep = Math.max(2, Math.floor(canvas.width / 260));
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.lineWidth = Math.max(2, Math.round(2 * dpr));
+                ctx.strokeStyle = "rgba(186, 230, 253, 0.95)";
+                ctx.shadowColor = "rgba(14, 165, 233, 0.65)";
+                ctx.shadowBlur = Math.max(4, Math.round(6 * dpr));
+
+                for (let x = 0; x <= visibleEndX; x += strokeStep) {
+                    const y = audioLineY - (Math.abs(Math.sin((x * strokeFreq) + strokePhase)) * strokeAmplitude);
+                    if (x === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                }
+
+                ctx.stroke();
+                ctx.restore();
             }
             ctx.globalAlpha = 1;
 
@@ -1545,22 +1625,19 @@
 
         async function toggleAudioFromUserGesture() {
             const audio = document.getElementById("cbt-audio-player");
-            if (!audio) return;
-            if (audioToggleInFlight) return;
-            audioToggleInFlight = true;
-
-            const onboardingOverlay = document.getElementById("onboarding-overlay");
-            if (onboardingOverlay && onboardingOverlay.classList.contains("is-visible")) {
-                onboardingOverlay.classList.remove("is-visible");
-                onboardingOverlay.setAttribute("aria-hidden", "true");
+            if (!audio) return false;
+            if (Date.now() < audioToggleLockUntil) {
+                return Boolean(audio.src && !audio.paused && !audio.ended);
             }
+            if (audioToggleInFlight) return false;
+            audioToggleInFlight = true;
 
             try {
                 if (!audio.src) {
                     const recovered = await ensurePlayableAudioSource();
                     if (!recovered || !audio.src) {
                         alert("No saved listening audio was found for this selected package/date.");
-                        return;
+                        return false;
                     }
                 }
 
@@ -1594,15 +1671,17 @@
                 const interruptedByPause = /interrupted by a call to pause/i.test(errorText);
                 if (interruptedByPause) {
                     // Benign race from rapid input; ignore and keep control responsive.
-                    return;
+                    return false;
                 }
 
                 console.warn("Audio play toggle failed:", error);
                 alert(`Audio failed to play: ${errorText || "Unknown audio playback error"}`);
+                return false;
             } finally {
                 audioToggleInFlight = false;
                 updateAudioShellStatus();
             }
+            return Boolean(audio.src && !audio.paused && !audio.ended);
         }
 
         async function ensurePlayableAudioSource() {
@@ -1671,23 +1750,27 @@
             audio.addEventListener("play", () => {
                 waveformShouldStopWhenSilent = false;
                 startWaveformRenderer();
+                updateAudioVisualPlayingState();
                 updateAudioShellStatus();
             });
             audio.addEventListener("pause", () => {
                 waveformShouldStopWhenSilent = true;
                 startWaveformRenderer();
+                updateAudioVisualPlayingState();
                 updateAudioShellStatus();
             });
             audio.addEventListener("loadeddata", () => {
                 audioIsLocked = false;
                 waveformShouldStopWhenSilent = false;
                 startWaveformRenderer();
+                updateAudioVisualPlayingState();
                 updateAudioShellStatus();
             });
             audio.addEventListener("ended", () => {
                 audioIsLocked = false;
                 waveformShouldStopWhenSilent = true;
                 startWaveformRenderer();
+                updateAudioVisualPlayingState();
                 updateAudioShellStatus();
             });
             audio.addEventListener("error", () => {
@@ -1715,7 +1798,9 @@
 
             mainContainer.addEventListener("scroll", syncAudioPanelFromView);
 
+            ensureAudioWaveFallbackBars();
             startWaveformRenderer();
+            updateAudioVisualPlayingState();
             syncAudioPanelFromView();
             updatePlayControlState();
             updateExamAudioProgressUI();
@@ -2448,8 +2533,15 @@
         }
 
         function shouldShowOnboarding() {
-            if (isDeveloperMode() || isDeveloperPreviewMode()) return false;
-            return localStorage.getItem(getOnboardingKey()) !== "1";
+            // Always show onboarding before a listening attempt in both routes:
+            // - studyplan -> open test
+            // - developer -> apply + open user view
+            return true;
+        }
+
+        function isUserViewActive() {
+            const userView = document.getElementById("user-view");
+            return Boolean(userView && userView.classList.contains("active"));
         }
 
         function setOnboardingScrollLock(isLocked) {
@@ -2467,28 +2559,30 @@
         function dismissOnboarding() {
             const overlay = document.getElementById("onboarding-overlay");
             if (!overlay) return;
+            overlay.style.display = "none";
             overlay.classList.remove("is-visible");
             overlay.setAttribute("aria-hidden", "true");
             setOnboardingScrollLock(false);
             localStorage.setItem(getOnboardingKey(), "1");
-            if (!questionOrder.length) {
-                updateUserView();
-            }
         }
 
         async function startFromOnboarding() {
+            const didStartAudio = await toggleAudioFromUserGesture();
+            if (!didStartAudio) return;
+            // Prevent click-through/rapid second toggle that can pause audio
+            // right after onboarding play is pressed.
+            audioToggleLockUntil = Date.now() + 500;
+            examSessionStarted = true;
+            startTimer();
             dismissOnboarding();
-            try {
-                await toggleAudioFromUserGesture();
-            } catch (_) {
-                // toggleAudioFromUserGesture already handles user-facing errors.
-            }
         }
 
         function updateOnboardingVisibility() {
             const overlay = document.getElementById("onboarding-overlay");
             if (!overlay) return;
-            if (!isDeveloperMode() && shouldShowOnboarding()) {
+            const shouldOpen = shouldShowOnboarding() && isUserViewActive();
+            overlay.style.display = shouldOpen ? "block" : "none";
+            if (shouldOpen) {
                 overlay.classList.add("is-visible");
                 overlay.setAttribute("aria-hidden", "false");
                 setOnboardingScrollLock(true);
@@ -2509,10 +2603,71 @@
             syncAudioPanelFromView();
         }
 
+        function buildPreviewSectionResult() {
+            const transcriptMapsByPart = {};
+            const transcriptTextsByPart = {};
+
+            PARTS.forEach((part) => {
+                const transcriptText = (document.getElementById(`input-transcript-${part.id}`) || {}).value || "";
+                transcriptTextsByPart[part.id] = transcriptText;
+                transcriptMapsByPart[part.id] = mapTranscriptByQuestion(transcriptText);
+            });
+
+            const previewQuestions = questionOrder.map((uid) => {
+                const parts = String(uid || "").split("_");
+                const partId = Number(parts[0] || 0);
+                const qNum = Number(parts[1] || 0);
+                const question = globalQuestions[uid] || {};
+                const correct = String(globalAnswerKey[uid] || "").trim().toLowerCase();
+                const transcriptSegments = (((transcriptMapsByPart[partId] || {})[qNum]) || []).map((segment) => ({ ...segment }));
+                const partMeta = PARTS.find((item) => Number(item.id) === partId) || {};
+                return {
+                    uid,
+                    number: qNum,
+                    partId,
+                    partName: String(partMeta.name || ""),
+                    questionText: String(question.questionText || `Question ${qNum}`),
+                    options: question.options || {},
+                    correctAnswer: correct,
+                    userAnswer: correct,
+                    isCorrect: Boolean(correct),
+                    explanation: String(globalExplanations[uid] || ""),
+                    transcriptSegments
+                };
+            }).filter((item) => Number.isFinite(item.number) && item.number > 0)
+              .sort((left, right) => left.number - right.number);
+
+            const totalQuestions = previewQuestions.length || Object.keys(globalAnswerKey).length || 0;
+            const rawScore = previewQuestions.reduce((sum, item) => sum + (item.isCorrect ? 1 : 0), 0);
+            const scaledScore = totalQuestions > 0
+                ? Math.round(31 + ((rawScore / totalQuestions) * (68 - 31)))
+                : 31;
+
+            return {
+                sectionTitle: "Section 1: Listening Comprehension",
+                sectionKey: "listening",
+                setId: currentSetId || "",
+                setDate: (document.getElementById("set-date") || {}).value || "",
+                transcriptsByPart: transcriptTextsByPart,
+                totalQuestions,
+                rawScore,
+                scaledScore,
+                submittedAt: new Date().toISOString().slice(0, 10),
+                questions: previewQuestions
+            };
+        }
+
+        function persistPreviewSectionResult() {
+            const result = buildPreviewSectionResult();
+            localStorage.setItem("toefl_section1_result", JSON.stringify(result));
+        }
+
         async function openExplanationFromDeveloper() {
             // Ensure the current package is persisted before opening the answered page.
             await saveSectionMeta();
             saveSectionDraft();
+            updateUserView(false, { preferEditedPart: false });
+            persistPreviewSectionResult();
 
             const params = new URLSearchParams();
             const dateValue = (document.getElementById("set-date") || {}).value || "";
@@ -2565,13 +2720,28 @@
             if (evt?.currentTarget) evt.currentTarget.classList.add("active");
         }
 
-        function updateUserView(shouldSaveMeta = false) {
-            hydrateEditorInputsFromLocalDraftIfEmpty();
+        function getPreferredPartFromActiveDevTab() {
+            const activeDevContent = document.querySelector("#dev-panels-container .sub-content.active");
+            if (!activeDevContent || !activeDevContent.id) return null;
+            const match = activeDevContent.id.match(/^dev-part-(\d+)$/);
+            if (!match) return null;
+            const nextPartId = Number(match[1]);
+            if (!PARTS.some((part) => Number(part.id) === nextPartId)) return null;
+            return nextPartId;
+        }
 
-            const onboardingOverlay = document.getElementById("onboarding-overlay");
-            if (onboardingOverlay) {
-                onboardingOverlay.classList.remove("is-visible");
-                onboardingOverlay.setAttribute("aria-hidden", "true");
+        function updateUserView(shouldSaveMeta = false, options = {}) {
+            const { preferEditedPart = true } = options || {};
+            hydrateEditorInputsFromLocalDraftIfEmpty();
+            examSessionStarted = false;
+            clearInterval(timerInterval);
+            const timerElement = document.getElementById("time");
+            if (timerElement) {
+                const isDark = document.getElementById("user-view") &&
+                    document.getElementById("user-view").classList.contains("is-dark");
+                timerElement.innerText = "35:00";
+                timerElement.style.color = isDark ? "#E0F2FE" : "#005faa";
+                timerElement.style.animation = "none";
             }
 
             if (shouldSaveMeta) {
@@ -2596,13 +2766,13 @@
                 if (!answerKeyElement || !explanationElement || !questionsElement || !displayElement) return;
 
                 answerKeyElement.value.split("\n").forEach((line) => {
-                    const match = line.match(/^(\d+)[\.\)]?\s+(.*)/);
+                    const match = line.match(/^(\d+)[\.\):\-]?\s+(.*)/);
                     if (match) globalAnswerKey[`${p}_${match[1]}`] = match[2].trim().toLowerCase();
                 });
 
                 let currentExpNum = null;
                 explanationElement.value.split("\n").forEach((line) => {
-                    const match = line.match(/^(\d+)[\.\)]?\s+(.*)/);
+                    const match = line.match(/^(\d+)[\.\):\-]?\s+(.*)/);
                     if (match) {
                         currentExpNum = `${p}_${match[1]}`;
                         globalExplanations[currentExpNum] = match[2].trim();
@@ -2619,7 +2789,7 @@
                     const rawLine = lines[index].trim();
                     let questionMatch = rawLine.match(/^question\s*(\d+)\s*[:.)-]?\s*(.*)$/i);
                     if (!questionMatch) {
-                        questionMatch = rawLine.match(/^(\d+)[\.)]\s*(.*)$/);
+                        questionMatch = rawLine.match(/^(\d+)[\.:\)\-]\s*(.*)$/);
                     }
                     if (questionMatch && (!currentBlock || currentBlock.lines.length >= 4)) {
                         if (currentBlock) blocks.push(currentBlock);
@@ -2634,7 +2804,7 @@
                 if (!blocks.length) {
                     const answerLines = String(answerKeyElement.value || "").split("\n");
                     answerLines.forEach((line) => {
-                        const keyMatch = String(line || "").trim().match(/^(\d+)[\.\)]?\s+([a-d])/i);
+                        const keyMatch = String(line || "").trim().match(/^(\d+)[\.\):\-]?\s+([a-d])/i);
                         if (!keyMatch) return;
                         blocks.push({
                             num: keyMatch[1],
@@ -2761,12 +2931,37 @@
                 }
             }
 
-            if (!PARTS.find((part) => part.id === activePartId)) {
+            const preferredPartId = (shouldSaveMeta && preferEditedPart) ? getPreferredPartFromActiveDevTab() : null;
+            if (preferredPartId) {
+                activePartId = preferredPartId;
+            } else if (!PARTS.find((part) => part.id === activePartId)) {
                 activePartId = 1;
             }
             setActivePart(activePartId, { resetScroll: false });
             refreshExamState();
-            startTimer();
+            updateOnboardingVisibility();
+
+            if (shouldSaveMeta) {
+                try {
+                    persistPreviewSectionResult();
+                    localStorage.setItem(EDITOR_APPLY_SYNC_KEY, JSON.stringify({
+                        at: new Date().toISOString(),
+                        setId: String(currentSetId || ""),
+                        setDate: String((document.getElementById("set-date") || {}).value || "")
+                    }));
+                } catch (_) {}
+            }
+        }
+
+        async function handleCrossTabApplySync(event) {
+            if (!event || event.key !== EDITOR_APPLY_SYNC_KEY || !event.newValue) return;
+            try {
+                await loadSectionMeta();
+                await loadSectionDraft();
+            } catch (error) {
+                console.warn("[Sync] cross-tab apply refresh failed:", error);
+            }
+            updateUserView(false);
         }
 
         function submitAnswers() {
@@ -2941,11 +3136,13 @@
             applyViewMode();
             window.addEventListener("hashchange", applyViewMode);
             updateOnboardingVisibility();
+            setTimeout(updateOnboardingVisibility, 120);
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
             if (setDateEl) setDateEl.addEventListener("change", handleSetDateChange);
             if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
             window.addEventListener("beforeunload", revokeCurrentAudioUrl);
+            window.addEventListener("storage", handleCrossTabApplySync);
         };
     </script>
 </body>

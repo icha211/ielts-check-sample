@@ -133,6 +133,104 @@ IMPORTANT: Output ONLY the three steps in the exact Markdown format above. No ex
 """
 
 
+def build_step_timeline_prompt(payload: dict) -> str:
+    question_text = str(payload.get("questionText", "") or "")
+    options = payload.get("options", {}) or {}
+    correct_answer = str(payload.get("correctAnswer", "") or "").strip().upper()
+    transcript = str(payload.get("transcript", "") or "")
+    raw_transcript = str(payload.get("rawTranscript", "") or "")
+    question_number = payload.get("questionNumber", "")
+
+    if raw_transcript and str(question_number).strip():
+        transcript_payload = extract_question_transcript_payload(raw_transcript, question_number)
+        transcript_blocks = transcript_payload.get("transcript_blocks") or []
+        if transcript_blocks:
+            transcript = "\n".join(
+                f'{block.get("speaker_name", "Speaker")}: "{block.get("dialogue_text", "")}"'
+                for block in transcript_blocks
+            )
+
+    options_lines = "\n".join(
+        f"  ({letter}) {text}" for letter, text in sorted(options.items())
+    )
+
+    return f"""You are a backend content engine for a TOEFL ITP preparation application. Your task is to analyze a single TOEFL listening question and output a highly specific structured JSON object that maps perfectly to a 4-step timeline UI component.
+
+### TRANSCRIPT PARSING RULE:
+You MUST isolate and extract your quotes and strategies ONLY from the provided transcript block for the active question. Do NOT use generic placeholder text.
+
+### COLOR & STYLING RULES:
+You must strictly embed inline styling HTML tags directly inside the text values (`description`, `quote`, and `reasoning`) when referring to speakers or key vocabulary:
+1. For the Male speaker: Wrap their role name in `<span style="color: #F3934F; font-weight: bold;">Role Name</span>`.
+2. For the Female speaker: Wrap their role name in `<span style="color: #676CFF; font-weight: bold;">Role Name</span>`.
+3. For key audio clues or critical matched vocabulary: Wrap the phrase in `<mark style="background-color: #FFDE00; color: #000000; font-weight: 500;">highlighted phrase</mark>`.
+
+### DYNAMIC STRATEGY RULE:
+- If the question asks for the MAIN IDEA:
+  - Step 1 Title: "Listen for the Topic Opener"
+  - Step 2 Title: "Identify the Location Solution"
+- If the question asks for a SPECIFIC DETAIL, METHOD, or REASON:
+  - Step 1 Title: "Listen for the Core Clue"
+  - Step 2 Title: "Identify the Supporting Detail"
+
+### LOGIC RULE:
+- In `step_4`, each incorrect option reasoning must start with "because..." and must be unique and specific to the transcript.
+
+Respond ONLY with a valid JSON object matching this schema:
+{{
+  "step_1": {{
+    "title": "[Dynamic Title]",
+    "description": "[Strategy text with inline speaker color tags]",
+    "quote": "[Exact transcript quote with <mark> highlights]"
+  }},
+  "step_2": {{
+    "title": "[Dynamic Title]",
+    "description": "[Context tracking text with inline speaker color tags]",
+    "quote": "[Exact secondary quote with <mark> highlights]"
+  }},
+  "step_3": {{
+    "title": "Connect the Synonyms",
+    "description": "Look at the choices. Match the student's problem to the specific option letter.",
+    "correct_option_letter": "A, B, C, or D",
+    "correct_option_text": "The full exact text of the correct answer choice.",
+    "closing_thought": "A brief conclusion sentence showing they mean the exact same thing."
+  }},
+  "step_4": {{
+    "title": "Eliminate the Wrong Answer",
+    "incorrect_options": [
+      {{
+        "letter": "Option letter",
+        "text": "Full text of option",
+        "reasoning": "because..."
+      }},
+      {{
+        "letter": "Option letter",
+        "text": "Full text of option",
+        "reasoning": "because..."
+      }},
+      {{
+        "letter": "Option letter",
+        "text": "Full text of option",
+        "reasoning": "because..."
+      }}
+    ]
+  }}
+}}
+
+QUESTION:
+{question_text}
+
+ANSWER CHOICES:
+{options_lines}
+
+CORRECT ANSWER:
+({correct_answer})
+
+ACTIVE QUESTION TRANSCRIPT:
+{transcript}
+"""
+
+
 def explanation_has_required_shape(text: str) -> bool:
     body = str(text or "").strip()
     if not body:
@@ -172,6 +270,57 @@ Requirements:
    (Use the actual wrong letters for this question.)
 4) Keep the explanation specific to the transcript and answer options. No generic filler.
 5) Output only the final markdown explanation.
+
+OUTPUT TO REWRITE:
+{previous_output}
+"""
+
+
+def step_timeline_has_required_shape(data: dict) -> bool:
+    if not isinstance(data, dict):
+        return False
+    step_1 = data.get("step_1")
+    step_2 = data.get("step_2")
+    step_3 = data.get("step_3")
+    step_4 = data.get("step_4")
+    if not all(isinstance(step, dict) for step in (step_1, step_2, step_3, step_4)):
+        return False
+    required_text_fields = [
+        step_1.get("title"), step_1.get("description"), step_1.get("quote"),
+        step_2.get("title"), step_2.get("description"), step_2.get("quote"),
+        step_3.get("title"), step_3.get("description"), step_3.get("correct_option_letter"),
+        step_3.get("correct_option_text"), step_3.get("closing_thought"),
+        step_4.get("title"),
+    ]
+    if any(not str(value or "").strip() for value in required_text_fields):
+        return False
+    incorrect = step_4.get("incorrect_options")
+    if not isinstance(incorrect, list) or len(incorrect) != 3:
+        return False
+    for item in incorrect:
+        if not isinstance(item, dict):
+            return False
+        if not str(item.get("letter") or "").strip():
+            return False
+        if not str(item.get("text") or "").strip():
+            return False
+        reasoning = str(item.get("reasoning") or "").strip()
+        if not reasoning or not reasoning.lower().startswith("because"):
+            return False
+    return True
+
+
+def build_step_timeline_fix_prompt(previous_output: str) -> str:
+    return f"""Rewrite the output below so it is a valid JSON object matching the required 4-step TOEFL timeline schema.
+
+Rules:
+1. Return ONLY JSON.
+2. Include keys: step_1, step_2, step_3, step_4.
+3. step_1 and step_2 must each include title, description, quote.
+4. step_3 must include title, description, correct_option_letter, correct_option_text, closing_thought.
+5. step_4 must include title and exactly 3 incorrect_options.
+6. Each incorrect option must include letter, text, and reasoning that starts with "because".
+7. Preserve any inline <span> and <mark> formatting where appropriate.
 
 OUTPUT TO REWRITE:
 {previous_output}
@@ -254,6 +403,121 @@ def parse_json_from_text(text: str) -> dict:
         return json.loads(text[start : end + 1])
 
     raise ValueError("No JSON object in model output")
+
+
+def format_timestamp_display(value: str) -> str:
+    raw = str(value or "").strip()
+    match = re.match(r"^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.(\d+))?$", raw)
+    if not match:
+        return raw
+    first = int(match.group(1))
+    second = int(match.group(2))
+    third = match.group(3)
+    if third is not None:
+        total_seconds = (first * 3600) + (second * 60) + int(third)
+        minutes = total_seconds // 60
+        seconds = total_seconds % 60
+        return f"{minutes:02d}:{seconds:02d}"
+    return f"{first:02d}:{second:02d}"
+
+
+def timestamp_to_milliseconds(value: str) -> int:
+    raw = str(value or "").strip()
+    match = re.match(r"^(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.(\d+))?$", raw)
+    if not match:
+        return 0
+    first = int(match.group(1))
+    second = int(match.group(2))
+    third = match.group(3)
+    fraction = (match.group(4) or "0") + "000"
+    ms = int(fraction[:3])
+    if third is not None:
+        base_seconds = (first * 3600) + (second * 60) + int(third)
+    else:
+        base_seconds = (first * 60) + second
+    return (base_seconds * 1000) + ms
+
+
+def infer_speaker_gender_and_name(speaker: str) -> tuple[str, str]:
+    value = str(speaker or "").strip()
+    upper = value.upper()
+    if upper in ("STUDENT", "MAN", "STUDENT A", "MALE STUDENT"):
+        return "male", "Student" if upper.startswith("STUDENT") else "Man"
+    if upper in ("LIBRARIAN", "WOMAN", "STUDENT B", "FEMALE STUDENT"):
+        return "female", "Librarian" if upper == "LIBRARIAN" else "Woman"
+    if upper.startswith("NARR"):
+        return "unknown", "Narrator"
+    if upper.startswith("MAN"):
+        return "male", "Man"
+    if upper.startswith("WOM"):
+        return "female", "Woman"
+    if upper.startswith("STUDENT"):
+        return "male", "Student"
+    return "unknown", value or "Narrator"
+
+
+def extract_question_transcript_payload(raw_transcript: str, question_number: int | str) -> dict:
+    body = str(raw_transcript or "")
+    q_num = str(question_number or "").strip()
+    if not q_num:
+        return {"active_question": "", "transcript_blocks": []}
+
+    active_question = int(q_num) if q_num.isdigit() else q_num
+    active_question_text = str(active_question)
+    block_text = ""
+
+    tagged_pattern = re.compile(
+        rf"<Question\s*{re.escape(active_question_text)}>\s*([\s\S]*?)\s*</Question\s*{re.escape(active_question_text)}>",
+        flags=re.I,
+    )
+    tagged_match = tagged_pattern.search(body)
+    if tagged_match:
+        block_text = tagged_match.group(1)
+    else:
+        plain_pattern = re.compile(
+            rf"(^|\n)\s*Question\s*{re.escape(active_question_text)}\s*\n([\s\S]*?)(?=\n\s*(?:Question\s*\d+|<Question\s*\d+>|</Question\s*{re.escape(active_question_text)}>)|\Z)",
+            flags=re.I,
+        )
+        plain_match = plain_pattern.search(body)
+        if plain_match:
+            block_text = plain_match.group(2)
+
+    if not block_text.strip():
+        return {"active_question": active_question, "transcript_blocks": []}
+
+    transcript_blocks = []
+    line_pattern = re.compile(
+        r"^\s*(?P<start>\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)\s*(?:-\s*(?P<end>\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?))?\s+(?P<speaker>[A-Za-z][A-Za-z ]*?)\s*:\s*(?P<text>.+?)\s*$"
+    )
+    for raw_line in block_text.splitlines():
+        line = str(raw_line or "").strip()
+        if not line:
+            continue
+        match = line_pattern.match(line)
+        if not match:
+            continue
+        gender, normalized_name = infer_speaker_gender_and_name(match.group("speaker"))
+        if gender not in ("male", "female"):
+            continue
+        dialogue_text = str(match.group("text") or "").strip()
+        if not dialogue_text:
+            continue
+        start_raw = str(match.group("start") or "").strip()
+        end_raw = str(match.group("end") or "").strip()
+        start_ms = timestamp_to_milliseconds(start_raw)
+        end_ms = timestamp_to_milliseconds(end_raw) if end_raw else max(start_ms + 8000, start_ms)
+        transcript_blocks.append(
+            {
+                "speaker_name": normalized_name,
+                "speaker_gender": gender,
+                "timestamp_display": format_timestamp_display(start_raw),
+                "start_ms": start_ms,
+                "end_ms": end_ms,
+                "dialogue_text": dialogue_text,
+            }
+        )
+
+    return {"active_question": active_question, "transcript_blocks": transcript_blocks}
 
 
 def sanitize_review(review: dict) -> dict:
@@ -343,6 +607,27 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 self._send(500, {"error": str(exc)})
 
+        elif self.path == "/api/toefl-step-timeline":
+            try:
+                client = genai.Client(api_key=api_key)
+                prompt = build_step_timeline_prompt(payload)
+                response = generate_with_retry(client, prompt)
+                text = (response.text or "").strip()
+                parsed = parse_json_from_text(text)
+
+                if not step_timeline_has_required_shape(parsed):
+                    retry_prompt = build_step_timeline_fix_prompt(text)
+                    retry_response = generate_with_retry(client, retry_prompt)
+                    retry_text = (retry_response.text or "").strip()
+                    parsed = parse_json_from_text(retry_text)
+
+                if not step_timeline_has_required_shape(parsed):
+                    raise ValueError("Invalid step timeline shape returned by model")
+
+                self._send(200, parsed)
+            except Exception as exc:
+                self._send(500, {"error": str(exc)})
+
         elif self.path == "/api/translate-explanation":
             try:
                 explanation_markdown = str(payload.get("explanationMarkdown", "") or "").strip()
@@ -365,6 +650,20 @@ class Handler(BaseHTTPRequestHandler):
                         text = replace_first_markdown_quote(text, forced_quote)
 
                 self._send_text(200, text)
+            except Exception as exc:
+                self._send(500, {"error": str(exc)})
+
+        elif self.path == "/api/toefl-question-transcript":
+            try:
+                raw_transcript = str(payload.get("rawTranscript", "") or "")
+                question_number = payload.get("questionNumber", "")
+                if not raw_transcript.strip():
+                    self._send(400, {"error": "rawTranscript is required"})
+                    return
+                if str(question_number).strip() == "":
+                    self._send(400, {"error": "questionNumber is required"})
+                    return
+                self._send(200, extract_question_transcript_payload(raw_transcript, question_number))
             except Exception as exc:
                 self._send(500, {"error": str(exc)})
 
