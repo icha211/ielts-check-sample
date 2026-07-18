@@ -235,6 +235,46 @@
             letter-spacing: -0.03em;
         }
 
+        .date-task-queue {
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .date-task-token {
+            width: 26px;
+            height: 26px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            border: 1px solid #c8d9ec;
+            color: #6a8096;
+            background: #f1f6fb;
+        }
+
+        .date-task-token.done {
+            border-color: transparent;
+            color: #ffffff;
+            background: linear-gradient(135deg, #0fb184, #0f9f7f);
+            box-shadow: 0 6px 12px rgba(15, 159, 127, 0.28);
+        }
+
+        .date-tile.active .date-task-token {
+            border-color: rgba(255, 255, 255, 0.42);
+            background: rgba(255, 255, 255, 0.16);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .date-tile.active .date-task-token.done {
+            border-color: transparent;
+            color: #ffffff;
+            background: linear-gradient(135deg, #20d59f, #0fb184);
+        }
+
         .date-helper {
             font-size: 12px;
             color: var(--muted);
@@ -551,9 +591,11 @@
     </div>
 
     <script src="toefl-storage-sync.js?v=20260506"></script>
+    <script src="../study-plan-firestore-sync.js?v=20260508"></script>
     <script>
         const STORAGE_KEY = "toefl_schedule_v3";
         const TOEFL_SETS_V2_KEY = "toefl_developer_sets_v2";
+        const STUDY_PLAN_PROJECT_ID = "quickcheck-25590";
         const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
         const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const difficultyCycle = ["Beginner", "Intermediate", "Advanced"];
@@ -566,12 +608,39 @@
         const params = new URLSearchParams(window.location.search);
         const initialYear = Number(params.get("year")) || 2026;
         const initialMonth = Number(params.get("month"));
+        const initialDay = Number(params.get("day"));
+        const dateParam = String(params.get("date") || "").trim();
+        const parsedDateMatch = dateParam.match(/^(\d{4})-(\d{2})-(\d{2})$/);
         const safeMonth = Number.isFinite(initialMonth) && initialMonth >= 0 && initialMonth <= 11 ? initialMonth : 1;
+        const safeDay = Number.isFinite(initialDay) && initialDay >= 1 && initialDay <= 31 ? initialDay : null;
         const today = new Date();
         const hasYearParam = params.has("year");
         const hasMonthParam = params.has("month");
-        let selectedDate = (hasYearParam || hasMonthParam)
-            ? new Date(initialYear, safeMonth, today.getDate())
+        const hasDayParam = params.has("day");
+        const rawDeepLinkYear = parsedDateMatch ? Number(parsedDateMatch[1]) : null;
+        const rawDeepLinkMonth = parsedDateMatch ? Number(parsedDateMatch[2]) - 1 : null;
+        const rawDeepLinkDay = parsedDateMatch ? Number(parsedDateMatch[3]) : null;
+        const hasDateParam = Boolean(
+            parsedDateMatch &&
+            rawDeepLinkMonth >= 0 &&
+            rawDeepLinkMonth <= 11 &&
+            rawDeepLinkDay >= 1 &&
+            rawDeepLinkDay <= 31
+        );
+        const deepLinkYear = hasDateParam ? rawDeepLinkYear : null;
+        const deepLinkMonth = hasDateParam ? rawDeepLinkMonth : null;
+        const deepLinkDay = hasDateParam ? rawDeepLinkDay : null;
+        const cloudSync = typeof StudyPlanFirestoreSync === "function"
+            ? new StudyPlanFirestoreSync({ projectId: STUDY_PLAN_PROJECT_ID })
+            : null;
+        let cloudDailyTasks = {};
+        let monthStoreCache = {};
+        let cloudStatusLabel = "Cloud sync is unavailable. Using local cache.";
+        let shouldFocusDeepLinkedDate = hasDateParam;
+        let selectedDate = hasDateParam
+            ? new Date(deepLinkYear, deepLinkMonth, deepLinkDay)
+            : (hasYearParam || hasMonthParam)
+            ? new Date(initialYear, safeMonth, hasDayParam && safeDay ? safeDay : today.getDate())
             : new Date(today.getFullYear(), today.getMonth(), today.getDate());
         let isCalendarExpanded = false;
 
@@ -606,7 +675,33 @@
             return localMatch?.setId || "";
         }
 
-        function getMonthStore(year, month) {
+        function createDefaultDayData(day) {
+            return {
+                mockTitle: `Mock Test Package ${String(day).padStart(2, "0")}`,
+                focus: day % 3 === 0 ? "accuracy under timed conditions" : day % 3 === 1 ? "steady foundation building" : "mixed TOEFL stamina practice",
+                sections: {
+                    listening: { completed: false },
+                    structure: { completed: false },
+                    reading: { completed: false }
+                }
+            };
+        }
+
+        function normalizeDayData(raw, dayNumber) {
+            const defaultValue = createDefaultDayData(dayNumber);
+            const sections = raw && raw.sections ? raw.sections : {};
+            return {
+                ...defaultValue,
+                ...(raw || {}),
+                sections: {
+                    listening: { completed: Boolean(sections.listening && sections.listening.completed) },
+                    structure: { completed: Boolean(sections.structure && sections.structure.completed) },
+                    reading: { completed: Boolean(sections.reading && sections.reading.completed) }
+                }
+            };
+        }
+
+        function getLegacyMonthStore(year, month) {
             const key = `${STORAGE_KEY}_${year}_${month}`;
             const existing = localStorage.getItem(key);
             if (existing) {
@@ -616,23 +711,46 @@
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const monthStore = {};
             for (let day = 1; day <= daysInMonth; day++) {
-                monthStore[day] = {
-                    mockTitle: `Mock Test Package ${String(day).padStart(2, "0")}`,
-                    focus: day % 3 === 0 ? "accuracy under timed conditions" : day % 3 === 1 ? "steady foundation building" : "mixed TOEFL stamina practice",
-                    sections: {
-                        listening: { completed: false },
-                        structure: { completed: false },
-                        reading: { completed: false }
-                    }
-                };
+                monthStore[day] = createDefaultDayData(day);
             }
             localStorage.setItem(key, JSON.stringify(monthStore));
             return monthStore;
         }
 
+        function dateKeyForDay(year, month, day) {
+            return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        }
+
+        function getMonthStore(year, month) {
+            const cacheKey = `${year}-${month}`;
+            if (monthStoreCache[cacheKey]) return monthStoreCache[cacheKey];
+
+            const baseStore = getLegacyMonthStore(year, month);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const mergedStore = {};
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = dateKeyForDay(year, month, day);
+                const cloudValue = cloudDailyTasks[dateKey];
+                mergedStore[day] = normalizeDayData(cloudValue || baseStore[day], day);
+            }
+            monthStoreCache[cacheKey] = mergedStore;
+            return mergedStore;
+        }
+
         function saveMonthStore(year, month, value) {
             const key = `${STORAGE_KEY}_${year}_${month}`;
             localStorage.setItem(key, JSON.stringify(value));
+            monthStoreCache[`${year}-${month}`] = value;
+            const activeDay = selectedDate.getFullYear() === year && selectedDate.getMonth() === month
+                ? selectedDate.getDate()
+                : null;
+            if (!activeDay || !value[activeDay] || !cloudSync) return;
+            const dateStr = dateKeyForDay(year, month, activeDay);
+            cloudSync.saveDay(dateStr, normalizeDayData(value[activeDay], activeDay));
+            cloudSync.savePlan({
+                lastViewedMonth: `${year}-${String(month + 1).padStart(2, "0")}`,
+                lastViewedDate: dateStr
+            });
         }
 
         function clampDateToMonth(date) {
@@ -702,22 +820,34 @@
             const host = document.getElementById("dateStrip");
             host.innerHTML = "";
             const tiles = isCalendarExpanded ? getMonthDates(selectedDate) : getDayWindow(selectedDate);
+            const store = getMonthStore(selectedDate.getFullYear(), selectedDate.getMonth());
             tiles.forEach((dateItem) => {
                 const tile = document.createElement("button");
                 tile.type = "button";
                 tile.className = `date-tile${dateItem.toDateString() === selectedDate.toDateString() ? " active" : ""}`;
+                const dayData = store[dateItem.getDate()] || createDefaultDayData(dateItem.getDate());
                 tile.innerHTML = `
                     <span class="weekday">${weekdayNames[dateItem.getDay()]}</span>
                     <span class="date-number">${dateItem.getDate()}</span>
+                    <span class="date-task-queue">
+                        <span class="date-task-token ${dayData.sections.listening.completed ? "done" : ""}" title="Listening">${dayData.sections.listening.completed ? "✓" : "🎧"}</span>
+                        <span class="date-task-token ${dayData.sections.structure.completed ? "done" : ""}" title="Structure">${dayData.sections.structure.completed ? "✓" : "✍️"}</span>
+                        <span class="date-task-token ${dayData.sections.reading.completed ? "done" : ""}" title="Reading">${dayData.sections.reading.completed ? "✓" : "📖"}</span>
+                    </span>
                 `;
                 tile.addEventListener("click", () => {
                     selectedDate = new Date(dateItem.getFullYear(), dateItem.getMonth(), dateItem.getDate());
                     renderSchedule();
                 });
                 host.appendChild(tile);
+                if (shouldFocusDeepLinkedDate && dateItem.toDateString() === selectedDate.toDateString()) {
+                    tile.scrollIntoView({ block: "nearest", inline: "center" });
+                    tile.focus();
+                    shouldFocusDeepLinkedDate = false;
+                }
             });
 
-            document.getElementById("dateHelper").textContent = "";
+            document.getElementById("dateHelper").textContent = cloudStatusLabel;
         }
 
         function renderMockPanel() {
@@ -806,6 +936,18 @@
             document.getElementById("monthCaption").textContent = "";
             renderDateTiles();
         });
+
+        if (cloudSync) {
+            cloudSync.subscribe((snapshot) => {
+                cloudDailyTasks = snapshot.dailyTasks || {};
+                cloudStatusLabel = snapshot.isCloudActive
+                    ? "Live snapshot from /studyPlans/{uid}/dailyTasks is active."
+                    : "Cloud unavailable. Falling back to local cache.";
+                monthStoreCache = {};
+                renderSchedule();
+            });
+            cloudSync.start();
+        }
 
         renderSchedule();
     </script>

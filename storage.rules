@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isDeveloper() {
+      return isSignedIn() && request.auth.token.role == "developer";
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /speakingUploads/{uid}/{allPaths=**} {
+      allow read, write: if isOwner(uid) || isDeveloper();
+    }
+
+    match /audio/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isDeveloper();
+    }
+
+    match /problemAssets/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isDeveloper();
+    }
+
+    match /profiles/{uid}/{allPaths=**} {
+      allow read, write: if isOwner(uid) || isDeveloper();
+    }
+  }
+}

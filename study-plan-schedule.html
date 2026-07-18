@@ -385,6 +385,7 @@
         </div>
     </div>
 
+    <script src="study-plan-firestore-sync.js?v=20260508"></script>
     <script>
         const DAILY_TEST_KEY = "prephaven_daily_tests_v1";
         const MODULES = ["listening", "reading", "writing", "speaking"];
@@ -398,6 +399,12 @@
 
         const params = new URLSearchParams(window.location.search);
         const monthParam = params.get("month");
+        const cloudSync = typeof StudyPlanFirestoreSync === "function"
+            ? new StudyPlanFirestoreSync({ projectId: "quickcheck-25590" })
+            : null;
+        let cloudDailyTasks = {};
+        let currentYear = new Date().getFullYear();
+        let currentMonthIndex = new Date().getMonth();
 
         function safeParse(raw, fallback) {
             try {
@@ -416,6 +423,18 @@
         }
 
         function getDateState(dateKey) {
+            const cloudState = cloudDailyTasks[dateKey];
+            if (cloudState && cloudState.modules) return cloudState;
+            if (cloudState && cloudState.sections) {
+                return {
+                    modules: {
+                        listening: { taken: Boolean(cloudState.sections.listening && cloudState.sections.listening.completed) },
+                        reading: { taken: Boolean(cloudState.sections.reading && cloudState.sections.reading.completed) },
+                        writing: { taken: Boolean(cloudState.sections.structure && cloudState.sections.structure.completed) },
+                        speaking: { taken: false }
+                    }
+                };
+            }
             const store = safeParse(localStorage.getItem(DAILY_TEST_KEY), {});
             return store[dateKey] || null;
         }
@@ -483,15 +502,24 @@
                 monthIndex = now.getMonth();
             }
 
+            currentYear = year;
+            currentMonthIndex = monthIndex;
             document.getElementById("calendarTitle").textContent = `Mock Test Schedule: ${MONTH_LABELS_ID[monthIndex]} ${year}`;
             renderCalendar(year, monthIndex);
+        }
+
+        if (cloudSync) {
+            cloudSync.subscribe((snapshot) => {
+                cloudDailyTasks = snapshot.dailyTasks || {};
+                renderCalendar(currentYear, currentMonthIndex);
+            });
+            cloudSync.start();
         }
 
         init();
     </script>
 </body>
 </html>
-
 
 
 

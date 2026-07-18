@@ -1,0 +1,63 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isDeveloper() {
+      return isSignedIn() && request.auth.token.role == "developer";
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function uidFromNewData() {
+      return request.resource.data.uid;
+    }
+
+    function uidFromExistingData() {
+      return resource.data.uid;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isDeveloper();
+      allow create: if isOwner(uid) || isDeveloper();
+      allow update: if isOwner(uid) || isDeveloper();
+      allow delete: if isDeveloper();
+    }
+
+    match /problemSets/{setId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isDeveloper();
+    }
+
+    match /userSubmissions/{submissionId} {
+      allow read: if isDeveloper() || isOwner(uidFromExistingData());
+      allow create: if isDeveloper() || isOwner(uidFromNewData());
+      allow update: if isDeveloper() || isOwner(uidFromExistingData());
+      allow delete: if isDeveloper();
+    }
+
+    match /aiReviews/{reviewId} {
+      allow read: if isDeveloper() || isOwner(resource.data.uid);
+      allow create, update, delete: if isDeveloper();
+    }
+
+    match /studyPlans/{planId} {
+      allow read: if isDeveloper() || isOwner(resource.data.uid);
+      allow create: if isDeveloper() || isOwner(uidFromNewData());
+      allow update: if isDeveloper() || isOwner(uidFromExistingData());
+      allow delete: if isDeveloper();
+    }
+
+    match /referrals/{referralCode} {
+      allow read: if isSignedIn();
+      allow create: if isDeveloper() || isOwner(uidFromNewData());
+      allow update: if isDeveloper() || isOwner(uidFromExistingData());
+      allow delete: if isDeveloper();
+    }
+  }
+}

@@ -432,16 +432,27 @@
         var reviewSetDate = '';
         var reviewCurrentAudioKey = '';
         var reviewCurrentPartId = 1;
+        var reviewLoadedAudioPartId = 0;
+        var reviewAudioLoadingPartId = 0;
         var reviewAudioObjectUrl = null;
+
         var reviewTranscriptMapByPart = { 1: {}, 2: {}, 3: {} };
+        var reviewQuestionBoundaryMapByPart = { 1: {}, 2: {}, 3: {} };
         var reviewDetailSteps = [];
         var reviewDetailOpenSteps = [];
         var reportIssueTransitionTimer = null;
         var reportIssueSelectedFiles = [];
         var reportIssueDropActive = false;
         var reviewTranscriptViewMode = 'full';
+
         var reviewExplainationTab = 'explaination';
+
         var reviewActiveTranscriptKey = '';
+        var reviewActiveSegmentRange = null;
+        var reviewSegmentBoundaryRafId = 0;
+        var reviewSegmentBoundaryEnforcer = null;
+        var reviewPlaybackRequestId = 0;
+        var reviewPendingTranscriptSegmentPlay = null;
 
         function escapeAttr(value) {
             return escapeHtml(value).replace(/'/g, '&#39;');
@@ -1211,6 +1222,43 @@
             if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
             if (parts.length === 2) return (parts[0] * 60) + parts[1];
             return parts[0] || 0;
+
+        }
+
+        function extractQuestionBlockBoundaries(rawText) {
+            var source = String(rawText || '');
+            var map = {};
+            if (!source) return map;
+
+            var questionBlockRegex = /<Question\s+(\d+)\s*>([\s\S]*?)<\/Question\s+\1\s*>/gi;
+            var blockMatch = null;
+            while ((blockMatch = questionBlockRegex.exec(source))) {
+                var questionNumber = Number(blockMatch[1] || 0);
+                if (!(questionNumber > 0)) continue;
+
+                var blockText = String(blockMatch[2] || '');
+                var rangeRegex = /(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)\s*-\s*(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)/g;
+                var rangeMatch = null;
+                var minStart = Infinity;
+                var maxEnd = -Infinity;
+
+                while ((rangeMatch = rangeRegex.exec(blockText))) {
+                    var startFloat = parseTimestampToSeconds(rangeMatch[1]);
+                    var endFloat = parseTimestampToSeconds(rangeMatch[2]);
+                    if (!isFinite(startFloat) || !isFinite(endFloat)) continue;
+                    if (startFloat < minStart) minStart = startFloat;
+                    if (endFloat > maxEnd) maxEnd = endFloat;
+                }
+
+                if (isFinite(minStart) && isFinite(maxEnd) && maxEnd > minStart) {
+                    map[questionNumber] = {
+                        startFloat: minStart,
+                        endFloat: maxEnd
+                    };
+                }
+            }
+
+            return map;
         }
 
         function parseTranscriptSpeakerLine(rawLine) {
@@ -1279,14 +1327,14 @@
                 var line = String(lines[i] || '').trim();
                 if (!line) continue;
 
-                var openTag = line.match(/<Question\s+(\d+)>/i);
+                var openTag = line.match(/<Question\s+(\d+)\s*>/i);
                 if (openTag) {
                     currentQuestion = Number(openTag[1] || 0);
                     ensureBucket(currentQuestion);
                     continue;
                 }
 
-                var closeTag = line.match(/<\/Question\s+(\d+)>/i);
+                var closeTag = line.match(/<\/Question\s+(\d+)\s*>/i);
                 if (closeTag) {
                     currentQuestion = 0;
                     pendingTimestamp = '';
@@ -1377,9 +1425,19 @@
                 return question.transcriptSegments;
             }
 
-            // Then fall back to key 0 (all-segment pool for transcripts without Question markers).
-            direct = map[0] || [];
-            if (direct.length) return direct;
+            // If question tags were missing for this entry, derive a question slice by boundary range.
+            var questionBoundary = ((reviewQuestionBoundaryMapByPart[partId] || {})[qNum]) || null;
+            var allSegments = map[0] || [];
+            if (questionBoundary && allSegments.length) {
+                direct = allSegments.filter(function(seg) {
+                    var start = Number(seg && seg.start);
+                    return isFinite(start) && start >= (questionBoundary.startFloat - 0.001) && start <= (questionBoundary.endFloat + 0.001);
+                });
+                if (direct.length) return direct;
+            }
+
+            // Last fallback: all-segment pool.
+            if (allSegments.length) return allSegments;
 
             // Extra resilience: if part metadata was wrong/missing, search other parts.
             for (var p = 1; p <= 3; p += 1) {
@@ -1444,6 +1502,8 @@
 
             reviewAudio.addEventListener('timeupdate', onReviewTimeUpdate);
             reviewAudio.addEventListener('loadedmetadata', onReviewMetadata);
+            reviewAudio.addEventListener('loadedmetadata', tryPlayPendingTranscriptSegmentPlay);
+            reviewAudio.addEventListener('canplay', tryPlayPendingTranscriptSegmentPlay);
             reviewAudio.addEventListener('ended', onReviewEnded);
             reviewAudio.addEventListener('error', function() {
                 if (!window.toeflStorage || !reviewSetId || typeof window.toeflStorage.getAudioUrlFromLocalServer !== 'function') {
@@ -1460,7 +1520,8 @@
                 setReviewAudioSource(
                     fallbackUrl,
                     'Recovered from local server',
-                    String(reviewSetId || '') + '_part_' + String(reviewCurrentPartId || 1) + '_local-retry'
+                    String(reviewSetId || '') + '_part_' + String(reviewCurrentPartId || 1) + '_local-retry',
+                    reviewCurrentPartId
                 );
             });
             reviewAudio.addEventListener('play',  updatePlayPauseIcon);
@@ -1500,13 +1561,13 @@
             startReviewWaveform();
         }
 
-        function setReviewAudioSource(url, sourceLabel, sourceKey) {
+        function setReviewAudioSource(url, sourceLabel, sourceKey, loadedPartId) {
             if (!reviewAudio || !url) return;
             if (reviewCurrentAudioKey === sourceKey && reviewAudio.src) return;
 
             reviewCurrentAudioKey = sourceKey || '';
-            reviewSegmentStopAt = 0;
-            reviewAudio.pause();
+            reviewLoadedAudioPartId = Number(loadedPartId || reviewCurrentPartId || 0) || 0;
+            interruptActiveTranscriptPlayback();
             if (reviewAudioObjectUrl) {
                 URL.revokeObjectURL(reviewAudioObjectUrl);
                 reviewAudioObjectUrl = null;
@@ -1518,12 +1579,14 @@
             reviewAudio.load();
             updatePlayPauseIcon();
             setAudioStatus(sourceLabel || 'Ready - click play');
+            tryPlayPendingTranscriptSegmentPlay();
         }
 
-        function loadLatestLocalAudioFallback() {
+        function loadLatestLocalAudioFallback(targetPartId) {
             var DB_NAME = 'toefl-audio-db';
             var STORE   = 'audio-files';
             var MODULE  = 'section1';
+            var wantedPartId = Number(targetPartId || 0) || 0;
 
             return new Promise(function(resolve) {
                 if (!window.indexedDB) {
@@ -1545,6 +1608,30 @@
                     all.onsuccess = function() {
                         var rows = (all.result || [])
                             .filter(function(r) { return r && r.module === MODULE && r.blob; })
+                            .filter(function(r) {
+                                var rowId = String(r.id || '');
+                                var rowSetId = String(r.setId || '');
+                                var rowSetDate = normalizeDateKey(r.setDate || '');
+                                var rowPart = Number(r.partId || r.part || r.partNumber || 0) || 0;
+
+                                var setMatches = true;
+                                if (reviewSetId) {
+                                    setMatches = (rowSetId === reviewSetId) || (rowId.indexOf(reviewSetId) !== -1);
+                                } else if (reviewSetDate) {
+                                    var wantedDate = normalizeDateKey(reviewSetDate);
+                                    setMatches = !!wantedDate && rowSetDate === wantedDate;
+                                }
+
+                                var partMatches = true;
+                                if (wantedPartId > 0) {
+                                    partMatches = (rowPart === wantedPartId)
+                                        || (rowId.indexOf('_part_' + String(wantedPartId)) !== -1)
+                                        || (rowId.indexOf('part-' + String(wantedPartId)) !== -1)
+                                        || (rowId.indexOf('part' + String(wantedPartId)) !== -1);
+                                }
+
+                                return setMatches && partMatches;
+                            })
                             .sort(function(a, b) { return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0); });
                         var record = rows[0] || null;
                         db.close();
@@ -1553,7 +1640,7 @@
                             return;
                         }
                         reviewAudioObjectUrl = URL.createObjectURL(record.blob);
-                        setReviewAudioSource(reviewAudioObjectUrl, 'Ready from local cache', 'local-latest');
+                        setReviewAudioSource(reviewAudioObjectUrl, 'Ready from local cache', 'local-latest', wantedPartId || reviewCurrentPartId);
                         resolve(true);
                     };
                     all.onerror = function() {
@@ -1567,14 +1654,19 @@
         async function loadAudioForPart(partId) {
             if (!reviewAudio) return;
             reviewCurrentPartId = Number(partId || 1) || 1;
+            reviewAudioLoadingPartId = reviewCurrentPartId;
             var key = String(reviewSetId || '') + '_part_' + String(partId || 1);
-            if (reviewCurrentAudioKey === key && reviewAudio.src) return;
+            if (reviewCurrentAudioKey === key && reviewAudio.src && reviewLoadedAudioPartId === reviewCurrentPartId) {
+                reviewAudioLoadingPartId = 0;
+                return;
+            }
 
             if (window.toeflStorage && reviewSetId && typeof window.toeflStorage.getPlayableAudioFromFirebase === 'function') {
                 try {
                     var audioUrl = await getCloudAudioUrlWithTimeout(reviewSetId, partId, 3500);
                     if (audioUrl) {
-                        setReviewAudioSource(audioUrl, 'Ready from cloud', key);
+                        setReviewAudioSource(audioUrl, 'Ready from cloud', key, partId);
+                        reviewAudioLoadingPartId = 0;
                         return;
                     }
                 } catch (_) {
@@ -1601,7 +1693,8 @@
                         var candidateUrl = await getCloudAudioUrlWithTimeout(candidateSetId, partId, 2500);
                         if (candidateUrl) {
                             reviewSetId = candidateSetId;
-                            setReviewAudioSource(candidateUrl, 'Ready from cloud', candidateSetId + '_part_' + String(partId || 1));
+                            setReviewAudioSource(candidateUrl, 'Ready from cloud', candidateSetId + '_part_' + String(partId || 1), partId);
+                            reviewAudioLoadingPartId = 0;
                             return;
                         }
                     } catch (_) {}
@@ -1611,12 +1704,14 @@
             if (window.toeflStorage && reviewSetId && typeof window.toeflStorage.getAudioUrlFromLocalServer === 'function') {
                 var localServerUrl = window.toeflStorage.getAudioUrlFromLocalServer(reviewSetId, partId);
                 if (localServerUrl) {
-                    setReviewAudioSource(localServerUrl, 'Ready from local server', key + '_local');
+                    setReviewAudioSource(localServerUrl, 'Ready from local server', key + '_local', partId);
+                    reviewAudioLoadingPartId = 0;
                     return;
                 }
             }
 
-            var loadedLocal = await loadLatestLocalAudioFallback();
+            var loadedLocal = await loadLatestLocalAudioFallback(partId);
+            reviewAudioLoadingPartId = 0;
             if (!loadedLocal) setAudioStatus('No saved audio found for this package/part');
         }
 
@@ -1637,16 +1732,18 @@
             var pct = dur > 0 ? (cur / dur) : 0;
             document.getElementById('audio-cur-time').textContent  = fmtTime(cur);
             document.getElementById('audio-rem-time').textContent  = '-' + fmtTime(Math.max(0, dur - cur));
+
             document.getElementById('scrubber-fill').style.width   = (pct * 100) + '%';
+
             document.getElementById('scrubber-knob').style.left    = (pct * 100) + '%';
-            if (reviewSegmentStopAt > 0 && cur >= reviewSegmentStopAt) {
-                reviewAudio.pause();
-                reviewSegmentStopAt = 0;
-                setAudioStatus('Segment complete');
-            }
+
         }
 
         function onReviewEnded() {
+            clearActiveSegmentBoundaryLoop();
+            reviewActiveSegmentRange = null;
+            reviewSegmentStopAt = 0;
+
             updatePlayPauseIcon();
             setAudioStatus('Playback complete');
         }
@@ -1688,10 +1785,14 @@
         }
 
         function reviewAudioStop() {
+
             if (!reviewAudio) return;
-            reviewAudio.pause();
+
+            interruptActiveTranscriptPlayback();
+            clearPendingTranscriptSegmentPlay();
+
             reviewAudio.currentTime = 0;
-            reviewSegmentStopAt = 0;
+
             updatePlayPauseIcon();
             setAudioStatus('Stopped');
         }
@@ -1841,18 +1942,60 @@
         }
 
         function playTranscriptSegment(startSeconds, endSeconds) {
-            if (!reviewAudio || !isFinite(reviewAudio.duration)) return;
+
+            if (!reviewAudio) return;
+
+            interruptActiveTranscriptPlayback();
+
             var start = Math.max(0, Number(startSeconds) || 0);
-            var end = Math.max(start + 0.2, Number(endSeconds) || (start + 8));
+
+            var end = Number(endSeconds);
+            if (!isFinite(end) || end <= start) end = start + 8;
+            end = Math.max(start + 0.001, end);
+
+            if (isFinite(reviewAudio.duration) && reviewAudio.duration > 0) {
+                var maxTime = Math.max(0, reviewAudio.duration - 0.001);
+                start = Math.max(0, Math.min(start, maxTime));
+                end = Math.max(start + 0.001, Math.min(end, reviewAudio.duration));
+            }
+
             reviewAudio.currentTime = start;
-            reviewSegmentStopAt = end;
+
             ensureReviewAnalyser();
             if (reviewAudioCtx && reviewAudioCtx.state === 'suspended') reviewAudioCtx.resume();
             reviewAudio.play().then(function() {
+                startActiveSegmentBoundaryLoop(start, end);
                 setAudioStatus('Playing transcript segment');
             }).catch(function() {
                 setAudioStatus('Playback blocked by browser');
             });
+        }
+
+        function clearPendingTranscriptSegmentPlay() {
+            reviewPendingTranscriptSegmentPlay = null;
+        }
+
+        function tryPlayPendingTranscriptSegmentPlay() {
+            var pending = reviewPendingTranscriptSegmentPlay;
+            if (!pending) return false;
+
+            if (Number(pending.requestId || 0) !== Number(reviewPlaybackRequestId || 0)) {
+                clearPendingTranscriptSegmentPlay();
+                return false;
+            }
+
+            var expectedPartId = Number(pending.partId || 0);
+            if (!reviewAudio || !reviewAudio.src || Number(reviewLoadedAudioPartId || 0) !== expectedPartId) {
+                return false;
+            }
+
+            if (Number(reviewAudio.readyState || 0) < 1) {
+                return false;
+            }
+
+            clearPendingTranscriptSegmentPlay();
+            playTranscriptSegment(pending.startSeconds, pending.endSeconds);
+            return true;
         }
 
         function setTranscriptViewMode(mode) {
@@ -1860,10 +2003,109 @@
             if (reviewCurrentQuestion) renderTranscriptCards(reviewCurrentQuestion);
         }
 
-        function playTranscriptSegmentFromCard(cardKey, startSeconds, endSeconds) {
-            reviewActiveTranscriptKey = String(cardKey || '');
+        function playTranscriptSegmentFromCard(encodedCardKey, startSeconds, endSeconds) {
+            reviewPlaybackRequestId += 1;
+            interruptActiveTranscriptPlayback();
+
+            var cardKey = '';
+            try {
+                cardKey = decodeURIComponent(String(encodedCardKey || ''));
+            } catch (_) {
+                cardKey = String(encodedCardKey || '');
+            }
+            reviewActiveTranscriptKey = cardKey;
             if (reviewCurrentQuestion) renderTranscriptCards(reviewCurrentQuestion);
+
+            var targetPartId = inferPartIdFromQuestion(reviewCurrentQuestion);
+            reviewPendingTranscriptSegmentPlay = {
+                requestId: reviewPlaybackRequestId,
+                partId: Number(targetPartId || 0),
+                startSeconds: Number(startSeconds || 0),
+                endSeconds: Number(endSeconds || 0)
+            };
+
+            var hasMatchingAudio = !!reviewAudio.src && Number(reviewLoadedAudioPartId || 0) === Number(targetPartId || 0);
+            if (hasMatchingAudio) {
+                if (tryPlayPendingTranscriptSegmentPlay()) return;
+            } else {
+                if (Number(reviewAudioLoadingPartId || 0) !== Number(targetPartId || 0)) {
+                    loadAudioForPart(targetPartId);
+                }
+                setAudioStatus('Loading part audio...');
+                return;
+            }
+
+            clearPendingTranscriptSegmentPlay();
             playTranscriptSegment(startSeconds, endSeconds);
+
+        }
+
+        function clearActiveSegmentBoundaryLoop() {
+            if (!reviewAudio) return;
+
+            if (reviewSegmentBoundaryEnforcer) {
+                reviewAudio.removeEventListener('timeupdate', reviewSegmentBoundaryEnforcer);
+                reviewSegmentBoundaryEnforcer = null;
+            }
+
+            if (reviewSegmentBoundaryRafId) {
+                cancelAnimationFrame(reviewSegmentBoundaryRafId);
+                reviewSegmentBoundaryRafId = 0;
+            }
+        }
+
+        function interruptActiveTranscriptPlayback() {
+            if (!reviewAudio) return;
+
+            reviewAudio.pause();
+            clearActiveSegmentBoundaryLoop();
+            reviewActiveSegmentRange = null;
+            reviewSegmentStopAt = 0;
+        }
+
+        function startActiveSegmentBoundaryLoop(startFloat, endFloat) {
+            if (!reviewAudio) return;
+
+            clearActiveSegmentBoundaryLoop();
+
+            var safeStart = Math.max(0, Number(startFloat) || 0);
+            var safeEnd = Math.max(safeStart + 0.001, Number(endFloat) || (safeStart + 8));
+
+            reviewActiveSegmentRange = {
+                startFloat: safeStart,
+                endFloat: safeEnd
+            };
+            reviewSegmentStopAt = safeEnd;
+
+            reviewSegmentBoundaryEnforcer = function() {
+                if (!reviewAudio || !reviewActiveSegmentRange) return;
+
+                if (reviewAudio.currentTime >= reviewActiveSegmentRange.endFloat) {
+                    reviewAudio.pause();
+                    reviewAudio.currentTime = reviewActiveSegmentRange.startFloat;
+                    clearActiveSegmentBoundaryLoop();
+                    reviewActiveSegmentRange = null;
+                    reviewSegmentStopAt = 0;
+                    updatePlayPauseIcon();
+                    setAudioStatus('Segment complete');
+                }
+            };
+
+            reviewAudio.addEventListener('timeupdate', reviewSegmentBoundaryEnforcer);
+
+            function boundaryTick() {
+                if (!reviewAudio || !reviewActiveSegmentRange) return;
+
+                reviewSegmentBoundaryEnforcer();
+
+                if (reviewActiveSegmentRange && !reviewAudio.paused) {
+                    reviewSegmentBoundaryRafId = requestAnimationFrame(boundaryTick);
+                } else {
+                    reviewSegmentBoundaryRafId = 0;
+                }
+            }
+
+            reviewSegmentBoundaryRafId = requestAnimationFrame(boundaryTick);
         }
 
         function setReviewExplainationTab(mode) {
@@ -1957,7 +2199,10 @@
             var qNumber = Number((question && question.number) || 0);
             var partId = inferPartIdFromQuestion(question);
             var fullSegments = getPartTranscriptSegments(question);
+
             var questionSegments = getQuestionTranscriptSegments(question);
+            var questionBoundary = ((reviewQuestionBoundaryMapByPart[partId] || {})[qNumber]) || null;
+
             var activeSegments = reviewTranscriptViewMode === 'question' ? questionSegments : fullSegments;
 
             var html = '';
@@ -1985,17 +2230,25 @@
                 for (var i = 0; i < activeSegments.length; i += 1) {
                     var seg = activeSegments[i] || {};
                     var start = Number(seg.start || 0);
+
                     var end = Number(seg.end || (start + 8));
+                    if (questionBoundary && reviewTranscriptViewMode === 'question') {
+                        if (start < questionBoundary.startFloat) start = questionBoundary.startFloat;
+                        if (end > questionBoundary.endFloat) end = questionBoundary.endFloat;
+                    }
+                    if (!(end > start)) end = start + 0.2;
+
                     var ts = escapeHtml(seg.timestamp || fmtTime(start));
                     var speakerClass = getTranscriptSpeakerClass(seg.speaker || 'NARR');
                     var speakerLabel = escapeHtml(getTranscriptSpeakerLabel(seg.speaker || 'NARR', partId));
                     var text = escapeHtml(seg.text || '');
                     var cardKey = [String(speakerClass), String(start), String(seg.timestamp || ''), String(seg.text || '')].join('|');
+                    var encodedCardKey = encodeURIComponent(cardKey);
                     var isActive = reviewActiveTranscriptKey === cardKey;
                     var legacyClass = speakerClass === 'men' ? 'second-speaker' : (speakerClass === 'women' ? 'thrid-speaker' : 'first-speaker');
-                    html += '<article class="transcript-modern-item transcript-modern-item--' + speakerClass + ' ' + legacyClass + (isActive ? ' is-active' : '') + '" onclick="playTranscriptSegmentFromCard(\'' + escapeAttr(cardKey) + '\',' + start + ',' + end + ')">';
+                    html += '<article class="transcript-modern-item transcript-modern-item--' + speakerClass + ' ' + legacyClass + (isActive ? ' is-active' : '') + '" onclick="playTranscriptSegmentFromCard(\'' + encodedCardKey + '\',' + start + ',' + end + ')">';
                     html += '<div class="transcript-modern-item-head">';
-                    html += '<div class="transcript-modern-item-speaker"><button type="button" class="transcript-modern-play-btn" aria-label="Play transcript segment" onclick="event.stopPropagation();playTranscriptSegmentFromCard(\'' + escapeAttr(cardKey) + '\',' + start + ',' + end + ')"><i class="ph-fill ph-play" aria-hidden="true"></i></button><i class="ph ph-user transcript-modern-item-user" aria-hidden="true"></i><span>' + speakerLabel + '</span></div>';
+                    html += '<div class="transcript-modern-item-speaker"><button type="button" class="transcript-modern-play-btn" aria-label="Play transcript segment" onclick="event.stopPropagation();playTranscriptSegmentFromCard(\'' + encodedCardKey + '\',' + start + ',' + end + ')"><i class="ph-fill ph-play" aria-hidden="true"></i></button><i class="ph ph-user transcript-modern-item-user" aria-hidden="true"></i><span>' + speakerLabel + '</span></div>';
                     html += '<div class="transcript-modern-item-time">' + ts + '</div>';
                     html += '</div>';
                     html += '<div class="transcript-modern-item-body">' + text + '</div>';
@@ -3439,6 +3692,8 @@
         }
 
         function renderQuestion(q, indexHint) {
+            clearPendingTranscriptSegmentPlay();
+            reviewActiveTranscriptKey = '';
             reviewCurrentQuestion = q;
             normalizeTranslationState(reviewCurrentQuestion);
             var options     = q.options || {};
@@ -3501,7 +3756,9 @@
         }
 
         async function hydrateTranscriptFallbackMaps(result) {
+
             reviewTranscriptMapByPart = { 1: {}, 2: {}, 3: {} };
+            reviewQuestionBoundaryMapByPart = { 1: {}, 2: {}, 3: {} };
             if (!result) return;
 
             for (var p = 1; p <= 3; p += 1) {
@@ -3554,6 +3811,8 @@
                 }
 
                 reviewTranscriptMapByPart[p] = mapTranscriptByQuestion(rawTranscript);
+                reviewQuestionBoundaryMapByPart[p] = extractQuestionBlockBoundaries(rawTranscript);
+
             }
         }
 
@@ -3632,4 +3891,3 @@
     </script>
 </body>
 </html>
-
