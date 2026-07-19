@@ -1461,13 +1461,11 @@ body {
     grid-column: 2;
 }
 
-/* Section 2 Part B (inline underlined-word questions) keep a single stacked
-   column since the whole sentence + word boxes render inline. */
-.question-item:has(.inline-question-text) {
+/* Section 2 Part B: keep the same badge|content grid as Part A for visual
+   parity with the Figma layout. */
+.question-content--partb {
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
+    align-items: flex-start;
 }
 
 .question-stem {
@@ -1487,12 +1485,14 @@ body {
 .inline-question-text {
     margin: 0;
     color: #0f172a;
-    font: 400 18px/1.9 "Times New Roman", Times, serif;
+    font: 400 18px/2.05 "Times New Roman", Times, serif;
 }
 
 .inline-error-wrapper {
     position: relative;
-    display: inline;
+    display: inline-flex;
+    vertical-align: baseline;
+    margin: 0 2px;
 }
 
 .inline-error-wrapper input[type="radio"] {
@@ -1504,31 +1504,59 @@ body {
 }
 
 .error-label {
-    display: inline;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
     cursor: pointer;
     border-radius: 4px;
-    padding: 1px 2px;
-    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+    padding: 0;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;
 }
 
 .error-label .word-text {
+    display: inline-block;
+    padding: 0 5px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    color: #0f172a;
     text-decoration: underline;
     text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
 }
 
 .error-label .letter-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-left: 2px;
-    font: 700 11px/1 "Plus Jakarta Sans", Arial, sans-serif;
-    color: var(--navy-mid);
-    vertical-align: super;
+    min-width: 30px;
+    height: 28px;
+    padding: 0 4px;
+    border-radius: 8px;
+    border: 1px solid var(--line-gray, #d1dce8);
+    background: #fff;
+    color: #111827;
+    font: 400 16px/1 "Times New Roman", Times, serif;
+    letter-spacing: 0;
 }
 
 .inline-error-wrapper input[type="radio"]:checked + .error-label {
-    background: rgba(14, 165, 233, 0.2);
-    box-shadow: 0 2px 4px rgba(14, 165, 233, 0.25);
+    background: transparent;
+    box-shadow: none;
+}
+
+.inline-error-wrapper input[type="radio"]:checked + .error-label .word-text {
+    background: var(--navy-mid, #005faa);
+    border-color: var(--navy-mid, #005faa);
+    color: #fff;
+}
+
+.inline-error-wrapper input[type="radio"]:checked + .error-label .letter-badge {
+    border-color: var(--navy-mid, #005faa);
+    background: rgba(14, 165, 233, 0.15);
+    box-shadow: 0 4px 4px rgba(14, 165, 233, 0.25);
+    color: #111827;
 }
 
 .navigator-panel {
@@ -3088,9 +3116,24 @@ body {
 #user-view.is-dark .question-stem { color: #ffffff; }
 #user-view.is-dark .question-blank { color: #7cc4ff; }
 #user-view.is-dark .inline-question-text { color: #ffffff; }
-#user-view.is-dark .error-label .letter-badge { color: #7cc4ff; }
+#user-view.is-dark .error-label .word-text { color: #ffffff; }
+#user-view.is-dark .error-label .letter-badge {
+    color: #ffffff;
+    border-color: #7cc4ff;
+    background: #004b87;
+}
 #user-view.is-dark .inline-error-wrapper input[type="radio"]:checked + .error-label {
+    background: transparent;
+}
+#user-view.is-dark .inline-error-wrapper input[type="radio"]:checked + .error-label .word-text {
+    background: #0ea5e9;
+    border-color: #0ea5e9;
+    color: #003560;
+}
+#user-view.is-dark .inline-error-wrapper input[type="radio"]:checked + .error-label .letter-badge {
     background: rgba(14, 165, 233, 0.28);
+    border-color: #0ea5e9;
+    color: #ffffff;
 }
 
 #user-view.is-dark .question-number-badge {

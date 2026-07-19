@@ -558,7 +558,7 @@
         }
 
         function getChipPalette(status, isActive) {
-            var palette = { fill: 'rgba(122, 143, 166, 0.82)', border: '#d1dce8', activeFill: '#7a8fa6', glow: '#7a8fa6' };
+            var palette = { fill: 'rgba(13, 148, 136, 0.82)', border: '#ccfbf1', activeFill: '#0d9488', glow: '#0d9488' };
             if (status === 'correct') palette = { fill: 'rgba(13, 148, 136, 0.82)', border: '#ccfbf1', activeFill: '#0d9488', glow: '#0d9488' };
             if (status === 'wrong') palette = { fill: 'rgba(220, 38, 38, 0.82)', border: '#fee2e2', activeFill: '#dc2626', glow: '#dc2626' };
             if (!isActive) return palette;
@@ -574,6 +574,18 @@
             var classes = 'q-chip' + (active ? ' active' : '');
             var style = '--chip-fill:' + palette.fill + ';--chip-border:' + palette.border + ';--chip-active-fill:' + palette.activeFill + ';--chip-glow:' + palette.glow + ';';
             return '<button type="button" class="' + classes + '" style="' + style + '" onclick="selectReviewQuestion(' + qNum + ')"><span class="q-chip-label">' + qNum + '</span></button>';
+        }
+
+        function buildQuestionChipRows(questions, activeQuestionNumber) {
+            var chips = [];
+            for (var i = 0; i < questions.length; i += 1) {
+                chips.push(buildQuestionChip(questions[i], activeQuestionNumber));
+            }
+
+            var midpoint = Math.ceil(chips.length / 2);
+            var firstRow = chips.slice(0, midpoint).join('');
+            var secondRow = chips.slice(midpoint).join('');
+            return '<div class="header-question-row">' + firstRow + '</div>' + '<div class="header-question-row">' + secondRow + '</div>';
         }
 
         function renderHeaderNavigator(result, activeQuestionNumber) {
@@ -594,11 +606,10 @@
                 block.style.display = 'flex';
                 title.textContent = part.label || ('PART ' + (slot + 1));
                 grid.className = 'header-question-grid ' + (slot === 0 ? 'part-a' : (slot === 1 ? 'part-b' : 'part-c'));
+                var rowLength = Math.ceil(part.questions.length / 2);
+                grid.style.width = ((rowLength * 16) + Math.max(0, rowLength - 1) * 2) + 'px';
 
-                var count = part.questions.length;
-                var html = '';
-                for (var i = 0; i < count; i += 1) html += buildQuestionChip(part.questions[i], activeQuestionNumber);
-                grid.innerHTML = html;
+                grid.innerHTML = buildQuestionChipRows(part.questions, activeQuestionNumber);
             }
         }
 
@@ -1127,9 +1138,101 @@
                 + '</div>';
         }
 
+        function buildQuestionTwoExplanationQuestion(question) {
+            var base = question || {};
+            var options = base.options || {
+                A: 'thriving of certain species',
+                B: 'certain species that thrive',
+                C: 'certain species thrive',
+                D: 'when certain species thrive'
+            };
+            return Object.assign({}, base, {
+                number: 2,
+                partId: 1,
+                partName: 'Part A',
+                questionText: 'Found in the deepest parts of the ocean, _____ under extreme pressure and in complete darkness.',
+                options: options,
+                correctAnswer: 'C',
+                userAnswer: 'C',
+                isCorrect: true,
+                filledSentenceHtml: 'Found in the deepest parts of the ocean, <span class="section2-figma-highlight-teal section2-figma-highlight-teal--strong">certain species thrive</span> under extreme pressure and in complete darkness.',
+                contextualExplanations: [
+                    { html: 'Untuk memahami mengapa (C) adalah satu-satunya pilihan yang tepat, kita perlu melihat anatomi struktural dari kalimat tersebut. Sebuah kalimat bahasa Inggris yang lengkap membutuhkan sebuah <span class="section2-figma-highlight-yellow">independent clause</span> yang mengikuti formula ini:' },
+                    { html: 'Ketika Anda menganalisis kalimat soal, carilah <span class="section2-figma-highlight-yellow">main verb</span> terlebih dahulu setelah tanda koma.' },
+                    { html: 'Kita dapat melihat bahwa sisa frasa setelah area kosong (…under extreme pressure and in complete darkness) hanya berisi <span class="section2-figma-highlight-yellow">prepositional phrases</span> (frasa kata depan) yang berfungsi sebagai keterangan tambahan dan tidak memiliki verb sama sekali.' },
+                    { html: 'Oleh karena itu, (C) certain species thrive adalah jawaban yang benar karena pilihan ini menyediakan noun (certain species) sebagai <span class="section2-figma-highlight-yellow">Subject</span> yang dibutuhkan dan diikuti langsung oleh kata kerja murni (thrive) sebagai <span class="section2-figma-highlight-yellow">Main Verb</span> untuk melengkapi formula kalimat secara sempurna tanpa memasukkan redundant verbs atau clause connectors apa pun.' }
+                ],
+                grammarBlueprint: {
+                    subject: 'certain species',
+                    mainVerb: 'thrive',
+                    descriptivePhrase: 'Found in the deepest parts of the ocean',
+                    clauseTail: 'under extreme pressure and in complete darkness.',
+                    ruleLabel: 'The blank must provide a subject plus a verb, with no connector that turns the clause dependent.',
+                    headline: 'Subject + Verb',
+                    bracketLabel: 'Past Participle Phrase'
+                }
+            });
+        }
+
+        function renderQuestionTwoExplanation(question) {
+            var displayQuestion = buildQuestionTwoExplanationQuestion(question);
+            var correct = normalizeLetter(displayQuestion.correctAnswer) || 'C';
+            var paragraphs = displayQuestion.contextualExplanations || [];
+            var introHtml = paragraphs[0] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[0]) + '</div>' : '';
+            var instructionHtml = paragraphs[1] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[1]) + '</div>' : '';
+            var supportHtml = paragraphs[2] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[2]) + '</div>' : '';
+            var conclusionHtml = paragraphs[3] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[3]) + '</div>' : '';
+
+            return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q2">'
+                + '<div class="section2-figma-top">'
+                + '<div class="section2-figma-question-row">'
+                + '<div class="explaination-figma-qnum is-correct">2</div>'
+                + '<div class="section2-figma-question-text">Found in the deepest parts of the ocean, <span class="section2-question-blank">_____</span> under extreme pressure and in complete darkness.</div>'
+                + '</div>'
+                + '<b class="explaination-figma-status is-correct">CORRECT</b>'
+                + '</div>'
+                + '<div class="explaination-figma-options explaination-figma-options--q2">' + buildOptionMarkup(displayQuestion) + '</div>'
+                + '<section class="explaination-why-section section2-figma-why section2-figma-why--q2">'
+                + '<div class="explaination-figma-divider" aria-hidden="true"></div>'
+                + '<div class="heading">Why (' + escapeHtml(correct) + ')?</div>'
+                + '<div class="section2-figma-filled-sentence">' + renderTextOrHtml({ html: displayQuestion.filledSentenceHtml }) + '</div>'
+                + introHtml
+                + instructionHtml
+                + '<div class="section2-figma-q2-diagram">'
+                + '<div class="section2-figma-q2-diagram-headline">Subject + Verb</div>'
+                + '<div class="section2-figma-q2-diagram-copy">Ketika Anda menganalisis kalimat soal, carilah main verb terlebih dahulu setelah tanda koma.</div>'
+                + '<div class="section2-figma-q2-diagram-frame">'
+                + '<div class="section2-figma-q2-diagram-token-row section2-figma-q2-diagram-token-row--top">'
+                + '<span>[ V3 ] +</span>'
+                + '<span>[ prepositional phrase ]</span>'
+                + '<span>[ prepositions + noun ] + and + [ prepositions + noun ]</span>'
+                + '</div>'
+                + '<div class="section2-figma-q2-diagram-sentence">'
+                + '<span class="section2-figma-q2-diagram-sentence-part">Found in the deepest parts of the ocean,</span>'
+                + '<span class="section2-figma-q2-diagram-sentence-blank">_____</span>'
+                + '<span class="section2-figma-q2-diagram-sentence-part">under extreme pressure and in complete darkness.</span>'
+                + '</div>'
+                + '<div class="section2-figma-q2-diagram-token-row section2-figma-q2-diagram-token-row--bottom">'
+                + '<span class="section2-figma-q2-diagram-token-pill">Past Participle Phrase</span>'
+                + '</div>'
+                + '<div class="section2-figma-q2-diagram-callout">'
+                + '<span class="section2-figma-q2-diagram-arrow">↑</span>'
+                + '<span class="section2-figma-q2-diagram-badge">Main Verb</span>'
+                + '</div>'
+                + '</div>'
+                + supportHtml
+                + conclusionHtml
+                + '</section>'
+                + '</div>';
+        }
+
         function renderExplainationTabDetail(question) {
             var host = document.getElementById('explainationTabContent');
             if (!host || !question) return;
+            if (Number(question.number) === 2) {
+                host.innerHTML = renderQuestionTwoExplanation(question);
+                return;
+            }
             var correct = normalizeLetter(question.correctAnswer) || 'A';
             var isCorrect = !!question.isCorrect;
             var blueprint = deriveGrammarBlueprint(question);
@@ -1247,6 +1350,626 @@
                 + '</div>';
         }
 
+        function buildStepSentenceSandbox(question, blueprint) {
+            var rawSentence = normalizeText(firstNonEmpty(
+                blueprint && blueprint.insertedSentence,
+                blueprint && blueprint.sentence,
+                question && question.questionText
+            ));
+            var html = escapeHtml(rawSentence || question.questionText || '');
+            var descriptivePhrase = normalizeText(blueprint && blueprint.descriptivePhrase);
+            var mainVerb = normalizeText(blueprint && blueprint.mainVerb);
+
+            if (descriptivePhrase) {
+                html = html.replace(escapeHtml(descriptivePhrase), '<span class="section2-step-part1-strike">' + escapeHtml(descriptivePhrase) + '</span>');
+            }
+            if (mainVerb) {
+                html = html.replace(escapeHtml(mainVerb), '<strong class="section2-step-part1-verb">' + escapeHtml(mainVerb) + '</strong>');
+            }
+            html = html.replace(/_{3,}|\.{3,}/, '<span class="section2-step-part1-blank">_____</span>');
+            return html;
+        }
+
+        function inferPart1WrongReason(optionText, blueprint) {
+            var text = normalizeText(optionText).toLowerCase();
+            if (!text) return 'Tidak membentuk Subject + Verb yang dibutuhkan.';
+            if (/^(that|when|because|although|if|since|while|where|who|which)\b/.test(text)) return 'Memasukkan Connector yang mengubah slot ini menjadi Dependent Clause.';
+            if (/\b(is|are|was|were|be|been|being)\b/.test(text)) return 'Menyisipkan Verb tambahan sehingga struktur menjadi double Verb.';
+            if (/\b\w+(ing|ed)\b/.test(text)) return 'Bentuk ini cenderung berfungsi sebagai Phrase/Modifier, bukan Subject bersih.';
+            if ((blueprint && blueprint.subject && text.indexOf(normalizeText(blueprint.subject).toLowerCase()) >= 0) && (blueprint && blueprint.mainVerb && text.indexOf(normalizeText(blueprint.mainVerb).toLowerCase()) < 0)) {
+                return 'Baru sampai Subject, belum lengkap dengan Main Verb yang dibutuhkan.';
+            }
+            return 'Tidak memenuhi pola Subject + Verb yang aman untuk klausa utama.';
+        }
+
+        function buildPartOneStepByStep(question) {
+            var blueprint = deriveGrammarBlueprint(question);
+            var correctLetter = normalizeLetter(question.correctAnswer) || 'A';
+            var correctText = extractChoiceText(question.options, correctLetter);
+            var wrongLetters = [];
+            var letters = Object.keys(question.options || {}).sort();
+            for (var i = 0; i < letters.length; i += 1) {
+                if (letters[i] !== correctLetter) wrongLetters.push(letters[i]);
+            }
+
+            var sentenceSandbox = buildStepSentenceSandbox(question, blueprint);
+            var rationale = normalizeText(firstNonEmpty(
+                blueprint.ruleLabel,
+                'Kalimat sudah memiliki pola inti yang menuntut Subject tunggal dan bersih.'
+            ));
+            var summary = 'Pola visual: blank + noun phrase bersih + Main Verb = jawabannya harus berperan sebagai Subject, bukan connector atau Verb tambahan.';
+
+            var html = '<div class="section2-step-shell">'
+                + '<article class="section2-step-item">'
+                + '<div class="section2-step-rail"><div class="section2-step-number">1</div><div class="section2-step-line"></div></div>'
+                + '<div class="section2-step-content">'
+                + '<h3 class="section2-step-title">LANGKAH 1 &amp; 2: Bedah Kerangka Kalimat</h3>'
+                + '<div class="section2-step-part1-box">'
+                + '<div class="section2-step-part1-sandbox">' + sentenceSandbox + '</div>'
+                + '<div class="section2-step-part1-legend">Bold = Main Verb, Strikethrough = Appositive (Coret)</div>'
+                + '</div>'
+                + '</div>'
+                + '</article>'
+                + '<article class="section2-step-item">'
+                + '<div class="section2-step-rail"><div class="section2-step-number">2</div><div class="section2-step-line"></div></div>'
+                + '<div class="section2-step-content">'
+                + '<h3 class="section2-step-title">LANGKAH 3: Tentukan Komponen Hilang</h3>'
+                + '<div class="section2-step-part1-formula-card">'
+                + '<div class="section2-step-part1-formula">Formula Independent Clause: Subject + Verb</div>'
+                + '<p class="section2-step-part1-subtext">' + escapeHtml(rationale) + '</p>'
+                + '</div>'
+                + '</div>'
+                + '</article>'
+                + '<article class="section2-step-item">'
+                + '<div class="section2-step-rail"><div class="section2-step-number">3</div><div class="section2-step-line"></div></div>'
+                + '<div class="section2-step-content">'
+                + '<h3 class="section2-step-title">LANGKAH 4: Teknik Eliminasi Opsi Jawaban</h3>'
+                + '<div class="section2-step-part1-correct-card">'
+                + '<div class="section2-step-part1-correct-label">✓ (' + escapeHtml(correctLetter) + ') ' + escapeHtml(correctText) + ' <span>[PILIHAN TEPAT]</span></div>'
+                + '<div class="section2-step-part1-correct-rationale">Berupa simple noun / Subject yang melengkapi Main Verb tanpa membawa connector atau Verb tambahan.</div>'
+                + '</div>'
+                + '<div class="section2-step-part1-separator">ELIMINASI OPSI GANGGUAN</div>'
+                + '<div class="section2-step-part1-wrong-list">';
+
+            for (var j = 0; j < wrongLetters.length; j += 1) {
+                var wrongLetter = wrongLetters[j];
+                var wrongText = extractChoiceText(question.options, wrongLetter);
+                html += '<div class="section2-step-part1-wrong-item">'
+                    + '<div class="section2-step-part1-wrong-mark">✕</div>'
+                    + '<div class="section2-step-part1-wrong-body">'
+                    + '<div class="section2-step-part1-wrong-choice">(' + escapeHtml(wrongLetter) + ') ' + escapeHtml(wrongText) + '</div>'
+                    + '<div class="section2-step-part1-wrong-reason">Salah: ' + escapeHtml(inferPart1WrongReason(wrongText, blueprint)) + '</div>'
+                    + '</div>'
+                    + '</div>';
+            }
+
+            html += '</div>'
+                + '<div class="section2-step-part1-summary">Kesimpulan Guru TOEFL Expert: ' + escapeHtml(summary) + '</div>'
+                + '</div>'
+                + '</article>'
+                + '</div>';
+            return html;
+        }
+
+        function inferPart2ErrorType(optionText, blueprint) {
+            var text = normalizeText(optionText).toLowerCase();
+            if (!text) return 'Structural Error';
+            if (/\b(is|are|was|were|be|been|being)\b/.test(text)) return 'Subject-Verb Agreement Error';
+            if (/\b(very|too|so|enough)\b/.test(text)) return 'Modifier Error';
+            if (/\b(and|or|but|nor)\b/.test(text) && /\b\w+ing\b/.test(text)) return 'Parallel Structure Error';
+            if (/\b(that|which|who|whom|whose|when|where|because|although|if|since|while)\b/.test(text)) return 'Connector / Clause Error';
+            if (/\b\w+ing\b/.test(text) || /\b\w+ed\b/.test(text)) return 'Word Form Error';
+            if (blueprint && blueprint.mainVerb && text.indexOf(normalizeText(blueprint.mainVerb).toLowerCase()) >= 0) return 'Verb Form Error';
+            return 'Word Form Error';
+        }
+
+        function inferPart2InstantFix(optionText, blueprint) {
+            var text = normalizeText(optionText);
+            if (!text) return 'Tinjau ulang bentuk kata pada opsi yang dieliminasi.';
+            var lowered = text.toLowerCase();
+            if (/\bare\b/.test(lowered) && blueprint && normalizeText(blueprint.mainVerb) === 'is') return 'are → is';
+            if (/\bwere\b/.test(lowered) && blueprint && normalizeText(blueprint.mainVerb) === 'was') return 'were → was';
+            if (/\bwas\b/.test(lowered) && blueprint && normalizeText(blueprint.mainVerb) === 'were') return 'was → were';
+            if (/\bthat\b/.test(lowered)) return 'Hapus connector atau ubah menjadi clause yang lengkap.';
+            if (/\b\w+ing\b/.test(lowered)) return 'Ubah bentuk kata ke Noun / Adjective / Verb yang sesuai fungsi.';
+            return 'Sesuaikan bentuk kata agar selaras dengan fungsi Subject, Verb, dan structure utama.';
+        }
+
+        var STEP_CATEGORY_RULES = {
+            1: {
+                id: 1,
+                name: 'Clause Structure & Appositives',
+                step1Focus: 'Pindai kalimat untuk mencari Main Verb di luar tanda koma penjelas.',
+                formula: 'Subject + Verb',
+                step3Target: 'Cari murni Noun tunggal/jamak tanpa extra verb/connector.'
+            },
+            2: {
+                id: 2,
+                name: 'Modifiers & Participial Phrases',
+                step1Focus: 'Deteksi Verb-3 atau Verb-ing sebelum koma pembuka yang bertindak sebagai Modifier.',
+                formula: 'Modifier Phrase , Subject + Verb',
+                step3Target: 'Cari paket lengkap Subject + Verb atau murni Subject jika Verb sudah ada di klausa utama.'
+            },
+            3: {
+                id: 3,
+                name: 'Inversion',
+                step1Focus: 'Deteksi penanda negatif/pembatas di awal kalimat yang memicu Inversion.',
+                formula: 'Negative Expression + Auxiliary Verb + Subject + Verb 1',
+                step3Target: 'Cari susunan Auxiliary Verb yang mendahului Subject.'
+            },
+            4: {
+                id: 4,
+                name: 'Prepositions & Prepositional Phrases',
+                step1Focus: 'Identifikasi apakah area kosong membutuhkan penghubung sebelum Noun Phrase.',
+                formula: 'Preposition + Noun Phrase',
+                step3Target: 'Cari Preposition murni atau compound preposition yang langsung legal di depan Noun Phrase.'
+            },
+            5: {
+                id: 5,
+                name: 'Noun Clauses & Adjective Clauses',
+                step1Focus: 'Hitung jumlah Clause dan tentukan apakah slot membutuhkan Relative Pronoun atau Clause Connector.',
+                formula: 'Main Clause + Connector + Subordinate Clause',
+                step3Target: 'Cari Connector yang mampu mengikat Dependent Clause secara sah.'
+            },
+            6: {
+                id: 6,
+                name: 'Parallel Structure',
+                step1Focus: 'Identifikasi deretan kata/frasa yang dipisahkan koma dan conjunction koordinatif.',
+                formula: 'X , Y , and Z',
+                step3Target: 'Cari kelas kata yang setara dengan elemen pembanding lainnya.'
+            },
+            7: {
+                id: 7,
+                name: 'Comparatives',
+                step1Focus: 'Cari struktur perbandingan bertingkat di klausa pertama.',
+                formula: 'The + Comparative ... , the + Comparative ...',
+                step3Target: 'Cari pasangan Comparative yang menyeimbangkan klausa kedua.'
+            },
+            8: {
+                id: 8,
+                name: 'Infinitives & Gerunds',
+                step1Focus: 'Tentukan apakah kata kerja dipicu Main Verb tertentu atau berfungsi sebagai aktor utama.',
+                formula: 'To + Base Verb / Verb-ing',
+                step3Target: 'Cari bentuk Verbal murni tanpa Subject sekunder tambahan.'
+            },
+            9: {
+                id: 9,
+                name: 'Reduced Clauses',
+                step1Focus: 'Perhatikan Connector waktu/kondisi yang langsung diikuti area rumpang sebelum klausa utama.',
+                formula: 'Conjunction + Verb-ing / Verb-3',
+                step3Target: 'Cari Participle yang tepat berdasarkan makna aktif/pasif.'
+            },
+            10: {
+                id: 10,
+                name: 'Adjective Order & Determiners',
+                step1Focus: 'Identifikasi Noun utama di akhir frasa rumpang.',
+                formula: 'Article + Opinion + Size + Age + Color + Material + Noun',
+                step3Target: 'Cari urutan kata sifat dan determiner yang paling logis dan baku.'
+            },
+            11: {
+                id: 11,
+                name: 'Conjunctions',
+                step1Focus: 'Analisis hubungan logis antar Clause: pertentangan, sebab-akibat, atau waktu.',
+                formula: 'Conjunction + Subject + Verb , Main Clause',
+                step3Target: 'Cari Conjunction murni yang mampu mengikat Clause baru secara sah.'
+            }
+        };
+
+        function getStepCategoryRule(id) {
+            return STEP_CATEGORY_RULES[id] || STEP_CATEGORY_RULES[1];
+        }
+
+        function getStepOneTitle(category) {
+            switch (category && category.id) {
+                case 1: return 'Cari Main Verb di luar Appositive';
+                case 2: return 'Pisahkan Modifier dari klausa utama';
+                case 3: return 'Kenali pola Inversion lebih dulu';
+                case 4: return 'Cocokkan slot dengan Preposition';
+                case 5: return 'Hitung Clause lalu tentukan Connector';
+                case 6: return 'Samakan bentuk elemen paralel';
+                case 7: return 'Kunci pola Comparative berpasangan';
+                case 8: return 'Pastikan bentuk Verbal yang dibutuhkan';
+                case 9: return 'Bedakan Reduced Clause aktif atau pasif';
+                case 10: return 'Susun urutan Adjective dan Determiner';
+                case 11: return 'Pilih Conjunction sesuai relasi logis';
+                default: return 'Bedah pola kalimat inti';
+            }
+        }
+
+        function stripHtmlTags(value) {
+            return normalizeText(String(value || '').replace(/<[^>]+>/g, ' '));
+        }
+
+        function escapeRegExp(value) {
+            return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        function inferPart1ErrorType(optionText, blueprint) {
+            var text = normalizeText(optionText).toLowerCase();
+            if (!text) return 'Clause Structure Error';
+            if (/^(that|when|because|although|if|since|while|where|who|which)\b/.test(text)) return 'Connector / Dependent Clause Error';
+            if (/\b(is|are|was|were|be|been|being)\b/.test(text)) return 'Double Verb Error';
+            if (/\b\w+(ing|ed)\b/.test(text)) return 'Modifier / Word Form Error';
+            if ((blueprint && blueprint.subject && text.indexOf(normalizeText(blueprint.subject).toLowerCase()) >= 0) && (blueprint && blueprint.mainVerb && text.indexOf(normalizeText(blueprint.mainVerb).toLowerCase()) < 0)) return 'Incomplete Subject Slot';
+            return 'Clause Structure Error';
+        }
+
+        function detectStepCategory(question, blueprint) {
+            var stem = normalizeText(question && question.questionText).toLowerCase();
+            var optionLetters = Object.keys(question && question.options || {}).sort();
+            var options = [];
+            for (var i = 0; i < optionLetters.length; i += 1) options.push(extractChoiceText(question.options, optionLetters[i]).toLowerCase());
+            var joinedOptions = options.join(' | ');
+
+            if (/^(not until|never|seldom|rarely|hardly|scarcely|little|only after)\b/.test(stem)) return getStepCategoryRule(3);
+            if ((blueprint && blueprint.descriptivePhrase && /^(found|based|located|using|given|considering|compared|driven|built)\b/i.test(normalizeText(blueprint.descriptivePhrase))) || /^[a-z]+ed\b|^[a-z]+ing\b/.test(stem)) return getStepCategoryRule(2);
+            if (blueprint && blueprint.descriptivePhrase) return getStepCategoryRule(1);
+            if ((/\bthe\b/.test(stem) && /\bmore\b/.test(stem) && stem.indexOf(',') >= 0) || /\bthe\s+\w+(er|est)\b.*?,\s*the\s+\w+(er|est)\b/.test(stem)) return getStepCategoryRule(7);
+            if (/^(when|while|after|before|once|until|as soon as|if)\b/.test(stem) && /_{3,}|\.{3,}/.test(String(question && question.questionText || ''))) return getStepCategoryRule(9);
+            if (options.length && options.every(function (optionText) { return /^(of|in|on|at|for|from|to|with|by|about|between|among|prior to|because of|due to|in spite of)\b/.test(optionText); })) return getStepCategoryRule(4);
+            if (/\b(that|which|who|whom|whose|where|when)\b/.test(joinedOptions) || /\b(that|which|who|whom|whose|where|when)\b/.test(stem)) return getStepCategoryRule(5);
+            if ((/\b(and|or)\b/.test(stem) && stem.indexOf(',') >= 0) || options.some(function (optionText) { return /\b(and|or)\b/.test(optionText) && /\b\w+ing\b/.test(optionText); })) return getStepCategoryRule(6);
+            if (/\bto\s+[a-z]+\b/.test(joinedOptions) || /\b\w+ing\b/.test(joinedOptions) || /\bto\s+[a-z]+\b/.test(stem)) return getStepCategoryRule(8);
+            if (options.some(function (optionText) { return /^(because|although|since|while|if|unless|whereas|before|after|once)\b/.test(optionText); })) return getStepCategoryRule(11);
+            return getStepCategoryRule((Number(question && question.partId) === 1 || Number(question && question.number) <= 15) ? 1 : 11);
+        }
+
+        function countClauseUnits(question, blueprint, category) {
+            var sentence = injectChoiceIntoStem(question && question.questionText, extractChoiceText(question && question.options, question && question.correctAnswer));
+            var lower = normalizeText(sentence).toLowerCase();
+            if (!lower) return 0;
+            var count = 1;
+            var subordinateMatches = lower.match(/\b(that|which|who|whom|whose|where|when|because|although|if|since|while|unless|before|after|once)\b/g);
+            if (subordinateMatches) count += subordinateMatches.length;
+            if (category && category.id === 3) count += 1;
+            return count;
+        }
+
+        function classifyTokenSnippet(text) {
+            var normalized = normalizeText(text);
+            var lower = normalized.toLowerCase();
+            if (!normalized) return 'empty';
+            if (/^(that|which|who|whom|whose|where|when|because|although|if|since|while|unless|before|after|once)\b/.test(lower)) return 'Connector';
+            if (/^(of|in|on|at|for|from|to|with|by|about|between|among|under|over|through|within|without|prior to|because of|due to)\b/.test(lower)) return 'Prepositional Phrase';
+            if (/\b(is|are|was|were|be|been|being|has|have|had|do|does|did|can|could|will|would|should|may|might|must)\b/.test(lower)) return 'Verb Cluster';
+            if (/\bto\s+[a-z]+\b/.test(lower)) return 'Infinitive';
+            if (/\b\w+ing\b/.test(lower)) return 'Gerund / Participle';
+            if (/\b\w+ed\b/.test(lower)) return 'Past Participle / Adjective';
+            if (/^(he|she|it|they|we|i|you|this|that|these|those)\b/.test(lower)) return 'Pronoun Phrase';
+            if (normalized.split(' ').length > 1) return 'Phrase';
+            return 'Noun / Word Candidate';
+        }
+
+        function buildDetectedTokenSummary(question, blueprint) {
+            var parts = splitStemBlank(question && question.questionText);
+            var before = normalizeText(parts.before).split(/\s+/).slice(-4).join(' ');
+            var after = normalizeText(parts.after).split(/\s+/).slice(0, 6).join(' ');
+            var letters = Object.keys(question && question.options || {}).sort();
+            var optionSummary = [];
+            for (var i = 0; i < letters.length; i += 1) {
+                var letter = letters[i];
+                var optionText = extractChoiceText(question.options, letter);
+                optionSummary.push(letter + '=' + classifyTokenSnippet(optionText));
+            }
+            return 'Sebelum blank: ' + (before || 'tidak ada') + ' -> ' + classifyTokenSnippet(before)
+                + ' | Sesudah blank: ' + (after || normalizeText(blueprint && blueprint.clauseTail) || 'tidak ada') + ' -> ' + classifyTokenSnippet(after || normalizeText(blueprint && blueprint.clauseTail))
+                + ' | Opsi: ' + optionSummary.join(', ');
+        }
+
+        function annotateMainVerbInText(text, mainVerb) {
+            var source = String(text || '');
+            var verb = normalizeText(mainVerb);
+            if (!source || !verb) return source;
+            var pattern = new RegExp('\\b' + escapeRegExp(verb) + '\\b');
+            return source.replace(pattern, '[' + verb + '](Main Verb)');
+        }
+
+        function buildSentenceBreakdownRaw(question, blueprint, category) {
+            var parts = splitStemBlank(question && question.questionText);
+            var stem = normalizeText(question && question.questionText);
+            var descriptivePhrase = normalizeText(blueprint && blueprint.descriptivePhrase);
+            var mainVerb = normalizeText(blueprint && blueprint.mainVerb);
+            var clauseTail = normalizeText(blueprint && blueprint.clauseTail);
+            var raw = '';
+
+            if (parts.hasBlank && !normalizeText(parts.before) && descriptivePhrase) {
+                var afterBody = normalizeText(parts.after);
+                if (descriptivePhrase) {
+                    afterBody = normalizeText(afterBody.replace(new RegExp('^,?\\s*' + escapeRegExp(descriptivePhrase) + '\\s*,?\\s*', 'i'), ''));
+                }
+                raw = '[_____](blank), ~~' + descriptivePhrase + '~~';
+                if (afterBody) raw += ', ' + afterBody;
+            } else if (parts.hasBlank) {
+                var beforeText = normalizeText(parts.before);
+                var beforeLabel = category.id === 2 ? 'Modifier Phrase' : (category.id === 9 ? 'Reduced Clause' : 'Context');
+                raw = (beforeText ? '[' + beforeText + '](' + beforeLabel + ') ' : '') + '[_____](blank)';
+                if (normalizeText(parts.after)) raw += ' ' + normalizeText(parts.after);
+            } else {
+                raw = stem;
+                if (descriptivePhrase && raw.toLowerCase().indexOf(descriptivePhrase.toLowerCase()) >= 0) {
+                    raw = raw.replace(new RegExp(escapeRegExp(descriptivePhrase), 'i'), '~~' + descriptivePhrase + '~~');
+                }
+            }
+
+            raw = annotateMainVerbInText(raw, mainVerb);
+            if (!mainVerb && clauseTail && raw.toLowerCase().indexOf(clauseTail.toLowerCase()) < 0) raw += ' [' + clauseTail + '](Clause Tail)';
+            return raw || '[_____](blank)';
+        }
+
+        function buildSentenceBreakdownHtml(raw) {
+            return escapeHtml(String(raw || ''))
+                .replace(/~~([^~]+)~~/g, '<span class="section2-step-appositive-strike">$1</span>')
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<span class="section2-step-breakdown-token"><span class="section2-step-breakdown-text">$1</span><span class="section2-step-breakdown-label">$2</span></span>');
+        }
+
+        function buildStepOneAnalysis(question, blueprint, category) {
+            var stepData = question && question.stepByStepData ? question.stepByStepData : {};
+            var seeded = firstNonEmpty(
+                stripHtmlTags(stepData.step1Body),
+                stripHtmlTags(stepData.step1TipHtml),
+                Array.isArray(stepData.step1Bullets) ? stripHtmlTags(stepData.step1Bullets.join(' ')) : ''
+            );
+            if (seeded) return seeded;
+            return category.step1Focus + ' Fokus lokalnya adalah memastikan slot kosong tidak tertukar dengan Modifier, Appositive, atau Connector.';
+        }
+
+        function buildStepTwoDeduction(question, blueprint, category, isStructureQuestion) {
+            var stepData = question && question.stepByStepData ? question.stepByStepData : {};
+            if (Array.isArray(stepData.step2Paragraphs) && stepData.step2Paragraphs.length) return stripHtmlTags(stepData.step2Paragraphs.join(' '));
+            if (isStructureQuestion) {
+                return 'Formula ' + category.formula + ' harus terpenuhi tepat di slot kosong. ' + category.step3Target + ' Rule lokal: ' + normalizeText(blueprint && blueprint.ruleLabel);
+            }
+            return 'Untuk Written Expression, pilih bagian yang paling jelas melanggar formula ' + category.formula + '. Opsi lain tidak dipilih bila masih menjaga hubungan Subject, Verb, dan Connector lebih stabil.';
+        }
+
+        function buildStepThreeRationale(question, blueprint, category, isStructureQuestion, correctLetter, correctText) {
+            var stepData = question && question.stepByStepData ? question.stepByStepData : {};
+            var seeded = stripHtmlTags(stepData.step3Paragraph);
+            if (seeded) return seeded;
+            if (isStructureQuestion) {
+                return 'Opsi (' + correctLetter + ') ' + correctText + ' paling tepat karena memenuhi target ' + category.step3Target + ' dan tidak merusak formula ' + category.formula + '.';
+            }
+            return 'Opsi (' + correctLetter + ') ' + correctText + ' justru harus dipilih karena bagian inilah yang paling nyata melanggar formula ' + category.formula + '. Error utamanya adalah ' + inferPart2ErrorType(correctText, blueprint) + '.';
+        }
+
+        function buildIncorrectOptionsData(question, blueprint, category, isStructureQuestion, correctLetter) {
+            var letters = Object.keys(question && question.options || {}).sort();
+            var items = [];
+            for (var i = 0; i < letters.length; i += 1) {
+                var letter = letters[i];
+                if (letter === correctLetter) continue;
+                var text = extractChoiceText(question.options, letter);
+                var errorType = isStructureQuestion ? inferPart1ErrorType(text, blueprint) : 'Bukan Error Utama';
+                var explanation = isStructureQuestion
+                    ? inferPart1WrongReason(text, blueprint)
+                    : 'Bagian ini tidak dipilih karena masih lebih stabil dibanding opsi (' + correctLetter + ') yang menjadi sumber error inti.';
+                items.push({ option: letter, text: text, error_type: errorType, explanation: explanation });
+            }
+            return items;
+        }
+
+        function buildExpertShortcutPattern(category, blueprint, isStructureQuestion) {
+            if (isStructureQuestion) {
+                return category.formula + ' -> cek Main Verb dulu -> singkirkan Connector / extra Verb -> pilih slot yang paling bersih.';
+            }
+            return category.formula + ' -> cari elemen yang paling merusak hubungan Subject, Verb, atau Connector -> tandai bagian itu sebagai jawaban.';
+        }
+
+        function buildStructuredStepByStepData(question) {
+            var blueprint = deriveGrammarBlueprint(question);
+            var category = detectStepCategory(question, blueprint);
+            var isStructureQuestion = Number(question && question.partId) === 1 || Number(question && question.number) <= 15;
+            var correctLetter = normalizeLetter(question && question.correctAnswer) || 'A';
+            var correctText = extractChoiceText(question && question.options, correctLetter);
+            var breakdownRaw = buildSentenceBreakdownRaw(question, blueprint, category);
+
+            return {
+                thought_process: {
+                    clause_count: countClauseUnits(question, blueprint, category),
+                    detected_tokens: buildDetectedTokenSummary(question, blueprint),
+                    matched_category_id: category.id,
+                    matched_category_name: category.name,
+                    inversion_or_modifier_detected: category.id === 2 || category.id === 3 || category.id === 9
+                },
+                ui_stepper_data: {
+                    step_1: {
+                        title: getStepOneTitle(category),
+                        sentence_breakdown_raw: breakdownRaw,
+                        sentence_breakdown_html_formatted: buildSentenceBreakdownHtml(breakdownRaw),
+                        analysis_text: buildStepOneAnalysis(question, blueprint, category)
+                    },
+                    step_2: {
+                        title: 'Kunci formula struktur',
+                        formula_display: category.formula,
+                        analytical_deduction: buildStepTwoDeduction(question, blueprint, category, isStructureQuestion)
+                    },
+                    step_3: {
+                        title: isStructureQuestion ? 'Buktikan pilihan yang paling aman' : 'Tandai frasa yang harus diperbaiki',
+                        correct_option_label: correctLetter,
+                        correct_option_text: correctText,
+                        detailed_rationale: buildStepThreeRationale(question, blueprint, category, isStructureQuestion, correctLetter, correctText)
+                    },
+                    step_4: {
+                        title: 'Eliminasi opsi distraktor',
+                        incorrect_options: buildIncorrectOptionsData(question, blueprint, category, isStructureQuestion, correctLetter)
+                    },
+                    expert_insight_banner: {
+                        title: 'Kesimpulan Guru TOEFL Expert',
+                        shortcut_pattern: buildExpertShortcutPattern(category, blueprint, isStructureQuestion)
+                    }
+                }
+            };
+        }
+
+        function renderStructuredStepByStep(question) {
+            var schema = buildStructuredStepByStepData(question);
+            var thought = schema.thought_process;
+            var stepper = schema.ui_stepper_data;
+            var isStructureQuestion = Number(question && question.partId) === 1 || Number(question && question.number) <= 15;
+            var categoryTarget = getStepCategoryRule(thought.matched_category_id).step3Target;
+            var blueprint = deriveGrammarBlueprint(question);
+            var roleLabel = isStructureQuestion ? 'Slot yang diisi' : 'Bagian paling bermasalah';
+            var roleValue = isStructureQuestion
+                ? (blueprint && blueprint.subject ? 'Subject yang harus menyatu dengan Main Verb' : 'Komponen inti klausa')
+                : (thought.matched_category_name || 'Struktur yang harus diperbaiki');
+            var html = '<div class="section2-step-shell">';
+
+            html += '<article class="section2-step-item">'
+                + '<div class="section2-step-rail"><div class="section2-step-number">1</div><div class="section2-step-line"></div></div>'
+                + '<div class="section2-step-content">'
+                + '<h3 class="section2-step-title">' + escapeHtml(stepper.step_1.title) + '</h3>'
+                + '<div class="section2-step-insight-row">'
+                + '<span class="section2-step-insight-pill is-blue">Kategori: ' + escapeHtml(thought.matched_category_name) + '</span>'
+                + '<span class="section2-step-insight-pill is-slate">Clause terhitung: ' + escapeHtml(String(thought.clause_count)) + '</span>'
+                + (thought.inversion_or_modifier_detected ? '<span class="section2-step-insight-pill is-rose">Modifier / pola khusus terdeteksi</span>' : '')
+                + '</div>'
+                + '<div class="section2-step-part1-box section2-step-breakdown-card section2-step-visual-card">'
+                + '<div class="section2-step-visual-head">'
+                + '<div class="section2-step-visual-kicker">Peta komponen kalimat</div>'
+                + '<div class="section2-step-visual-caption">Coret bagian penjelas, lalu cari area yang benar-benar mengunci struktur.</div>'
+                + '</div>'
+                + '<div class="section2-step-breakdown-html">' + stepper.step_1.sentence_breakdown_html_formatted + '</div>'
+                + '</div>'
+                + '<div class="section2-step-teaching-note">' + escapeHtml(stepper.step_1.analysis_text) + '</div>'
+                + '</div>'
+                + '</article>';
+
+            html += '<article class="section2-step-item">'
+                + '<div class="section2-step-rail"><div class="section2-step-number">2</div><div class="section2-step-line"></div></div>'
+                + '<div class="section2-step-content">'
+                + '<h3 class="section2-step-title">' + escapeHtml(stepper.step_2.title) + '</h3>'
+                + '<div class="section2-step-formula-grid">'
+                + '<div class="section2-step-part1-formula-card section2-step-formula-card-main">'
+                + '<div class="section2-step-visual-kicker">Formula yang harus terkunci</div>'
+                + '<div class="section2-step-part1-formula">' + escapeHtml(stepper.step_2.formula_display) + '</div>'
+                + '<p class="section2-step-part1-subtext">' + escapeHtml(stepper.step_2.analytical_deduction) + '</p>'
+                + '</div>'
+                + '<div class="section2-step-side-stack">'
+                + '<div class="section2-step-mini-card">'
+                + '<div class="section2-step-mini-label">Target slot</div>'
+                + '<p class="section2-step-mini-copy">' + escapeHtml(categoryTarget) + '</p>'
+                + '</div>'
+                + '<div class="section2-step-mini-card">'
+                + '<div class="section2-step-mini-label">Petunjuk token</div>'
+                + '<p class="section2-step-mini-copy">' + escapeHtml(thought.detected_tokens) + '</p>'
+                + '</div>'
+                + '</div>'
+                + '</div>'
+                + '</div>'
+                + '</article>';
+
+            html += '<article class="section2-step-item">'
+                + '<div class="section2-step-rail"><div class="section2-step-number">3</div><div class="section2-step-line"></div></div>'
+                + '<div class="section2-step-content">'
+                + '<h3 class="section2-step-title">' + escapeHtml(stepper.step_3.title) + '</h3>'
+                + '<div class="section2-step-proof-grid">'
+                + '<div class="section2-step-part1-correct-card section2-step-proof-card">'
+                + '<div class="section2-step-visual-kicker">Pilihan yang mengunci struktur</div>'
+                + buildStepOptionRow(stepper.step_3.correct_option_label, stepper.step_3.correct_option_text, 'correct', 'Jawaban tepat')
+                + '<p class="section2-step-copy">' + escapeHtml(stepper.step_3.detailed_rationale) + '</p>'
+                + '</div>'
+                + '<div class="section2-step-side-stack">'
+                + '<div class="section2-step-mini-card">'
+                + '<div class="section2-step-mini-label">' + escapeHtml(roleLabel) + '</div>'
+                + '<p class="section2-step-mini-copy">' + escapeHtml(roleValue) + '</p>'
+                + '</div>'
+                + '<div class="section2-step-mini-card">'
+                + '<div class="section2-step-mini-label">Main Verb tujuan</div>'
+                + '<p class="section2-step-mini-copy">' + escapeHtml(normalizeText(blueprint && blueprint.mainVerb) || 'Tidak terdeteksi') + '</p>'
+                + '</div>'
+                + '</div>'
+                + '</div>'
+                + '</div>'
+                + '</article>';
+
+            html += '<article class="section2-step-item">'
+                + '<div class="section2-step-rail"><div class="section2-step-number">4</div></div>'
+                + '<div class="section2-step-content">'
+                + '<h3 class="section2-step-title">' + escapeHtml(stepper.step_4.title) + '</h3>'
+                + '<div class="section2-step-distractor-grid">';
+
+            for (var i = 0; i < stepper.step_4.incorrect_options.length; i += 1) {
+                var item = stepper.step_4.incorrect_options[i] || {};
+                html += '<div class="section2-step-distractor-card">'
+                    + '<div class="section2-step-distractor-head">'
+                    + '<div class="section2-step-distractor-choice">(' + escapeHtml(item.option || '') + ') ' + escapeHtml(item.text || '') + '</div>'
+                    + '<div class="section2-step-distractor-tag">' + escapeHtml(item.error_type || 'Error') + '</div>'
+                    + '</div>'
+                    + '<div class="section2-step-distractor-copy">' + escapeHtml(item.explanation || '') + '</div>'
+                    + '</div>';
+            }
+
+            html += '</div>'
+                + '</div>'
+                + '</article>'
+                + '</div>';
+
+            return { html: html, data: schema };
+        }
+
+        function buildPartTwoStepByStep(question) {
+            var blueprint = deriveGrammarBlueprint(question);
+            var correctLetter = normalizeLetter(question.correctAnswer) || 'A';
+            var correctText = extractChoiceText(question.options, correctLetter);
+            var letters = Object.keys(question.options || {}).sort();
+            var html = '<div class="section2-step-shell">'
+                + '<article class="section2-step-item">'
+                + '<div class="section2-step-rail"><div class="section2-step-number">1</div><div class="section2-step-line"></div></div>'
+                + '<div class="section2-step-content">'
+                + '<h3 class="section2-step-title">LANGKAH 1: Tentukan Pola Hubungan Kalimat Utama</h3>'
+                + '<p class="section2-step-copy">Fokus ke hubungan antara Subject, Verb, dan kata yang digarisbawahi. Jangan mulai dari arti penuh kalimat; mulai dari fungsi kata.</p>'
+                + '<div class="section2-step-part2-pattern">' + renderQuotedHighlights(question.questionText || '') + '</div>'
+                + '</div>'
+                + '</article>'
+                + '<article class="section2-step-item">'
+                + '<div class="section2-step-rail"><div class="section2-step-number">2</div><div class="section2-step-line"></div></div>'
+                + '<div class="section2-step-content">'
+                + '<h3 class="section2-step-title">LANGKAH 2: Terapkan Uji Gramatikal untuk A, B, C, D</h3>'
+                + '<div class="section2-step-part2-tests">';
+
+            for (var i = 0; i < letters.length; i += 1) {
+                var letter = letters[i];
+                var text = extractChoiceText(question.options, letter);
+                var isTarget = letter === correctLetter;
+                html += '<div class="section2-step-part2-test ' + (isTarget ? 'is-fail' : 'is-pass') + '">'
+                    + '<div class="section2-step-part2-test-head">'
+                    + '<span>(' + escapeHtml(letter) + ')</span>'
+                    + '<span class="section2-step-part2-test-state">' + (isTarget ? 'GAGAL' : 'LOLOS') + '</span>'
+                    + '</div>'
+                    + '<div class="section2-step-part2-test-body">' + escapeHtml(text) + '</div>'
+                    + '<div class="section2-step-part2-test-note">' + escapeHtml(isTarget ? inferPart2ErrorType(text, blueprint) : 'Tidak sekuat opsi salah yang tepat.') + '</div>'
+                    + '</div>';
+            }
+
+            html += '</div>'
+                + '</div>'
+                + '</article>'
+                + '<article class="section2-step-item">'
+                + '<div class="section2-step-rail"><div class="section2-step-number">3</div><div class="section2-step-line"></div></div>'
+                + '<div class="section2-step-content">'
+                + '<h3 class="section2-step-title">LANGKAH 3: Kartu Pemenang Eliminasi</h3>'
+                + '<div class="section2-step-part2-card section2-step-part2-card--rose">'
+                + '<div class="section2-step-part2-elim-card">'
+                + '<div class="section2-step-part2-elim-choice">(' + escapeHtml(correctLetter) + ') ' + escapeHtml(correctText) + '</div>'
+                + '<div class="section2-step-part2-error-type">Error Type: ' + escapeHtml(inferPart2ErrorType(correctText, blueprint)) + '</div>'
+                + '<div class="section2-step-part2-elim-rationale">Opsi ini harus dieliminasi karena bentuknya tidak paling aman untuk structure kalimat yang diuji.</div>'
+                + '</div>'
+                + '</div>'
+                + '</div>'
+                + '</article>'
+                + '<article class="section2-step-item">'
+                + '<div class="section2-step-rail"><div class="section2-step-number">4</div></div>'
+                + '<div class="section2-step-content">'
+                + '<h3 class="section2-step-title">LANGKAH 4: Solusi Perbaikan Instan</h3>'
+                + '<div class="section2-step-part2-fix">' + escapeHtml(inferPart2InstantFix(correctText, blueprint)) + '</div>'
+                + '<p class="section2-step-copy">Gunakan perbaikan ini sebagai pola cepat saat menemukan opsi dengan fungsi yang salah.</p>'
+                + '</div>'
+                + '</article>'
+                + '</div>';
+
+            return html;
+        }
+
         function renderStepByStepPreviewQuestionOne(question) {
             var stepData = question.stepByStepData || {};
             var blueprint = deriveGrammarBlueprint(question);
@@ -1315,45 +2038,10 @@
             var host = document.getElementById('stepByStepTabContent');
             if (!host || !question) return;
 
-            if (Number(question.number) === 2) {
-                question = buildStructureQuestionTwoContent(question);
-            }
-
-            if (question.stepByStepData) {
-                host.innerHTML = renderStepByStepPreviewQuestionOne(question);
-                return;
-            }
-
-            var steps = buildStepCards(question);
-            var html = '<div class="step-figma-steps">';
-            for (var i = 0; i < steps.length; i += 1) {
-                var step = steps[i];
-                html += '<article class="step-figma-card">'
-                    + '<header class="step-figma-head">'
-                    + '<div class="step-figma-num">' + (i + 1) + '</div>'
-                    + '<h3 class="step-figma-title">' + escapeHtml(step.title) + '</h3>'
-                    + '</header>'
-                    + '<div class="step-figma-row">'
-                    + '<div class="step-figma-line" aria-hidden="true"></div>'
-                    + '<div class="step-figma-copy"><p class="step-figma-instruction">' + renderQuotedHighlights(step.body) + '</p>';
-
-                if (step.correctLetter && step.correctText) {
-                    html += '<div class="step-figma-option-selected">'
-                        + '<div class="step-figma-option-answer"><span>(' + escapeHtml(step.correctLetter) + ')</span><span>' + escapeHtml(step.correctText) + '</span></div>'
-                        + '<div class="step-figma-correct-answer"><span>Correct Answer</span><i class="ph ph-check" aria-hidden="true"></i></div>'
-                        + '</div>';
-                }
-                if (step.selectedWrong) {
-                    html += '<div class="step-figma-wrong-option">'
-                        + '<div class="step-figma-option-answer"><span>(' + escapeHtml(step.selectedLetter) + ')</span><span>' + escapeHtml(step.selectedText) + '</span></div>'
-                        + '<div class="step-figma-wrong-badge"><span>Selected</span><i class="ph ph-x" aria-hidden="true"></i></div>'
-                        + '</div>';
-                }
-
-                html += '</div></div></article>';
-            }
-            html += '</div>';
-            host.innerHTML = html;
+            var sourceQuestion = Number(question.number) === 2 ? buildStructureQuestionTwoContent(question) : question;
+            var rendered = renderStructuredStepByStep(sourceQuestion);
+            host.__stepperData = rendered.data;
+            host.innerHTML = rendered.html;
         }
 
         function renderSidebar() {

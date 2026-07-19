@@ -545,7 +545,7 @@
 
                 let hintHTML = p === 1 
                     ? `ðŸ’¡ <strong>Hint:</strong> Gunakan garis bawah beruntun <code>____</code> untuk area yang kosong (rumpang) pada kalimat.`
-                    : `ðŸ’¡ <strong>Desain Buku Asli:</strong> Blok kata yang salah di kalimat, lalu klik <b>U Garis Bawah</b>. Di tampilan User, huruf A, B, C, D akan otomatis muncul tepat di bawah kata yang digarisbawahi persis seperti buku TOEFL.`;
+                    : `ðŸ’¡ <strong>Desain Buku Asli:</strong> Blok kata yang salah di kalimat, lalu klik <b>U Garis Bawah</b>. Jika Anda copy-paste dari Word/Docs dengan teks bold, sistem akan otomatis menyimpan bold menjadi <code>&lt;strong&gt;</code> agar opsi A-D terbaca tanpa klik tombol satu per satu.`;
 
                 let placeholderSoal = p === 1 
                     ? `Contoh:\n1. The president _____ the election.\n(A) won\n(B) win\n(C) winning\n(D) is winning`
@@ -561,7 +561,7 @@
                             
                             <div class="format-toolbar header-soal">
                                 <span style="font-size:14px; font-weight:bold;">Input Teks Soal</span>
-                                ${p === 2 ? `<button class="format-btn" title="Garis Bawahi Teks" onclick="formatText('input-magic-questions-${p}', '<u>', '</u>')" style="margin-left:auto; color:black;">U Garis Bawah (Ctrl+U)</button>` : ''}
+                                ${p === 2 ? `<button class="format-btn" title="Tebalkan Teks Opsi" onclick="formatText('input-magic-questions-${p}', '<strong>', '</strong>')" style="margin-left:auto; color:black;">B Bold Opsi</button><button class="format-btn" title="Garis Bawahi Teks" onclick="formatText('input-magic-questions-${p}', '<u>', '</u>')" style="color:black;">U Garis Bawah (Ctrl+U)</button>` : ''}
                             </div>
                             <textarea id="input-magic-questions-${p}" class="smart-textarea" placeholder="${placeholderSoal}"></textarea>
                         </div>
@@ -605,7 +605,8 @@
                             <em>Contoh Pengetikan Anda:</em><br>
                             <code>5. Electrical &lt;u&gt;disturbances&lt;/u&gt; on Earth are &lt;u&gt;frequently&lt;/u&gt; caused &lt;u&gt;with&lt;/u&gt; storms on the surface &lt;u&gt;of the sun&lt;/u&gt;.</code><br><br>
                             
-                            <strong>TIPS:</strong> Jika teks hasil *copy-paste* Anda sudah ada huruf A, B, C manualnya seperti <code>(A) &lt;u&gt;word&lt;/u&gt;</code> atau <code>&lt;u&gt;word&lt;/u&gt; (A)</code>, sistem cukup pintar untuk membersihkannya secara otomatis agar tampilannya tetap bersih!
+                            <strong>TIPS:</strong> Jika Anda menandai kata/frasa opsi dengan <code>&lt;strong&gt;...&lt;/strong&gt;</code> pada format <code>(A)...(B)...(C)...(D)</code>, sistem akan membaca teks bold sebagai opsi jawaban yang bisa diklik (misal <code>(A) &lt;strong&gt;list&lt;/strong&gt; of items</code> maka opsi A adalah <strong>list</strong>).<br><br>
+                            Teks hasil *copy-paste* yang sudah ada huruf A, B, C manual seperti <code>(A) &lt;u&gt;word&lt;/u&gt;</code> atau <code>&lt;u&gt;word&lt;/u&gt; (A)</code> juga tetap dibersihkan otomatis agar tampilannya rapi.
                         </div>
                     </div>
                 </div>
@@ -907,6 +908,108 @@
             textArea.focus();
         }
 
+        function insertTextAtCursor(textArea, insertText) {
+            if (!textArea) return;
+            const start = textArea.selectionStart || 0;
+            const end = textArea.selectionEnd || start;
+            const original = textArea.value || "";
+            textArea.value = original.slice(0, start) + insertText + original.slice(end);
+            const nextPos = start + insertText.length;
+            textArea.selectionStart = nextPos;
+            textArea.selectionEnd = nextPos;
+            textArea.focus();
+        }
+
+        function normalizeClipboardQuestionText(text) {
+            return (text || "")
+                .replace(/\r\n?/g, "\n")
+                .replace(/\u00a0/g, " ")
+                .replace(/[ \t]+\n/g, "\n")
+                .replace(/\n{3,}/g, "\n\n")
+                .trim();
+        }
+
+        function elementStyleHasWeightBold(element) {
+            const style = (element.getAttribute("style") || "").toLowerCase();
+            return /font-weight\s*:\s*(bold|[6-9]00)/.test(style);
+        }
+
+        function elementStyleHasUnderline(element) {
+            const style = (element.getAttribute("style") || "").toLowerCase();
+            return /text-decoration[^;]*underline|text-decoration-line\s*:\s*underline/.test(style);
+        }
+
+        function htmlNodeToQuestionMarkup(node) {
+            if (!node) return "";
+            if (node.nodeType === Node.TEXT_NODE) return node.nodeValue || "";
+            if (node.nodeType !== Node.ELEMENT_NODE) return "";
+
+            const tag = node.tagName.toLowerCase();
+            if (tag === "br") return "\n";
+
+            let inner = "";
+            node.childNodes.forEach((child) => {
+                inner += htmlNodeToQuestionMarkup(child);
+            });
+
+            const isBold = tag === "b" || tag === "strong" || elementStyleHasWeightBold(node);
+            const isUnderline = tag === "u" || elementStyleHasUnderline(node);
+
+            if (isUnderline) inner = `<u>${inner}</u>`;
+            if (isBold) inner = `<strong>${inner}</strong>`;
+
+            const blockLike = ["p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6"];
+            if (blockLike.includes(tag)) return `${inner}\n`;
+            return inner;
+        }
+
+        function convertClipboardHtmlToQuestionMarkup(html, textFallback) {
+            const plainText = normalizeClipboardQuestionText(textFallback || "");
+            if (!html) {
+                return plainText.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+            }
+
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, "text/html");
+                const body = doc.body;
+                if (!body) return plainText;
+
+                body.querySelectorAll("script,style").forEach((el) => el.remove());
+                let markup = "";
+                body.childNodes.forEach((child) => {
+                    markup += htmlNodeToQuestionMarkup(child);
+                });
+
+                const normalized = normalizeClipboardQuestionText(markup);
+                return normalized || plainText;
+            } catch (_) {
+                return plainText;
+            }
+        }
+
+        function bindPartBRichPasteSupport() {
+            const textArea = document.getElementById("input-magic-questions-2");
+            if (!textArea || textArea.dataset.richPasteBound === "1") return;
+
+            textArea.addEventListener("paste", (event) => {
+                const clipboard = event.clipboardData;
+                if (!clipboard) return;
+
+                const html = clipboard.getData("text/html") || "";
+                const text = clipboard.getData("text/plain") || "";
+                const hasRichCandidate = Boolean(html && /<(b|strong|u|span|div|p|li|br)\b/i.test(html));
+                const hasMarkdownBold = /\*\*[^*]+\*\*/.test(text);
+                if (!hasRichCandidate && !hasMarkdownBold) return;
+
+                event.preventDefault();
+                const converted = convertClipboardHtmlToQuestionMarkup(html, text);
+                insertTextAtCursor(textArea, converted);
+            });
+
+            textArea.dataset.richPasteBound = "1";
+        }
+
         let globalAnswerKey = {};
         let globalExplanations = {};
         let globalQuestions = {};
@@ -1047,6 +1150,29 @@
                         refreshStructurePartAState();
                     }
                 });
+
+                userContainer.addEventListener("dblclick", (event) => {
+                    const clickableLabel = event.target.closest("label");
+                    if (!clickableLabel) return;
+
+                    let radio = null;
+                    if (clickableLabel.hasAttribute("for")) {
+                        radio = document.getElementById(clickableLabel.getAttribute("for"));
+                    } else {
+                        radio = clickableLabel.querySelector('input[type="radio"]');
+                    }
+
+                    if (!radio || radio.type !== "radio" || !radio.checked) return;
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    // Let native click/dblclick behavior finish first, then force clear.
+                    setTimeout(() => {
+                        radio.checked = false;
+                        refreshStructurePartAState();
+                    }, 0);
+                });
             }
         }
 
@@ -1096,58 +1222,121 @@
                     let isOption = rawLine.match(/^[\(]?([A-D])[\.\)]?\s+(.*)/i);
 
                     if (qMatch && !isOption) {
-                        if (openDiv) cleanHtml += currentQuestionIsPartB ? `<div class="feedback" id="feedback-${currentUID}"></div></div>` : `</div><div class="feedback" id="feedback-${currentUID}"></div></div></div>`;
+                        if (openDiv) cleanHtml += `</div><div class="feedback" id="feedback-${currentUID}"></div></div></div>`;
                         let currentQuestionNum = qMatch[1];
                         currentUID = `${p}_${currentQuestionNum}`;
                         let questionText = qMatch[2];
-                        currentQuestionIsPartB = questionText.includes('<u>');
+                        const hasUnderlinedMarkup = /<u>/i.test(questionText);
+                        const hasInlinePartBMarkers = /\(A\).*\(B\).*\(C\).*\(D\)/i.test(questionText);
+                        currentQuestionIsPartB = (p === 2) && (hasUnderlinedMarkup || hasInlinePartBMarkers);
 
                         cleanHtml += `<div class="question-item frame-parent" id="q-container-${currentUID}">`;
 
                         // CEK APAKAH INI SOAL PART B (Memiliki garis bawah <u>)
                         if (currentQuestionIsPartB) {
                             
-                            // 1. Bersihkan pengetikan manual developer (A), (B), (C), (D) yang menempel sebelum/sesudah tag <u>
-                            // Contoh: <u>word</u> (A) atau (B) <u>word</u> akan dibersihkan A dan B nya.
-                            questionText = questionText.replace(/\s*\([A-D]\)\s*<u>/gi, ' <u>').replace(/<\/u>\s*\([A-D]\)\s*/gi, '</u> ');
-                            questionText = questionText.replace(/\s*[A-D]\.\s*<u>/gi, ' <u>').replace(/<\/u>\s*[A-D]\.\s*/gi, '</u> ');
+                            let parsedText = '';
+                            const partBOpts = {};
 
-                            let optIndex = 0;
-                            let letters = ['A', 'B', 'C', 'D'];
-                            
-                            // 2. Ganti tag <u> menjadi kotak struktur berisikan huruf di bawahnya
-                            let parsedText = questionText.replace(/<u>(.*?)<\/u>/gi, (match, word) => {
-                                if(optIndex > 3) return match; // Maksimal D
-                                
-                                // Bersihkan lagi jika (A) masuk di DALAM tag <u>
-                                let cleanWord = word.replace(/^\([A-D]\)\s*/i, '').replace(/\s*\([A-D]\)$/i, '');
-                                
-                                let letter = letters[optIndex];
-                                let val = letter.toLowerCase();
-                                
-                                let html = `<span class="inline-error-wrapper">
+                            if (hasUnderlinedMarkup) {
+                                // 1. Bersihkan pengetikan manual developer (A), (B), (C), (D) yang menempel sebelum/sesudah tag <u>
+                                // Contoh: <u>word</u> (A) atau (B) <u>word</u> akan dibersihkan A dan B nya.
+                                questionText = questionText.replace(/\s*\([A-D]\)\s*<u>/gi, ' <u>').replace(/<\/u>\s*\([A-D]\)\s*/gi, '</u> ');
+                                questionText = questionText.replace(/\s*[A-D]\.\s*<u>/gi, ' <u>').replace(/<\/u>\s*[A-D]\.\s*/gi, '</u> ');
+
+                                let optIndex = 0;
+                                const letters = ['A', 'B', 'C', 'D'];
+
+                                // 2. Ganti tag <u> menjadi kotak struktur berisikan huruf di bawahnya
+                                parsedText = questionText.replace(/<u>(.*?)<\/u>/gi, (match, word) => {
+                                    if (optIndex > 3) return match; // Maksimal D
+
+                                    // Bersihkan lagi jika (A) masuk di DALAM tag <u>
+                                    const cleanWord = word.replace(/^\([A-D]\)\s*/i, '').replace(/\s*\([A-D]\)$/i, '').trim();
+                                    const letter = letters[optIndex];
+                                    const val = letter.toLowerCase();
+                                    partBOpts[letter] = cleanWord;
+
+                                    const html = `<span class="inline-error-wrapper">
                                                 <input type="radio" name="q_${currentUID}" id="q_${currentUID}_${val}" value="${val}">
                                                 <label for="q_${currentUID}_${val}" class="error-label">
                                                     <span class="word-text">${cleanWord}</span>
                                                     <span class="letter-badge">${letter}</span>
                                                 </label>
                                             </span>`;
-                                optIndex++;
-                                return html;
-                            });
+                                    optIndex++;
+                                    return html;
+                                });
+                            } else {
+                                // Support format: The (A) word ... (B) phrase ... (C) ... (D) ...
+                                const markerRegex = /\(([A-D])\)\s*/gi;
+                                const markers = [];
+                                let mm;
+                                while ((mm = markerRegex.exec(questionText)) !== null) {
+                                    markers.push({ letter: mm[1].toUpperCase(), start: mm.index, after: markerRegex.lastIndex });
+                                }
 
-                            // Capture Part B words as options for review page
-                            const partBOpts = {};
-                            let wi = 0;
-                            const partBLetters = ['A', 'B', 'C', 'D'];
-                            questionText.replace(/<u>(.*?)<\/u>/gi, (_, word) => {
-                                if (wi < 4) partBOpts[partBLetters[wi++]] = word.replace(/^\([A-D]\)\s*/i, '').replace(/\s*\([A-D]\)$/i, '');
-                            });
-                            const plainSentence = questionText.replace(/<u>/gi, '').replace(/<\/u>/gi, '').replace(/<[^>]+>/g, '');
+                                if (markers.length === 4) {
+                                    let cursor = 0;
+                                    let htmlOut = '';
+                                    markers.forEach((marker, idx) => {
+                                        const nextStart = idx < markers.length - 1 ? markers[idx + 1].start : questionText.length;
+                                        const before = questionText.slice(cursor, marker.start);
+                                        const rawChunk = questionText.slice(marker.after, nextStart);
+                                        const cleanWord = rawChunk.trim().replace(/\s+/g, ' ');
+                                        const val = marker.letter.toLowerCase();
+                                        const boldMatch = rawChunk.match(/<(?:strong|b)>([\s\S]*?)<\/(?:strong|b)>/i);
+
+                                        htmlOut += before;
+                                        if (boldMatch) {
+                                            const chunkPrefix = rawChunk.slice(0, boldMatch.index);
+                                            const chunkBoldText = (boldMatch[1] || '').replace(/<[^>]+>/g, '').trim();
+                                            const chunkSuffix = rawChunk.slice((boldMatch.index || 0) + boldMatch[0].length);
+                                            const safeBoldText = chunkBoldText || cleanWord.replace(/[\s.,;:!?]+$/g, '');
+                                            partBOpts[marker.letter] = safeBoldText;
+
+                                            htmlOut += chunkPrefix;
+                                            htmlOut += `<span class="inline-error-wrapper">
+                                                <input type="radio" name="q_${currentUID}" id="q_${currentUID}_${val}" value="${val}">
+                                                <label for="q_${currentUID}_${val}" class="error-label">
+                                                    <span class="word-text">${safeBoldText}</span>
+                                                    <span class="letter-badge">${marker.letter}</span>
+                                                </label>
+                                            </span>`;
+                                            htmlOut += chunkSuffix;
+                                        } else {
+                                            partBOpts[marker.letter] = cleanWord.replace(/[\s.,;:!?]+$/g, '');
+                                            htmlOut += `<span class="inline-error-wrapper">
+                                                <input type="radio" name="q_${currentUID}" id="q_${currentUID}_${val}" value="${val}">
+                                                <label for="q_${currentUID}_${val}" class="error-label">
+                                                    <span class="word-text">${cleanWord}</span>
+                                                    <span class="letter-badge">${marker.letter}</span>
+                                                </label>
+                                            </span>`;
+                                        }
+                                        cursor = nextStart;
+                                    });
+                                    htmlOut += questionText.slice(cursor);
+                                    parsedText = htmlOut.replace(/\s{2,}/g, ' ');
+                                } else {
+                                    // Fallback: render plain text jika format marker tidak lengkap
+                                    parsedText = questionText;
+                                }
+                            }
+
+                            const plainSentence = questionText
+                                .replace(/<u>/gi, '')
+                                .replace(/<\/u>/gi, '')
+                                .replace(/\([A-D]\)\s*/gi, '')
+                                .replace(/<[^>]+>/g, '')
+                                .replace(/\s{2,}/g, ' ')
+                                .trim();
                             globalQuestions[currentUID] = { questionText: `${currentQuestionNum}. ${plainSentence}`, options: partBOpts, isPartB: true };
 
-                            cleanHtml += `<p class="inline-question-text">${currentQuestionNum}. ${parsedText}</p>`;
-                            cleanHtml += `<div class="radio-group" style="display:none;"></div>`; // Dummy agar validator checker aman
+                            cleanHtml += `<div class="question-number-badge">${currentQuestionNum}</div>`;
+                            cleanHtml += `<div class="question-content question-content--partb">`;
+                            cleanHtml += `<p class="inline-question-text">${parsedText}</p>`;
+                            cleanHtml += `</div>`;
                             openDiv = true;
                         } else {
                             // SOAL PART A BIASA
@@ -1171,7 +1360,7 @@
                         </label>`;
                     }
                 }
-                if (openDiv) cleanHtml += currentQuestionIsPartB ? `<div class="feedback" id="feedback-${currentUID}"></div></div>` : `</div><div class="feedback" id="feedback-${currentUID}"></div></div></div>`;
+                if (openDiv) cleanHtml += `</div><div class="feedback" id="feedback-${currentUID}"></div></div></div>`;
 
                 document.getElementById(`display-questions-${p}`).innerHTML = cleanHtml;
             });
@@ -1237,6 +1426,7 @@
 
         window.onload = async () => {
             initStructure();
+            bindPartBRichPasteSupport();
             applyViewMode();
             activateInitialTab();
             bindUserToolbarActions();
