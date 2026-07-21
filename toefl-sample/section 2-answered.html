@@ -136,11 +136,11 @@
                         </button>
                         <button type="button" class="section-explaination-tab" id="partbTabStep" role="tab" aria-selected="false" onclick="setReviewExplainationTab('step')">
                             <img src="../asst/icon/stepbystep tab.png" alt="Step-by-step tab icon">
-                            <span>Step-by-Step</span>
+                            <span>Video Step-by-Step</span>
                         </button>
                         <button type="button" class="section-explaination-tab" id="partbTabAsk" role="tab" aria-selected="false" onclick="setReviewExplainationTab('ask')">
-                            <img src="../asst/icon/Ask AIQC tab.svg" alt="Ask AIQC tab icon">
-                            <span>Ask AIQC</span>
+                            <img src="../asst/icon/materials tab.png" alt="Materials tab icon">
+                            <span>Materials</span>
                         </button>
                     </div>
 
@@ -392,6 +392,7 @@
             var userAnswer = normalizeLetter(firstNonEmpty(raw.userAnswer, raw.selectedChoice, raw.submittedChoice, submission.userAnswer, submission.answer, submission.choice, review.userAnswer));
             var contextualExplanations = toParagraphArray(firstNonEmpty(review.contextualExplanations, raw.contextualExplanations, review.explanationBlocks, raw.explanationBlocks));
             var explanation = normalizeText(firstNonEmpty(raw.explanation, review.explanation, review.reasoning, contextualExplanations.join('\n\n')));
+            var videoStepUrl = normalizeText(firstNonEmpty(raw.videoStepUrl, raw.videoUrl, raw.stepVideoUrl, review.videoStepUrl, review.videoUrl));
 
             return {
                 number: number,
@@ -403,10 +404,65 @@
                 userAnswer: userAnswer,
                 isCorrect: typeof raw.isCorrect === 'boolean' ? raw.isCorrect : (!!userAnswer && userAnswer === correctAnswer),
                 explanation: explanation,
+                videoStepUrl: videoStepUrl,
                 contextualExplanations: contextualExplanations.length ? contextualExplanations : toParagraphArray(explanation),
                 grammarBlueprint: normalizeBlueprint(firstNonEmpty(review.sentenceBlueprint, review.grammarBlueprint, raw.sentenceBlueprint, raw.grammarBlueprint)),
                 reviewStatus: normalizeText(firstNonEmpty(review.status, raw.status))
             };
+        }
+
+        function resolveVideoEmbedUrl(url) {
+            var raw = normalizeText(url);
+            if (!raw) return '';
+
+            var ytWatch = raw.match(/(?:youtube\.com\/watch\?v=)([A-Za-z0-9_-]+)/i);
+            if (ytWatch && ytWatch[1]) return 'https://www.youtube.com/embed/' + ytWatch[1];
+            var ytShort = raw.match(/(?:youtu\.be\/)([A-Za-z0-9_-]+)/i);
+            if (ytShort && ytShort[1]) return 'https://www.youtube.com/embed/' + ytShort[1];
+            var drivePreview = raw.replace('/view', '/preview');
+            if (/drive\.google\.com/i.test(drivePreview)) return drivePreview;
+            if (/\.mp4($|\?)/i.test(raw)) return raw;
+            return raw;
+        }
+
+        function buildVideoStepByStepFrame(question) {
+            var sourceUrl = resolveVideoEmbedUrl(question && question.videoStepUrl);
+            if (!sourceUrl) {
+                return '<div class="section2-video-placeholder">'
+                    + '<div class="section2-video-watermark section2-video-watermark--left">VIDEO EXPLAINATION PLACEMENT</div>'
+                    + '<div class="section2-video-watermark section2-video-watermark--right">VIDEO EXPLAINATION PLACEMENT</div>'
+                    + '<button type="button" class="section2-video-play-placeholder" aria-label="Video placeholder">▶</button>'
+                    + '</div>';
+            }
+
+            if (/\.mp4($|\?)/i.test(sourceUrl)) {
+                return '<div class="section2-video-player-shell"><video class="section2-video-player" controls preload="metadata" src="' + escapeAttr(sourceUrl) + '"></video></div>';
+            }
+            return '<div class="section2-video-player-shell"><iframe class="section2-video-player" src="' + escapeAttr(sourceUrl) + '" title="Video step by step for question ' + escapeAttr(question && question.number) + '" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>';
+        }
+
+        function buildAskTutorDrawer(question) {
+            return '<aside class="section2-video-ask-drawer" id="videoAskDrawer">'
+                + '<div class="section2-video-ask-head">'
+                + '<div class="section2-video-ask-title">Ask QCTutor</div>'
+                + '<div class="section2-video-ask-sort">Sorted by: Recent</div>'
+                + '</div>'
+                + '<div class="section2-video-ask-thread">'
+                + '<div class="section2-video-ask-bubble section2-video-ask-bubble--user">Noun is divided into how many parts?</div>'
+                + '<div class="section2-video-ask-bubble section2-video-ask-bubble--tutor">Aren\'t there four parts? David said there were three basic ones: Person/living thing, Place, and Thing, but there are also ideas.</div>'
+                + '</div>'
+                + '<div class="section2-video-ask-input">Ask Your Question...</div>'
+                + '</aside>';
+        }
+
+        function toggleVideoTutorDrawer() {
+            var drawer = document.getElementById('videoAskDrawer');
+            var button = document.getElementById('videoAskToggle');
+            if (!drawer || !button) return;
+            var nextOpen = !drawer.classList.contains('is-open');
+            drawer.classList.toggle('is-open', nextOpen);
+            button.classList.toggle('is-open', nextOpen);
+            button.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
         }
 
         function normalizeReviewState(source) {
@@ -1177,13 +1233,14 @@
         function renderQuestionTwoExplanation(question) {
             var displayQuestion = buildQuestionTwoExplanationQuestion(question);
             var correct = normalizeLetter(displayQuestion.correctAnswer) || 'C';
+            var blueprint = deriveGrammarBlueprint(displayQuestion);
             var paragraphs = displayQuestion.contextualExplanations || [];
             var introHtml = paragraphs[0] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[0]) + '</div>' : '';
             var instructionHtml = paragraphs[1] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[1]) + '</div>' : '';
             var supportHtml = paragraphs[2] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[2]) + '</div>' : '';
             var conclusionHtml = paragraphs[3] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[3]) + '</div>' : '';
 
-            return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q2">'
+            return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q2 section2-aiqc-host">'
                 + '<div class="section2-figma-top">'
                 + '<div class="section2-figma-question-row">'
                 + '<div class="explaination-figma-qnum is-correct">2</div>'
@@ -1226,6 +1283,169 @@
                 + '</div>';
         }
 
+        function getAiQcPromptSuggestions(question, blueprint) {
+            var questionNumber = Number(question && question.number) || 1;
+            var topic = 'grammar structure';
+            var lowerText = normalizeText(question && question.questionText).toLowerCase();
+            if ((blueprint && blueprint.mainVerb) || /main\s+verb|verb\b/.test(lowerText)) {
+                topic = 'main verb';
+            } else if (/preposition|prepositional/.test(lowerText)) {
+                topic = 'preposition';
+            } else if (/subject/.test(lowerText)) {
+                topic = 'subject';
+            } else if (/modifier|clause/.test(lowerText)) {
+                topic = 'modifier clause';
+            }
+
+            return [
+                'Jelaskan lebih detail question ' + questionNumber,
+                'Cara cari ' + topic + '?',
+                'Cara menentukan ' + topic + '?'
+            ];
+        }
+
+        function buildAiQcWidget(question, blueprint) {
+            var prompts = getAiQcPromptSuggestions(question, blueprint);
+            return '<button type="button" class="section2-aiqc-fab" id="aiqcFab" aria-label="Open AI QC tutor" onclick="toggleAiQcPanel()">'
+                + '<img src="../asst/icon/aiqc.svg" alt="AI QC tutor">'
+                + '</button>'
+                + '<aside class="section2-aiqc-panel" id="aiqcPanel" aria-hidden="true">'
+                + '<div class="section2-aiqc-panel-head">'
+                + '<img src="../asst/icon/aiqc.svg" alt="AI QC tutor">'
+                + '<div class="section2-aiqc-head-copy">'
+                + '<div class="section2-aiqc-head-title">Halo, User</div>'
+                + '<div class="section2-aiqc-head-sub">Bisakah saya bantu?</div>'
+                + '</div>'
+                + '<button type="button" class="section2-aiqc-close" aria-label="Close AI QC tutor" onclick="toggleAiQcPanel(false)">×</button>'
+                + '</div>'
+                + '<p class="section2-aiqc-intro">Siap membantu Anda dengan penjelasan soal ini secara lebih rinci.</p>'
+                + '<div class="section2-aiqc-shortcuts">'
+                + '<button type="button" class="section2-aiqc-shortcut" onclick="seedAiQcPrompt(' + JSON.stringify(prompts[0]) + ', true)">' + escapeHtml(prompts[0]) + '</button>'
+                + '<button type="button" class="section2-aiqc-shortcut" onclick="seedAiQcPrompt(' + JSON.stringify(prompts[1]) + ', true)">' + escapeHtml(prompts[1]) + '</button>'
+                + '<button type="button" class="section2-aiqc-shortcut" onclick="seedAiQcPrompt(' + JSON.stringify(prompts[2]) + ', true)">' + escapeHtml(prompts[2]) + '</button>'
+                + '<button type="button" class="section2-aiqc-shortcut" onclick="seedAiQcPrompt(\'\', false)">+ Tambahkan Pertanyaan</button>'
+                + '</div>'
+                + '<div class="section2-aiqc-thread" id="aiqcThread"></div>'
+                + '<form class="section2-aiqc-input-row" onsubmit="submitAiQcPrompt(event)">'
+                + '<input type="text" id="aiqcInput" class="section2-aiqc-input" placeholder="Ask me anything..." autocomplete="off">'
+                + '<button type="submit" class="section2-aiqc-send" aria-label="Send question">'
+                + '<i class="ph ph-paper-plane-tilt" aria-hidden="true"></i>'
+                + '</button>'
+                + '</form>'
+                + '</aside>';
+        }
+
+        function toggleAiQcPanel(forceOpen) {
+            var panel = document.getElementById('aiqcPanel');
+            var button = document.getElementById('aiqcFab');
+            if (!panel || !button) return;
+            var nextOpen = typeof forceOpen === 'boolean' ? forceOpen : !panel.classList.contains('is-open');
+            panel.classList.toggle('is-open', nextOpen);
+            panel.setAttribute('aria-hidden', nextOpen ? 'false' : 'true');
+            button.classList.toggle('is-hidden', nextOpen);
+        }
+
+        function appendAiQcMessage(role, text) {
+            var thread = document.getElementById('aiqcThread');
+            if (!thread) return;
+            var roleClass = role === 'assistant' ? 'is-assistant' : 'is-user';
+            var bubble = document.createElement('div');
+            bubble.className = 'section2-aiqc-bubble ' + roleClass;
+            bubble.textContent = String(text || '').trim();
+            thread.appendChild(bubble);
+            thread.scrollTop = thread.scrollHeight;
+        }
+
+        function seedAiQcPrompt(text, sendNow) {
+            toggleAiQcPanel(true);
+            var input = document.getElementById('aiqcInput');
+            if (!input) return;
+            input.value = String(text || '');
+            input.focus();
+            if (sendNow && input.value.trim()) {
+                submitAiQcPrompt(null, input.value.trim());
+            }
+        }
+
+        async function requestGeminiAiQcReply(promptText) {
+            var apiKey = '';
+            try {
+                apiKey = String(window.TOEFL_GEMINI_API_KEY || localStorage.getItem('toefl_gemini_api_key') || '').trim();
+            } catch (_) {
+                apiKey = String(window.TOEFL_GEMINI_API_KEY || '').trim();
+            }
+
+            if (!apiKey) {
+                return 'Gemini belum aktif. Isi API key dulu dengan localStorage.setItem("toefl_gemini_api_key", "YOUR_KEY") lalu kirim ulang pertanyaan.';
+            }
+
+            var question = reviewCurrentQuestion || {};
+            var blueprint = deriveGrammarBlueprint(question);
+            var context = [
+                'Question ' + String(question.number || ''),
+                'Stem: ' + String(question.questionText || ''),
+                'Correct answer: ' + String(question.correctAnswer || ''),
+                'User answer: ' + String(question.userAnswer || ''),
+                'Main verb hint: ' + String((blueprint && blueprint.mainVerb) || '')
+            ].join('\n');
+
+            var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        role: 'user',
+                        parts: [{
+                            text: 'Kamu adalah QC Tutor TOEFL. Jawab ringkas, jelas, dan fokus pada grammar structure question ini.\n\n' + context + '\n\nPertanyaan user: ' + promptText
+                        }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.4,
+                        maxOutputTokens: 500
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                var errText = '';
+                try { errText = await response.text(); } catch (_) {}
+                return 'Gemini error: ' + (errText || ('HTTP ' + response.status));
+            }
+
+            var data = await response.json();
+            var text = firstNonEmpty(
+                data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text,
+                data && data.output_text
+            );
+            return normalizeText(text) || 'Maaf, respons Gemini kosong. Coba ulangi pertanyaannya dengan kalimat lebih spesifik.';
+        }
+
+        async function submitAiQcPrompt(event, directText) {
+            if (event && typeof event.preventDefault === 'function') event.preventDefault();
+            var input = document.getElementById('aiqcInput');
+            if (!input && !directText) return;
+            var text = String(directText || (input && input.value) || '').trim();
+            if (!text) return;
+
+            appendAiQcMessage('user', text);
+            if (input) input.value = '';
+
+            var waitingText = 'Sedang minta jawaban Gemini...';
+            appendAiQcMessage('assistant', waitingText);
+            var thread = document.getElementById('aiqcThread');
+            var waitingNode = thread ? thread.lastElementChild : null;
+
+            try {
+                var aiReply = await requestGeminiAiQcReply(text);
+                if (waitingNode) waitingNode.textContent = aiReply;
+                else appendAiQcMessage('assistant', aiReply);
+            } catch (error) {
+                var fallback = 'Terjadi kendala saat menghubungi Gemini: ' + (error && error.message ? error.message : 'unknown error');
+                if (waitingNode) waitingNode.textContent = fallback;
+                else appendAiQcMessage('assistant', fallback);
+            }
+        }
+
         function renderExplainationTabDetail(question) {
             var host = document.getElementById('explainationTabContent');
             if (!host || !question) return;
@@ -1241,7 +1461,7 @@
             var conclusionOneHtml = paragraphs[2] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[2]) + '</div>' : '';
             var conclusionTwoHtml = paragraphs[3] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[3]) + '</div>' : '';
 
-            host.innerHTML = '<div class="explaination-figma section2-figma-shell">'
+            host.innerHTML = '<div class="explaination-figma section2-figma-shell section2-aiqc-host">'
                 + '<div class="section2-figma-top">'
                 + '<div class="section2-figma-question-row">'
                 + '<div class="explaination-figma-qnum ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + escapeHtml(String(question.number || '-')) + '</div>'
@@ -1260,6 +1480,21 @@
                 + conclusionTwoHtml
                 + '</section>'
                 + '</div>';
+        }
+
+        function renderGlobalAiQcWidget(question) {
+            var root = document.getElementById('aiqcFloatingRoot');
+            if (!root) {
+                root = document.createElement('div');
+                root.id = 'aiqcFloatingRoot';
+                document.body.appendChild(root);
+            }
+
+            var existingPanel = document.getElementById('aiqcPanel');
+            var shouldStayOpen = !!(existingPanel && existingPanel.classList.contains('is-open'));
+            var blueprint = deriveGrammarBlueprint(question || {});
+            root.innerHTML = buildAiQcWidget(question || {}, blueprint);
+            if (shouldStayOpen) toggleAiQcPanel(true);
         }
 
         function buildStepCards(question) {
@@ -2038,10 +2273,17 @@
             var host = document.getElementById('stepByStepTabContent');
             if (!host || !question) return;
 
-            var sourceQuestion = Number(question.number) === 2 ? buildStructureQuestionTwoContent(question) : question;
-            var rendered = renderStructuredStepByStep(sourceQuestion);
-            host.__stepperData = rendered.data;
-            host.innerHTML = rendered.html;
+            host.innerHTML = '<div class="section2-video-shell">'
+                + '<div class="section2-video-header">'
+                + '<h2 class="section2-video-question-title">Question ' + escapeHtml(String(question.number || '')) + '</h2>'
+                + '<button type="button" class="section2-video-ask-toggle" id="videoAskToggle" aria-label="Open QC Tutor chat" aria-expanded="false" onclick="toggleVideoTutorDrawer()">'
+                + '<i class="ph ph-question" aria-hidden="true"></i>'
+                + '</button>'
+                + '</div>'
+                + '<p class="section2-video-question-text">' + escapeHtml(String(question.questionText || '')) + '</p>'
+                + buildVideoStepByStepFrame(question)
+                + buildAskTutorDrawer(question)
+                + '</div>';
         }
 
         function renderSidebar() {
@@ -2056,6 +2298,7 @@
             renderExplainationTabDetail(question);
             renderStepByStepTabDetail(question);
             renderSidebar(question);
+            renderGlobalAiQcWidget(question);
 
             if (reviewResultData && Array.isArray(reviewResultData.questions)) {
                 if (typeof indexHint === 'number') {
@@ -2101,10 +2344,12 @@
             var explainHost = document.getElementById('explainationTabContent');
             var stepHost = document.getElementById('stepByStepTabContent');
             var sidebarHost = document.getElementById('grammarSidebarCards');
+            var aiRoot = document.getElementById('aiqcFloatingRoot');
             var text = escapeHtml(message || 'No review data found. Complete Section 2 first.');
             if (explainHost) explainHost.innerHTML = '<div class="section2-empty-state">' + text + '</div>';
             if (stepHost) stepHost.innerHTML = '<div class="section2-empty-state">' + text + '</div>';
             if (sidebarHost) sidebarHost.innerHTML = '<article class="section2-sidebar-card"><p class="section2-sidebar-copy">' + text + '</p></article>';
+            if (aiRoot) aiRoot.innerHTML = '';
             renderHeaderNavigator({ questions: [] }, 0);
             var prevBtn = document.getElementById('headerPrevQuestionBtn');
             var nextBtn = document.getElementById('headerNextQuestionBtn');
@@ -2124,6 +2369,10 @@
         window.setTextSize = setTextSize;
         window.toggleDarkMode = toggleDarkMode;
         window.toggleCaretOnly = toggleCaretOnly;
+        window.toggleVideoTutorDrawer = toggleVideoTutorDrawer;
+        window.toggleAiQcPanel = toggleAiQcPanel;
+        window.seedAiQcPrompt = seedAiQcPrompt;
+        window.submitAiQcPrompt = submitAiQcPrompt;
         window.selectReviewQuestion = selectReviewQuestion;
         window.goToNextReviewQuestion = goToNextReviewQuestion;
         window.goToPreviousReviewQuestion = goToPreviousReviewQuestion;

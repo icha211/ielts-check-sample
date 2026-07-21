@@ -13,7 +13,7 @@
         <button class="tab-button" onclick="openTab(event, 'dev-view')">Panel Developer</button>
     </div>
 
-    <div id="user-view" class="tab-content active">
+    <div id="user-view" class="tab-content active section3-layout">
         <div id="global-score-board"></div>
         <header class="cbt-header figma-header figma-header--listening">
             <div class="logo-test-package-timer">
@@ -313,26 +313,32 @@
                 };
             }
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+            const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
+            const setId = ensureCurrentSetId(setDate);
+            if (setId) {
+                localStorage.setItem(`${DRAFT_KEY}_${setId}`, JSON.stringify(draft));
+            }
             if (window.toeflStorage) {
-                const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
-                const setId = ensureCurrentSetId(setDate);
                 toeflStorage.saveDraftBySetId(setId, MODULE_ID, draft).catch((e) => console.warn("[ToeflSync] draft save failed:", e));
             }
         }
 
         async function loadSectionDraft() {
-            if (!currentSetId) {
-                // New set flow should always start blank.
-                return;
-            }
             let draft = {};
-            if (window.toeflStorage) {
+            if (currentSetId && window.toeflStorage) {
                 try {
-                    if (currentSetId) {
-                        draft = await toeflStorage.getDraftBySetId(currentSetId);
-                    }
+                    draft = await toeflStorage.getDraftBySetId(currentSetId);
                 } catch { /* fallback below */ }
             }
+
+            // Local fallback (per-set, then latest generic draft) so test tab always picks up updates.
+            if ((!draft || typeof draft !== "object" || !draft.passages) && currentSetId) {
+                draft = safeParse(localStorage.getItem(`${DRAFT_KEY}_${currentSetId}`), {});
+            }
+            if (!draft || typeof draft !== "object" || !draft.passages) {
+                draft = safeParse(localStorage.getItem(DRAFT_KEY), {});
+            }
+
             if (!draft || typeof draft !== "object" || !draft.passages) return;
 
             for (let p = 1; p <= TOTAL_PASSAGES; p++) {
@@ -348,6 +354,16 @@
                 if (qEl && typeof row.questions === "string") qEl.value = row.questions;
                 if (aEl && typeof row.answerKey === "string") aEl.value = row.answerKey;
                 if (eEl && typeof row.explanation === "string") eEl.value = row.explanation;
+            }
+        }
+
+        async function refreshFromStorageSync() {
+            try {
+                await loadSectionMeta();
+                await loadSectionDraft();
+                updateUserView();
+            } catch (error) {
+                console.warn("[Sync] live refresh failed:", error);
             }
         }
 
@@ -621,6 +637,94 @@
             evt.currentTarget.classList.add("active");
         }
 
+        function setupSection3Splitters() {
+            const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+            const rows = document.querySelectorAll('#user-passages-container .user-main');
+
+            rows.forEach((row, index) => {
+                const leftPanel = row.querySelector('.passage-section');
+                const divider = row.querySelector('.split-resizer');
+                if (!leftPanel || !divider || divider.dataset.bound === '1') return;
+
+                const storageKey = `toefl_section3_split_${index + 1}`;
+                const saved = parseFloat(localStorage.getItem(storageKey) || '');
+                if (!Number.isNaN(saved)) {
+                    leftPanel.style.width = `${clamp(saved, 30, 70)}%`;
+                }
+
+                let startX = 0;
+                let startWidth = 0;
+                let containerWidth = 0;
+
+                const setWidth = (nextPercent) => {
+                    const clamped = clamp(nextPercent, 30, 70);
+                    leftPanel.style.width = `${clamped}%`;
+                    localStorage.setItem(storageKey, String(Math.round(clamped * 10) / 10));
+                };
+
+                const onMove = (event) => {
+                    const deltaX = event.clientX - startX;
+                    const newWidthPx = startWidth + deltaX;
+                    const nextPercent = (newWidthPx / containerWidth) * 100;
+                    setWidth(nextPercent);
+                };
+
+                const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                    row.classList.remove('is-resizing');
+                    divider.classList.remove('is-resizing');
+                    document.body.style.userSelect = '';
+                };
+
+                divider.addEventListener('mousedown', (event) => {
+                    startX = event.clientX;
+                    startWidth = leftPanel.getBoundingClientRect().width;
+                    containerWidth = row.getBoundingClientRect().width;
+                    row.classList.add('is-resizing');
+                    divider.classList.add('is-resizing');
+                    document.body.style.userSelect = 'none';
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onUp);
+                });
+
+                divider.addEventListener('keydown', (event) => {
+                    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                    event.preventDefault();
+                    const current = parseFloat(leftPanel.style.width) || 48;
+                    const step = event.shiftKey ? 4 : 2;
+                    const next = event.key === 'ArrowLeft' ? current - step : current + step;
+                    setWidth(next);
+                });
+
+                divider.dataset.bound = '1';
+            });
+        }
+
+        function renumberPassageLineMarkers(passageId) {
+            const box = document.getElementById(`display-passage-${passageId}`);
+            if (!box) return;
+            const markers = Array.from(box.querySelectorAll('.line-marker'));
+            const paragraphs = Array.from(box.querySelectorAll('p'));
+            if (!markers.length || !paragraphs.length) return;
+
+            const baseTop = paragraphs[0].getBoundingClientRect().top;
+            const lineHeight = parseFloat(getComputedStyle(box).lineHeight) || 30;
+
+            markers.forEach((marker) => {
+                const markerTop = marker.getBoundingClientRect().top;
+                const lineNumber = Math.max(1, Math.round(((markerTop - baseTop) / lineHeight) + 1));
+                marker.textContent = `(${lineNumber})`;
+                marker.setAttribute('data-line', String(lineNumber));
+            });
+        }
+
+        function renumberAllPassageMarkers() {
+            for (let p = 1; p <= TOTAL_PASSAGES; p++) {
+                renumberPassageLineMarkers(p);
+            }
+        }
+
         function isDeveloperMode() {
             const params = new URLSearchParams(window.location.search);
             return window.location.hash === "#dev-view" || params.get("mode") === "dev";
@@ -705,7 +809,7 @@
                     // 1. Ubah enter tunggal menjadi <br>
                     let processedPara = para.trim().replace(/\n/g, '<br>');
                     // 2. Deteksi teks (1), (5), (14) di awal paragraf atau setelah <br>, lalu jadikan span
-                    processedPara = processedPara.replace(/(^|<br>)\s*\((\d+)\)\s*/g, '$1<span class="line-marker">($2)</span>');
+                    processedPara = processedPara.replace(/(^|<br>)\s*\((\d+)\)\s*/g, '$1<span class="line-marker" data-source-line="$2">($2)</span>');
                     return `<p>${processedPara}</p>`;
                 }).join('');
                 document.getElementById(`display-passage-${p}`).innerHTML = passageText;
@@ -736,12 +840,15 @@
                     let isOption = rawLine.match(/^[\(]?([A-D])[\.\)]?\s+(.*)/i);
 
                     if (qMatch && !isOption) {
-                        if (openDiv) cleanHtml += `<div class="feedback" id="feedback-${currentUID}"></div></div>`;
+                        if (openDiv) cleanHtml += `</div><div class="feedback" id="feedback-${currentUID}"></div></div>`;
                         let currentQuestionNum = qMatch[1];
                         currentUID = `${p}_${currentQuestionNum}`;
                         globalQuestions[currentUID] = { questionText: qMatch[2], options: {}, passageId: p };
                         cleanHtml += `<div class="question-item" id="q-container-${currentUID}">`;
-                        cleanHtml += `<p>${currentQuestionNum}. ${qMatch[2]}</p>`;
+                        cleanHtml += `<div class="question-head">`;
+                        cleanHtml += `<div class="question-index-pill">${currentQuestionNum}</div>`;
+                        cleanHtml += `<div class="question-stem-text">${qMatch[2]}</div>`;
+                        cleanHtml += `</div>`;
                         cleanHtml += `<div class="radio-group">`;
                         openDiv = true;
                     } else if (isOption && openDiv) {
@@ -749,8 +856,8 @@
                         if (globalQuestions[currentUID]) globalQuestions[currentUID].options[letter] = isOption[2];
                         cleanHtml += `<label>
                             <input type="radio" name="q_${currentUID}" value="${letter.toLowerCase()}"> 
-                            <span class="option-letter">(${letter})</span> 
-                            <span>${isOption[2]}</span>
+                            <span class="option-letter-badge">${letter}</span>
+                            <span class="option-card-text">${isOption[2]}</span>
                         </label>`;
                     }
                 }
@@ -758,6 +865,7 @@
 
                 document.getElementById(`display-questions-${p}`).innerHTML = cleanHtml;
             }
+            renumberAllPassageMarkers();
             updateHeaderProgress();
             startTimer();
         }
@@ -846,11 +954,27 @@
                 featuresOverlay.addEventListener("click", handleFeaturesOverlayClick);
             }
             document.addEventListener("keydown", handleFeaturesMenuKeydown);
-            window.addEventListener("resize", positionListeningHeaderTimer);
+            window.addEventListener("resize", () => {
+                positionListeningHeaderTimer();
+                renumberAllPassageMarkers();
+            });
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
             if (setDateEl) setDateEl.addEventListener("change", handleSetDateChange);
             if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
+
+            // Keep user test tab synced when developer tab updates draft/meta in another tab.
+            window.addEventListener("storage", (event) => {
+                const syncKeys = [
+                    DRAFT_KEY,
+                    SETS_KEY_V2,
+                    "toefl_developer_drafts_v2",
+                    "toefl_developer_sets_v2"
+                ];
+                if (event.key && syncKeys.includes(event.key)) {
+                    refreshFromStorageSync();
+                }
+            });
         };
     </script>
 </body>

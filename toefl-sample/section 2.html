@@ -300,10 +300,25 @@
                 const qEl = document.getElementById(`input-magic-questions-${p}`);
                 const aEl = document.getElementById(`input-answer-key-${p}`);
                 const eEl = document.getElementById(`input-explanation-${p}`);
+                const vEl = document.getElementById(`input-video-step-${p}`);
                 if (qEl) qEl.value = "";
                 if (aEl) aEl.value = "";
                 if (eEl) eEl.value = "";
+                if (vEl) vEl.value = "";
             });
+        }
+
+        function parseIndexedLineMap(rawText) {
+            const output = {};
+            String(rawText || "").split('\n').forEach((line) => {
+                const match = line.match(/^\s*(\d+)[\.\)]?\s+(.+)$/);
+                if (!match) return;
+                const number = Number(match[1]);
+                const value = String(match[2] || "").trim();
+                if (!Number.isFinite(number) || !value) return;
+                output[number] = value;
+            });
+            return output;
         }
 
         async function handleSetDateChange() {
@@ -335,7 +350,8 @@
                 draft.parts[p] = {
                     questions: (document.getElementById(`input-magic-questions-${p}`) || {}).value || "",
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
-                    explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || ""
+                    explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || "",
+                    videoStep: (document.getElementById(`input-video-step-${p}`) || {}).value || ""
                 };
             });
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -367,9 +383,11 @@
                 const qEl = document.getElementById(`input-magic-questions-${p}`);
                 const aEl = document.getElementById(`input-answer-key-${p}`);
                 const eEl = document.getElementById(`input-explanation-${p}`);
+                const vEl = document.getElementById(`input-video-step-${p}`);
                 if (qEl && typeof row.questions === "string") qEl.value = row.questions;
                 if (aEl && typeof row.answerKey === "string") aEl.value = row.answerKey;
                 if (eEl && typeof row.explanation === "string") eEl.value = row.explanation;
+                if (vEl && typeof row.videoStep === "string") vEl.value = row.videoStep;
             });
         }
 
@@ -577,6 +595,10 @@
                                     <div class="format-toolbar header-bahas"><span style="font-weight:bold; font-size:14px;"><img src="../asset/icon/light.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;"> Teks Pembahasan (Opsional)</span></div>
                                     <textarea id="input-explanation-${p}" class="explanation-textarea" placeholder="Format penulisan:\n5. Preposition yang tepat untuk caused adalah 'by', bukan 'with'."></textarea>
                                 </div>
+                            </div>
+                            <div style="margin-top:12px;">
+                                <div class="format-toolbar header-bahas"><span style="font-weight:bold; font-size:14px;"><img src="../asset/icon/video.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;"> Video Step-by-Step (Opsional)</span></div>
+                                <textarea id="input-video-step-${p}" class="explanation-textarea" placeholder="Format penulisan:\n${p === 1 ? '1' : '16'}. https://www.youtube.com/watch?v=...\n${p === 1 ? '2' : '17'}. https://drive.google.com/file/d/.../preview"></textarea>
                             </div>
                         </div>
 
@@ -1373,6 +1395,10 @@
         function submitAnswers() {
             let score = 0;
             let total = Object.keys(globalAnswerKey).length;
+            const videoMapByPart = {
+                1: parseIndexedLineMap((document.getElementById('input-video-step-1') || {}).value || ''),
+                2: parseIndexedLineMap((document.getElementById('input-video-step-2') || {}).value || '')
+            };
 
             if (total === 0) { alert("Data Kunci Jawaban masih kosong. Sistem tidak dapat melakukan penilaian."); return; }
             if (!confirm("Yakin ingin mengakhiri Section 2 dan melihat skor?")) return;
@@ -1395,7 +1421,8 @@
                 const correct = globalAnswerKey[uid];
                 const q = globalQuestions[uid] || {};
                 const part = PARTS.find(pt => pt.id === pId) || {};
-                return { uid, number: qNum, partId: pId, partName: part.name || '', questionText: q.questionText || `Question ${qNum}`, options: q.options || {}, correctAnswer: correct, userAnswer, isCorrect: userAnswer === correct, isPartB: q.isPartB || false, explanation: globalExplanations[uid] || '' };
+                const videoStepUrl = (videoMapByPart[pId] && videoMapByPart[pId][qNum]) || '';
+                return { uid, number: qNum, partId: pId, partName: part.name || '', questionText: q.questionText || `Question ${qNum}`, options: q.options || {}, correctAnswer: correct, userAnswer, isCorrect: userAnswer === correct, isPartB: q.isPartB || false, explanation: globalExplanations[uid] || '', videoStepUrl };
             }).sort((a, b) => a.number - b.number);
 
             const result = { sectionTitle: "Section 2: Structure and Written Expression", sectionKey: "structure", totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), questions: answeredQs };

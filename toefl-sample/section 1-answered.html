@@ -454,6 +454,15 @@
         var reviewPlaybackRequestId = 0;
         var reviewPendingTranscriptSegmentPlay = null;
 
+        function stopAndResetActiveAudio() {
+            if (!reviewAudio) return;
+            reviewAudio.pause();
+            reviewAudio.currentTime = 0;
+            clearActiveSegmentBoundaryLoop();
+            reviewActiveSegmentRange = null;
+            reviewSegmentStopAt = 0;
+        }
+
         function escapeAttr(value) {
             return escapeHtml(value).replace(/'/g, '&#39;');
         }
@@ -1215,6 +1224,28 @@
         function parseTimestampToSeconds(value) {
             var text = String(value || '').trim();
             if (!text) return 0;
+            text = text.replace(',', '.');
+
+            var mmssWithFraction = text.match(/^(\d{1,2}):(\d{2})\.(\d{1,3})$/);
+            if (mmssWithFraction) {
+                var m = Number(mmssWithFraction[1] || 0);
+                var s = Number(mmssWithFraction[2] || 0);
+                var fracRaw = String(mmssWithFraction[3] || '0');
+                var frac = Number(fracRaw) / Math.pow(10, fracRaw.length);
+                if (!isFinite(m) || !isFinite(s) || !isFinite(frac)) return 0;
+                return (m * 60) + s + frac;
+            }
+
+            var mmssCenti = text.match(/^(\d{1,2}):(\d{2}):(\d{1,2})$/);
+            if (mmssCenti) {
+                // Some transcript exports use mm:ss:cc (centiseconds), not hh:mm:ss.
+                var mm = Number(mmssCenti[1] || 0);
+                var ss = Number(mmssCenti[2] || 0);
+                var cc = Number(mmssCenti[3] || 0);
+                if (!isFinite(mm) || !isFinite(ss) || !isFinite(cc)) return 0;
+                return (mm * 60) + ss + (cc / 100);
+            }
+
             var parts = text.split(':').map(function(part) { return Number(part); });
             for (var i = 0; i < parts.length; i += 1) {
                 if (!isFinite(parts[i])) return 0;
@@ -1565,9 +1596,11 @@
             if (!reviewAudio || !url) return;
             if (reviewCurrentAudioKey === sourceKey && reviewAudio.src) return;
 
+            // Spotify-style switch: always terminate current track first.
+            stopAndResetActiveAudio();
+
             reviewCurrentAudioKey = sourceKey || '';
             reviewLoadedAudioPartId = Number(loadedPartId || reviewCurrentPartId || 0) || 0;
-            interruptActiveTranscriptPlayback();
             if (reviewAudioObjectUrl) {
                 URL.revokeObjectURL(reviewAudioObjectUrl);
                 reviewAudioObjectUrl = null;
@@ -1712,6 +1745,11 @@
 
             var loadedLocal = await loadLatestLocalAudioFallback(partId);
             reviewAudioLoadingPartId = 0;
+            if (!loadedLocal && Number(partId || 0) !== 1) {
+                setAudioStatus('Part audio not found. Trying full recording...');
+                await loadAudioForPart(1);
+                return;
+            }
             if (!loadedLocal) setAudioStatus('No saved audio found for this package/part');
         }
 
@@ -1788,10 +1826,8 @@
 
             if (!reviewAudio) return;
 
-            interruptActiveTranscriptPlayback();
+            stopAndResetActiveAudio();
             clearPendingTranscriptSegmentPlay();
-
-            reviewAudio.currentTime = 0;
 
             updatePlayPauseIcon();
             setAudioStatus('Stopped');
@@ -1985,7 +2021,9 @@
             }
 
             var expectedPartId = Number(pending.partId || 0);
-            if (!reviewAudio || !reviewAudio.src || Number(reviewLoadedAudioPartId || 0) !== expectedPartId) {
+            var loadedPartId = Number(reviewLoadedAudioPartId || 0);
+            var canUseFallbackPart1 = !!pending.allowPart1Fallback && loadedPartId === 1;
+            if (!reviewAudio || !reviewAudio.src || (loadedPartId !== expectedPartId && !canUseFallbackPart1)) {
                 return false;
             }
 
@@ -2021,7 +2059,8 @@
                 requestId: reviewPlaybackRequestId,
                 partId: Number(targetPartId || 0),
                 startSeconds: Number(startSeconds || 0),
-                endSeconds: Number(endSeconds || 0)
+                endSeconds: Number(endSeconds || 0),
+                allowPart1Fallback: true
             };
 
             var hasMatchingAudio = !!reviewAudio.src && Number(reviewLoadedAudioPartId || 0) === Number(targetPartId || 0);
@@ -2204,16 +2243,42 @@
             var questionBoundary = ((reviewQuestionBoundaryMapByPart[partId] || {})[qNumber]) || null;
 
             var activeSegments = reviewTranscriptViewMode === 'question' ? questionSegments : fullSegments;
+            var sharedQuestionPlaybackRange = null;
+            if (partId === 1 && reviewTranscriptViewMode === 'question' && activeSegments.length) {
+                var sharedStart = Infinity;
+                var sharedEnd = -Infinity;
+                for (var rangeIndex = 0; rangeIndex < activeSegments.length; rangeIndex += 1) {
+                    var rangeSeg = activeSegments[rangeIndex] || {};
+                    var rangeStart = Number(rangeSeg.start || 0);
+                    var rangeEnd = Number(rangeSeg.end || (rangeStart + 8));
+                    if (isFinite(rangeStart) && rangeStart < sharedStart) sharedStart = rangeStart;
+                    if (isFinite(rangeEnd) && rangeEnd > sharedEnd) sharedEnd = rangeEnd;
+                }
+                if (questionBoundary) {
+                    if (isFinite(Number(questionBoundary.startFloat))) sharedStart = Math.min(sharedStart, Number(questionBoundary.startFloat));
+                    if (isFinite(Number(questionBoundary.endFloat))) sharedEnd = Math.max(sharedEnd, Number(questionBoundary.endFloat));
+                }
+                if (isFinite(sharedStart) && isFinite(sharedEnd) && sharedEnd > sharedStart) {
+                    sharedQuestionPlaybackRange = {
+                        start: sharedStart,
+                        end: sharedEnd
+                    };
+                }
+            }
 
             var html = '';
             html += '<div class="transcript-modern-shell transcript-view">';
             html += '<div class="transcript-modern-toggle" role="tablist" aria-label="Transcript scope">';
             html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'full' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'full' ? 'true' : 'false') + '" onclick="setTranscriptViewMode(\'full\')">Full Transcript</button>';
-            html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'question' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'question' ? 'true' : 'false') + '" onclick="setTranscriptViewMode(\'question\')">Question [' + escapeHtml(String(qNumber || 'X')) + '] Only</button>';
+            html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'question' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'question' ? 'true' : 'false') + '" onclick="setTranscriptViewMode(\'question\')">Question ' + escapeHtml(String(qNumber || 'X')) + ' Only</button>';
             html += '</div>';
 
             html += '<div class="transcript-modern-panel content-container">';
             html += '<div class="transcript-modern-legend">';
+            if (sharedQuestionPlaybackRange) {
+                var sharedCardKey = encodeURIComponent('part-a-question-' + String(qNumber || '0'));
+                html += '<button type="button" class="transcript-modern-play-btn transcript-modern-legend-play" aria-label="Play full question transcript" onclick="playTranscriptSegmentFromCard(\'' + sharedCardKey + '\',' + Number(sharedQuestionPlaybackRange.start || 0) + ',' + Number(sharedQuestionPlaybackRange.end || 0) + ')"><i class="ph-fill ph-play-circle" aria-hidden="true"></i></button>';
+            }
             html += '<span class="transcript-modern-legend-item is-men"><i class="ph ph-user" aria-hidden="true"></i><span>' + escapeHtml(partId === 2 ? 'Student (Male)' : 'Male Speaker') + '</span></span>';
             html += '<span class="transcript-modern-legend-item is-women"><i class="ph ph-user" aria-hidden="true"></i><span>' + escapeHtml(partId === 2 ? 'Librarian (Women)' : 'Female Speaker') + '</span></span>';
             html += '<span class="transcript-modern-legend-item is-narr"><i class="ph ph-user" aria-hidden="true"></i><span>Narrator</span></span>';
@@ -2238,6 +2303,17 @@
                     }
                     if (!(end > start)) end = start + 0.2;
 
+                    var playStart = start;
+                    var playEnd = end;
+                    if (sharedQuestionPlaybackRange) {
+                        playStart = Number(sharedQuestionPlaybackRange.start || start);
+                        playEnd = Number(sharedQuestionPlaybackRange.end || end);
+                        if (!(playEnd > playStart)) {
+                            playStart = start;
+                            playEnd = end;
+                        }
+                    }
+
                     var ts = escapeHtml(seg.timestamp || fmtTime(start));
                     var speakerClass = getTranscriptSpeakerClass(seg.speaker || 'NARR');
                     var speakerLabel = escapeHtml(getTranscriptSpeakerLabel(seg.speaker || 'NARR', partId));
@@ -2246,9 +2322,10 @@
                     var encodedCardKey = encodeURIComponent(cardKey);
                     var isActive = reviewActiveTranscriptKey === cardKey;
                     var legacyClass = speakerClass === 'men' ? 'second-speaker' : (speakerClass === 'women' ? 'thrid-speaker' : 'first-speaker');
-                    html += '<article class="transcript-modern-item transcript-modern-item--' + speakerClass + ' ' + legacyClass + (isActive ? ' is-active' : '') + '" onclick="playTranscriptSegmentFromCard(\'' + encodedCardKey + '\',' + start + ',' + end + ')">';
+                    var itemClasses = 'transcript-modern-item transcript-modern-item--' + speakerClass + ' ' + legacyClass + (isActive ? ' is-active' : '') + (sharedQuestionPlaybackRange ? ' transcript-modern-item--static' : '');
+                    html += '<article class="' + itemClasses + '"' + (sharedQuestionPlaybackRange ? '' : ' onclick="playTranscriptSegmentFromCard(\'' + encodedCardKey + '\',' + playStart + ',' + playEnd + ')"') + '>';
                     html += '<div class="transcript-modern-item-head">';
-                    html += '<div class="transcript-modern-item-speaker"><button type="button" class="transcript-modern-play-btn" aria-label="Play transcript segment" onclick="event.stopPropagation();playTranscriptSegmentFromCard(\'' + encodedCardKey + '\',' + start + ',' + end + ')"><i class="ph-fill ph-play" aria-hidden="true"></i></button><i class="ph ph-user transcript-modern-item-user" aria-hidden="true"></i><span>' + speakerLabel + '</span></div>';
+                    html += '<div class="transcript-modern-item-speaker">' + (sharedQuestionPlaybackRange ? '' : '<button type="button" class="transcript-modern-play-btn" aria-label="Play transcript segment" onclick="event.stopPropagation();playTranscriptSegmentFromCard(\'' + encodedCardKey + '\',' + playStart + ',' + playEnd + ')"><i class="ph-fill ph-play" aria-hidden="true"></i></button>') + '<i class="ph ph-user transcript-modern-item-user" aria-hidden="true"></i><span>' + speakerLabel + '</span></div>';
                     html += '<div class="transcript-modern-item-time">' + ts + '</div>';
                     html += '</div>';
                     html += '<div class="transcript-modern-item-body">' + text + '</div>';
@@ -2359,18 +2436,21 @@
                 }
             }
 
-            function buildRange(start, end) {
-                var html = '';
+            function buildRangeRows(start, end) {
+                var chips = [];
                 for (var num = start; num <= end; num += 1) {
                     var q = byNumber[num] || { number: num, userAnswer: '', correctAnswer: '' };
-                    html += buildQuestionChip(q, activeQuestionNumber);
+                    chips.push(buildQuestionChip(q, activeQuestionNumber));
                 }
-                return html;
+                var midpoint = Math.ceil(chips.length / 2);
+                var firstRow = chips.slice(0, midpoint).join('');
+                var secondRow = chips.slice(midpoint).join('');
+                return '<div class="header-question-row">' + firstRow + '</div>' + '<div class="header-question-row">' + secondRow + '</div>';
             }
 
-            var htmlA = buildRange(1, 30);
-            var htmlB = buildRange(31, 38);
-            var htmlC = buildRange(39, 50);
+            var htmlA = buildRangeRows(1, 30);
+            var htmlB = buildRangeRows(31, 38);
+            var htmlC = buildRangeRows(39, 50);
 
             partA.innerHTML = htmlA;
             partB.innerHTML = htmlB;
@@ -3126,9 +3206,15 @@
                 if (item.is_user_answer && !item.is_correct_choice) optionStateClass += ' is-user-wrong';
                 if (item.is_correct_choice) optionStateClass += ' is-correct-answer';
                 if (item.is_user_answer || item.is_correct_choice) optionStateClass += ' option-selected';
+                var markerClass = 'explaination-figma-option-letter';
+                if (item.is_user_answer && !item.is_correct_choice) markerClass += ' is-user-wrong';
+                if (item.is_correct_choice) markerClass += ' is-correct-answer';
+                if (item.is_user_answer || item.is_correct_choice) markerClass += ' option-selected';
 
+                html += '<div class="explaination-figma-option-row">';
+                html += '<div class="' + markerClass + '"><span class="option-marker">' + escapeHtml(String(item.letter || '')) + '</span></div>';
                 html += '<div class="explaination-figma-option ' + optionStateClass + '">';
-                html += '<div class="explaination-figma-option-text option-answer-d"><span class="option-marker">(' + escapeHtml(String(item.letter || '')) + ')</span><span class="option-text">' + escapeHtml(String(item.text || '')) + '</span></div>';
+                html += '<div class="explaination-figma-option-text option-answer-d"><span class="option-text">' + escapeHtml(String(item.text || '')) + '</span></div>';
 
                 if (item.is_user_answer && !item.is_correct_choice) {
                     html += '<div class="explaination-figma-your-answer is-wrong"><span class="your-answer">Your Answer ✕</span></div>';
@@ -3137,6 +3223,7 @@
                     html += '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">Correct Answer ✓</span></div>';
                 }
 
+                html += '</div>';
                 html += '</div>';
             }
             html += '</div>';
@@ -3152,16 +3239,18 @@
             for (var j = 0; j < dialogueBlocks.length; j += 1) {
                 var block = dialogueBlocks[j] || {};
                 var gender = String(block.speaker_gender || '').toLowerCase();
-                var speakerColor = gender === 'male' ? '#F3934F' : (gender === 'female' ? '#676CFF' : '#111827');
+                var iconContainerClass = gender === 'female' ? 'icon-container2' : 'icon-container';
                 var start = Number(block.start_sec || 0);
                 var end = Number(block.end_sec || (start + 8));
+                var speakerLabel = gender === 'female' ? 'female speaker' : 'male speaker';
 
                 html += '<div class="explanation-text">' + escapeHtml(String(block.introduction_label || '')) + '</div>';
                 html += '<div class="speaker">';
-                html += '<div class="flex flex-row justify-between item-center" style="margin-bottom:8px;">';
-                html += '<div style="color:' + speakerColor + ';font-weight:700;">' + escapeHtml(String(block.speaker_name || 'Speaker')) + '</div>';
-                html += '</div>';
-                html += '<button type="button" class="quote-container" onclick="playTranscriptSegment(' + start + ',' + end + ')">';
+                html += '<button type="button" class="' + iconContainerClass + '" onclick="playTranscriptSegment(' + start + ',' + end + ')" aria-label="Play ' + escapeHtml(speakerLabel) + ' line">';
+                html += '<i class="ph ph-speaker-high vector-icon" aria-hidden="true"></i>';
+                html += '<i class="ph ph-user vector-icon2" aria-hidden="true"></i>';
+                html += '</button>';
+                html += '<button type="button" class="' + (gender === 'female' ? 'quote-container2' : 'quote-container') + '" onclick="playTranscriptSegment(' + start + ',' + end + ')">';
                 html += '<div class="student-quote"><span class="student-quote-txt-container">' + String(block.quote_text_html || '') + '</span></div>';
                 html += '</button>';
                 html += '</div>';
