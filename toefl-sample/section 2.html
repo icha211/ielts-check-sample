@@ -306,6 +306,7 @@
                 if (eEl) eEl.value = "";
                 if (vEl) vEl.value = "";
             });
+            syncPartBRichEditorFromTextarea();
         }
 
         function parseIndexedLineMap(rawText) {
@@ -344,6 +345,7 @@
         }
 
         function saveSectionDraft() {
+            syncPartBRichEditorToTextarea();
             const draft = { parts: {} };
             PARTS.forEach((part) => {
                 const p = part.id;
@@ -389,6 +391,8 @@
                 if (eEl && typeof row.explanation === "string") eEl.value = row.explanation;
                 if (vEl && typeof row.videoStep === "string") vEl.value = row.videoStep;
             });
+
+            syncPartBRichEditorFromTextarea();
         }
 
         async function loadSectionMeta() {
@@ -579,9 +583,11 @@
                             
                             <div class="format-toolbar header-soal">
                                 <span style="font-size:14px; font-weight:bold;">Input Teks Soal</span>
-                                ${p === 2 ? `<button class="format-btn" title="Tebalkan Teks Opsi" onclick="formatText('input-magic-questions-${p}', '<strong>', '</strong>')" style="margin-left:auto; color:black;">B Bold Opsi</button><button class="format-btn" title="Garis Bawahi Teks" onclick="formatText('input-magic-questions-${p}', '<u>', '</u>')" style="color:black;">U Garis Bawah (Ctrl+U)</button>` : ''}
+                                ${p === 2 ? `<button class="format-btn" title="Tebalkan Teks Opsi" onclick="formatText('input-magic-questions-rich-${p}', '<strong>', '</strong>')" style="margin-left:auto; color:black;">B Bold Opsi</button><button class="format-btn" title="Garis Bawahi Teks" onclick="formatText('input-magic-questions-rich-${p}', '<u>', '</u>')" style="color:black;">U Garis Bawah (Ctrl+U)</button>` : ''}
                             </div>
-                            <textarea id="input-magic-questions-${p}" class="smart-textarea" placeholder="${placeholderSoal}"></textarea>
+                            ${p === 2
+                                ? `<div id="input-magic-questions-rich-${p}" class="smart-rich-editor" contenteditable="true" data-target-textarea="input-magic-questions-${p}" data-placeholder="${placeholderSoal.replace(/"/g, '&quot;')}"></div><textarea id="input-magic-questions-${p}" class="smart-textarea smart-textarea-hidden" placeholder="${placeholderSoal}"></textarea>`
+                                : `<textarea id="input-magic-questions-${p}" class="smart-textarea" placeholder="${placeholderSoal}"></textarea>`}
                         </div>
 
                         <div class="dev-card keys-card">
@@ -646,6 +652,12 @@
             document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
+            if (tabName === "dev-view" || tabName === "user-view") {
+                const params = new URLSearchParams(window.location.search);
+                const query = params.toString();
+                const nextHash = `#${tabName}`;
+                window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}${nextHash}`);
+            }
             updateOnboardingVisibility();
             if (tabName === "user-view") window.scrollTo(0, 0);
         }
@@ -661,6 +673,9 @@
             if (userView) userView.classList.add("active");
             const userButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'user-view'"));
             if (userButton) userButton.classList.add("active");
+            const params = new URLSearchParams(window.location.search);
+            const query = params.toString();
+            window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}#user-view`);
             updateOnboardingVisibility();
             window.scrollTo(0, 0);
         }
@@ -878,7 +893,8 @@
 
         function isDeveloperMode() {
             const params = new URLSearchParams(window.location.search);
-            return window.location.hash === "#dev-view" || params.get("mode") === "dev";
+            const devViewActive = Boolean(document.getElementById("dev-view")?.classList.contains("active"));
+            return window.location.hash === "#dev-view" || params.get("mode") === "dev" || devViewActive;
         }
 
         function applyViewMode() {
@@ -922,12 +938,25 @@
         }
 
         function formatText(areaId, openTag, closeTag) {
-            const textArea = document.getElementById(areaId);
-            const start = textArea.selectionStart;
-            const end = textArea.selectionEnd;
-            const text = textArea.value;
-            textArea.value = text.substring(0, start) + openTag + text.substring(start, end) + closeTag + text.substring(end);
-            textArea.focus();
+            const el = document.getElementById(areaId);
+            if (!el) return;
+
+            if (el.isContentEditable) {
+                el.focus();
+                if (openTag.toLowerCase() === '<strong>') {
+                    document.execCommand('bold', false, null);
+                } else if (openTag.toLowerCase() === '<u>') {
+                    document.execCommand('underline', false, null);
+                }
+                syncPartBRichEditorToTextarea();
+                return;
+            }
+
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            const text = el.value;
+            el.value = text.substring(0, start) + openTag + text.substring(start, end) + closeTag + text.substring(end);
+            el.focus();
         }
 
         function insertTextAtCursor(textArea, insertText) {
@@ -949,6 +978,94 @@
                 .replace(/[ \t]+\n/g, "\n")
                 .replace(/\n{3,}/g, "\n\n")
                 .trim();
+        }
+
+        function escapeHtml(value) {
+            return String(value || "").replace(/[&<>\"]/g, (ch) => {
+                if (ch === '&') return '&amp;';
+                if (ch === '<') return '&lt;';
+                if (ch === '>') return '&gt;';
+                return '&quot;';
+            });
+        }
+
+        function normalizePartBRichHtml(html) {
+            return String(html || "")
+                .replace(/<\/?span[^>]*>/gi, "")
+                .replace(/<\/?font[^>]*>/gi, "")
+                .replace(/<b\b[^>]*>/gi, "<strong>")
+                .replace(/<\/b>/gi, "</strong>")
+                .replace(/<div><br><\/div>/gi, "<div></div>");
+        }
+
+        function markupToRichEditorHtml(markupText) {
+            const safe = escapeHtml(String(markupText || ""));
+            const withFormatting = safe
+                .replace(/&lt;strong&gt;/gi, "<strong>")
+                .replace(/&lt;\/strong&gt;/gi, "</strong>")
+                .replace(/&lt;b&gt;/gi, "<strong>")
+                .replace(/&lt;\/b&gt;/gi, "</strong>")
+                .replace(/&lt;u&gt;/gi, "<u>")
+                .replace(/&lt;\/u&gt;/gi, "</u>");
+
+            const lines = withFormatting.split(/\n/);
+            return lines.map((line) => `<div>${line || "<br>"}</div>`).join("");
+        }
+
+        function stripLiteralTagTextToHtml(text) {
+            return String(text || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/&lt;\/?\s*strong\s*&gt;/gi, (m) => m.toLowerCase().includes('/strong') ? '</strong>' : '<strong>')
+                .replace(/&lt;\/?\s*b\s*&gt;/gi, (m) => m.toLowerCase().includes('/b') ? '</strong>' : '<strong>')
+                .replace(/&lt;\/?\s*u\s*&gt;/gi, (m) => m.toLowerCase().includes('/u') ? '</u>' : '<u>')
+                .replace(/\n/g, "<br>");
+        }
+
+        function syncPartBRichEditorToTextarea() {
+            const editor = document.getElementById('input-magic-questions-rich-2');
+            const textArea = document.getElementById('input-magic-questions-2');
+            if (!editor || !textArea) return;
+
+            let markup = '';
+            editor.childNodes.forEach((child) => {
+                markup += htmlNodeToQuestionMarkup(child);
+            });
+            textArea.value = normalizeClipboardQuestionText(markup);
+        }
+
+        function syncPartBRichEditorFromTextarea() {
+            const editor = document.getElementById('input-magic-questions-rich-2');
+            const textArea = document.getElementById('input-magic-questions-2');
+            if (!editor || !textArea) return;
+            editor.innerHTML = normalizePartBRichHtml(markupToRichEditorHtml(textArea.value || ''));
+        }
+
+        function getPartBRichOptionMap() {
+            const editor = document.getElementById('input-magic-questions-rich-2');
+            if (!editor) return {};
+
+            const map = {};
+            const lineContainer = document.createElement('div');
+            lineContainer.innerHTML = editor.innerHTML;
+
+            const blocks = Array.from(lineContainer.querySelectorAll('div,p,li'));
+            blocks.forEach((block) => {
+                const text = normalizeClipboardQuestionText(block.textContent || '');
+                const qMatch = text.match(/^(\d+)[\.\)]?\s+/);
+                if (!qMatch) return;
+                const qNum = qMatch[1];
+                const strongNodes = Array.from(block.querySelectorAll('strong,b'));
+                if (!strongNodes.length) return;
+                const letters = ['A', 'B', 'C', 'D'];
+                map[qNum] = map[qNum] || {};
+                for (let i = 0; i < Math.min(strongNodes.length, letters.length); i += 1) {
+                    const val = normalizeClipboardQuestionText(strongNodes[i].textContent || '');
+                    if (val) map[qNum][letters[i]] = val;
+                }
+            });
+            return map;
         }
 
         function elementStyleHasWeightBold(element) {
@@ -1011,25 +1128,43 @@
         }
 
         function bindPartBRichPasteSupport() {
-            const textArea = document.getElementById("input-magic-questions-2");
-            if (!textArea || textArea.dataset.richPasteBound === "1") return;
+            const editor = document.getElementById('input-magic-questions-rich-2');
+            const textArea = document.getElementById('input-magic-questions-2');
+            if (!editor || !textArea || editor.dataset.richPasteBound === '1') return;
 
-            textArea.addEventListener("paste", (event) => {
+            editor.addEventListener('input', () => {
+                syncPartBRichEditorToTextarea();
+            });
+
+            editor.addEventListener('keydown', (event) => {
+                if ((event.ctrlKey || event.metaKey) && (event.key === 'u' || event.key === 'U')) {
+                    event.preventDefault();
+                    document.execCommand('underline', false, null);
+                    syncPartBRichEditorToTextarea();
+                }
+            });
+
+            editor.addEventListener('paste', (event) => {
                 const clipboard = event.clipboardData;
                 if (!clipboard) return;
 
-                const html = clipboard.getData("text/html") || "";
-                const text = clipboard.getData("text/plain") || "";
-                const hasRichCandidate = Boolean(html && /<(b|strong|u|span|div|p|li|br)\b/i.test(html));
-                const hasMarkdownBold = /\*\*[^*]+\*\*/.test(text);
-                if (!hasRichCandidate && !hasMarkdownBold) return;
-
                 event.preventDefault();
-                const converted = convertClipboardHtmlToQuestionMarkup(html, text);
-                insertTextAtCursor(textArea, converted);
+                const html = clipboard.getData('text/html') || '';
+                const text = clipboard.getData('text/plain') || '';
+
+                let insertHtml = '';
+                if (html && /<(b|strong|u|span|div|p|li|br)\b/i.test(html)) {
+                    const converted = convertClipboardHtmlToQuestionMarkup(html, text);
+                    insertHtml = markupToRichEditorHtml(converted);
+                } else {
+                    insertHtml = stripLiteralTagTextToHtml(text);
+                }
+
+                document.execCommand('insertHTML', false, normalizePartBRichHtml(insertHtml));
+                syncPartBRichEditorToTextarea();
             });
 
-            textArea.dataset.richPasteBound = "1";
+            editor.dataset.richPasteBound = '1';
         }
 
         let globalAnswerKey = {};
@@ -1218,6 +1353,9 @@
                 const displayEl = document.getElementById(`display-questions-${p}`);
                 if (!answerKeyEl || !explanationEl || !questionsEl || !displayEl) return;
 
+                if (p === 2) syncPartBRichEditorToTextarea();
+                const partBRichOptionMap = p === 2 ? getPartBRichOptionMap() : {};
+
                 answerKeyEl.value.split('\n').forEach(l => {
                     let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
                     if(m) globalAnswerKey[`${p}_${m[1]}`] = m[2].trim().toLowerCase();
@@ -1307,13 +1445,15 @@
                                         const rawChunk = questionText.slice(marker.after, nextStart);
                                         const cleanWord = rawChunk.trim().replace(/\s+/g, ' ');
                                         const val = marker.letter.toLowerCase();
+                                        const domBoldText = (partBRichOptionMap[currentQuestionNum] && partBRichOptionMap[currentQuestionNum][marker.letter]) || '';
                                         const boldMatch = rawChunk.match(/<(?:strong|b)>([\s\S]*?)<\/(?:strong|b)>/i);
 
                                         htmlOut += before;
-                                        if (boldMatch) {
-                                            const chunkPrefix = rawChunk.slice(0, boldMatch.index);
-                                            const chunkBoldText = (boldMatch[1] || '').replace(/<[^>]+>/g, '').trim();
-                                            const chunkSuffix = rawChunk.slice((boldMatch.index || 0) + boldMatch[0].length);
+                                        if (domBoldText || boldMatch) {
+                                            const hasBoldMatch = Boolean(boldMatch);
+                                            const chunkPrefix = hasBoldMatch ? rawChunk.slice(0, boldMatch.index) : '';
+                                            const chunkBoldText = domBoldText || (boldMatch[1] || '').replace(/<[^>]+>/g, '').trim();
+                                            const chunkSuffix = hasBoldMatch ? rawChunk.slice((boldMatch.index || 0) + boldMatch[0].length) : '';
                                             const safeBoldText = chunkBoldText || cleanWord.replace(/[\s.,;:!?]+$/g, '');
                                             partBOpts[marker.letter] = safeBoldText;
 
@@ -1453,6 +1593,7 @@
 
         window.onload = async () => {
             initStructure();
+            syncPartBRichEditorFromTextarea();
             bindPartBRichPasteSupport();
             applyViewMode();
             activateInitialTab();
