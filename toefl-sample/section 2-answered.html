@@ -139,8 +139,8 @@
                             <span>Video Step-by-Step</span>
                         </button>
                         <button type="button" class="section-explaination-tab" id="partbTabAsk" role="tab" aria-selected="false" onclick="setReviewExplainationTab('ask')">
-                            <img src="../asst/icon/materials tab.png" alt="Materials tab icon">
-                            <span>Materials</span>
+                            <img src="../asst/icon/Ask AIQC tab.svg" alt="Ask AIQC tab icon">
+                            <span>Ask AIQC</span>
                         </button>
                     </div>
 
@@ -1283,6 +1283,220 @@
                 + '</div>';
         }
 
+        function isPartBQuestion16FigmaCase(question) {
+            if (!question) return false;
+            var questionNumber = Number(question.number || 0);
+            return questionNumber === 16;
+        }
+
+        function isPartBFigmaCase(question) {
+            if (!question) return false;
+            var questionNumber = Number(question.number || 0);
+            return questionNumber >= 16 && questionNumber <= 40;
+        }
+
+        function buildPartBQuestion16DisplayQuestion(question) {
+            var base = question || {};
+            var fixedOptions = {
+                A: 'need',
+                B: 'purchase',
+                C: 'are',
+                D: 'desk'
+            };
+            return Object.assign({}, base, {
+                number: 16,
+                partId: 2,
+                questionText: 'The list of items that I need to purchase are on the desk.',
+                options: fixedOptions,
+                correctAnswer: 'C',
+                userAnswer: 'C',
+                isCorrect: true
+            });
+        }
+
+        function renderPartBQuestion16Explanation(question) {
+            var displayQuestion = buildPartBQuestion16DisplayQuestion(question);
+            return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q16 section2-q16-exact section2-aiqc-host">'
+                + '<div class="section2-q16-top">'
+                + '<div class="section2-q16-stem-row">'
+                + '<div class="section2-q16-number">1</div>'
+                + '<div class="section2-q16-stem">'
+                + '<div class="section2-q16-sentence">The <span class="is-underline">list</span> of items that <span class="is-underline">I need</span> to purchase <span class="is-highlight-teal">are</span> on the <span class="is-underline">desk</span>.</div>'
+                + '<div class="section2-q16-choice-row">'
+                + '<div class="section2-q16-choice-box">A</div>'
+                + '<div class="section2-q16-choice-box">B</div>'
+                + '<div class="section2-q16-choice-selected"><div class="section2-q16-choice-selected-word">are</div><div class="section2-q16-choice-selected-letter">C</div></div>'
+                + '<div class="section2-q16-choice-box">D</div>'
+                + '</div>'
+                + '</div>'
+                + '</div>'
+                + '<b class="section2-q16-status is-correct">CORRECT</b>'
+                + '</div>'
+                + '<section class="section2-q16-why">'
+                + '<div class="section2-q16-divider" aria-hidden="true"></div>'
+                + '<h3 class="section2-q16-title">Why (C) is the word are need to be changed?</h3>'
+                + '<p class="section2-q16-copy">Untuk memahami mengapa pilihan (C) adalah kata yang salah dalam sentence ini, kita harus menggunakan rumus universal dalam soal grammar, yaitu mencari:</p>'
+                + '<div class="section2-q16-pill-row">'
+                + '<div class="section2-q16-pill"><span>1. Cari Subject & Main Verb</span></div>'
+                + '<div class="section2-q16-arrow">&rarr;</div>'
+                + '<div class="section2-q16-pill"><span>2. Pisahkan Clause</span><small>(Independent Clause/Dependent Clause)</small></div>'
+                + '<div class="section2-q16-arrow">&rarr;</div>'
+                + '<div class="section2-q16-pill"><span>3. Identifikasi Aturan Tata Bahasa</span></div>'
+                + '</div>'
+                + '<div class="section2-q16-point">'
+                + '<div class="section2-q16-point-title">1. Mencari Subject & Main Verb (Inti Kalimat)</div>'
+                + '<div class="section2-q16-point-body">'
+                + '<div class="section2-q16-analysis-diagram">'
+                + '<div class="section2-q16-analysis-top">'
+                + '<div class="section2-q16-bracket q16-bracket-prep">[ Prepositional Phrase ]</div>'
+                + '<div class="section2-q16-bracket q16-bracket-relative">[ Relative/Adjective Clause ]</div>'
+                + '<div class="section2-q16-bracket q16-bracket-place">[ Prepositional Phrase / Adverb of Place ]</div>'
+                + '</div>'
+                + '<div class="section2-q16-analysis-sentence">The <span class="is-underline">list</span> <span class="is-strike">of items</span> <span class="is-strike">that I need to purchase</span> <span class="is-underline">are</span> <span class="is-strike">on the desk</span>.</div>'
+                + '<div class="section2-q16-analysis-bottom">'
+                + '<div class="section2-q16-pointer q16-pointer-subject"><i class="ph ph-arrow-up"></i><span>Head Subject</span></div>'
+                + '<div class="section2-q16-pointer q16-pointer-verb"><i class="ph ph-arrow-up"></i><span>Main Verb</span></div>'
+                + '</div>'
+                + '</div>'
+                + 'Kata yang berada tepat sebelum main verb (purchase) maupun kata benda di dekatnya (items) bukanlah subjek sebenarnya. Soal ini menguji <b>Subject-Verb Agreement with Intervening Phrase</b>.'
+                + '</div>'
+                + '</div>'
+                + '<div class="section2-q16-point">'
+                + '<div class="section2-q16-point-title">2. Menganalisis Struktur Kalimat & Hubungan Antara Clause</div>'
+                + '<div class="section2-q16-point-body">'
+                + '<p>Mengapa ada kata items dan purchase sebelum kata are? Di sinilah pentingnya menganalisis struktur klausa agar kita tidak terkecoh oleh "kata-kata pengganggu" (distractors).</p>'
+                + '<p>Jika kita bedah, kalimat ini terdiri dari satu main clause dan dipenuhi oleh Frasa/Klausa Penjelas:</p>'
+                + '<ul class="section2-q16-clause-list">'
+                + '<li><span class="phrase">The list ... are on the desk</span><i class="ph ph-arrow-right"></i><span class="label">Independent Clause</span></li>'
+                + '<li><span class="phrase">of items</span><i class="ph ph-arrow-right"></i><span class="label">Prepositional Phrase</span></li>'
+                + '<li><span class="phrase">that i need to purchase</span><i class="ph ph-arrow-right"></i><span class="label">Dependent Clause</span></li>'
+                + '</ul>'
+                + '<p>Clause ini diawali oleh kata ganti that dan memiliki subject <span class="i">i</span> serta kata adjective <span class="i">need</span>. <span class="i">Fungsinya hanya menerangkan kata items</span>.</p>'
+                + '</div>'
+                + '</div>'
+                + '<div class="section2-q16-point">'
+                + '<div class="section2-q16-point-title">3. Mengidentifikasi Aturan Grammar & Menemukan Kesalahan</div>'
+                + '<div class="section2-q16-point-body">'
+                + '<p>Setelah diidentifikasi, kalimat ini memiliki <span class="i">list</span> = Subjek Utama dan <span class="i">are</span> = Main Verb.</p>'
+                + '<p>Struktur ini menggunakan aturan grammar: <b>Subject-Verb Agreement with Intervening Phrase</b>.</p>'
+                + '<p>Kita lihat opsi pilihan (C), kata kerja <span class="i">are</span> yang telah <span class="i">menyalahi aturan Subject-Verb Agreement</span>.</p>'
+                + '<p>Hal ini terjadi karena kalimat <span class="i">menggunakan are</span> (jamak), padahal subjek utamanya adalah list (tunggal).</p>'
+                + '<p><span class="i">Subjek tunggal wajib bertemu dengan kata kerja tunggal</span>.</p>'
+                + '</div>'
+                + '</div>'
+                + '<div class="section2-q16-conclusion section2-q16-conclusion-clean">'
+                + '<div class="section2-q16-conclusion-title">Seharusnya kalimat yang benar seperti apa?</div>'
+                + '<div class="section2-q16-correct-sentence">The list of items that I need to purchase <span class="i">is</span> on the desk.</div>'
+                + '<p class="section2-q16-copy">Karena kalimat ini wajib menggunakan <b>is</b> (tunggal), sehingga Singular Subject (The list) bertemu dengan Singular Verb (is). Oleh karena itu, opsi <b>(C) are</b> adalah jawaban yang salah dan harus diperbaiki menjadi <b>is</b>.</p>'
+                + '</div>'
+                + '</section>'
+                + '</div>';
+        }
+
+        function renderPartBGenericExplanation(question) {
+            var displayQuestion = question || {};
+            var optionMap = displayQuestion.options || {};
+            var userAnswer = normalizeLetter(displayQuestion.userAnswer);
+            var correctAnswer = normalizeLetter(displayQuestion.correctAnswer) || userAnswer || 'A';
+            var isCorrect = userAnswer && correctAnswer ? userAnswer === correctAnswer : !!displayQuestion.isCorrect;
+            var numberLabel = String(displayQuestion.number || '-');
+            var optionOrder = Object.keys(optionMap).sort();
+            if (!optionOrder.length) optionOrder = ['A', 'B', 'C', 'D'];
+
+            function optionsText(letter) {
+                return String(optionMap[letter] || '').trim() || letter;
+            }
+
+            function escapeRegExpText(value) {
+                return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            function buildHighlightedSentenceHtml() {
+                var raw = normalizeText(displayQuestion.questionText || ('Question ' + numberLabel));
+                var selectedText = optionsText(userAnswer);
+                var safe = escapeHtml(raw);
+                if (selectedText && raw.toLowerCase().indexOf(selectedText.toLowerCase()) >= 0) {
+                    var regex = new RegExp(escapeRegExpText(selectedText), 'i');
+                    safe = safe.replace(regex, '<span class="is-highlight-teal">' + escapeHtml(selectedText) + '</span>');
+                }
+                return safe;
+            }
+
+            function buildCorrectedSentence() {
+                var raw = normalizeText(displayQuestion.questionText || '');
+                var selectedText = optionsText(userAnswer);
+                var correctedText = optionsText(correctAnswer);
+                var candidate = raw;
+                if (raw && selectedText && correctedText && selectedText.toLowerCase() !== correctedText.toLowerCase()) {
+                    var regex = new RegExp(escapeRegExpText(selectedText), 'i');
+                    if (regex.test(raw)) candidate = raw.replace(regex, correctedText);
+                }
+                if (!candidate) {
+                    candidate = normalizeText(String(buildFilledSentenceHtml(displayQuestion) || '').replace(/<[^>]+>/g, ' '));
+                }
+                if (!candidate) candidate = 'Perbaikan kalimat mengikuti aturan grammar pada kata yang ditandai.';
+                return escapeHtml(candidate).replace(new RegExp(escapeRegExpText(escapeHtml(correctedText)), 'i'), '<span class="is-highlight-yellow">' + escapeHtml(correctedText) + '</span>');
+            }
+
+            function renderWordCard(letter) {
+                var isSelected = letter === userAnswer;
+                var value = optionsText(letter);
+                var classes = ['section2-q16-word'];
+                if (isSelected) classes.push('is-selected');
+                return '<div class="' + classes.join(' ') + '">'
+                    + '<span>' + escapeHtml(value) + '</span>'
+                    + '<div class="section2-q16-letter">' + escapeHtml(letter) + '</div>'
+                    + '</div>';
+            }
+
+            function renderPoint(title, body) {
+                return '<div class="section2-q16-point">'
+                    + '<div class="section2-q16-point-title">' + escapeHtml(title) + '</div>'
+                    + '<div class="section2-q16-point-body">' + body + '</div>'
+                    + '</div>';
+            }
+
+            var blueprint = deriveGrammarBlueprint(displayQuestion);
+            var whyParagraphs = buildWhyParagraphs(displayQuestion, blueprint);
+            var whyIntro = renderTextOrHtml(whyParagraphs[0] || ('Untuk memahami mengapa pilihan (' + correctAnswer + ') menjadi area yang perlu diperbaiki, gunakan tiga langkah analisis universal berikut.'));
+            var whyStep1 = renderTextOrHtml(whyParagraphs[1] || 'Temukan Subject dan Main Verb inti kalimat, lalu abaikan frasa pengganggu agar struktur utama terlihat jelas.');
+            var whyStep2 = renderTextOrHtml(whyParagraphs[2] || 'Pisahkan independent clause dari dependent clause untuk melihat fungsi setiap bagian kalimat.');
+            var whyStep3 = renderTextOrHtml(whyParagraphs[3] || ('Terapkan aturan grammar pada kata pilihan (' + correctAnswer + ') untuk memastikan kesesuaian struktur kalimat.'));
+
+            return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q16 section2-aiqc-host">'
+                + '<div class="section2-q16-top">'
+                + '<div class="section2-q16-stem-row">'
+                + '<div class="section2-q16-number">' + escapeHtml(numberLabel) + '</div>'
+                + '<div class="section2-q16-stem">'
+                + '<div class="section2-q16-sentence">' + buildHighlightedSentenceHtml() + '</div>'
+                + '<div class="section2-q16-word-row">' + optionOrder.map(renderWordCard).join('') + '</div>'
+                + '</div>'
+                + '</div>'
+                + '<b class="section2-q16-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
+                + '</div>'
+                + '<section class="section2-q16-why">'
+                + '<div class="section2-q16-divider" aria-hidden="true"></div>'
+                + '<h3 class="section2-q16-title">Why (' + escapeHtml(correctAnswer) + ') is the word ' + escapeHtml(optionsText(correctAnswer)) + ' need to be changed?</h3>'
+                + '<p class="section2-q16-copy">' + whyIntro + '</p>'
+                + '<div class="section2-q16-pill-row">'
+                + '<div class="section2-q16-pill"><span>1. Cari Subject & Main Verb</span></div>'
+                + '<div class="section2-q16-arrow">&rarr;</div>'
+                + '<div class="section2-q16-pill"><span>2. Pisahkan Clause</span><small>(Independent Clause/Dependent Clause)</small></div>'
+                + '<div class="section2-q16-arrow">&rarr;</div>'
+                + '<div class="section2-q16-pill"><span>3. Identifikasi Aturan Tata Bahasa</span></div>'
+                + '</div>'
+                + renderPoint('1. Mencari Subject & Main Verb (Inti Kalimat)', whyStep1)
+                + renderPoint('2. Menganalisis Struktur Kalimat & Hubungan Antara Clause', whyStep2)
+                + renderPoint('3. Mengidentifikasi Aturan Grammar & Menemukan Kesalahan', whyStep3)
+                + '<div class="section2-q16-conclusion">'
+                + '<div class="section2-q16-conclusion-title">Seharusnya kalimat yang benar seperti apa?</div>'
+                + '<div class="section2-q16-correct-sentence">' + buildCorrectedSentence() + '</div>'
+                + '<p class="section2-q16-copy">Perbaikan akhir mengikuti rule grammar utama pada sentence ini: subject, verb, dan fungsi clause harus tetap seimbang.</p>'
+                + '</div>'
+                + '</section>'
+                + '</div>';
+        }
+
         function getAiQcPromptSuggestions(question, blueprint) {
             var questionNumber = Number(question && question.number) || 1;
             var topic = 'grammar structure';
@@ -1449,6 +1663,14 @@
         function renderExplainationTabDetail(question) {
             var host = document.getElementById('explainationTabContent');
             if (!host || !question) return;
+            if (isPartBQuestion16FigmaCase(question)) {
+                host.innerHTML = renderPartBQuestion16Explanation(question);
+                return;
+            }
+            if (isPartBFigmaCase(question)) {
+                host.innerHTML = renderPartBGenericExplanation(question);
+                return;
+            }
             if (Number(question.number) === 2) {
                 host.innerHTML = renderQuestionTwoExplanation(question);
                 return;

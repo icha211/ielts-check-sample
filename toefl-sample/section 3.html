@@ -725,6 +725,40 @@
             }
         }
 
+        function refreshSection3QuestionState() {
+            document.querySelectorAll('#user-passages-container .question-item').forEach((card) => {
+                const checked = card.querySelector('.radio-group input[type="radio"]:checked');
+                const badge = card.querySelector('.question-index-pill');
+                const isAnswered = Boolean(checked);
+
+                card.classList.toggle('is-answered', isAnswered);
+                if (badge) badge.classList.toggle('is-answered', isAnswered);
+
+                card.querySelectorAll('.radio-group label').forEach((label) => {
+                    const radio = label.querySelector('input[type="radio"]');
+                    const isSelected = Boolean(radio && radio.checked);
+                    const letterBadge = label.querySelector('.option-letter-badge');
+                    const optionCard = label.querySelector('.option-card-text');
+
+                    label.classList.toggle('selected', isSelected);
+
+                    if (letterBadge) {
+                        letterBadge.style.backgroundColor = isSelected ? '#003560' : 'transparent';
+                        letterBadge.style.borderColor = isSelected ? '#003560' : '#d1dce8';
+                        letterBadge.style.color = isSelected ? '#ffffff' : '#000000';
+                    }
+
+                    if (optionCard) {
+                        optionCard.style.backgroundColor = isSelected ? 'rgba(14, 165, 233, 0.14)' : '#ffffff';
+                        optionCard.style.borderColor = isSelected ? '#8eb4da' : '#d1dce8';
+                        optionCard.style.boxShadow = isSelected ? '0 0 0 2px rgba(14, 165, 233, 0.18)' : 'none';
+                    }
+                });
+            });
+
+            updateHeaderProgress();
+        }
+
         function isDeveloperMode() {
             const params = new URLSearchParams(window.location.search);
             return window.location.hash === "#dev-view" || params.get("mode") === "dev";
@@ -866,7 +900,7 @@
                 document.getElementById(`display-questions-${p}`).innerHTML = cleanHtml;
             }
             renumberAllPassageMarkers();
-            updateHeaderProgress();
+            refreshSection3QuestionState();
             startTimer();
         }
 
@@ -927,8 +961,30 @@
                 userContainer.addEventListener("change", (event) => {
                     const target = event.target;
                     if (target && target.matches('input[type="radio"]')) {
-                        updateHeaderProgress();
+                        refreshSection3QuestionState();
                     }
+                });
+
+                userContainer.addEventListener("dblclick", (event) => {
+                    const clickableLabel = event.target.closest('label');
+                    if (!clickableLabel) return;
+
+                    let radio = null;
+                    if (clickableLabel.hasAttribute('for')) {
+                        radio = document.getElementById(clickableLabel.getAttribute('for'));
+                    } else {
+                        radio = clickableLabel.querySelector('input[type="radio"]');
+                    }
+
+                    if (!radio || radio.type !== 'radio' || !radio.checked) return;
+
+                    event.preventDefault();
+                    event.stopPropagation();
+
+                    setTimeout(() => {
+                        radio.checked = false;
+                        refreshSection3QuestionState();
+                    }, 0);
                 });
             }
         }
