@@ -635,6 +635,7 @@
             : null;
         let cloudDailyTasks = {};
         let monthStoreCache = {};
+        let cachedSetRecords = [];
         let cloudStatusLabel = "Cloud sync is unavailable. Using local cache.";
         let shouldFocusDeepLinkedDate = hasDateParam;
         let selectedDate = hasDateParam
@@ -654,6 +655,44 @@
                 .filter(([key]) => key !== "_updatedAt")
                 .map(([setId, value]) => ({ ...value, setId: value?.setId || setId }))
                 .filter((item) => item && item.module && item.setDate);
+        }
+
+        async function refreshSetRecordCache() {
+            try {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
+                    const records = await toeflStorage.getSetRecords();
+                    cachedSetRecords = (records || []).filter((item) => item && item.module && item.setDate);
+                    return;
+                }
+            } catch (error) {
+                console.warn("[Schedule] Set cache refresh failed, using local records:", error);
+            }
+            cachedSetRecords = getLocalSetRecords();
+        }
+
+        function getRecordsSource() {
+            return Array.isArray(cachedSetRecords) && cachedSetRecords.length > 0
+                ? cachedSetRecords
+                : getLocalSetRecords();
+        }
+
+        function getAvailableSetsByDate(dateValue) {
+            const records = getRecordsSource()
+                .filter((item) => item && item.setDate === dateValue && questionBlueprint[item.module]);
+            const byModule = {};
+            records.forEach((item) => {
+                const prev = byModule[item.module];
+                if (!prev) {
+                    byModule[item.module] = item;
+                    return;
+                }
+                const prevTime = new Date(prev.updatedAt || 0).getTime();
+                const nextTime = new Date(item.updatedAt || 0).getTime();
+                if (nextTime >= prevTime) {
+                    byModule[item.module] = item;
+                }
+            });
+            return byModule;
         }
 
         async function resolveSetIdForDate(sectionId, dateValue) {
@@ -826,13 +865,15 @@
                 tile.type = "button";
                 tile.className = `date-tile${dateItem.toDateString() === selectedDate.toDateString() ? " active" : ""}`;
                 const dayData = store[dateItem.getDate()] || createDefaultDayData(dateItem.getDate());
+                const dateValue = formatDateKey(dateItem);
+                const available = getAvailableSetsByDate(dateValue);
                 tile.innerHTML = `
                     <span class="weekday">${weekdayNames[dateItem.getDay()]}</span>
                     <span class="date-number">${dateItem.getDate()}</span>
                     <span class="date-task-queue">
-                        <span class="date-task-token ${dayData.sections.listening.completed ? "done" : ""}" title="Listening">${dayData.sections.listening.completed ? "✓" : "🎧"}</span>
-                        <span class="date-task-token ${dayData.sections.structure.completed ? "done" : ""}" title="Structure">${dayData.sections.structure.completed ? "✓" : "✍️"}</span>
-                        <span class="date-task-token ${dayData.sections.reading.completed ? "done" : ""}" title="Reading">${dayData.sections.reading.completed ? "✓" : "📖"}</span>
+                        <span class="date-task-token ${available.listening && dayData.sections.listening.completed ? "done" : ""}" title="Listening">${available.listening ? (dayData.sections.listening.completed ? "✓" : "🎧") : "—"}</span>
+                        <span class="date-task-token ${available.structure && dayData.sections.structure.completed ? "done" : ""}" title="Structure">${available.structure ? (dayData.sections.structure.completed ? "✓" : "✍️") : "—"}</span>
+                        <span class="date-task-token ${available.reading && dayData.sections.reading.completed ? "done" : ""}" title="Reading">${available.reading ? (dayData.sections.reading.completed ? "✓" : "📖") : "—"}</span>
                     </span>
                 `;
                 tile.addEventListener("click", () => {
@@ -854,22 +895,37 @@
             const year = selectedDate.getFullYear();
             const month = selectedDate.getMonth();
             const day = selectedDate.getDate();
+            const setDate = formatDateKey(selectedDate);
             const store = getMonthStore(year, month);
             const dayData = store[day];
             const sectionGrid = document.getElementById("sectionGrid");
-            const completedCount = Object.values(dayData.sections).filter((item) => item.completed).length;
+            const availableByModule = getAvailableSetsByDate(setDate);
+            const availableSectionIds = ["listening", "structure", "reading"].filter((sectionId) => Boolean(availableByModule[sectionId]));
+            const completedCount = availableSectionIds.filter((sectionId) => Boolean(dayData.sections?.[sectionId]?.completed)).length;
 
             document.getElementById("mockKicker").textContent = `${weekdayNames[selectedDate.getDay()]} ${day} ${monthNames[month]}`;
-            document.getElementById("mockTitle").textContent = dayData.mockTitle;
-            document.getElementById("mockSubtitle").textContent = `Daily TOEFL practice for ${dayData.focus}.`;
-            document.getElementById("mockProgress").textContent = `${completedCount} of 3 Tests Complete`;
-            document.getElementById("mockNotes").textContent = completedCount === 3
-                ? "All three tests are completed for this day. Use this panel to review the section mix and keep the same rhythm for the next date."
+            document.getElementById("mockTitle").textContent = availableSectionIds.length > 0
+                ? dayData.mockTitle
+                : "No Package On This Date";
+            document.getElementById("mockSubtitle").textContent = availableSectionIds.length > 0
+                ? `Daily TOEFL practice for ${dayData.focus}.`
+                : "No TOEFL section set is saved for this selected date yet.";
+            document.getElementById("mockProgress").textContent = availableSectionIds.length > 0
+                ? `${completedCount} of ${availableSectionIds.length} Tests Complete`
+                : "0 of 0 Tests Complete";
+            document.getElementById("mockNotes").textContent = availableSectionIds.length === 0
+                ? "Create a package in Developer mode for this date first, then it will appear here."
+                : completedCount === availableSectionIds.length
+                ? "All available tests for this day are completed."
                 : "";
 
             sectionGrid.innerHTML = "";
 
-            ["listening", "structure", "reading"].forEach((sectionId) => {
+            if (availableSectionIds.length === 0) {
+                return;
+            }
+
+            availableSectionIds.forEach((sectionId) => {
                 const section = getSectionState(dayData, sectionId, day);
                 const card = document.createElement("article");
                 card.className = "section-card";
@@ -909,8 +965,7 @@
                 button.addEventListener("click", async () => {
                     const sectionId = button.getAttribute("data-open-section");
                     const file = questionBlueprint[sectionId].file;
-                    const setDate = formatDateKey(selectedDate);
-                    const setId = await resolveSetIdForDate(sectionId, setDate);
+                    const setId = String(availableByModule?.[sectionId]?.setId || "");
                     const params = new URLSearchParams({ setDate });
                     if (setId) params.set("setId", setId);
                     window.location.href = `${file}?${params.toString()}`;
@@ -949,7 +1004,9 @@
             cloudSync.start();
         }
 
-        renderSchedule();
+        refreshSetRecordCache().finally(() => {
+            renderSchedule();
+        });
     </script>
 </body>
 </html>

@@ -361,6 +361,7 @@
 
         let currentDay = null;
         let dayData = null;
+        let availableSetsBySection = {};
 
         function toPercent(rawScore, totalQuestions) {
             if (!totalQuestions) return null;
@@ -394,10 +395,12 @@
             }
         }
 
-        function initDay() {
+        async function initDay() {
             currentDay = getTodayContext();
             localStorage.setItem("toefl_current_day", JSON.stringify(currentDay));
             const { year, month, dayNumber } = currentDay;
+
+            await refreshAvailableSetsForCurrentDay();
 
             dayData = {
                 listening: getSectionProgressFromResult("toefl_section1_result", 50),
@@ -413,6 +416,45 @@
             // Render sections
             renderSections();
             updateProgress();
+        }
+
+        function getCurrentDaySetDate() {
+            const assignedYear = Number(currentDay?.year) || new Date().getFullYear();
+            const assignedMonth = Number(currentDay?.month);
+            const assignedDay = Number(currentDay?.dayNumber);
+            const hasAssignedDate = Number.isFinite(assignedMonth) && Number.isFinite(assignedDay);
+            return hasAssignedDate
+                ? `${String(assignedYear).padStart(4, "0")}-${String(assignedMonth + 1).padStart(2, "0")}-${String(assignedDay).padStart(2, "0")}`
+                : new Date().toISOString().split("T")[0];
+        }
+
+        async function refreshAvailableSetsForCurrentDay() {
+            const setDate = getCurrentDaySetDate();
+            const byModule = {};
+
+            try {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
+                    const records = await toeflStorage.getSetRecords();
+                    (records || [])
+                        .filter((item) => item && item.setDate === setDate && ["listening", "structure", "reading"].includes(item.module))
+                        .forEach((item) => {
+                            const prev = byModule[item.module];
+                            if (!prev) {
+                                byModule[item.module] = item;
+                                return;
+                            }
+                            const prevTime = new Date(prev.updatedAt || 0).getTime();
+                            const nextTime = new Date(item.updatedAt || 0).getTime();
+                            if (nextTime >= prevTime) {
+                                byModule[item.module] = item;
+                            }
+                        });
+                }
+            } catch (error) {
+                console.warn("[DailyPractice] set lookup failed:", error);
+            }
+
+            availableSetsBySection = byModule;
         }
 
         function renderSections() {
@@ -449,7 +491,13 @@
                 }
             ];
 
-            sections.forEach(section => {
+            const availableSections = sections.filter((section) => Boolean(availableSetsBySection[section.id]));
+            if (availableSections.length === 0) {
+                grid.innerHTML = `<div class="section-card" style="padding:20px; text-align:left;"><h3 style="margin:0 0 8px; color:#0f2e57;">No Package For This Date</h3><p style="margin:0; color:#4a607a;">No Listening/Structure/Reading set is saved for this day yet. Create it in Developer mode first.</p></div>`;
+                return;
+            }
+
+            availableSections.forEach(section => {
                 const card = document.createElement("div");
                 card.className = "section-card";
 
@@ -487,6 +535,12 @@
         }
 
         function launchSection(sectionId) {
+            const selected = availableSetsBySection[sectionId];
+            if (!selected || !selected.setId) {
+                alert("No saved package exists for this section on this date.");
+                return;
+            }
+
             localStorage.setItem("toefl_practice_context", JSON.stringify({
                 year: currentDay.year,
                 month: currentDay.month,
@@ -494,34 +548,30 @@
                 section: sectionId
             }));
 
-            const assignedYear = Number(currentDay?.year) || new Date().getFullYear();
-            const assignedMonth = Number(currentDay?.month);
-            const assignedDay = Number(currentDay?.dayNumber);
-            const hasAssignedDate = Number.isFinite(assignedMonth) && Number.isFinite(assignedDay);
-            const setDate = hasAssignedDate
-                ? `${String(assignedYear).padStart(4, "0")}-${String(assignedMonth).padStart(2, "0")}-${String(assignedDay).padStart(2, "0")}`
-                : new Date().toISOString().split("T")[0];
+            const setDate = getCurrentDaySetDate();
             const sectionMap = {
-                listening: `section 1.html?setDate=${setDate}`,
-                structure: `section 2.html?setDate=${setDate}`,
-                reading: `section 3.html?setDate=${setDate}`
+                listening: `section 1.html?setDate=${setDate}&setId=${encodeURIComponent(selected.setId)}`,
+                structure: `section 2.html?setDate=${setDate}&setId=${encodeURIComponent(selected.setId)}`,
+                reading: `section 3.html?setDate=${setDate}&setId=${encodeURIComponent(selected.setId)}`
             };
 
             window.location.href = sectionMap[sectionId] || "study-plan.html";
         }
 
         function updateProgress() {
-            const total = dayData.listening.totalQuestions + dayData.structure.totalQuestions + dayData.reading.totalQuestions;
-            const completed = dayData.listening.completed + dayData.structure.completed + dayData.reading.completed;
-            const percent = Math.round((completed / total) * 100);
+            const activeIds = ["listening", "structure", "reading"].filter((sectionId) => Boolean(availableSetsBySection[sectionId]));
+            const total = activeIds.reduce((sum, sectionId) => sum + (dayData?.[sectionId]?.totalQuestions || 0), 0);
+            const completed = activeIds.reduce((sum, sectionId) => sum + (dayData?.[sectionId]?.completed || 0), 0);
+            const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
             document.getElementById("progressFill").style.width = percent + "%";
-            document.getElementById("progressStat").textContent = `${completed} of ${total} questions completed`;
+            document.getElementById("progressStat").textContent = total > 0
+                ? `${completed} of ${total} questions completed`
+                : "No package is scheduled for this date";
 
             // Check if day is complete
-            if (dayData.listening.completed === dayData.listening.totalQuestions &&
-                dayData.structure.completed === dayData.structure.totalQuestions &&
-                dayData.reading.completed === dayData.reading.totalQuestions) {
+            if (activeIds.length > 0 &&
+                activeIds.every((sectionId) => (dayData?.[sectionId]?.completed || 0) === (dayData?.[sectionId]?.totalQuestions || 0))) {
                 showCompletion();
             }
         }
