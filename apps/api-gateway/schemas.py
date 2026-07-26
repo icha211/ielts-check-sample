@@ -40,3 +40,22 @@ class EvaluationResponse(BaseModel):
     improvements: List[str] = Field(default_factory=list)
     next_steps: List[str] = Field(default_factory=list)
     route: str = "eval-service"
+
+
+class DeveloperUploadUrlRequest(BaseModel):
+    file_name: str = Field(min_length=1, alias="fileName")
+    file_type: str = Field(min_length=1, alias="fileType")
+
+
+class DeveloperUploadUrlResponse(BaseModel):
+    upload_url: str = Field(alias="uploadUrl")
+    object_key: str = Field(alias="objectKey")
+    object_url: str = Field(alias="objectUrl")
+    expires_in: int = Field(alias="expiresIn")
+
+
+class DeveloperUploadProxyResponse(BaseModel):
+    object_key: str = Field(alias="objectKey")
+    object_url: str = Field(alias="objectUrl")
+    content_type: str = Field(alias="contentType")
+    size: int

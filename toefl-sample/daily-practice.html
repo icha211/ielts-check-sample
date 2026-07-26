@@ -494,7 +494,13 @@
                 section: sectionId
             }));
 
-            const setDate = new Date().toISOString().split("T")[0];
+            const assignedYear = Number(currentDay?.year) || new Date().getFullYear();
+            const assignedMonth = Number(currentDay?.month);
+            const assignedDay = Number(currentDay?.dayNumber);
+            const hasAssignedDate = Number.isFinite(assignedMonth) && Number.isFinite(assignedDay);
+            const setDate = hasAssignedDate
+                ? `${String(assignedYear).padStart(4, "0")}-${String(assignedMonth).padStart(2, "0")}-${String(assignedDay).padStart(2, "0")}`
+                : new Date().toISOString().split("T")[0];
             const sectionMap = {
                 listening: `section 1.html?setDate=${setDate}`,
                 structure: `section 2.html?setDate=${setDate}`,

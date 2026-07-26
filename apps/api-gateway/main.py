@@ -5,6 +5,7 @@ from config import settings
 from routes.chat import router as chat_router
 from routes.evaluation import router as evaluation_router
 from routes.health import router as health_router
+from routes.developer import router as developer_router
 
 
 def create_app() -> FastAPI:
@@ -24,6 +25,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(chat_router, prefix=settings.api_prefix)
     app.include_router(evaluation_router, prefix=settings.api_prefix)
+    app.include_router(developer_router, prefix=settings.api_prefix)
 
     return app
 
