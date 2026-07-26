@@ -140,7 +140,7 @@
                         </button>
                         <button type="button" class="section-explaination-tab" id="partbTabAsk" role="tab" aria-selected="false" onclick="setReviewExplainationTab('ask')">
                             <img src="../asst/icon/Ask AIQC tab.svg" alt="Ask AIQC tab icon">
-                            <span>Ask AIQC</span>
+                            <span>Materi</span>
                         </button>
                     </div>
 
@@ -158,8 +158,8 @@
                                 <div class="sparkle-duotone-1-wrapper"><img src="../asst/icon/instruction.svg" alt="Ask AI tutor"></div>
                                 <div class="frame-parent14">
                                     <div class="ask-ai-tutor-parent">
-                                        <div class="ask-ai-tutor">ASK AI TUTOR</div>
-                                        <div class="real-time-answer">Use the stored review context to ask follow-up grammar questions.</div>
+                                        <div class="ask-ai-tutor">MATERI</div>
+                                        <div class="real-time-answer">Materi grammar tambahan berbasis konteks soal aktif akan tersedia di panel ini.</div>
                                     </div>
                                     <button type="button" class="section-caret-toggle" id="askTutorToggle" onclick="toggleCaretOnly('askTutorToggle')" aria-label="Toggle ask ai tutor"></button>
                                 </div>
@@ -179,6 +179,7 @@
         var reviewQuestionIndex = 0;
         var reviewExplainationTab = 'explaination';
         var reviewCurrentQuestion = null;
+        var reviewSidebarMode = 'correct';
 
         function parseJsonSafe(raw, fallback) {
             try {
@@ -1142,11 +1143,14 @@
             });
         }
 
-        function buildOptionMarkup(question) {
+        function buildOptionMarkup(question, labels) {
             var optionMap = question.options || {};
             var letters = Object.keys(optionMap).sort();
             var correct = normalizeLetter(question.correctAnswer);
             var user = normalizeLetter(question.userAnswer);
+            var labelMap = labels || {};
+            var selectedLabel = labelMap.selected || 'Your Answer';
+            var correctLabel = labelMap.correct || 'Correct Answer';
             var html = '';
             for (var i = 0; i < letters.length; i += 1) {
                 var letter = letters[i];
@@ -1161,11 +1165,11 @@
 
                 var badgeHtml = '';
                 if (selected && isCorrectChoice) {
-                    badgeHtml = '<div class="explaination-figma-your-answer you-answer-correct is-correct"><span class="your-answer">Your Answer</span><i class="ph ph-check" aria-hidden="true"></i></div>';
+                    badgeHtml = '<div class="explaination-figma-your-answer you-answer-correct is-correct"><span class="your-answer">' + escapeHtml(selectedLabel) + '</span><i class="ph ph-check" aria-hidden="true"></i></div>';
                 } else if (selected && !isCorrectChoice) {
-                    badgeHtml = '<div class="explaination-figma-your-answer is-wrong"><span class="your-answer">Your Answer</span><i class="ph ph-x" aria-hidden="true"></i></div>';
+                    badgeHtml = '<div class="explaination-figma-your-answer is-wrong"><span class="your-answer">' + escapeHtml(selectedLabel) + '</span><i class="ph ph-x" aria-hidden="true"></i></div>';
                 } else if (isCorrectChoice) {
-                    badgeHtml = '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">Correct Answer</span><i class="ph ph-check" aria-hidden="true"></i></div>';
+                    badgeHtml = '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">' + escapeHtml(correctLabel) + '</span><i class="ph ph-check" aria-hidden="true"></i></div>';
                 }
 
                 html += '<div class="' + classes.join(' ') + '">'
@@ -1178,6 +1182,52 @@
             }
             if (!html) html = '<div class="explaination-figma-option option"><div class="explaination-figma-option-text option-answer-d"><span class="option-text">No answer choices were stored for this item.</span></div></div>';
             return html;
+        }
+
+        function buildPartAAnalysisBlock(question, blueprint) {
+            var correct = normalizeLetter(question && question.correctAnswer) || '-';
+            var mainVerb = normalizeText((blueprint && blueprint.mainVerb) || 'unknown');
+            var descriptivePhrase = normalizeText((blueprint && blueprint.descriptivePhrase) || 'frasa diapit koma');
+            var ruleLabel = normalizeText((blueprint && blueprint.ruleLabel) || 'Pilih opsi yang melengkapi Subject + Verb tanpa connector tambahan.');
+            var letters = Object.keys((question && question.options) || {}).sort();
+            var eliminationLines = '';
+
+            for (var i = 0; i < letters.length; i += 1) {
+                var letter = letters[i];
+                var optionText = extractChoiceText(question && question.options, letter);
+                var isCorrectChoice = letter === correct;
+                var symbol = isCorrectChoice ? '✓' : '✕';
+                var symbolClass = isCorrectChoice ? 'is-correct' : 'is-wrong';
+                var reason = isCorrectChoice
+                    ? 'Ini adalah noun phrase yang berfungsi sempurna sebagai Subject.'
+                    : inferPart1WrongReason(optionText, blueprint);
+
+                eliminationLines += '<li>'
+                    + '<span class="section2-qc-core-choice"><b>(' + escapeHtml(letter) + ')</b> ' + escapeHtml(optionText) + '</span>'
+                    + '<span class="section2-qc-core-mark ' + symbolClass + '">' + symbol + '</span>'
+                    + '<span class="section2-qc-core-reason">: ' + escapeHtml(reason) + '</span>'
+                    + '</li>';
+            }
+
+            return '<section class="section2-qc-analysis">'
+                + '<header class="section2-qc-core-head">'
+                + '<span>💡 QC C.O.R.E ANALYSIS</span>'
+                + '<i class="ph ph-caret-circle-down" aria-hidden="true"></i>'
+                + '</header>'
+                + '<div class="section2-qc-core-body">'
+                + '<p><span class="section2-qc-core-key">C - Concept</span> : <mark>Subject & Appositive</mark> (Subjek & Keterangan Tambahan)</p>'
+                + '<p><span class="section2-qc-core-key">O - Observe S-V-C</span>:</p>'
+                + '<ul class="section2-qc-core-list">'
+                + '<li><b>Subject</b> : [KOSONG/BLANK]</li>'
+                + '<li><b>Verb</b> : ' + escapeHtml(mainVerb) + ' (Sudah ada)</li>'
+                + '<li><b>Compliance</b> : Frasa diapit dua koma (' + escapeHtml(descriptivePhrase) + ') adalah Appositive.</li>'
+                + '</ul>'
+                + '<p><span class="section2-qc-core-key">R - Requirement</span>:</p>'
+                + '<p>Kalimat ini sudah memiliki Verb namun belum memiliki Subject. ' + escapeHtml(ruleLabel) + '</p>'
+                + '<p><span class="section2-qc-core-key">E - Eliminate</span>:</p>'
+                + '<ul class="section2-qc-core-list section2-qc-core-list--elim">' + eliminationLines + '</ul>'
+                + '</div>'
+                + '</section>';
         }
 
         function renderBlueprintCard(question, blueprint) {
@@ -1232,13 +1282,7 @@
 
         function renderQuestionTwoExplanation(question) {
             var displayQuestion = buildQuestionTwoExplanationQuestion(question);
-            var correct = normalizeLetter(displayQuestion.correctAnswer) || 'C';
             var blueprint = deriveGrammarBlueprint(displayQuestion);
-            var paragraphs = displayQuestion.contextualExplanations || [];
-            var introHtml = paragraphs[0] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[0]) + '</div>' : '';
-            var instructionHtml = paragraphs[1] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[1]) + '</div>' : '';
-            var supportHtml = paragraphs[2] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[2]) + '</div>' : '';
-            var conclusionHtml = paragraphs[3] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[3]) + '</div>' : '';
 
             return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q2 section2-aiqc-host">'
                 + '<div class="section2-figma-top">'
@@ -1248,38 +1292,8 @@
                 + '</div>'
                 + '<b class="explaination-figma-status is-correct">CORRECT</b>'
                 + '</div>'
-                + '<div class="explaination-figma-options explaination-figma-options--q2">' + buildOptionMarkup(displayQuestion) + '</div>'
-                + '<section class="explaination-why-section section2-figma-why section2-figma-why--q2">'
-                + '<div class="explaination-figma-divider" aria-hidden="true"></div>'
-                + '<div class="heading">Why (' + escapeHtml(correct) + ')?</div>'
-                + '<div class="section2-figma-filled-sentence">' + renderTextOrHtml({ html: displayQuestion.filledSentenceHtml }) + '</div>'
-                + introHtml
-                + instructionHtml
-                + '<div class="section2-figma-q2-diagram">'
-                + '<div class="section2-figma-q2-diagram-headline">Subject + Verb</div>'
-                + '<div class="section2-figma-q2-diagram-copy">Ketika Anda menganalisis kalimat soal, carilah main verb terlebih dahulu setelah tanda koma.</div>'
-                + '<div class="section2-figma-q2-diagram-frame">'
-                + '<div class="section2-figma-q2-diagram-token-row section2-figma-q2-diagram-token-row--top">'
-                + '<span>[ V3 ] +</span>'
-                + '<span>[ prepositional phrase ]</span>'
-                + '<span>[ prepositions + noun ] + and + [ prepositions + noun ]</span>'
-                + '</div>'
-                + '<div class="section2-figma-q2-diagram-sentence">'
-                + '<span class="section2-figma-q2-diagram-sentence-part">Found in the deepest parts of the ocean,</span>'
-                + '<span class="section2-figma-q2-diagram-sentence-blank">_____</span>'
-                + '<span class="section2-figma-q2-diagram-sentence-part">under extreme pressure and in complete darkness.</span>'
-                + '</div>'
-                + '<div class="section2-figma-q2-diagram-token-row section2-figma-q2-diagram-token-row--bottom">'
-                + '<span class="section2-figma-q2-diagram-token-pill">Past Participle Phrase</span>'
-                + '</div>'
-                + '<div class="section2-figma-q2-diagram-callout">'
-                + '<span class="section2-figma-q2-diagram-arrow">↑</span>'
-                + '<span class="section2-figma-q2-diagram-badge">Main Verb</span>'
-                + '</div>'
-                + '</div>'
-                + supportHtml
-                + conclusionHtml
-                + '</section>'
+                + '<div class="explaination-figma-options explaination-figma-options--q2">' + buildOptionMarkup(displayQuestion, { selected: 'Jawaban Kamu', correct: 'Jawaban Benar' }) + '</div>'
+                + buildPartAAnalysisBlock(displayQuestion, blueprint)
                 + '</div>';
         }
 
@@ -1678,10 +1692,6 @@
             var correct = normalizeLetter(question.correctAnswer) || 'A';
             var isCorrect = !!question.isCorrect;
             var blueprint = deriveGrammarBlueprint(question);
-            var paragraphs = buildWhyParagraphs(question, blueprint);
-            var introHtml = paragraphs[0] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[0]) + '</div>' : '';
-            var conclusionOneHtml = paragraphs[2] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[2]) + '</div>' : '';
-            var conclusionTwoHtml = paragraphs[3] ? '<div class="section2-why-paragraph">' + renderTextOrHtml(paragraphs[3]) + '</div>' : '';
 
             host.innerHTML = '<div class="explaination-figma section2-figma-shell section2-aiqc-host">'
                 + '<div class="section2-figma-top">'
@@ -1691,16 +1701,8 @@
                 + '</div>'
                 + '<b class="explaination-figma-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
                 + '</div>'
-                + '<div class="explaination-figma-options">' + buildOptionMarkup(question) + '</div>'
-                + '<section class="explaination-why-section section2-figma-why">'
-                + '<div class="explaination-figma-divider" aria-hidden="true"></div>'
-                + '<div class="heading">Why (' + escapeHtml(correct) + ')?</div>'
-                + '<div class="section2-figma-filled-sentence">' + buildFilledSentenceHtml(question) + '</div>'
-                + introHtml
-                + renderBlueprintCard(question, blueprint)
-                + conclusionOneHtml
-                + conclusionTwoHtml
-                + '</section>'
+                + '<div class="explaination-figma-options">' + buildOptionMarkup(question, { selected: 'Jawaban Kamu', correct: 'Jawaban Benar' }) + '</div>'
+                + buildPartAAnalysisBlock(question, blueprint)
                 + '</div>';
         }
 
@@ -2510,7 +2512,67 @@
 
         function renderSidebar() {
             var host = document.getElementById('grammarSidebarCards');
-            if (host) host.innerHTML = '';
+            if (!host || !reviewCurrentQuestion) return;
+            var question = reviewCurrentQuestion;
+            var allQuestions = reviewResultData && Array.isArray(reviewResultData.questions) ? reviewResultData.questions : [];
+            var correctQuestions = [];
+            var wrongQuestions = [];
+            for (var i = 0; i < allQuestions.length; i += 1) {
+                if (allQuestions[i].isCorrect) correctQuestions.push(allQuestions[i]);
+                else wrongQuestions.push(allQuestions[i]);
+            }
+
+            if (reviewSidebarMode !== 'correct' && reviewSidebarMode !== 'wrong') reviewSidebarMode = 'correct';
+            var activePool = reviewSidebarMode === 'wrong' ? wrongQuestions : correctQuestions;
+
+            function stemPreview(value) {
+                var clean = normalizeText(String(value || '')).replace(/_{3,}/g, '_____');
+                if (clean.length > 72) clean = clean.slice(0, 69).trim() + '...';
+                return clean || 'Question text unavailable.';
+            }
+
+            function rowMarkup(item) {
+                var num = Number(item && item.number) || 0;
+                var isActive = reviewCurrentQuestion && Number(reviewCurrentQuestion.number || 0) === num;
+                var badgeClass = item && item.isCorrect ? 'is-correct' : 'is-wrong';
+                return '<button type="button" class="section2-sidebar-question ' + (isActive ? 'is-active' : '') + '" onclick="selectReviewQuestion(' + num + ')">'
+                    + '<span class="section2-sidebar-qbadge ' + badgeClass + '">' + escapeHtml(String(num)) + '</span>'
+                    + '<span class="section2-sidebar-qtext">' + escapeHtml(stemPreview(item && item.questionText)) + '</span>'
+                    + '<i class="ph ph-check" aria-hidden="true"></i>'
+                    + '</button>';
+            }
+
+            var listHtml = '';
+            for (var j = 0; j < activePool.length; j += 1) listHtml += rowMarkup(activePool[j]);
+            if (!listHtml) listHtml = '<div class="section2-sidebar-empty">Belum ada soal untuk kategori ini.</div>';
+
+            host.innerHTML = '<article class="section2-sidebar-score">'
+                + '<div class="section2-sidebar-ring"><span>' + escapeHtml(String(Math.max(0, Number(reviewResultData && reviewResultData.rawScore) || 0))) + '</span><small>/ ' + escapeHtml(String(Math.max(1, Number(reviewResultData && reviewResultData.totalQuestions) || allQuestions.length || 1))) + '</small></div>'
+                + '<div class="section2-sidebar-score-copy"><h3>Selamat!</h3><p>Anda telah lulus tes ini dengan nilai <b>' + escapeHtml(String(Number(reviewResultData && reviewResultData.scaledScore) || 0)) + '</b></p></div>'
+                + '</article>'
+                + '<div class="section2-sidebar-grid">'
+                + '<article class="section2-sidebar-stat is-teal"><strong>Part A: ' + escapeHtml(String(correctQuestions.filter(function (q) { return Number(q.partId) === 1; }).length)) + '</strong><strong>Part B: ' + escapeHtml(String(correctQuestions.filter(function (q) { return Number(q.partId) !== 1; }).length)) + '</strong><span>Jawaban Benar</span></article>'
+                + '<article class="section2-sidebar-stat is-red"><strong>Part A: ' + escapeHtml(String(wrongQuestions.filter(function (q) { return Number(q.partId) === 1; }).length)) + '</strong><strong>Part B: ' + escapeHtml(String(wrongQuestions.filter(function (q) { return Number(q.partId) !== 1; }).length)) + '</strong><span>Jawaban Salah</span></article>'
+                + '<article class="section2-sidebar-stat is-indigo"><strong>40m 30sec</strong><span>Total Waktu yang Dihabiskan</span></article>'
+                + '<article class="section2-sidebar-stat is-orange"><strong>40m 30sec</strong><span>Rata-rata Waktu / Jawaban</span></article>'
+                + '</div>'
+                + '<article class="section2-sidebar-feedback">'
+                + '<div class="section2-sidebar-feedback-title"><i class="ph ph-sparkle" aria-hidden="true"></i><span>AI Feedback</span></div>'
+                + '<ul><li>No answers were given.</li><li>You must attempt questions to get a score.</li><li>Try reading and answering at least some items.</li></ul>'
+                + '</article>'
+                + '<article class="section2-sidebar-bank">'
+                + '<div class="section2-sidebar-bank-tabs">'
+                + '<button type="button" class="section2-sidebar-bank-tab ' + (reviewSidebarMode === 'correct' ? 'is-active' : '') + '" onclick="setReviewSidebarMode(\'correct\')">Jawaban Benar (' + escapeHtml(String(correctQuestions.length)) + ')</button>'
+                + '<button type="button" class="section2-sidebar-bank-tab ' + (reviewSidebarMode === 'wrong' ? 'is-active' : '') + '" onclick="setReviewSidebarMode(\'wrong\')">Jawaban Salah (' + escapeHtml(String(wrongQuestions.length)) + ')</button>'
+                + '</div>'
+                + '<div class="section2-sidebar-question-list">' + listHtml + '</div>'
+                + '</article>';
+        }
+
+        function setReviewSidebarMode(mode) {
+            if (mode !== 'correct' && mode !== 'wrong') return;
+            reviewSidebarMode = mode;
+            renderSidebar();
         }
 
         function renderQuestion(question, indexHint) {
@@ -2595,6 +2657,7 @@
         window.toggleAiQcPanel = toggleAiQcPanel;
         window.seedAiQcPrompt = seedAiQcPrompt;
         window.submitAiQcPrompt = submitAiQcPrompt;
+        window.setReviewSidebarMode = setReviewSidebarMode;
         window.selectReviewQuestion = selectReviewQuestion;
         window.goToNextReviewQuestion = goToNextReviewQuestion;
         window.goToPreviousReviewQuestion = goToPreviousReviewQuestion;
