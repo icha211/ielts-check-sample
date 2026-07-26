@@ -1043,28 +1043,47 @@
         }
 
         function getPartBRichOptionMap() {
-            const editor = document.getElementById('input-magic-questions-rich-2');
-            if (!editor) return {};
+            const textArea = document.getElementById('input-magic-questions-2');
+            if (!textArea) return {};
 
             const map = {};
-            const lineContainer = document.createElement('div');
-            lineContainer.innerHTML = editor.innerHTML;
+            const lines = String(textArea.value || '').split('\n');
 
-            const blocks = Array.from(lineContainer.querySelectorAll('div,p,li'));
-            blocks.forEach((block) => {
-                const text = normalizeClipboardQuestionText(block.textContent || '');
-                const qMatch = text.match(/^(\d+)[\.\)]?\s+/);
+            lines.forEach((rawLine) => {
+                const line = String(rawLine || '').trim();
+                if (!line) return;
+
+                const qMatch = line.match(/^(\d+)[\.\)]?\s+(.*)$/);
                 if (!qMatch) return;
+
                 const qNum = qMatch[1];
-                const strongNodes = Array.from(block.querySelectorAll('strong,b'));
-                if (!strongNodes.length) return;
-                const letters = ['A', 'B', 'C', 'D'];
-                map[qNum] = map[qNum] || {};
-                for (let i = 0; i < Math.min(strongNodes.length, letters.length); i += 1) {
-                    const val = normalizeClipboardQuestionText(strongNodes[i].textContent || '');
-                    if (val) map[qNum][letters[i]] = val;
+                const questionText = qMatch[2] || '';
+                const markerRegex = /\(([A-D])\)\s*/gi;
+                const markers = [];
+                let match;
+                while ((match = markerRegex.exec(questionText)) !== null) {
+                    markers.push({ letter: match[1].toUpperCase(), start: match.index, after: markerRegex.lastIndex });
                 }
+                if (markers.length !== 4) return;
+
+                map[qNum] = map[qNum] || {};
+                markers.forEach((marker, idx) => {
+                    const nextStart = idx < markers.length - 1 ? markers[idx + 1].start : questionText.length;
+                    const chunk = questionText.slice(marker.after, nextStart);
+                    const strongTexts = [];
+                    const strongRegex = /<(?:strong|b)>([\s\S]*?)<\/(?:strong|b)>/gi;
+                    let sm;
+                    while ((sm = strongRegex.exec(chunk)) !== null) {
+                        const val = normalizeClipboardQuestionText(String(sm[1] || '').replace(/<[^>]+>/g, ''));
+                        if (val) strongTexts.push(val);
+                    }
+
+                    if (strongTexts.length) {
+                        map[qNum][marker.letter] = strongTexts.join(' ').replace(/\s{2,}/g, ' ').trim();
+                    }
+                });
             });
+
             return map;
         }
 
@@ -1446,14 +1465,46 @@
                                         const cleanWord = rawChunk.trim().replace(/\s+/g, ' ');
                                         const val = marker.letter.toLowerCase();
                                         const domBoldText = (partBRichOptionMap[currentQuestionNum] && partBRichOptionMap[currentQuestionNum][marker.letter]) || '';
-                                        const boldMatch = rawChunk.match(/<(?:strong|b)>([\s\S]*?)<\/(?:strong|b)>/i);
+                                        const boldSegments = [];
+                                        const boldRegex = /<(?:strong|b)>[\s\S]*?<\/(?:strong|b)>/gi;
+                                        let boldExec;
+                                        while ((boldExec = boldRegex.exec(rawChunk)) !== null) {
+                                            boldSegments.push({
+                                                start: boldExec.index,
+                                                end: boldRegex.lastIndex,
+                                                html: boldExec[0]
+                                            });
+                                        }
 
                                         htmlOut += before;
-                                        if (domBoldText || boldMatch) {
-                                            const hasBoldMatch = Boolean(boldMatch);
-                                            const chunkPrefix = hasBoldMatch ? rawChunk.slice(0, boldMatch.index) : '';
-                                            const chunkBoldText = domBoldText || (boldMatch[1] || '').replace(/<[^>]+>/g, '').trim();
-                                            const chunkSuffix = hasBoldMatch ? rawChunk.slice((boldMatch.index || 0) + boldMatch[0].length) : '';
+                                        if (domBoldText || boldSegments.length) {
+                                            let chunkPrefix = '';
+                                            let chunkBoldText = '';
+                                            let chunkSuffix = '';
+
+                                            if (domBoldText) {
+                                                chunkBoldText = domBoldText;
+                                                if (boldSegments.length) {
+                                                    const firstBold = boldSegments[0];
+                                                    const lastBold = boldSegments[boldSegments.length - 1];
+                                                    chunkPrefix = rawChunk.slice(0, firstBold.start);
+                                                    chunkSuffix = rawChunk.slice(lastBold.end);
+                                                } else {
+                                                    chunkSuffix = rawChunk;
+                                                }
+                                            } else {
+                                                const firstBold = boldSegments[0];
+                                                chunkPrefix = rawChunk.slice(0, firstBold.start);
+                                                chunkBoldText = firstBold.html
+                                                    .replace(/^<(?:strong|b)>/i, '')
+                                                    .replace(/<\/(?:strong|b)>$/i, '')
+                                                    .replace(/<[^>]+>/g, '')
+                                                    .trim();
+                                                chunkSuffix = rawChunk.slice(firstBold.end);
+                                            }
+
+                                            chunkPrefix = chunkPrefix.replace(/<\/?(?:strong|b)>/gi, '');
+                                            chunkSuffix = chunkSuffix.replace(/<\/?(?:strong|b)>/gi, '');
                                             const safeBoldText = chunkBoldText || cleanWord.replace(/[\s.,;:!?]+$/g, '');
                                             partBOpts[marker.letter] = safeBoldText;
 

@@ -1,2897 +1,714 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reading Test - IELTS Check</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #1f745e;
-            --primary-hover: #185947;
-            --bg-body: #f3f7f5;
-            --bg-surface: #ffffff;
-            --text-main: #182621;
-            --text-muted: #5a6d66;
-            --border-color: #d8e4de;
-            --danger: #c44444;
-            --success: #1f9d63;
-            --text-zoom: 1;
-            --overview-height: 96px;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reading Comprehension Test Interface</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            navy: '#003560',
+            accent: '#0EA5E9',
+            bordersoft: '#D1DCE8',
+            mutedtxt: '#7A8FA6',
+            submit: '#0D9488',
+            bgsoft: '#F4F7FB'
+          },
+          fontFamily: {
+            heading: ['Outfit', 'sans-serif'],
+            body: ['Plus Jakarta Sans', 'sans-serif'],
+            timer: ['JetBrains Mono', 'monospace'],
+            passage: ['Arial', 'sans-serif']
+          },
+          boxShadow: {
+            cyanGlow: '0 0 0 3px rgba(14, 165, 233, 0.22)'
+          }
         }
+      }
+    };
+  </script>
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: #f4f7fb;
+      color: #003560;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow: hidden;
+    }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        body { background-color: var(--bg-body); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
-        h1, h2, h3, h4, .header-title, .question-group-title { letter-spacing: -0.01em; }
+    #root {
+      height: 100%;
+    }
 
-        /* Compact controls */
-        .header-title { font-size: 1rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 14px; }
-        .text-controls { display: flex; gap: 5px; background: var(--bg-body); padding: 4px; border-radius: 6px; border: 1px solid var(--border-color); }
-        .text-btn { background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 4px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-weight: 600; cursor: pointer; color: var(--text-main); transition: background 0.2s; }
-        .text-btn:hover { background: #e2e8f0; }
-        .timer-container { display: flex; align-items: center; gap: 10px; font-weight: 600; }
-        .header-right { display: flex; align-items: center; gap: 10px; }
-        .back-dev-btn {
-            background: #ebf8f0;
-            color: var(--primary);
-            border: 1px solid #b8ddca;
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .back-dev-btn:hover { background: #ddf1e7; }
-        #timer { background: var(--bg-body); color: var(--primary); padding: 6px 16px; border-radius: 999px; border: 1px solid var(--border-color); font-variant-numeric: tabular-nums; transition: all 0.3s ease; }
-        #timer.warning { color: white; background: var(--danger); border-color: var(--danger); }
+    .hide-scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
 
-        /* Layout */
-        .container { display: flex; flex-wrap: wrap; flex: 1; overflow: visible; padding: 24px 20px; gap: 10px; max-width: 1600px; margin: 0 auto; width: 100%; min-height: 0; }
-        .panel { background: var(--bg-surface); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow-y: auto; max-height: calc(100vh - var(--overview-height) - 48px); padding: 40px; position: relative; scroll-behavior: smooth; }
-        .passage-section { width: 50%; }
-        .question-section { flex: 1; }
+    .hide-scrollbar::-webkit-scrollbar-thumb {
+      background: #c8d4e3;
+      border-radius: 999px;
+    }
 
-        .header-center { display: none; }
+    .hide-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
 
-        .reading-overview {
-            background: var(--bg-surface);
-            border-bottom: 1px solid var(--border-color);
-            box-shadow: 0 1px 6px rgba(0,0,0,0.04);
-            padding: 10px 18px;
-            position: sticky;
-            top: 0;
-            z-index: 22;
-        }
+    .passage-line-label {
+      font-family: 'Arial', sans-serif;
+      font-style: italic;
+      font-size: 14px;
+      line-height: 1;
+      color: #000;
+      transform: translateY(-50%);
+      position: absolute;
+      left: 0;
+      width: 56px;
+      text-align: right;
+      padding-right: 10px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
 
-        .overview-top {
-            display: grid;
-            grid-template-columns: auto 1fr auto;
-            gap: 14px;
-            align-items: center;
-        }
-
-        .overview-main-title {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: var(--text-main);
-            line-height: 1.1;
-        }
-
-        .overview-title-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .overview-sub-title {
-            font-size: 0.76rem;
-            color: #8b98a5;
-            margin-top: 2px;
-        }
-
-        .passage-progress-strip {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            overflow-x: auto;
-            padding-bottom: 2px;
-        }
-
-        .passage-progress-card {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            background: #fbfdfc;
-            padding: 6px 10px;
-            min-width: 132px;
-            cursor: pointer;
-        }
-
-        .passage-progress-card.active {
-            border-color: var(--primary);
-            background: #edf8f2;
-        }
-
-        .passage-progress-ring {
-            --pct: 0%;
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            display: grid;
-            place-items: center;
-            background: conic-gradient(var(--primary) var(--pct), #dde7e2 0);
-            flex-shrink: 0;
-        }
-
-        .passage-progress-ring::before {
-            content: "";
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            background: var(--bg-surface);
-            border: 1px solid #e7efeb;
-        }
-
-        .passage-progress-value {
-            position: absolute;
-            font-size: 0.62rem;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .passage-progress-meta {
-            min-width: 0;
-        }
-
-        .passage-progress-name {
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #334155;
-            text-transform: uppercase;
-        }
-
-        .passage-progress-count {
-            font-size: 0.72rem;
-            color: #6b7280;
-        }
-
-        .overview-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-        }
-
-        .overview-btn {
-            border: 1px solid var(--border-color);
-            background: #fff;
-            color: #334155;
-            border-radius: 8px;
-            padding: 7px 10px;
-            font-size: 0.76rem;
-            font-weight: 700;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-        .tracker-toggle-btn {
-            width: 40px;
-            height: 40px;
-            padding: 0;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .tracker-toggle-btn img {
-            display: block;
-            width: 32px;
-            height: 32px;
-        }
-
-        .overview-btn:hover { background: #f5f9f7; }
-        .overview-btn.primary { border-color: #9ec8af; background: #ebf8f0; color: #1f745e; }
-
-        .overview-bottom {
-            margin-top: 8px;
-            border-top: 1px dashed #e2ebe6;
-            padding-top: 8px;
-        }
-
-        .question-type-strip {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding-bottom: 2px;
-        }
-
-        .question-type-chip {
-            border: 1px solid #cdd8d2;
-            border-radius: 999px;
-            padding: 6px 10px;
-            background: #f7fbf9;
-            color: #334155;
-            font-size: 0.74rem;
-            font-weight: 700;
-            cursor: pointer;
-            white-space: nowrap;
-        }
-
-        .question-type-chip.active {
-            border-color: var(--primary);
-            background: #edf8f2;
-            color: var(--primary);
-        }
-
-        .part-strip-global {
-            position: fixed;
-            left: 20px;
-            right: 20px;
-            bottom: 10px;
-            z-index: 25;
-            background: var(--bg-surface);
-            border-top: 1px solid var(--border-color);
-            box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.08);
-            border-radius: 10px;
-            padding: 8px 12px;
-            padding-top: 0;
-            pointer-events: none;
-        }
-
-        .resizer { width: 8px; background: transparent; cursor: col-resize; border-radius: 4px; transition: background 0.2s; display: flex; align-items: center; justify-content: center; }
-        .resizer:hover, .resizer:active, .resizer.resizing { background: #cbd5e1; }
-        .resizer::after { content: ""; height: 40px; width: 2px; background: #94a3b8; border-radius: 2px; }
-
-        .panel::-webkit-scrollbar { width: 8px; }
-        .panel::-webkit-scrollbar-track { background: transparent; }
-        .panel::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .panel::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        /* Typography */
-        .passage-section h2 { font-size: calc(1.25rem * var(--text-zoom)); font-weight: 700; margin-bottom: 24px; color: var(--text-main); border-bottom: 2px solid var(--bg-body); padding-bottom: 10px; }
-        .passage-section p { margin-bottom: 20px; font-size: calc(0.85rem * var(--text-zoom)); line-height: 1.8; color: #334155; text-align: justify; }
-        .passage-section p strong { font-size: calc(1.0rem * var(--text-zoom)); color: var(--primary); margin-right: 8px; }
-        .reading-passage-card { margin-bottom: 28px; }
-        .reading-passage-card:last-child { margin-bottom: 0; }
-        .reading-passage-title { font-size: calc(1.25rem * var(--text-zoom)); font-weight: 700; color: var(--text-main); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid var(--bg-body); }
-        .reading-passage-content p:last-child { margin-bottom: 0; }
-
-        /* Question Navigator */
-        .question-navigator { background: var(--bg-surface); border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 30px; position: sticky; top: -10px; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: all 0.3s ease; }
-        .nav-header { padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid transparent; transition: border-color 0.3s ease; }
-        .nav-header:hover { background: var(--bg-body); border-radius: 8px 8px 0 0; }
-        .question-navigator.open .nav-header { border-bottom-color: var(--border-color); }
-        .nav-title-wrapper { display: flex; align-items: center; gap: 10px; }
-        .nav-title { font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-        .nav-progress { font-size: 0.85rem; font-weight: 600; color: var(--primary); background: #edf8f2; padding: 2px 8px; border-radius: 12px; }
-        .nav-toggle-btn { background: none; border: none; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; transition: transform 0.3s ease; pointer-events: none; }
-        .question-navigator.open .nav-toggle-btn { transform: rotate(180deg); }
-        .nav-content { padding: 0 20px; max-height: 0; overflow: hidden; opacity: 0; transition: all 0.3s ease; }
-        .question-navigator.open .nav-content { padding: 15px 20px; max-height: 500px; opacity: 1; }
-        
-        .nav-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-        .nav-item { width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid var(--border-color); font-weight: 600; font-size: 0.95rem; color: var(--text-main); cursor: pointer; background: var(--bg-body); transition: all 0.2s; }
-        .nav-item:hover { border-color: var(--primary); }
-        .nav-item.answered { background: var(--primary); color: white; border-color: var(--primary); }
-
-        .part-strip {
-            margin-top: 0;
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 12px;
-            align-items: center;
-            pointer-events: auto;
-        }
-        .part-card {
-            min-width: 0;
-            border: none;
-            border-radius: 0;
-            background: transparent;
-            padding: 2px 4px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            min-height: 52px;
-        }
-        .part-card + .part-card {
-            border-left: 1px solid var(--border-color);
-            padding-left: 16px;
-            margin-left: 4px;
-        }
-        .part-card:hover { opacity: 0.9; }
-        .part-card.active {
-            cursor: default;
-            justify-content: flex-start;
-            text-align: left;
-        }
-        .part-card.inactive {
-            justify-content: center;
-            text-align: center;
-        }
-        .part-title {
-            font-family: 'Sora', sans-serif;
-            font-size: 2.1rem;
-            font-weight: 700;
-            color: var(--text-main);
-            line-height: 1;
-            white-space: nowrap;
-        }
-        .part-meta {
-            color: var(--text-muted);
-            font-size: 2rem;
-            font-weight: 600;
-            white-space: nowrap;
-        }
-        .part-mini-nav {
-            display: flex;
-            flex-wrap: nowrap;
-            gap: 2px;
-            overflow-x: auto;
-            padding-bottom: 2px;
-        }
-        .part-mini-chip {
-            width: 36px;
-            height: 36px;
-            border-radius: 6px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid transparent;
-            background: transparent;
-            color: var(--text-main);
-            font-size: 1.05rem;
-            font-weight: 600;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-        .part-mini-chip:hover { background: #edf8f2; }
-        .part-mini-chip.current {
-            border-color: #58a884;
-            background: #edf8f2;
-        }
-        .part-mini-chip.answered {
-            color: var(--primary);
-        }
-
-        /* Questions */
-        .question-group { margin-bottom: 40px; }
-        .question-group-title { font-size: calc(1.0rem * var(--text-zoom)); font-weight: 600; background: var(--bg-body); padding: 10px 15px; border-radius: 6px; margin-bottom: 12px; border-left: 4px solid var(--primary); }
-        .instruction { font-style: italic; color: var(--text-muted); margin-bottom: 20px; font-size: calc(0.95rem * var(--text-zoom)); overflow-wrap: break-word; word-break: break-word; white-space: pre-line; }
-        .question-block { margin-bottom: 16px; line-height: 1.6; padding: 14px 14px 12px; border-radius: 10px; border: 1px solid #dde6e1; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.03); transition: background-color 0.5s ease; overflow-wrap: break-word; word-break: break-word; }
-        .question-text-row { display: flex; align-items: flex-start; gap: 10px; }
-        .question-text { font-weight: 500; margin-bottom: 12px; font-size: calc(0.85rem * var(--text-zoom)); }
-        .question-text-row .question-text { flex: 1; margin-bottom: 0; }
-        .question-text .question-bullet-list { margin: 8px 0; padding-left: 0; list-style: none; }
-        .question-text .question-bullet-list li { margin: 4px 0; padding-left: 1.1em; position: relative; }
-        .question-text .question-bullet-list li::before { content: "�"; position: absolute; left: 0; top: 0; color: currentColor; }
-        .question-text ol, .question-text ul { padding-left: 1.8em; margin: 6px 0; }
-        .question-text ol li, .question-text ul li { margin: 3px 0; }
-        .reading-passage-content ol, .reading-passage-content ul { padding-left: 1.8em; margin: 8px 0 16px; }
-        .reading-passage-content ol li, .reading-passage-content ul li { margin: 4px 0; font-size: calc(0.85rem * var(--text-zoom)); line-height: 1.8; color: #334155; }
-
-        .options { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-        .option-label { display: flex; align-items: center; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: all 0.2s ease; background: var(--bg-surface); font-size: calc(0.95rem * var(--text-zoom)); }
-        .option-label:hover { background: var(--bg-body); border-color: #cbd5e1; }
-        .option-label input[type="radio"] { display: none; }
-        .custom-radio { width: 20px; height: 20px; border: 2px solid #cbd5e1; border-radius: 50%; margin-right: 12px; position: relative; flex-shrink: 0; transition: all 0.2s ease; }
-        .option-alpha { display: inline-flex; width: 24px; font-weight: 700; color: #334155; margin-right: 8px; flex-shrink: 0; }
-        .option-label input[type="radio"]:checked + .custom-radio { border-color: var(--primary); }
-        .option-label input[type="radio"]:checked + .custom-radio::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 10px; height: 10px; background: var(--primary); border-radius: 50%; }
-        .option-label:has(input[type="radio"]:checked) { border-color: var(--primary); background: #edf8f2; }
-
-        /* Inputs */
-        .short-answer-input { width: 100%; max-width: 400px; padding: 12px 16px; border: 1px solid var(--border-color); border-radius: 8px; font-size: calc(0.95rem * var(--text-zoom)); font-family: 'Poppins', sans-serif; transition: border-color 0.2s; background: var(--bg-surface); margin-top: 10px; }
-        .short-answer-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(17, 75, 58, 0.1); }
-        
-        .inline-input { 
-            display: inline-block; min-width: 150px; padding: 4px 8px; margin: 0 5px; 
-            border: none; border-bottom: 2px solid var(--border-color); border-radius: 0; 
-            background: transparent; font-size: inherit; font-family: inherit; 
-            text-align: center; color: var(--primary); font-weight: 600; transition: all 0.2s; 
-        }
-        .inline-input:focus { outline: none; border-bottom-color: var(--primary); background: #edf8f2; }
-
-        /* Numbered fill-in-the-blank passage block */
-        .fill-passage-body { line-height: 2; font-size: calc(0.85rem * var(--text-zoom)); }
-        .fill-passage-body p { margin: 0.3em 0; }
-        .fill-passage-body ul { list-style: disc; padding-left: 1.5em; margin: 0.2em 0; }
-        .fill-passage-body li { margin: 0.2em 0; }
-        .fill-passage-body strong { font-weight: 700; }
-        .numbered-blank {
-            display: inline-flex; align-items: center; gap: 4px; vertical-align: middle;
-        }
-        .blank-number {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 24px; height: 24px; border-radius: 50%;
-            background: var(--teal-900, #114b3a); color: #fff;
-            font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
-        }
-        .numbered-inline-input {
-            min-width: 100px; max-width: 160px;
-        }
-
-        .wordlist-option-box {
-            margin-top: 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 12px;
-            background: #f9fcfb;
-        }
-
-        .wordlist-option-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 8px;
-        }
-
-        .wordlist-slot {
-            min-height: 44px;
-            border: 1px dashed #d4dfd8;
-            border-radius: 8px;
-            padding: 2px;
-            background: #f6fbf9;
-        }
-
-        .wordlist-chip {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            border: 1px solid #cad7cf;
-            border-radius: 8px;
-            background: #fff;
-            cursor: grab;
-            user-select: none;
-            font-size: calc(0.9rem * var(--text-zoom));
-        }
-
-        .wordlist-chip.dragging {
-            opacity: 0.65;
-            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
-        }
-
-        .wordlist-chip:active {
-            cursor: grabbing;
-        }
-
-        .wordlist-chip.selected {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 2px rgba(17, 75, 58, 0.12);
-            background: #edf8f2;
-        }
-
-        .wordlist-chip-label {
-            font-weight: 700;
-            color: var(--primary);
-            min-width: 24px;
-        }
-
-        .wordlist-dropzone {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 120px;
-            max-width: 220px;
-            min-height: 34px;
-            padding: 2px 6px;
-            border: 1px dashed #93a79d;
-            border-radius: 8px;
-            background: #fff;
-            color: #556a60;
-            font-size: calc(0.9rem * var(--text-zoom));
-            vertical-align: middle;
-            box-sizing: border-box;
-        }
-
-        .wordlist-dropzone .wordlist-chip {
-            width: auto;
-            margin: 0;
-            justify-content: flex-start;
-            padding: 4px 8px;
-            min-height: 28px;
-            box-sizing: border-box;
-        }
-
-        .wordlist-drop-placeholder {
-            color: #6c8479;
-        }
-
-        .wordlist-dropzone.filled {
-            border-style: dashed;
-            border-color: #93a79d;
-            background: #fff;
-        }
-
-        .wordlist-dropzone.filled .wordlist-chip {
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        .wordlist-dropzone.drag-over {
-            border-color: var(--primary);
-            background: #eef8f3;
-        }
-
-        .matching-headings-legend {
-            margin-bottom: 14px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 12px;
-            background: #fafdfc;
-        }
-
-        .matching-headings-legend h4 {
-            margin-bottom: 8px;
-            font-size: calc(1rem * var(--text-zoom));
-            font-weight: 700;
-        }
-
-        .matching-headings-legend-row {
-            display: grid;
-            grid-template-columns: auto minmax(0, 1fr);
-            gap: 8px;
-            margin-bottom: 4px;
-        }
-
-        .matching-heading-label {
-            font-weight: 700;
-            color: var(--text-main);
-            min-width: 26px;
-        }
-
-        .matching-heading-row {
-            margin-bottom: 10px;
-        }
-
-        .matching-heading-row select {
-            width: 100%;
-            max-width: 320px;
-            padding: 10px 12px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background: var(--bg-surface);
-            font-size: calc(0.95rem * var(--text-zoom));
-        }
-
-        /* Submit */
-        .submit-area { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color); }
-        .submit-btn { background-color: var(--primary); color: white; border: none; padding: 14px 28px; font-size: 1.1rem; font-weight: 600; border-radius: 8px; cursor: pointer; width: 100%; transition: background-color 0.2s ease; }
-        .submit-btn:hover { background-color: var(--primary-hover); }
-        .submit-btn:disabled { background-color: var(--text-muted); cursor: not-allowed; }
-        #result { margin-top: 20px; padding: 16px; border-radius: 8px; font-weight: 600; font-size: 1.1rem; text-align: center; display: none; }
-        .result-good { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-        .result-bad { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-
-        @media (max-width: 768px) {
-            .container { flex-direction: column; padding: 16px 12px 16px; }
-            .passage-section, .question-section { width: 100% !important; flex: none; }
-            .panel { max-height: calc(100vh - 188px); }
-            .resizer { display: none; }
-            .question-navigator { top: 0; }
-            .part-strip-global { left: 12px; right: 12px; bottom: 8px; }
-            .part-strip { grid-template-columns: 1fr; gap: 8px; }
-            .part-card + .part-card { border-left: none; padding-left: 4px; margin-left: 0; border-top: 1px solid var(--border-color); padding-top: 10px; }
-            .part-title { font-size: 1.2rem; }
-            .part-meta { font-size: 1rem; }
-            .part-mini-chip { width: 30px; height: 30px; font-size: 0.95rem; }
-            .overview-top { grid-template-columns: 1fr; align-items: stretch; }
-            .overview-actions { justify-content: flex-start; }
-        }
-    </style>
+    @media (max-width: 1024px) {
+      html,
+      body {
+        overflow: auto;
+      }
+    }
+  </style>
 </head>
 <body>
+  <div id="root"></div>
 
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <section class="reading-overview" id="readingOverview">
-        <div class="overview-top">
-            <div>
-                <div class="overview-title-row">
-                    <div class="overview-main-title" id="display-title">Reading Test</div>
-                    <div class="text-controls" title="Adjust Text Size">
-                        <button class="text-btn" onclick="adjustTextSize(-0.1)">A</button>
-                        <button class="text-btn" onclick="adjustTextSize(+0.1)">A+</button>
-                    </div>
-                </div>
-                <div class="overview-sub-title" id="overviewDate">-</div>
+  <script type="text/babel">
+    const { useEffect, useMemo, useRef, useState, useContext, useLayoutEffect, createContext } = React;
+
+    const PART_COUNT = 5;
+    const QUESTIONS_PER_PART = 10;
+    const LINE_MARKER_STEP = 5;
+
+    function buildPart(partNumber) {
+      const partId = `part-${partNumber}`;
+      const questions = Array.from({ length: QUESTIONS_PER_PART }, (_, index) => {
+        const questionNumber = index + 1;
+        return {
+          id: `${partId}-q${questionNumber}`,
+          number: questionNumber,
+          prompt: 'What is the main topic of the passage?',
+          options: [
+            'The geographical location of the Mid-Atlantic Ridge',
+            'Where to find recent academic research materials.',
+            'The chemical elements found in volcanic ash',
+            'The history of volcanic eruptions in Hawaii'
+          ]
+        };
+      });
+
+      return {
+        id: partId,
+        index: partNumber,
+        title: `PART ${partNumber}`,
+        questionRange: 'Questions 1 - 10',
+        sectionLabels: {
+          a: 'Part A - Structure',
+          b: 'Part B - Written Expression'
+        },
+        passage: `A volcano is a rupture in the crust of a planetary-mass object, such as Earth, that allows hot lava, volcanic ash, and gases to escape from a magma chamber below the surface. Earth's volcanoes occur because its crust is broken into rigid tectonic plates that float on a hotter, softer layer in its mantle. Therefore, on Earth, volcanoes are generally found where tectonic plates are diverging or converging. For example, a mid-oceanic ridge, like the Mid-Atlantic Ridge, has examples of volcanoes caused by divergent tectonic plates pulling apart. Conversely, the Pacific Ring of Fire has volcanoes caused by convergent tectonic plates coming together.\n\nVolcanoes can also form where there is stretching and thinning of the crust's interior plates, such as in the East African Rift. Volcanism away from plate boundaries has also been explained as mantle plumes. These so-called hotspots, for example, Hawaii, are postulated to arise from upwelling magma from the core-mantle boundary, thousands of kilometers deep in the Earth.\n\nThe explosiveness of a volcanic eruption depends largely on the composition of the magma. Magma with high silica content is highly viscous, meaning it resists flow. This thick magma traps expanding gases, leading to explosive eruptions. In contrast, magma with low silica content has low viscosity. It flows more easily and allows gases to escape, resulting in effusive, gentler eruptions where lava streams continuously out of the vent.`
+      };
+    }
+
+    const PARTS = Array.from({ length: PART_COUNT }, (_, i) => buildPart(i + 1));
+    const TestContext = createContext(null);
+
+    function useTestState() {
+      const [activePartId, setActivePartId] = useState(PARTS[0].id);
+      const [answers, setAnswers] = useState({});
+      const [isDrawerOpen, setIsDrawerOpen] = useState(true);
+      const [secondsLeft, setSecondsLeft] = useState(35 * 60);
+
+      useEffect(() => {
+        const timer = setInterval(() => {
+          setSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
+        }, 1000);
+        return () => clearInterval(timer);
+      }, []);
+
+      const activePart = useMemo(
+        () => PARTS.find((part) => part.id === activePartId) || PARTS[0],
+        [activePartId]
+      );
+
+      const answeredCountByPart = useMemo(() => {
+        const map = {};
+        for (const part of PARTS) {
+          map[part.id] = part.questions.reduce(
+            (count, question) => (answers[question.id] !== undefined ? count + 1 : count),
+            0
+          );
+        }
+        return map;
+      }, [answers]);
+
+      const selectedOption = (questionId) => (answers[questionId] === undefined ? null : answers[questionId]);
+
+      const selectAnswer = (questionId, optionIndex) => {
+        setAnswers((prev) => ({ ...prev, [questionId]: optionIndex }));
+      };
+
+      const value = {
+        parts: PARTS,
+        activePart,
+        activePartId,
+        setActivePartId,
+        answers,
+        selectedOption,
+        selectAnswer,
+        answeredCountByPart,
+        isDrawerOpen,
+        setIsDrawerOpen,
+        secondsLeft
+      };
+
+      return value;
+    }
+
+    function TestProvider({ children }) {
+      const value = useTestState();
+      return <TestContext.Provider value={value}>{children}</TestContext.Provider>;
+    }
+
+    function useTest() {
+      const context = useContext(TestContext);
+      if (!context) throw new Error('useTest must be used inside TestProvider');
+      return context;
+    }
+
+    function formatTimer(secondsLeft) {
+      const minutes = Math.floor(secondsLeft / 60);
+      const seconds = secondsLeft % 60;
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function getQuestionDomId(questionId) {
+      return `question-card-${questionId}`;
+    }
+
+    function Header() {
+      const {
+        parts,
+        activePartId,
+        setActivePartId,
+        answeredCountByPart,
+        selectedOption,
+        secondsLeft,
+        setIsDrawerOpen,
+        isDrawerOpen
+      } = useTest();
+
+      const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
+
+      useEffect(() => {
+        const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+        document.addEventListener('fullscreenchange', syncFullscreen);
+        return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+      }, []);
+
+      const toggleFullscreen = async () => {
+        try {
+          if (document.fullscreenElement) {
+            await document.exitFullscreen();
+          } else {
+            await document.documentElement.requestFullscreen();
+          }
+        } catch {
+          // Ignore fullscreen errors.
+        }
+      };
+
+      const scrollToQuestion = (questionId) => {
+        const element = document.getElementById(getQuestionDomId(questionId));
+        if (!element) return;
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      };
+
+      return (
+        <header className="border-b border-bordersoft bg-white px-4 py-3 shadow-sm">
+          <div className="mx-auto flex w-full max-w-[1700px] flex-wrap items-center gap-4 xl:flex-nowrap">
+            <div className="flex min-w-[280px] flex-1 items-center gap-3">
+              <img src="asst/icon/QuickCheckLogo.png" alt="Quick Check" className="h-10 w-auto object-contain" />
+              <div className="min-w-0">
+                <h1 className="truncate font-heading text-xl font-semibold leading-tight text-navy">
+                  Reading Comprehension
+                </h1>
+                <p className="truncate text-sm text-mutedtxt">Package 01 Jan</p>
+              </div>
             </div>
 
-            <div class="passage-progress-strip" id="passageProgressStrip"></div>
+            <div className="flex items-center gap-2 rounded-full border border-bordersoft bg-[#F0F7FF] px-4 py-2 shadow-inner">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 6V12L16 14" stroke="#003560" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="12" r="9" stroke="#0EA5E9" strokeWidth="1.5" />
+              </svg>
+              <span className="font-timer text-[30px] tracking-wider text-[#0965A6]">{formatTimer(secondsLeft)}</span>
+            </div>
 
-            <div class="overview-actions">
-                <button id="backToDeveloperBtn" class="back-dev-btn" type="button" onclick="goBackToDeveloper()">Back</button>
-                <div class="timer-container">
-                    <span>Time left:</span>
-                    <span id="timer">60:00</span>
-                </div>
-                <button type="button" class="overview-btn tracker-toggle-btn" id="toggleTypeTrackerBtn" aria-label="Toggle question tracker">
-                    <img src="asst/icon/closed-questionnavigation-icon.svg" alt="" id="trackerToggleIcon">
+            <div className="order-3 w-full rounded-xl border border-bordersoft bg-[#FAFCFF] px-3 py-2 xl:order-none xl:w-auto xl:flex-[2.2]">
+              <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
+                {parts.map((part) => {
+                  const isActive = part.id === activePartId;
+                  const answered = answeredCountByPart[part.id] || 0;
+                  return (
+                    <div
+                      key={part.id}
+                      className={`shrink-0 rounded-lg border transition ${
+                        isActive
+                          ? 'border-navy bg-white px-2 py-2'
+                          : 'cursor-pointer border-bordersoft bg-white px-4 py-2 hover:border-accent'
+                      }`}
+                      onClick={() => {
+                        if (!isActive) setActivePartId(part.id);
+                      }}
+                    >
+                      {isActive ? (
+                        <div className="flex items-center gap-2">
+                          <span className="font-heading text-xs font-bold tracking-wide text-navy">PART {part.index}</span>
+                          <div className="flex items-center gap-1">
+                            {part.questions.map((question) => {
+                              const answeredCircle = selectedOption(question.id) !== null;
+                              return (
+                                <button
+                                  key={question.id}
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    scrollToQuestion(question.id);
+                                  }}
+                                  className={`grid h-6 w-6 place-items-center rounded-full text-[11px] font-semibold transition ${
+                                    answeredCircle
+                                      ? 'border border-navy bg-navy text-white shadow-cyanGlow'
+                                      : 'border border-bordersoft bg-[#E6EDF5] text-[#7A8FA6]'
+                                  }`}
+                                  aria-label={`Question ${question.number}`}
+                                >
+                                  {question.number}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex min-w-[82px] flex-col items-center">
+                          <span className="font-heading text-[11px] font-bold tracking-wide text-navy">
+                            PART {part.index}
+                          </span>
+                          <span className="text-[11px] text-mutedtxt">{answered}/10</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="grid h-10 w-10 place-items-center rounded-md border border-bordersoft bg-white text-navy transition hover:border-accent"
+                aria-label="Toggle fullscreen"
+                title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+              >
+                {isFullscreen ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M8 3H3V8M16 3H21V8M8 21H3V16M16 21H21V16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M9 3H3V9M15 3H21V9M9 21H3V15M15 21H21V15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsDrawerOpen((prev) => !prev)}
+                className="grid h-10 w-10 place-items-center rounded-md border border-bordersoft bg-white text-navy transition hover:border-accent"
+                aria-label="Toggle navigator drawer"
+                title="Toggle question drawer"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M4 7H20M4 12H20M4 17H20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                className="inline-flex h-10 items-center gap-2 rounded-md bg-submit px-5 font-body text-sm font-semibold text-white shadow-sm transition hover:bg-[#0b8076]"
+              >
+                Submit
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M3 21L21 12L3 3V10L15 12L3 14V21Z" fill="currentColor" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="mx-auto mt-2 w-full max-w-[1700px]">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-mutedtxt">
+              {parts.map((part) => {
+                const answered = answeredCountByPart[part.id] || 0;
+                return (
+                  <button
+                    key={`${part.id}-counter`}
+                    type="button"
+                    onClick={() => setActivePartId(part.id)}
+                    className={`rounded-full border px-3 py-1 transition ${
+                      part.id === activePartId
+                        ? 'border-accent bg-[rgba(14,165,233,0.1)] text-navy'
+                        : 'border-bordersoft bg-white hover:border-accent'
+                    }`}
+                  >
+                    PART {part.index}: {answered}/10
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    function PassagePanel() {
+      const { activePart } = useTest();
+      const textRef = useRef(null);
+      const [lineMarkers, setLineMarkers] = useState([]);
+
+      useLayoutEffect(() => {
+        const target = textRef.current;
+        if (!target) return;
+
+        const computeMarkers = () => {
+          const style = window.getComputedStyle(target);
+          const lineHeight = parseFloat(style.lineHeight) || 48;
+          const totalLines = Math.max(1, Math.round(target.scrollHeight / lineHeight));
+
+          const markers = [{ label: 'Line', top: lineHeight * 0.6 }];
+          for (let line = LINE_MARKER_STEP; line <= totalLines; line += LINE_MARKER_STEP) {
+            markers.push({ label: `(${line})`, top: (line - 0.5) * lineHeight });
+          }
+
+          setLineMarkers(markers);
+        };
+
+        computeMarkers();
+
+        const observer = new ResizeObserver(computeMarkers);
+        observer.observe(target);
+        window.addEventListener('resize', computeMarkers);
+
+        return () => {
+          observer.disconnect();
+          window.removeEventListener('resize', computeMarkers);
+        };
+      }, [activePart.id, activePart.passage]);
+
+      return (
+        <section className="rounded-xl border border-bordersoft bg-white p-4 shadow-sm lg:p-6">
+          <div className="mb-4 border-b border-bordersoft pb-3">
+            <h2 className="font-heading text-[30px] font-semibold leading-none text-black">PART {activePart.index}</h2>
+            <p className="mt-1 font-body text-[16px] text-mutedtxt">{activePart.questionRange}</p>
+          </div>
+
+          <div className="relative pl-14">
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-14">
+              {lineMarkers.map((marker, index) => (
+                <span key={`${marker.label}-${index}`} className="passage-line-label" style={{ top: `${marker.top}px` }}>
+                  {marker.label}
+                </span>
+              ))}
+            </div>
+
+            <div className="rounded-md border border-black bg-white p-4 md:p-5">
+              <div
+                ref={textRef}
+                className="font-passage text-[16px] leading-[1.55] text-[#222] whitespace-pre-wrap"
+              >
+                {activePart.passage}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    function QuestionOption({ questionId, optionLabel, optionText, optionIndex }) {
+      const { selectedOption, selectAnswer } = useTest();
+      const isSelected = selectedOption(questionId) === optionIndex;
+
+      return (
+        <button
+          type="button"
+          onClick={() => selectAnswer(questionId, optionIndex)}
+          className={`w-full rounded-[10px] border px-3 py-3 text-left transition ${
+            isSelected
+              ? 'border-navy bg-[rgba(14,165,233,0.15)]'
+              : 'border-bordersoft bg-white hover:border-accent hover:bg-[#F9FCFF]'
+          }`}
+        >
+          <span className="flex items-center gap-4">
+            <span
+              className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border text-base font-semibold ${
+                isSelected
+                  ? 'border-navy bg-navy text-white'
+                  : 'border-bordersoft bg-white text-[#4C647E]'
+              }`}
+            >
+              {optionLabel}
+            </span>
+            <span className="font-body text-[16px] text-[#1E2A35]">{optionText}</span>
+          </span>
+        </button>
+      );
+    }
+
+    function QuestionCard({ question }) {
+      const { selectedOption } = useTest();
+      const answered = selectedOption(question.id) !== null;
+
+      return (
+        <article
+          id={getQuestionDomId(question.id)}
+          className="rounded-xl border border-bordersoft bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.05)]"
+        >
+          <div className="mb-3 flex items-center gap-3">
+            <span
+              className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg border text-base font-semibold ${
+                answered
+                  ? 'border-navy bg-navy text-white'
+                  : 'border-bordersoft bg-transparent text-[#6F87A1]'
+              }`}
+            >
+              {question.number}
+            </span>
+            <h3 className="font-body text-[19px] font-medium text-[#1B2A3D]">{question.prompt}</h3>
+          </div>
+
+          <div className="space-y-2 pl-0 md:pl-2">
+            {question.options.map((optionText, index) => (
+              <QuestionOption
+                key={`${question.id}-option-${index}`}
+                questionId={question.id}
+                optionLabel={String.fromCharCode(65 + index)}
+                optionText={optionText}
+                optionIndex={index}
+              />
+            ))}
+          </div>
+        </article>
+      );
+    }
+
+    function QuestionsPanel() {
+      const { activePart } = useTest();
+
+      return (
+        <section className="rounded-xl border border-bordersoft bg-white p-4 shadow-sm lg:p-6">
+          <div className="mb-4 flex items-center justify-between border-b border-bordersoft pb-3">
+            <h2 className="font-heading text-lg font-semibold tracking-wide text-navy">
+              PART {activePart.index}
+            </h2>
+            <span className="font-body text-sm text-mutedtxt">Questions 1 - 10</span>
+          </div>
+
+          <div className="hide-scrollbar max-h-[calc(100dvh-260px)] space-y-4 overflow-y-auto pr-1 lg:max-h-[calc(100dvh-220px)]">
+            {activePart.questions.map((question) => (
+              <QuestionCard key={question.id} question={question} />
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    function DrawerNavigator() {
+      const { activePart, selectedOption, isDrawerOpen, setIsDrawerOpen, answers } = useTest();
+
+      const groupedQuestions = useMemo(() => {
+        return {
+          a: activePart.questions.slice(0, 5),
+          b: activePart.questions.slice(5)
+        };
+      }, [activePart]);
+
+      const scrollToQuestion = (questionId) => {
+        const element = document.getElementById(getQuestionDomId(questionId));
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      };
+
+      const focusNextQuestion = () => {
+        const nextUnanswered = activePart.questions.find((question) => answers[question.id] === undefined);
+        if (nextUnanswered) {
+          scrollToQuestion(nextUnanswered.id);
+          return;
+        }
+        scrollToQuestion(activePart.questions[activePart.questions.length - 1].id);
+      };
+
+      return (
+        <>
+          {isDrawerOpen && (
+            <button
+              type="button"
+              aria-label="Close drawer backdrop"
+              onClick={() => setIsDrawerOpen(false)}
+              className="fixed inset-0 z-30 bg-[#001833]/20 lg:hidden"
+            />
+          )}
+
+          <aside
+            className={`fixed right-0 top-0 z-40 h-full w-[330px] border-l border-bordersoft bg-white shadow-2xl transition-transform duration-300 ${
+              isDrawerOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
+          >
+            <div className="flex h-full flex-col">
+              <div className="flex items-center justify-between border-b border-bordersoft px-4 py-4">
+                <h3 className="font-heading text-lg font-semibold text-navy">Question Navigator</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="grid h-8 w-8 place-items-center rounded-md border border-bordersoft text-navy hover:border-accent"
+                  aria-label="Close drawer"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  </svg>
                 </button>
-                <button type="button" class="overview-btn" id="prevPassageBtn">? Home</button>
-                <button type="button" class="overview-btn" id="nextPassageBtn">Passage 2 ?</button>
-            </div>
-        </div>
-        <div class="overview-bottom" id="overviewBottom">
-            <div class="question-type-strip" id="questionTypeStrip"></div>
-        </div>
-    </section>
-
-    <div class="container">
-        <div class="panel passage-section" id="leftPanel">
-            <h2 id="display-passage-title">Passage Title</h2>
-            <div id="display-passage-content"></div>
-        </div>
-
-        <div class="resizer" id="dragMe"></div>
-
-        <div class="panel question-section" id="rightPanel">
-            <form id="ieltsForm">
-                <div id="dynamic-questions-container"></div>
-
-                <div class="submit-area">
-                    <button type="button" class="submit-btn" id="submitBtn" onclick="submitTest()">Submit Answers</button>
-                    <button type="button" class="submit-btn" id="continueBtn" onclick="window.location.href='reading-test-answered.html'" style="display: none; margin-top: 10px;">Show The Result</button>
-                    <div id="result"></div>
-                </div>
-            </form>
-        </div>
-
-        <!-- Removed old tracker below, now handled in header -->
-        <style>
-            .header-center {
-                flex: 1;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                position: relative;
-            }
-            .header-tracker {
-                display: flex;
-                gap: 18px;
-                align-items: flex-end;
-                position: relative;
-                z-index: 30;
-            }
-            .tracker-part-box {
-                background: var(--bg-surface);
-                border: 2px solid var(--border-color);
-                border-radius: 16px 16px 10px 10px;
-                min-width: 54px;
-                min-height: 44px;
-                max-width: 120px;
-                padding: 0 18px;
-                font-family: 'Sora', sans-serif;
-                font-size: 1.1rem;
-                font-weight: 700;
-                color: var(--text-main);
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-                cursor: pointer;
-                transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-                position: relative;
-            }
-            .tracker-part-box.active {
-                border-color: var(--primary);
-                background: #e6f4f1;
-                z-index: 2;
-            }
-            .tracker-part-label {
-                margin-bottom: 2px;
-                letter-spacing: 0.01em;
-            }
-            .tracker-part-progress {
-                font-size: 0.9rem;
-                color: var(--primary);
-                font-weight: 600;
-                background: #eafaf3;
-                border-radius: 8px;
-                padding: 1px 8px;
-                margin-top: 2px;
-            }
-            .tracker-popup {
-                position: absolute;
-                left: 50%;
-                top: 100%;
-                transform: translateX(-50%);
-                background: var(--bg-surface);
-                border: 2px solid var(--primary);
-                border-radius: 0 0 18px 18px;
-                box-shadow: 0 8px 32px rgba(0,0,0,0.13);
-                padding: 18px 24px 14px 24px;
-                min-width: 260px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                z-index: 100;
-                animation: trackerPopupIn 0.22s cubic-bezier(.4,1.4,.6,1) both;
-            }
-            @keyframes trackerPopupIn {
-                from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(0.98); }
-                to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
-            }
-            .tracker-question-row {
-                display: flex;
-                gap: 8px;
-                justify-content: center;
-                align-items: center;
-                margin-top: 2px;
-            }
-            .tracker-question-chip {
-                width: 38px;
-                height: 38px;
-                border-radius: 10px;
-                background: var(--bg-body);
-                border: 2px solid var(--border-color);
-                color: var(--text-main);
-                font-size: 1.08rem;
-                font-weight: 600;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                transition: background 0.18s, border-color 0.18s, color 0.18s;
-                box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-            }
-            .tracker-question-chip.answered {
-                background: #1f9d63;
-                color: #fff;
-                border-color: #1f9d63;
-            }
-            .tracker-question-chip.current {
-                border-color: var(--primary);
-                background: #e6f4f1;
-            }
-            @media (max-width: 900px) {
-                .header-tracker { gap: 8px; }
-                .tracker-part-box { min-width: 38px; font-size: 0.98rem; padding: 0 8px; }
-                .tracker-popup { min-width: 180px; padding: 10px 6px 8px 6px; }
-                .tracker-question-chip { width: 28px; height: 28px; font-size: 0.92rem; }
-            }
-        </style>
-        <script>
-        // --- Tracker Popup Logic ---
-        let trackerPopupPartIndex = null;
-
-        function renderHeaderTracker(passages) {
-            const tracker = document.getElementById('headerTracker');
-            if (!tracker) return;
-            const parts = buildPartTrackerData(passages);
-            let html = '';
-            parts.forEach((part, idx) => {
-                const entries = part.entries || [];
-                const total = entries.length;
-                const answeredCount = entries.filter((entry) => String(answerState[entry.name] || '').trim().length > 0).length;
-                const isActive = idx === currentPartIndex;
-                const isPopupOpen = trackerPopupPartIndex === idx;
-                html += `<div class="tracker-part-box${isActive ? ' active' : ''}" onclick="onTrackerPartClick(event, ${idx})">`;
-                html += `<div class="tracker-part-label">${idx + 1}</div>`;
-                html += `<div class="tracker-part-progress">${answeredCount} / ${total}</div>`;
-                if (isPopupOpen) {
-                    // Centered popup for question numbers
-                    html += `<div class="tracker-popup">`;
-                    html += renderTrackerQuestionChips(entries, idx);
-                    html += `</div>`;
-                }
-                html += `</div>`;
-            });
-            tracker.innerHTML = html;
-        }
-
-        function renderTrackerQuestionChips(entries, partIdx) {
-            // Center the chips, expand left/right as number increases
-            // If odd, center; if even, balance left/right
-            let html = '<div class="tracker-question-row">';
-            entries.forEach((entry, i) => {
-                const answered = String(answerState[entry.name] || '').trim().length > 0;
-                html += `<button type="button" class="tracker-question-chip${answered ? ' answered' : ''}${currentPartIndex === partIdx ? '' : ''}" onclick="event.stopPropagation(); jumpToPartQuestion(${partIdx}, '${entry.name}')">${escapeHtml(entry.label)}</button>`;
-            });
-            html += '</div>';
-            return html;
-        }
-
-        function onTrackerPartClick(event, partIndex) {
-            event.stopPropagation();
-            const isSamePart = currentPartIndex === partIndex;
-            const isOpen = trackerPopupPartIndex === partIndex;
-
-            if (isSamePart && isOpen) {
-                trackerPopupPartIndex = null;
-                renderPartStrip(getProblemPassages());
-                return;
-            }
-
-            setActivePart(partIndex, null, true);
-        }
-        </script>
-    </div>
-
-    <script src="storage-sync.js"></script>
-    <script>
-        const STORAGE_KEY = "prephaven_problems_v1";
-        const TEST_RESULTS_KEY = "prephaven_test_results_v1";
-        const DAILY_TEST_KEY = "prephaven_daily_tests_v1";
-        const ACTIVE_READING_SET_ID_KEY = "ielts_check_active_reading_set_id";
-        const params = new URLSearchParams(window.location.search);
-        const PACKAGE_MODE = params.get("package") === "1";
-        const RETURN_TO = params.get("returnTo");
-        const DAY_VALUE = params.get("day");
-        const NEXT_URL = PACKAGE_MODE ? "writing-test.html?package=1" : (RETURN_TO || "index.html");
-        function resolveAiEndpoint(path) {
-            const host = params.get("aiHost") || localStorage.getItem("ai_review_host") || (window.location.hostname || "127.0.0.1");
-            const port = params.get("aiPort") || localStorage.getItem("ai_review_port") || "8787";
-            return `http://${host}:${port}${path}`;
-        }
-        const AI_REVIEW_ENDPOINT = resolveAiEndpoint("/api/ai-review");
-
-        // Default problem set
-        const defaultProblemSet = {
-            moduleId: "reading",
-            icon: "",
-            moduleName: "Reading",
-            title: "Reading Test",
-            passages: [
-                {
-                    title: "The History of the Bicycle",
-                    content: `A The bicycle is a common mode of transportation today, but its invention was not the result of a single "Eureka!" moment. Instead, it evolved over decades, with various inventors contributing to its development. The earliest precursor to the modern bicycle was the "dandy horse," invented by German Baron Karl von Drais in 1817. It had two wheels and a wooden frame, but no pedals; the rider pushed along the ground with their feet.
-
-B It wasn't until the 1860s that pedals were added to the front wheel by French inventors Pierre Michaux and Pierre Lallement. This invention, known as the velocipede, was largely constructed of wood and iron, earning it the nickname "boneshaker" due to the incredibly uncomfortable ride it provided on cobblestone roads.
-
-C In the 1870s, the "Penny Farthing" emerged. This bicycle featured a massive front wheel and a tiny rear wheel, designed to allow the rider to travel faster with each pedal stroke. While faster, it was notoriously dangerous; the rider sat very high up, and any sudden stop would send them flying over the handlebars.
-
-D The true breakthrough came in 1885 with John Kemp Starley's "Rover safety bicycle." It featured two wheels of equal size and a chain drive to the rear wheel. Combined with John Boyd Dunlop's invention of the pneumatic (air-filled) rubber tire in 1888, the bicycle finally became a safe, comfortable, and highly popular mode of transport.`,
-                    questionGroups: [
-                        {
-                            title: "Questions 1-2",
-                            instruction: "Do the following statements agree with the information given in the Reading Passage? Choose True, False, or Not Given.",
-                            questions: [
-                                { type: "radio", text: "1. Karl von Drais's invention was propelled by pedals.", options: "True, False, Not Given", answer: "False" },
-                                { type: "radio", text: "2. The velocipede was comfortable to ride on cobblestone streets.", options: "True, False, Not Given", answer: "False" }
-                            ]
-                        },
-                        {
-                            title: "Question 3",
-                            instruction: "Choose the correct letter, A, B, C or D.",
-                            questions: [
-                                { type: "radio", text: "3. What made the Rover safety bicycle different from the Penny Farthing?", options: "A, B, C, D", answer: "A" }
-                            ]
-                        },
-                        {
-                            title: "Questions 4-5",
-                            instruction: "Complete the sentences below. Choose NO MORE THAN TWO WORDS from the passage for each answer.",
-                            questions: [
-                                { type: "text", text: "4. The velocipede earned the nickname ________ due to its uncomfortable ride.", options: "", answer: "boneshaker" },
-                                { type: "text", text: "5. The pneumatic rubber tire was invented by ________ in 1888.", options: "", answer: "John Boyd Dunlop" }
-                            ]
-                        }
-                    ]
-                }
-            ]
-        };
-
-        let currentProblem = null;
-        let currentPartIndex = 0;
-        const answerState = {};
-        let pendingFocusInputName = null;
-        let isTypeTrackerCollapsed = true;
-
-        function syncPanelViewportLayout() {
-            const overview = document.getElementById('readingOverview');
-            if (!overview) return;
-            const measuredHeight = Math.ceil(overview.getBoundingClientRect().height);
-            if (measuredHeight > 0) {
-                document.documentElement.style.setProperty('--overview-height', `${measuredHeight}px`);
-            }
-        }
-
-        function formatReadingDate(dateValue) {
-            const raw = String(dateValue || "").trim();
-            if (!raw) return "No date";
-            const parsed = new Date(raw);
-            if (Number.isNaN(parsed.getTime())) return raw;
-            return parsed.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-        }
-
-        function getQuestionTypeLabel(question) {
-            const q = question || {};
-            const type = String(q.type || "").toLowerCase();
-            if (type === "matching-headings") return "Matching Heading";
-            if (type === "fill-in-the-blank") return "Fill in the Blank";
-            if (type === "short-answer") return "Isian Singkat (Short Answer)";
-            if (type === "text") {
-                const hasDefs = extractNumberedBlankDefs(q.text || "").length > 0;
-                return hasDefs ? "Isian Singkat (Short Answer)" : "Short Answer";
-            }
-
-            const optionsText = String(q.options || "").toLowerCase();
-            if (optionsText.includes("true") && optionsText.includes("false") && optionsText.includes("not given")) return "True/False/Not Given";
-            if (optionsText.includes("yes") && optionsText.includes("no") && optionsText.includes("not given")) return "Yes/No/Not Given";
-            return "Multiple Choice";
-        }
-
-        function collectQuestionLabelsForQuestion(question, fallbackCounter) {
-            if (question?.type === 'matching-headings') {
-                const matching = normalizeMatchingHeadings(question);
-                return matching.rows.map((row) => String(row.number || "")).filter(Boolean);
-            }
-            const numberedDefs = extractNumberedBlankDefs(question?.text || "");
-            if ((question?.type === 'text' || question?.type === 'fill-in-the-blank' || question?.type === 'short-answer') && numberedDefs.length > 0) {
-                return numberedDefs.map((def) => String(def.number));
-            }
-            return [extractQuestionDisplayNumber(question, fallbackCounter)];
-        }
-
-        function buildQuestionTypeMeta(groups) {
-            const result = [];
-            let fallbackCounter = 1;
-            groups.forEach((group, gIdx) => {
-                const labels = [];
-                (group.questions || []).forEach((q) => {
-                    const qLabels = collectQuestionLabelsForQuestion(q, fallbackCounter);
-                    labels.push(...qLabels);
-                    const numberedDefs = extractNumberedBlankDefs(q?.text || "");
-                    if (!((q?.type === 'text' || q?.type === 'fill-in-the-blank') && numberedDefs.length > 0) && q?.type !== 'matching-headings') {
-                        fallbackCounter++;
-                    }
-                });
-
-                const firstLabel = labels[0] || String(fallbackCounter);
-                const lastLabel = labels[labels.length - 1] || firstLabel;
-                const typeLabel = getQuestionTypeLabel((group.questions || [])[0] || {});
-
-                result.push({
-                    groupIndex: gIdx,
-                    typeLabel,
-                    startLabel: firstLabel,
-                    endLabel: lastLabel
-                });
-            });
-            return result;
-        }
-
-        function goToPrevPassage() {
-            if (currentPartIndex <= 0) {
-                goBackToDeveloper();
-                return;
-            }
-            setActivePart(currentPartIndex - 1);
-        }
-
-        function goToNextPassage() {
-            const passages = getProblemPassages();
-            if (currentPartIndex >= passages.length - 1) {
-                submitTest();
-                return;
-            }
-            setActivePart(currentPartIndex + 1);
-        }
-
-        function syncSubmitAreaPrimaryButton(passages) {
-            const submitBtn = document.getElementById('submitBtn');
-            if (!submitBtn) return;
-
-            const total = Array.isArray(passages) ? passages.length : 0;
-            const isLastPassage = total <= 1 || currentPartIndex >= total - 1;
-
-            submitBtn.textContent = isLastPassage ? 'Submit Answers' : 'Next Passage';
-            submitBtn.onclick = isLastPassage ? () => submitTest() : () => goToNextPassage();
-        }
-
-        function scrollToGroup(groupIndex) {
-            const target = document.getElementById(`group_${currentPartIndex}_${groupIndex}`);
-            const container = document.getElementById('rightPanel');
-            if (!target || !container) return;
-            container.scrollTo({ top: target.offsetTop - 50, behavior: 'smooth' });
-        }
-
-        function renderReadingOverview(passages, typeMeta) {
-            const dateEl = document.getElementById('overviewDate');
-            if (dateEl) {
-                dateEl.textContent = formatReadingDate(currentProblem?.scheduledDate || currentProblem?.date || currentProblem?.scheduled_at);
-            }
-
-            const parts = buildPartTrackerData(passages);
-            const strip = document.getElementById('passageProgressStrip');
-            if (strip) {
-                strip.innerHTML = parts.map((part, idx) => {
-                    const entries = part.entries || [];
-                    const total = entries.length;
-                    const answeredCount = entries.filter((entry) => String(answerState[entry.name] || '').trim().length > 0).length;
-                    const percentage = total > 0 ? Math.round((answeredCount / total) * 100) : 0;
-                    return `
-                        <article class="passage-progress-card ${idx === currentPartIndex ? 'active' : ''}" onclick="setActivePart(${idx})">
-                            <div class="passage-progress-ring" style="--pct:${percentage}%">
-                                <span class="passage-progress-value">${answeredCount}/${total}</span>
-                            </div>
-                            <div class="passage-progress-meta">
-                                <div class="passage-progress-name">PASSAGE ${idx + 1}</div>
-                                <div class="passage-progress-count">${total} questions</div>
-                            </div>
-                        </article>
-                    `;
-                }).join('');
-            }
-
-            const typeStrip = document.getElementById('questionTypeStrip');
-            if (typeStrip) {
-                typeStrip.innerHTML = (typeMeta || []).map((meta, idx) => `
-                    <button type="button" class="question-type-chip ${idx === 0 ? 'active' : ''}" onclick="scrollToGroup(${meta.groupIndex})">
-                        ${escapeHtml(meta.typeLabel)} � Question ${escapeHtml(meta.startLabel)}-${escapeHtml(meta.endLabel)}
-                    </button>
-                `).join('');
-            }
-
-            const bottom = document.getElementById('overviewBottom');
-            const toggleBtn = document.getElementById('toggleTypeTrackerBtn');
-            if (bottom && toggleBtn) {
-                bottom.style.display = isTypeTrackerCollapsed ? 'none' : '';
-                const iconEl = document.getElementById('trackerToggleIcon');
-                if (iconEl) iconEl.src = isTypeTrackerCollapsed ? 'asst/icon/closed-questionnavigation-icon.svg' : 'asset/icon/expand-hide-tracker.png';
-                requestAnimationFrame(syncPanelViewportLayout);
-            }
-
-            const prevBtn = document.getElementById('prevPassageBtn');
-            const nextBtn = document.getElementById('nextPassageBtn');
-            if (prevBtn) {
-                prevBtn.textContent = currentPartIndex === 0 ? '? Home' : `? Passage ${currentPartIndex}`;
-            }
-            if (nextBtn) {
-                const isLast = currentPartIndex >= passages.length - 1;
-                nextBtn.textContent = isLast ? 'Submit ?' : `Passage ${currentPartIndex + 2} ?`;
-                nextBtn.classList.toggle('primary', isLast);
-            }
-        }
-
-        function extractQuestionDisplayNumber(question, fallback) {
-            const rawText = String(question?.text || question?.textHtml || "");
-            const plainText = rawText.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-            const match = plainText.match(/(?:^|\s)(\d+)\s*[.)]/);
-            return match ? String(match[1]) : String(fallback);
-        }
-
-        function getProblemPassages() {
-            if (!currentProblem) return [];
-            if (Array.isArray(currentProblem.passages) && currentProblem.passages.length > 0) {
-                return currentProblem.passages;
-            }
-            return [{
-                title: currentProblem.passageTitle || "Passage",
-                content: currentProblem.passageContent || "",
-                questionGroups: currentProblem.questionGroups || []
-            }];
-        }
-
-        function getPassageQuestionGroups(passage, fallbackGroups) {
-            if (Array.isArray(passage?.questionGroups) && passage.questionGroups.length > 0) {
-                return passage.questionGroups;
-            }
-            return Array.isArray(fallbackGroups) ? fallbackGroups : [];
-        }
-
-        function snapshotCurrentAnswers() {
-            const inputs = document.querySelectorAll('#dynamic-questions-container input, #dynamic-questions-container select');
-            inputs.forEach((input) => {
-                if (input.tagName === 'SELECT') {
-                    answerState[input.name] = input.value || "";
-                    return;
-                }
-                if (input.type === 'radio') {
-                    if (input.checked) answerState[input.name] = input.value;
-                    else if (!(input.name in answerState)) answerState[input.name] = "";
-                    return;
-                }
-                answerState[input.name] = input.value || "";
-            });
-        }
-
-        function hydrateInputsFromState() {
-            const inputs = document.querySelectorAll('#dynamic-questions-container input, #dynamic-questions-container select');
-            inputs.forEach((input) => {
-                if (!(input.name in answerState)) return;
-                if (input.tagName === 'SELECT') {
-                    input.value = String(answerState[input.name] || "");
-                    return;
-                }
-                if (input.type === 'radio') {
-                    input.checked = String(answerState[input.name] || "") === String(input.value || "");
-                    return;
-                }
-                input.value = String(answerState[input.name] || "");
-            });
-        }
-
-        function countQuestionsInGroup(group) {
-            const questions = Array.isArray(group?.questions) ? group.questions : [];
-            return questions.reduce((sum, q) => {
-                if (q?.type === 'matching-headings') {
-                    const rows = Array.isArray(q.matchingHeadingsRows) ? q.matchingHeadingsRows : [];
-                    return sum + Math.max(1, rows.length);
-                }
-                const numberedDefs = extractNumberedBlankDefs(q?.text || "");
-                return sum + (numberedDefs.length > 0 ? numberedDefs.length : 1);
-            }, 0);
-        }
-
-        function parseMatchingHeadingsAnswerMap(raw) {
-            const text = String(raw || "").trim();
-            if (!text) return {};
-            try {
-                const parsed = JSON.parse(text);
-                if (parsed && typeof parsed === "object") {
-                    if (parsed.answers && typeof parsed.answers === "object") return parsed.answers;
-                    return parsed;
-                }
-            } catch (_) {}
-            return {};
-        }
-
-        function normalizeMatchingHeadings(question) {
-            const options = Array.isArray(question?.matchingHeadingsOptions) ? question.matchingHeadingsOptions : [];
-            const rows = Array.isArray(question?.matchingHeadingsRows) ? question.matchingHeadingsRows : [];
-            const optionMap = new Map();
-            const normalizedOptions = options.map((opt, idx) => {
-                const id = String(opt?.id || `mh_${idx + 1}`);
-                const label = String(opt?.label || "").trim() || `${idx + 1}.`;
-                const text = String(opt?.text || "");
-                optionMap.set(id, { id, label, text });
-                return { id, label, text };
-            });
-
-            const answerMap = parseMatchingHeadingsAnswerMap(question?.answer);
-            const normalizedRows = (rows.length ? rows : [{ number: "1", prompt: "Passage A", answerOptionId: "" }]).map((row, idx) => {
-                const number = String(row?.number || idx + 1);
-                const prompt = String(row?.prompt || `Passage ${String.fromCharCode(65 + idx)}`);
-                const answerOptionId = String(row?.answerOptionId || answerMap[number] || "");
-                return { number, prompt, answerOptionId };
-            });
-
-            return { options: normalizedOptions, rows: normalizedRows, optionMap };
-        }
-
-        function countQuestionsInPassage(passage, fallbackGroups) {
-            const groups = getPassageQuestionGroups(passage, fallbackGroups);
-            return groups.reduce((sum, group) => sum + countQuestionsInGroup(group), 0);
-        }
-
-        function buildPartTrackerData(passages) {
-            return passages.map((passage, pIdx) => {
-                const groups = getPassageQuestionGroups(passage, currentProblem.questionGroups || []);
-                const entries = [];
-                const seenLabels = new Set();
-
-                const pushEntry = (entry) => {
-                    const label = String(entry?.label || "").trim();
-                    if (!label) return;
-                    if (seenLabels.has(label)) return;
-                    seenLabels.add(label);
-                    entries.push(entry);
-                };
-
-                groups.forEach((group, gIdx) => {
-                    group.questions.forEach((q, qIdx) => {
-                        const baseName = `q_${pIdx}_${gIdx}_${qIdx}`;
-                        const baseBlockId = `block_${baseName}`;
-                        if (q.type === 'matching-headings') {
-                            const matching = normalizeMatchingHeadings(q);
-                            matching.rows.forEach((row) => {
-                                pushEntry({
-                                    name: `${baseName}__mh__${row.number}`,
-                                    label: String(row.number),
-                                    blockId: baseBlockId
-                                });
-                            });
-                            return;
-                        }
-                        const numberedDefs = extractNumberedBlankDefs(q.text);
-
-                        if ((q.type === 'text' || q.type === 'fill-in-the-blank' || q.type === 'short-answer') && numberedDefs.length > 0) {
-                            numberedDefs.forEach((def) => {
-                                pushEntry({
-                                    name: `${baseName}__${def.number}`,
-                                    label: String(def.number),
-                                    blockId: baseBlockId
-                                });
-                            });
-                        } else {
-                            const questionLabel = extractQuestionDisplayNumber(q, entries.length + 1);
-                            pushEntry({
-                                name: baseName,
-                                label: questionLabel,
-                                blockId: baseBlockId
-                            });
-                        }
-                    });
-                });
-
-                return { entries };
-            });
-        }
-
-        // Remove old part strip rendering, now handled in header
-        function renderPartStrip(passages) {
-            renderHeaderTracker(passages);
-        }
-
-        function setActivePart(index, focusInputName = null, openTrackerPopup = false) {
-            snapshotCurrentAnswers();
-            currentPartIndex = index;
-            pendingFocusInputName = focusInputName;
-            trackerPopupPartIndex = openTrackerPopup ? index : null;
-            renderTest();
-        }
-
-        function jumpToPartQuestion(partIndex, inputName) {
-            if (partIndex !== currentPartIndex) {
-                setActivePart(partIndex, inputName);
-                return;
-            }
-
-            const baseInput = inputName.includes('__') ? inputName.split('__')[0] : inputName;
-            scrollToQuestion(`block_${baseInput}`);
-        }
-
-        function normalizeQuestionType(question) {
-            const rawType = String(question.type || "").toLowerCase();
-            if (rawType === "radio" || rawType === "text" || rawType === "fill-in-the-blank" || rawType === "short-answer" || rawType === "matching-headings") {
-                return rawType;
-            }
-            if (rawType.includes("sentence") || rawType.includes("completion")) {
-                return "text";
-            }
-            return "radio";
-        }
-
-        function toReadingShape(problem) {
-            if (!problem) return null;
-
-            const normalizeQuestionGroups = (groups) => (groups || []).map((group) => ({
-                title: group.title || "Questions",
-                instruction: group.instruction || "",
-                questionRange: group.questionRange || "",
-                passageBody: group.passageBody || undefined,
-                passageStart: group.passageStart || undefined,
-                questions: (group.questions || []).map((q) => ({
-                    type: normalizeQuestionType(q),
-                    text: q.text || "",
-                    textHtml: q.textHtml || "",
-                    options: typeof q.options === "string" ? q.options : Array.isArray(q.options) ? q.options.join(", ") : "",
-                    answer: q.answer || q.correctAnswer || "",
-                    explanation: q.explanation || q.autoExplanation || q.pembahasan || q.discussion || q.notes || "",
-                    matchingHeadingsOptions: Array.isArray(q.matchingHeadingsOptions) ? q.matchingHeadingsOptions : undefined,
-                    matchingHeadingsRows: Array.isArray(q.matchingHeadingsRows) ? q.matchingHeadingsRows : undefined
-                }))
-            }));
-
-            if (Array.isArray(problem.passages) && problem.passages.length > 0) {
-                const passages = problem.passages.slice(0, 3).map((passage, index) => ({
-                    title: passage.title || passage.passageTitle || `Passage ${index + 1}`,
-                    content: passage.content || passage.passageContent || "",
-                    autoFillDraft: passage.autoFillDraft || {},
-                    questionGroups: normalizeQuestionGroups(passage.questionGroups)
-                }));
-
-                return {
-                    ...problem,
-                    title: problem.title || "Reading Test",
-                    passages,
-                    passageTitle: passages[0]?.title || "Passage",
-                    passageContent: passages[0]?.content || "",
-                    questionGroups: passages.flatMap((passage) => passage.questionGroups)
-                };
-            }
-
-            const hasQuestionGroups = Array.isArray(problem.questionGroups) && problem.questionGroups.length > 0;
-            if (hasQuestionGroups) {
-                const questionGroups = normalizeQuestionGroups(problem.questionGroups);
-                return {
-                    ...problem,
-                    title: problem.title || "Reading Test",
-                    passageTitle: problem.passageTitle || "Passage",
-                    passageContent: problem.passageContent || "",
-                    passages: [{
-                        title: problem.passageTitle || "Passage",
-                        content: problem.passageContent || "",
-                        questionGroups
-                    }],
-                    questionGroups
-                };
-            }
-
-            const hasQuestions = Array.isArray(problem.questions) && problem.questions.length > 0;
-            if (hasQuestions) {
-                const questionGroups = [{
-                    title: "Questions 1-" + problem.questions.length,
-                    instruction: "Answer the following questions based on the reading passage.",
-                    questions: problem.questions.map((q, idx) => ({
-                        type: normalizeQuestionType(q),
-                        text: q.text || `${idx + 1}. Question`,
-                        textHtml: q.textHtml || "",
-                        options: Array.isArray(q.options) ? q.options.join(", ") : (q.options || ""),
-                        answer: q.answer || q.correctAnswer || "",
-                        explanation: q.explanation || q.autoExplanation || q.pembahasan || q.discussion || q.notes || "",
-                        matchingHeadingsOptions: Array.isArray(q.matchingHeadingsOptions) ? q.matchingHeadingsOptions : undefined,
-                        matchingHeadingsRows: Array.isArray(q.matchingHeadingsRows) ? q.matchingHeadingsRows : undefined
-                    }))
-                }];
-                return {
-                    moduleId: "reading",
-                    icon: problem.icon || "",
-                    moduleName: "Reading",
-                    title: problem.title || "Reading Test",
-                    passageTitle: problem.passage?.title || problem.passageTitle || "Passage",
-                    passageContent: problem.passage?.text || problem.passageContent || "",
-                    passages: [{
-                        title: problem.passage?.title || problem.passageTitle || "Passage",
-                        content: problem.passage?.text || problem.passageContent || "",
-                        questionGroups
-                    }],
-                    questionGroups
-                };
-            }
-
-            return null;
-        }
-
-        // Load problem or use default
-        async function loadProblem() {
-            try {
-                const problems = await storageSync.getProblemsByModule("reading");
-                const readingCandidates = Array.isArray(problems)
-                    ? problems.filter((item) => item && item.moduleId === "reading")
-                    : [];
-
-                const normalizedCandidates = readingCandidates
-                    .map((candidate) => toReadingShape(candidate))
-                    .filter((normalized) => (
-                        normalized &&
-                        Array.isArray(normalized.passages) &&
-                        normalized.passages.some((passage) => String(passage.content || "").trim().length > 0) &&
-                        Array.isArray(normalized.questionGroups) &&
-                        normalized.questionGroups.length > 0
-                    ));
-
-                let selectedByActiveId = null;
-                try {
-                    const preferredId = String(localStorage.getItem(ACTIVE_READING_SET_ID_KEY) || "").trim();
-                    if (preferredId) {
-                        selectedByActiveId = normalizedCandidates.find((item) => String(item.id || "") === preferredId) || null;
-                    }
-                } catch (_) {}
-
-                // Prefer the most recently updated set first, then use completeness as tie-breaker.
-                normalizedCandidates.sort((a, b) => {
-                    const aTime = new Date(a.updatedAt || a.createdAt || 0).getTime() || 0;
-                    const bTime = new Date(b.updatedAt || b.createdAt || 0).getTime() || 0;
-                    if (aTime !== bTime) return bTime - aTime;
-
-                    const aPassages = Array.isArray(a.passages) ? a.passages.length : 0;
-                    const bPassages = Array.isArray(b.passages) ? b.passages.length : 0;
-                    if (aPassages !== bPassages) return bPassages - aPassages;
-
-                    const aGroups = Array.isArray(a.questionGroups) ? a.questionGroups.length : 0;
-                    const bGroups = Array.isArray(b.questionGroups) ? b.questionGroups.length : 0;
-                    if (aGroups !== bGroups) return bGroups - aGroups;
-                    return 0;
-                });
-
-                const selected = selectedByActiveId || normalizedCandidates[0] || null;
-
-                if (selected) {
-                    currentProblem = selected;
-                } else {
-                    currentProblem = toReadingShape(defaultProblemSet) || defaultProblemSet;
-                }
-            } catch (e) {
-                console.error("Error loading problem:", e);
-                currentProblem = toReadingShape(defaultProblemSet) || defaultProblemSet;
-            }
-
-            renderTest();
-        }
-
-        function isRichText(value) {
-            return /<\/?[a-z][\s\S]*>/i.test(String(value || ""));
-        }
-
-        function sanitizeRichHtml(value) {
-            const template = document.createElement("template");
-            template.innerHTML = String(value || "");
-
-            template.content.querySelectorAll("script,style,iframe,object,embed,link,meta").forEach((node) => node.remove());
-
-            const allowedTags = new Set(["b", "strong", "i", "em", "u", "br", "p", "div", "span", "ul", "ol", "li", "sub", "sup"]);
-            const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_ELEMENT);
-            const elements = [];
-            while (walker.nextNode()) {
-                elements.push(walker.currentNode);
-            }
-
-            elements.forEach((el) => {
-                const tag = (el.tagName || "").toLowerCase();
-                if (!allowedTags.has(tag)) {
-                    const parent = el.parentNode;
-                    if (!parent) return;
-                    while (el.firstChild) parent.insertBefore(el.firstChild, el);
-                    parent.removeChild(el);
-                    return;
-                }
-
-                Array.from(el.attributes).forEach((attr) => {
-                    const name = String(attr.name || "").toLowerCase();
-                    if (name.startsWith("on") || name === "id" || name === "class") {
-                        el.removeAttribute(attr.name);
-                    }
-                    if ((name === "href" || name === "src") && /^\s*javascript:/i.test(String(attr.value || ""))) {
-                        el.removeAttribute(attr.name);
-                    }
-                    if (name === "style") {
-                        const styleText = String(attr.value || "");
-                        const allowed = [];
-                        styleText.split(";").forEach((decl) => {
-                            const parts = decl.split(":");
-                            if (parts.length < 2) return;
-                            const prop = String(parts[0] || "").trim().toLowerCase();
-                            const val = String(parts.slice(1).join(":") || "").trim().toLowerCase();
-                            if (prop === "text-align" && /^(left|right|center|justify)$/.test(val)) {
-                                allowed.push(`text-align:${val}`);
-                                return;
-                            }
-                            if (prop === "text-justify" && /^(auto|inter-word|inter-character|none)$/.test(val)) {
-                                allowed.push(`text-justify:${val}`);
-                            }
-                        });
-
-                        if (allowed.length > 0) {
-                            el.setAttribute("style", allowed.join(";"));
-                        } else {
-                            el.removeAttribute("style");
-                        }
-                    }
-                });
-            });
-
-            return template.innerHTML;
-        }
-
-        function formatPassageText(text) {
-            const trimmed = String(text || "").trim();
-
-            if (isRichText(trimmed)) {
-                return sanitizeRichHtml(trimmed);
-            }
-
-            // Plain text: preserve headings, bullets, and blank-line paragraph breaks
-            const lines = trimmed.split(/\r?\n/);
-            let html = '';
-            let listItems = [];
-
-            const flushList = () => {
-                if (!listItems.length) return;
-                html += `<ul>${listItems.map(li => `<li>${li}</li>`).join('')}</ul>\n`;
-                listItems = [];
-            };
-
-            lines.forEach(line => {
-                const l = line.trim();
-                if (!l) {
-                    flushList();
-                    return; // blank line = end current block
-                }
-                const bulletMatch = l.match(/^[�\-\*]\s+(.+)$/);
-                if (bulletMatch) {
-                    listItems.push(escapeHtml(bulletMatch[1]));
-                } else {
-                    flushList();
-                    // Short lines all-caps or title-case without period at end = treated as heading
-                    const isHeading = l.length < 60 && /^[A-Z]/.test(l) && !/[.!?]$/.test(l);
-                    if (isHeading) {
-                        html += `<p><strong>${escapeHtml(l)}</strong></p>\n`;
-                    } else {
-                        html += `<p>${escapeHtml(l)}</p>\n`;
-                    }
-                }
-            });
-
-            flushList();
-            return html;
-        }
-
-        function extractBlankAnswer(text) {
-            const match = String(text || "").match(/\[\[(.+?)\]\]/);
-            return match ? match[1].trim() : "";
-        }
-
-        function formatQuestionText(text) {
-            return escapeHtml(String(text || "")).replace(/\r?\n/g, "<br>");
-        }
-
-        function renderQuestionTextBlock(text, textHtml = "") {
-            const rich = String(textHtml || "").trim();
-            if (rich && isRichText(rich)) {
-                return sanitizeRichHtml(rich);
-            }
-
-            const rawText = String(text || "");
-            const inlineBulletMatches = rawText.match(/\s(?:-|\*|�)\s+[A-Z0-9]/g);
-            const normalizedText = !/\r?\n/.test(rawText) && inlineBulletMatches && inlineBulletMatches.length >= 2
-                ? rawText.replace(/\s([\-\*�])\s+/g, "\n$1 ")
-                : rawText;
-            const lines = normalizedText.split(/\r?\n/);
-            const chunks = [];
-            let listItems = [];
-
-            const flushList = () => {
-                if (!listItems.length) return;
-                chunks.push(`<ul class="question-bullet-list">${listItems.map((item) => `<li>${item}</li>`).join("")}</ul>`);
-                listItems = [];
-            };
-
-            lines.forEach((line) => {
-                const bulletMatch = line.match(/^\s*(?:[-*�])\s+(.+)$/);
-                if (bulletMatch) {
-                    listItems.push(formatQuestionText(bulletMatch[1]));
-                    return;
-                }
-
-                flushList();
-                chunks.push(formatQuestionText(line));
-            });
-
-            flushList();
-            return chunks.join("<br>");
-        }
-
-        function normalizeInstructionText(value) {
-            let text = String(value || "").replace(/\r/g, "");
-            text = text
-                .replace(/<br\s*\/?\s*>/gi, "\n")
-                .replace(/<\/(p|div|li|h1|h2|h3|h4|h5|h6)>/gi, "\n")
-                .replace(/<li[^>]*>/gi, "- ")
-                .replace(/<[^>]+>/g, "");
-            return text
-                .split("\n")
-                .map((line) => line.replace(/\s+$/g, ""))
-                .join("\n")
-                .trim();
-        }
-
-        function emphasizeUppercaseTerms(text) {
-            const escaped = escapeHtml(String(text || ""));
-            return escaped.replace(/\b([A-Z]{2,}(?:\s+[A-Z]{2,})*)\b/g, "<strong>$1</strong>");
-        }
-
-        function renderInstructionBlock(value) {
-            const normalized = normalizeInstructionText(value);
-            if (!normalized) return "";
-            return emphasizeUppercaseTerms(normalized);
-        }
-
-        function stripMatchingInstructionOptions(value) {
-            const normalized = normalizeInstructionText(value);
-            if (!normalized) return "";
-            const lines = normalized.split("\n");
-            const cutIndex = lines.findIndex((line) => {
-                const text = String(line || "").trim();
-                return /List\s+of\s+Headings?/i.test(text)
-                    || /^\s*(?:i{1,3}|iv|v|vi{0,3}|ix|x|xi|xii)\.\s+.+$/i.test(text);
-            });
-            return (cutIndex >= 0 ? lines.slice(0, cutIndex) : lines).join("\n").trim();
-        }
-
-        function renderInlineBlankText(text, answer, inputName, textHtml = "") {
-            const plainSource = String(text || "");
-            const richSource = String(textHtml || "").trim();
-            const source = richSource || plainSource;
-            const numberedDefs = extractNumberedBlankDefs(plainSource || source);
-            if (numberedDefs.length > 0) {
-                const tokens = [];
-                const withTokens = source.replace(/(\d+)\s((?:_\s*){2,})/g, (_, number, underscoresRaw) => {
-                    const underscores = String(underscoresRaw || "").replace(/\s+/g, "");
-                    const token = `@@NUMBERED_BLANK_${tokens.length}@@`;
-                    tokens.push({
-                        token,
-                        html: `<span class="numbered-blank"><span class="blank-number">${escapeHtml(number)}</span><input type="text" name="${inputName}__${number}" data-question-base="${inputName}" data-blank-number="${number}" class="inline-input numbered-inline-input" style="width:${Math.max(4, Math.floor(underscores.length / 2) * 4)}ch" placeholder="..."></span>`
-                    });
-                    return token;
-                });
-                let rendered = richSource && isRichText(withTokens) ? sanitizeRichHtml(withTokens) : renderQuestionTextBlock(withTokens);
-                tokens.forEach(({ token, html }) => {
-                    rendered = rendered.split(token).join(html);
-                });
-                return rendered;
-            }
-
-            const blankAnswer = String(answer || extractBlankAnswer(text) || "").trim();
-            const blankId = `${inputName}_blank`;
-            const blankToken = "@@INLINE_BLANK@@";
-
-            if (blankAnswer) {
-                const index = source.indexOf(blankAnswer);
-                if (index >= 0) {
-                    const withToken = `${source.slice(0, index)}${blankToken}${source.slice(index + blankAnswer.length)}`;
-                    const rendered = richSource && isRichText(withToken) ? sanitizeRichHtml(withToken) : renderQuestionTextBlock(withToken);
-                    return rendered.split(blankToken).join(`<input type="text" name="${inputName}" id="${blankId}" class="inline-input" placeholder="...">`);
-                }
-            }
-
-            const withToken = source.replace(/\[\[(.+?)\]\]/g, blankToken);
-            const rendered = richSource && isRichText(withToken) ? sanitizeRichHtml(withToken) : renderQuestionTextBlock(withToken);
-            return rendered.split(blankToken).join(`<input type="text" name="${inputName}" id="${blankId}" class="inline-input" placeholder="...">`);
-        }
-
-        function stripLeadingQuestionNumber(text) {
-            return String(text || "").replace(/^\s*\d+\s*[.)]\s*/, "");
-        }
-
-        function renderQuestionTextWithBadge(number, contentHtml) {
-            return `<div class="question-text-row"><span class="blank-number">${escapeHtml(number)}</span><p class="question-text">${contentHtml}</p></div>`;
-        }
-
-        function getCorrectTextAnswer(q) {
-            const numberedDefs = extractNumberedBlankDefs(q.text);
-            if (numberedDefs.length > 0) {
-                return JSON.stringify(parseNumberedBlankAnswerMap(q.answer));
-            }
-            return String(q.answer || extractBlankAnswer(q.text) || "").trim();
-        }
-
-        function extractNumberedBlankDefs(value) {
-            const defs = [];
-            const regex = /(\d+)\s((?:_\s*){2,})/g;
-            const text = String(value || "");
-            let match;
-            while ((match = regex.exec(text)) !== null) {
-                const number = match[1];
-                const underscores = String(match[2] || "").replace(/\s+/g, "");
-                defs.push({
-                    number,
-                    underscores: underscores.length,
-                    maxWords: Math.max(1, Math.floor(underscores.length / 2))
-                });
-            }
-            return defs;
-        }
-
-        function parseNumberedBlankAnswerMap(raw) {
-            const text = String(raw || "").trim();
-            if (!text || !text.startsWith("{")) return {};
-            try {
-                const parsed = JSON.parse(text);
-                if (parsed && typeof parsed === "object") {
-                    if (parsed.answers && typeof parsed.answers === "object") return parsed.answers;
-                    return parsed;
-                }
-            } catch (_) {}
-            return {};
-        }
-
-        function parseStoredOptions(value) {
-            if (Array.isArray(value)) {
-                return value.map((item) => String(item || "").trim()).filter(Boolean);
-            }
-            const text = String(value || "").trim();
-            if (!text) return [];
-            if (text.startsWith("[")) {
-                try {
-                    const parsed = JSON.parse(text);
-                    if (Array.isArray(parsed)) {
-                        return parsed.map((item) => String(item || "").trim()).filter(Boolean);
-                    }
-                } catch (_) {}
-            }
-            return text.split(",").map((item) => item.trim()).filter(Boolean);
-        }
-
-        function parseLabeledWordListOptions(value) {
-            const options = parseStoredOptions(value);
-            return options.map((opt, idx) => {
-                const letter = String.fromCharCode(65 + idx);
-                const raw = String(opt || "").trim();
-                const stripped = raw.replace(/^[A-I][\.)]\s+/i, "").trim();
-                return {
-                    value: letter,
-                    label: `${letter}.`,
-                    text: stripped || raw
-                };
-            }).filter((item) => String(item.text || "").trim());
-        }
-
-        function renderWordListOptionPool(options, poolId) {
-            if (!Array.isArray(options) || options.length === 0) return "";
-            return `
-                <div class="wordlist-option-box" id="${poolId}" data-wordlist-pool="1">
-                    <h4 style="margin:0 0 10px 0;font-size:0.95rem;">Word List</h4>
-                    <div class="wordlist-option-grid">
-                        ${options.map((opt) => `
-                            <div class="wordlist-slot" data-pool-id="${poolId}" data-value="${escapeHtml(opt.value)}">
-                                <div class="wordlist-chip" draggable="true" data-pool-id="${poolId}" data-value="${escapeHtml(opt.value)}" data-text="${escapeHtml(opt.text)}">
-                                    <span class="wordlist-chip-label">${escapeHtml(opt.label)}</span>
-                                    <span>${escapeHtml(opt.text)}</span>
-                                </div>
-                            </div>
-                        `).join("")}
+              </div>
+
+              <div className="hide-scrollbar flex-1 space-y-5 overflow-y-auto px-4 py-4">
+                <div className="rounded-lg border border-bordersoft bg-[#F9FBFF] p-3">
+                  <p className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-mutedtxt">
+                    Legend
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="h-3 w-3 rounded-full bg-navy" />
+                      <span className="text-[#30465C]">Answered</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <span className="h-3 w-3 rounded-full border border-bordersoft bg-white" />
+                      <span className="text-[#30465C]">Unanswered</span>
+                    </div>
+                  </div>
                 </div>
-            `;
-        }
 
-        function renderWordListBlankText(text, inputName, textHtml = "", poolId = "") {
-            const plainSource = String(text || "");
-            const richSource = String(textHtml || "").trim();
-            const source = richSource || plainSource;
-            const numberedDefs = extractNumberedBlankDefs(plainSource || source);
-            if (!numberedDefs.length) {
-                return renderQuestionTextBlock(plainSource, richSource);
-            }
-
-            const tokens = [];
-            const withTokens = source.replace(/(\d+)\s((?:_\s*){2,})/g, (_, number) => {
-                const targetName = `${inputName}__${number}`;
-                const token = `@@WORDLIST_BLANK_${tokens.length}@@`;
-                tokens.push({
-                    token,
-                    html: `<span class="numbered-blank"><span class="blank-number">${escapeHtml(number)}</span><span class="wordlist-dropzone" data-input-name="${targetName}" data-pool-id="${escapeHtml(poolId)}"><span class="wordlist-drop-placeholder">Drop answer</span></span><input type="hidden" name="${targetName}" data-wordlist-hidden="1"></span>`
-                });
-                return token;
-            });
-
-            let rendered = richSource && isRichText(withTokens)
-                ? sanitizeRichHtml(withTokens)
-                : renderQuestionTextBlock(withTokens);
-            tokens.forEach(({ token, html }) => {
-                rendered = rendered.split(token).join(html);
-            });
-            return rendered;
-        }
-
-        function syncWordListDropzonesFromState() {
-            const zones = document.querySelectorAll('.wordlist-dropzone[data-input-name]');
-
-            const ensurePlaceholder = (zone) => {
-                if (!zone.querySelector('.wordlist-drop-placeholder')) {
-                    zone.innerHTML = '<span class="wordlist-drop-placeholder">Drop answer</span>';
-                }
-            };
-
-            // First, return every chip to its original slot.
-            document.querySelectorAll('.wordlist-chip[data-pool-id][data-value]').forEach((chip) => {
-                const poolId = chip.getAttribute('data-pool-id');
-                const value = chip.getAttribute('data-value');
-                const slot = document.querySelector(`.wordlist-slot[data-pool-id="${poolId}"][data-value="${value}"]`);
-                if (slot && chip.parentElement !== slot) {
-                    slot.appendChild(chip);
-                }
-            });
-
-            zones.forEach((zone) => {
-                zone.classList.remove('filled');
-                ensurePlaceholder(zone);
-            });
-
-            // Then place chips according to stored hidden values.
-            zones.forEach((zone) => {
-                const inputName = zone.getAttribute('data-input-name');
-                const poolId = zone.getAttribute('data-pool-id');
-                const hidden = document.querySelector(`input[type="hidden"][name="${inputName}"]`);
-                const value = String(hidden?.value || "").trim().toUpperCase();
-                if (!value) return;
-                const chip = document.querySelector(`.wordlist-chip[data-pool-id="${poolId}"][data-value="${value}"]`);
-                if (!chip) return;
-                zone.innerHTML = '';
-                zone.appendChild(chip);
-                zone.classList.add('filled');
-            });
-        }
-
-        function bindWordListInteractions() {
-            let selectedChip = null;
-
-            const ensurePlaceholder = (zone) => {
-                if (!zone.querySelector('.wordlist-drop-placeholder')) {
-                    zone.innerHTML = '<span class="wordlist-drop-placeholder">Drop answer</span>';
-                }
-            };
-
-            const clearZone = (zone) => {
-                if (!zone) return;
-                zone.classList.remove('filled');
-                ensurePlaceholder(zone);
-            };
-
-            const getZoneHidden = (zone) => {
-                const inputName = zone?.getAttribute('data-input-name');
-                if (!inputName) return null;
-                return document.querySelector(`input[type="hidden"][name="${inputName}"]`);
-            };
-
-            const sendChipToPool = (chip) => {
-                if (!chip) return;
-                const fromZone = chip.closest('.wordlist-dropzone');
-                if (fromZone) {
-                    const hidden = getZoneHidden(fromZone);
-                    if (hidden) {
-                        hidden.value = '';
-                        updateTracker(hidden.name);
-                    }
-                    clearZone(fromZone);
-                }
-                const poolId = chip.getAttribute('data-pool-id');
-                const value = chip.getAttribute('data-value');
-                const slot = document.querySelector(`.wordlist-slot[data-pool-id="${poolId}"][data-value="${value}"]`);
-                if (slot) slot.appendChild(chip);
-            };
-
-            const placeChipInZone = (chip, zone) => {
-                if (!chip || !zone) return;
-                const poolId = zone.getAttribute('data-pool-id');
-                if (chip.getAttribute('data-pool-id') !== poolId) return;
-
-                const existing = zone.querySelector('.wordlist-chip');
-                if (existing && existing !== chip) {
-                    sendChipToPool(existing);
-                }
-
-                const fromZone = chip.closest('.wordlist-dropzone');
-                if (fromZone && fromZone !== zone) {
-                    const fromHidden = getZoneHidden(fromZone);
-                    if (fromHidden) {
-                        fromHidden.value = '';
-                        updateTracker(fromHidden.name);
-                    }
-                    clearZone(fromZone);
-                }
-
-                zone.innerHTML = '';
-                zone.appendChild(chip);
-                zone.classList.add('filled');
-
-                const hidden = getZoneHidden(zone);
-                if (hidden) {
-                    hidden.value = String(chip.getAttribute('data-value') || '').toUpperCase();
-                    updateTracker(hidden.name);
-                }
-            };
-
-            const getChipFromPayload = (payload) => {
-                if (!payload || !payload.value || !payload.poolId) return null;
-                return document.querySelector(`.wordlist-chip[data-pool-id="${payload.poolId}"][data-value="${payload.value}"]`);
-            };
-
-            document.querySelectorAll('.wordlist-chip').forEach((chip) => {
-                chip.addEventListener('click', () => {
-                    document.querySelectorAll('.wordlist-chip.selected').forEach((el) => el.classList.remove('selected'));
-                    selectedChip = chip;
-                    chip.classList.add('selected');
-                });
-
-                chip.addEventListener('dragstart', (event) => {
-                    const value = chip.getAttribute('data-value') || '';
-                    const text = chip.getAttribute('data-text') || '';
-                    const poolId = chip.getAttribute('data-pool-id') || '';
-                    chip.classList.add('dragging');
-                    event.dataTransfer?.setData('text/plain', JSON.stringify({ value, text, poolId }));
-                });
-
-                chip.addEventListener('dragend', () => {
-                    chip.classList.remove('dragging');
-                });
-            });
-
-            document.querySelectorAll('.wordlist-dropzone[data-input-name]').forEach((zone) => {
-                zone.addEventListener('dragover', (event) => {
-                    event.preventDefault();
-                    zone.classList.add('drag-over');
-                });
-
-                zone.addEventListener('dragleave', () => {
-                    zone.classList.remove('drag-over');
-                });
-
-                zone.addEventListener('drop', (event) => {
-                    event.preventDefault();
-                    zone.classList.remove('drag-over');
-                    let payload = null;
-                    try {
-                        payload = JSON.parse(event.dataTransfer?.getData('text/plain') || '{}');
-                    } catch (_) {
-                        payload = null;
-                    }
-                    const chip = getChipFromPayload(payload);
-                    if (!chip) return;
-                    placeChipInZone(chip, zone);
-                });
-
-                zone.addEventListener('click', () => {
-                    if (!selectedChip) return;
-                    placeChipInZone(selectedChip, zone);
-                });
-            });
-
-            document.querySelectorAll('.wordlist-slot[data-pool-id][data-value]').forEach((slot) => {
-                slot.addEventListener('dragover', (event) => {
-                    event.preventDefault();
-                });
-
-                slot.addEventListener('drop', (event) => {
-                    event.preventDefault();
-                    let payload = null;
-                    try {
-                        payload = JSON.parse(event.dataTransfer?.getData('text/plain') || '{}');
-                    } catch (_) {
-                        payload = null;
-                    }
-                    const chip = getChipFromPayload(payload);
-                    if (!chip) return;
-                    sendChipToPool(chip);
-                });
-            });
-
-            document.querySelectorAll('[data-wordlist-pool="1"]').forEach((pool) => {
-                pool.addEventListener('dragover', (event) => {
-                    event.preventDefault();
-                });
-                pool.addEventListener('drop', (event) => {
-                    event.preventDefault();
-                    let payload = null;
-                    try {
-                        payload = JSON.parse(event.dataTransfer?.getData('text/plain') || '{}');
-                    } catch (_) {
-                        payload = null;
-                    }
-                    const chip = getChipFromPayload(payload);
-                    if (!chip) return;
-                    sendChipToPool(chip);
-                });
-            });
-
-            syncWordListDropzonesFromState();
-        }
-
-        function renderFillPassageGroup(group, gIndex, passageIndex, poolId = "") {
-            const bodyText = String(group.passageBody || "");
-            const passageStart = Number(group.passageStart || 1);
-            const qCount = (group.questions || []).length;
-            const wordListOptions = parseLabeledWordListOptions((group.questions || [])[0]?.options || "");
-            const hasWordListOptions = wordListOptions.length > 0;
-            const renderBodyText = hasWordListOptions
-                ? bodyText.replace(/\n\s*Word\s+List\s*:[\s\S]*$/i, "")
-                : bodyText;
-            const lines = renderBodyText.split(/\r?\n/);
-            let html = '<div class="fill-passage-body">';
-            let listItems = [];
-
-            const flushList = () => {
-                if (!listItems.length) return;
-                html += `<ul>${listItems.map(li => `<li>${li}</li>`).join('')}</ul>`;
-                listItems = [];
-            };
-
-            const replaceInlineBlanks = (text) => {
-                // Match N. ______ (with period) or N ______ (without period)
-                return escapeHtml(text).replace(/(\d+)\s*\.?\s*((?:_{2,}))/g, (_, num, blanks) => {
-                    const qIdx = Number(num) - passageStart;
-                    if (qIdx < 0 || qIdx >= qCount) return escapeHtml(_);
-                    // Name must match what submitTest expects: base__num
-                    const baseKey = `q_${passageIndex}_${gIndex}_${qIdx}`;
-                    const inputName = `${baseKey}__${num}`;
-                    if (hasWordListOptions) {
-                        return `<span class="numbered-blank"><span class="blank-number">${num}</span><span class="wordlist-dropzone" data-input-name="${inputName}" data-pool-id="${escapeHtml(poolId)}">Drop answer</span><input type="hidden" name="${inputName}" data-wordlist-hidden="1"></span>`;
-                    }
-                    return `<span class="numbered-blank"><span class="blank-number">${num}</span><input type="text" name="${inputName}" data-question-base="${baseKey}" data-blank-number="${num}" class="inline-input numbered-inline-input" style="width:${Math.max(80, blanks.length * 10)}px" placeholder="..."></span>`;
-                });
-            };
-
-            lines.forEach(line => {
-                const l = line.trim();
-                if (!l) { flushList(); return; }
-                const bulletMatch = l.match(/^[�\-\*]\s+(.+)$/);
-                if (bulletMatch) {
-                    listItems.push(replaceInlineBlanks(bulletMatch[1]));
-                } else {
-                    flushList();
-                    const hasBlanks = /\d+\s*\.?\s*_{2,}/.test(l);
-                    if (!hasBlanks && l.length < 70 && /^[A-Z\(]/.test(l)) {
-                        html += `<p><strong>${escapeHtml(l)}</strong></p>`;
-                    } else {
-                        html += `<p>${replaceInlineBlanks(l)}</p>`;
-                    }
-                }
-            });
-
-            flushList();
-            html += '</div>';
-            if (hasWordListOptions) {
-                html += renderWordListOptionPool(wordListOptions, poolId);
-            }
-            return html;
-        }
-
-        function renderTest() {
-            if (!currentProblem) return;
-
-            const OLD_DEFAULTS = ["IELTS Academic Reading", "IELTS Reading"];
-            const rawTitle = (currentProblem.title || "").trim();
-            document.getElementById('display-title').innerText = (!rawTitle || OLD_DEFAULTS.includes(rawTitle)) ? "Reading Test" : rawTitle;
-            const passages = getProblemPassages();
-            if (currentPartIndex < 0 || currentPartIndex >= passages.length) {
-                currentPartIndex = 0;
-            }
-
-            const activePassage = passages[currentPartIndex] || passages[0] || { title: "Passage", content: "", questionGroups: [] };
-            const activeGroups = getPassageQuestionGroups(activePassage, currentProblem.questionGroups || []);
-
-            document.getElementById('display-passage-title').innerText = `Part ${currentPartIndex + 1}`;
-            // If all groups are fill-passage groups (have passageBody), the reading content
-            // is already embedded in those groups � skip the main passage content card.
-            const allFillPassage = activeGroups.length > 0 && activeGroups.every((g) => {
-                if (!g?.passageBody) return false;
-                const hasWordListOptions = (g.questions || []).some((q) => parseStoredOptions(q?.options).length > 0);
-                return !hasWordListOptions;
-            });
-            document.getElementById('display-passage-content').innerHTML = allFillPassage ? '' : `
-                <section class="reading-passage-card">
-                    <h3 class="reading-passage-title">${activePassage.title || `Passage ${currentPartIndex + 1}`}</h3>
-                    <div class="reading-passage-content">${formatPassageText(activePassage.content || "")}</div>
-                </section>
-            `;
-
-            const container = document.getElementById('dynamic-questions-container');
-            let absoluteQNum = 1;
-            // Show passage title at top of questions area when content card is hidden
-            let html = allFillPassage
-                ? `<section class="reading-passage-card" style="margin-bottom:1rem"><h3 class="reading-passage-title">${escapeHtml(activePassage.title || `Passage ${currentPartIndex + 1}`)}</h3></section>`
-                : '';
-            const typeMeta = [];
-
-            activeGroups.forEach((group, gIndex) => {
-                const groupQuestionLabels = [];
-                // Sync absoluteQNum with this group's stated question range start if available
-                const _rangeStartMatch = String(group.questionRange || "").match(/(\d+)/);
-                if (_rangeStartMatch) absoluteQNum = Number(_rangeStartMatch[1]);
-                const firstQ = (group.questions || [])[0] || {};
-                const isInlineFillPassage = group.passageBody
-                    && (firstQ.type === 'fill-in-the-blank' || firstQ.type === 'text' || firstQ.type === 'short-answer');
-                const isSentenceCompletion = !isInlineFillPassage
-                    && group.questions.length > 0
-                    && group.questions.every(q => q.type === 'radio')
-                    && /complete\s+(each\s+)?sentence|correct\s+ending/i.test(group.instruction || "");
-                const wordListPoolId = `wordListPool_${currentPartIndex}_${gIndex}`;
-                const groupWordListOptions = (() => {
-                    const q = (group.questions || []).find((item) =>
-                        (item.type === 'fill-in-the-blank' || item.type === 'text')
-                        && extractNumberedBlankDefs(item.text || '').length > 0
-                        && parseStoredOptions(item.options).length > 0
-                    );
-                    return q ? parseLabeledWordListOptions(q.options) : [];
-                })();
-                const hasWordListFillGroup = groupWordListOptions.length > 0;
-
-                html += `<div class="question-group" id="group_${currentPartIndex}_${gIndex}">`;
-                if(group.title) html += `<div class="question-group-title">${group.title}</div>`;
-                // Skip instruction for fill-passage groups � the passageBody already contains the full text
-                if(group.instruction && !isInlineFillPassage) {
-                    const isMatchingGroup = firstQ.type === 'matching-headings';
-                    const instructionSource = isMatchingGroup
-                        ? stripMatchingInstructionOptions(group.instruction)
-                        : group.instruction;
-                    if (String(instructionSource || "").trim()) {
-                        html += `<div class="instruction">${renderInstructionBlock(instructionSource)}</div>`;
-                    }
-                }
-
-                if (isInlineFillPassage) {
-                    // Render as one passage block with inline input boxes
-                    const passageStart = Number(group.passageStart || 1);
-                    group.questions.forEach((q, qIdx) => {
-                        const qNumber = passageStart + qIdx;
-                        groupQuestionLabels.push(String(qNumber));
-                    });
-                    html += renderFillPassageGroup(group, gIndex, currentPartIndex, wordListPoolId);
-                } else if (isSentenceCompletion) {
-                    // Render like matching-headings: shared legend + dropdown per sentence stem
-                    const sharedOptions = parseStoredOptions(group.questions[0].options);
-                    const stripAlpha = (str) => str.replace(/^[A-H][\.)]\s+/i, '').trim();
-                    const hasAlphaPrefix = (str) => /^[A-H][\.)]\s+/i.test(String(str || "").trim());
-                    html += `<div class="matching-headings-legend"><h4>List of Endings</h4>${sharedOptions.map((opt, oIdx) => {
-                        const letter = String.fromCharCode(65 + oIdx);
-                        const displayText = hasAlphaPrefix(opt) ? stripAlpha(opt) : opt;
-                        return `<div class="matching-headings-legend-row"><span class="matching-heading-label">${letter}.</span><span>${escapeHtml(displayText)}</span></div>`;
-                    }).join("")}</div>`;
-                    group.questions.forEach((q, qIndex) => {
-                        const inputName = `q_${currentPartIndex}_${gIndex}_${qIndex}`;
-                        const questionLabel = extractQuestionDisplayNumber(q, absoluteQNum);
-                        groupQuestionLabels.push(String(questionLabel));
-                        absoluteQNum++;
-                        html += `<div class="question-block matching-heading-row" id="block_${inputName}">`;
-                        html += `<p class="question-text"><strong>${escapeHtml(String(questionLabel))}.</strong> ${escapeHtml(stripLeadingQuestionNumber(q.text))}</p>`;
-                        html += `<select name="${inputName}"><option value="">Select ending</option>${sharedOptions.map((opt, oIdx) => {
-                            const letter = String.fromCharCode(65 + oIdx);
-                            const displayText = hasAlphaPrefix(opt) ? stripAlpha(opt) : opt;
-                            return `<option value="${letter}">${letter}. ${escapeHtml(displayText)}</option>`;
-                        }).join("")}</select>`;
-                        html += `</div>`;
-                    });
-                } else {
-                group.questions.forEach((q, qIndex) => {
-                    const inputName = `q_${currentPartIndex}_${gIndex}_${qIndex}`;
-                    const blockId = `block_${inputName}`;
-                    const questionDisplayNumber = extractQuestionDisplayNumber(q, absoluteQNum);
-                    if (q.type === 'matching-headings') {
-                        const matching = normalizeMatchingHeadings(q);
-                        matching.rows.forEach((row) => {
-                            groupQuestionLabels.push(String(row.number));
-                        });
-                    } else {
-                    const numberedDefs = extractNumberedBlankDefs(q.text);
-
-                    if ((q.type === 'text' || q.type === 'fill-in-the-blank' || q.type === 'short-answer') && numberedDefs.length > 0) {
-                        numberedDefs.forEach((def) => {
-                            groupQuestionLabels.push(String(def.number));
-                        });
-                    } else {
-                        const questionLabel = extractQuestionDisplayNumber(q, absoluteQNum);
-                        groupQuestionLabels.push(String(questionLabel));
-                        absoluteQNum++;
-                    }
-                    }
-
-                    html += `<div class="question-block" id="${blockId}">`;
-                    
-                    if (q.type === 'radio') {
-                        html += renderQuestionTextWithBadge(
-                            questionDisplayNumber,
-                            renderQuestionTextBlock(stripLeadingQuestionNumber(q.text), stripLeadingQuestionNumber(q.textHtml))
-                        );
-                        html += `<div class="options">`;
-                        const optionsArray = parseStoredOptions(q.options);
-                        const isBinaryOptionSet = optionsArray.every((opt) => /^(true|false|not given|yes|no)$/i.test(String(opt || "").trim()));
-                        optionsArray.forEach((opt, optIdx) => {
-                            if(opt) {
-                                const safeOpt = escapeHtml(opt);
-                                const alpha = String.fromCharCode(65 + optIdx);
-                                const startsWithAlpha = /^[A-H][\.)]\s+/i.test(String(opt || "").trim());
-                                const alphaHtml = !isBinaryOptionSet && !startsWithAlpha ? `<span class="option-alpha">${alpha}.</span>` : "";
-                                html += `<label class="option-label">
-                                            <input type="radio" name="${inputName}" value="${safeOpt}">
-                                            <span class="custom-radio"></span>${alphaHtml} ${safeOpt}
-                                         </label>`;
-                            }
-                        });
-                        html += `</div>`;
-                    } else if (q.type === 'fill-in-the-blank' || q.type === 'text') {
-                        const hasWordListOptions = parseStoredOptions(q.options).length > 0;
-                        const hasNumberedDefs = extractNumberedBlankDefs(q.text).length > 0;
-                        if (hasWordListOptions && hasNumberedDefs) {
-                            const dragHtml = renderWordListBlankText(
-                                q.text,
-                                inputName,
-                                q.textHtml,
-                                wordListPoolId
-                            );
-                            html += `<p class="question-text">${dragHtml}</p>`;
-                        } else {
-                        const hasInlineBlank = /\[\[(.+?)\]\]/.test(q.text || "");
-                        const hasAnswer = String(q.answer || "").trim().length > 0;
-                        const isStandaloneFillBlank = (q.type === 'fill-in-the-blank' || q.type === 'text')
-                            && extractNumberedBlankDefs(q.text).length === 0
-                            && (hasInlineBlank || q.type === 'fill-in-the-blank' || hasAnswer);
-                        if (hasInlineBlank || q.type === 'fill-in-the-blank' || hasAnswer) {
-                            const inlineHtml = renderInlineBlankText(
-                                isStandaloneFillBlank ? stripLeadingQuestionNumber(q.text) : q.text,
-                                q.answer,
-                                inputName,
-                                isStandaloneFillBlank ? stripLeadingQuestionNumber(q.textHtml) : q.textHtml
-                            );
-                            if (isStandaloneFillBlank) {
-                                html += renderQuestionTextWithBadge(questionDisplayNumber, inlineHtml);
-                            } else {
-                                html += `<p class="question-text">${inlineHtml}</p>`;
-                            }
-                        } else {
-                            html += renderQuestionTextWithBadge(
-                                questionDisplayNumber,
-                                renderQuestionTextBlock(stripLeadingQuestionNumber(q.text), stripLeadingQuestionNumber(q.textHtml))
-                            );
-                            html += `<input type="text" name="${inputName}" class="short-answer-input" placeholder="Type your answer...">`;
-                        }
-                        }
-                    } else if (q.type === 'short-answer') {
-                        // Standalone short-answer: question text + separate input box below
-                        html += renderQuestionTextWithBadge(
-                            questionDisplayNumber,
-                            renderQuestionTextBlock(stripLeadingQuestionNumber(q.text), stripLeadingQuestionNumber(q.textHtml))
-                        );
-                        html += `<input type="text" name="${inputName}" class="short-answer-input" placeholder="Type your answer...">`;
-                    } else if (q.type === 'matching-headings') {
-                        const matching = normalizeMatchingHeadings(q);
-                        html += `<div class="matching-headings-legend"><h4>List of Headings</h4>${matching.options.map((opt) => `<div class="matching-headings-legend-row"><span class="matching-heading-label">${escapeHtml(opt.label)}</span><span>${escapeHtml(opt.text)}</span></div>`).join("")}</div>`;
-                        matching.rows.forEach((row) => {
-                            const rowName = `${inputName}__mh__${row.number}`;
-                            html += `<div class="matching-heading-row"><p class="question-text"><strong>${escapeHtml(row.number)}.</strong> ${escapeHtml(row.prompt)}</p><select name="${rowName}"><option value="">Select heading</option>${matching.options.map((opt) => `<option value="${escapeHtml(opt.id)}">${escapeHtml(opt.label)} ${escapeHtml(opt.text)}</option>`).join("")}</select></div>`;
-                        });
-                    }
-
-                    html += `</div>`;
-                });
-                if (hasWordListFillGroup) {
-                    html += renderWordListOptionPool(groupWordListOptions, wordListPoolId);
-                }
-                } // end else (non-fill-passage)
-
-                const firstLabel = groupQuestionLabels[0] || String(gIndex + 1);
-                const lastLabel = groupQuestionLabels[groupQuestionLabels.length - 1] || firstLabel;
-                const firstQuestion = (group.questions || [])[0] || {};
-                typeMeta.push({
-                    groupIndex: gIndex,
-                    typeLabel: getQuestionTypeLabel(firstQuestion),
-                    startLabel: firstLabel,
-                    endLabel: lastLabel
-                });
-                html += `</div>`;
-            });
-
-            container.innerHTML = html;
-            renderReadingOverview(passages, typeMeta);
-            syncSubmitAreaPrimaryButton(passages);
-            hydrateInputsFromState();
-            attachTrackingListeners();
-            bindWordListInteractions();
-            updateProgressInit();
-
-            if (pendingFocusInputName) {
-                const baseInput = pendingFocusInputName.includes('__') ? pendingFocusInputName.split('__')[0] : pendingFocusInputName;
-                scrollToQuestion(`block_${baseInput}`);
-                pendingFocusInputName = null;
-            }
-        }
-
-        function toggleNavigator() {
-            const nav = document.getElementById('questionNavigator');
-            nav.classList.toggle('open');
-        }
-
-        function attachTrackingListeners() {
-            const allInputs = document.querySelectorAll('#dynamic-questions-container input, #dynamic-questions-container select');
-            allInputs.forEach(input => {
-                const eventType = input.tagName === 'SELECT' || input.type === 'radio' ? 'change' : 'input';
-                input.addEventListener(eventType, function() {
-                    updateTracker(this.name);
-                });
-            });
-        }
-
-        function updateTracker(inputName) {
-            const radioChecked = document.querySelector(`input[name="${inputName}"]:checked`);
-            const blankInputs = document.querySelectorAll(`input[data-question-base="${inputName}"]`);
-            const textInput = document.querySelector(`input[type="text"][name="${inputName}"]`);
-            const hiddenInput = document.querySelector(`input[type="hidden"][name="${inputName}"]`);
-            const selectInput = document.querySelector(`select[name="${inputName}"]`);
-
-            let isAnswered = false;
-            if(radioChecked) isAnswered = true;
-            if(blankInputs.length > 0) {
-                isAnswered = Array.from(blankInputs).every((input) => input.value.trim() !== '');
-            } else if(textInput && textInput.value.trim() !== '') {
-                isAnswered = true;
-            } else if (hiddenInput && String(hiddenInput.value || '').trim() !== '') {
-                isAnswered = true;
-            } else if (selectInput && String(selectInput.value || '').trim() !== '') {
-                isAnswered = true;
-            }
-
-            if (isAnswered) {
-                if (radioChecked) answerState[inputName] = String(radioChecked.value || "");
-                else if (textInput) answerState[inputName] = String(textInput.value || "");
-                else if (hiddenInput) answerState[inputName] = String(hiddenInput.value || "");
-                else if (selectInput) answerState[inputName] = String(selectInput.value || "");
-            } else if (blankInputs.length === 0) {
-                answerState[inputName] = "";
-            }
-
-            renderReadingOverview(getProblemPassages(), buildQuestionTypeMeta(getPassageQuestionGroups(getProblemPassages()[currentPartIndex] || {}, currentProblem?.questionGroups || [])));
-            updateProgressInit();
-        }
-
-        function updateProgressInit() {
-            return;
-        }
-
-        function scrollToQuestion(blockId) {
-            const element = document.getElementById(blockId);
-            const container = document.getElementById('rightPanel');
-            
-            if(element && container) {
-                const navHeight = 0;
-                const targetPos = element.offsetTop - navHeight - 60;
-                
-                container.scrollTo({ top: targetPos, behavior: 'smooth' });
-
-                element.style.backgroundColor = '#eff6ff';
-                setTimeout(() => {
-                    element.style.backgroundColor = 'transparent';
-                }, 1500);
-            }
-        }
-
-        let currentZoom = 1.0;
-        function adjustTextSize(change) {
-            currentZoom += change;
-            if (currentZoom < 0.8) currentZoom = 0.8;
-            if (currentZoom > 1.6) currentZoom = 1.6;
-            document.documentElement.style.setProperty('--text-zoom', currentZoom);
-        }
-
-        const resizer = document.getElementById('dragMe');
-        const leftPanel = document.getElementById('leftPanel');
-        let x = 0; let leftWidth = 0;
-
-        document.addEventListener('click', function(event) {
-            const tracker = document.getElementById('headerTracker');
-            if (!tracker) return;
-            if (trackerPopupPartIndex === null) return;
-            if (tracker.contains(event.target)) return;
-            trackerPopupPartIndex = null;
-            renderPartStrip(getProblemPassages());
-        });
-
-        const toggleTypeTrackerBtn = document.getElementById('toggleTypeTrackerBtn');
-        if (toggleTypeTrackerBtn) {
-            toggleTypeTrackerBtn.addEventListener('click', function() {
-                isTypeTrackerCollapsed = !isTypeTrackerCollapsed;
-                renderReadingOverview(getProblemPassages(), buildQuestionTypeMeta(getPassageQuestionGroups(getProblemPassages()[currentPartIndex] || {}, currentProblem?.questionGroups || [])));
-            });
-        }
-
-        window.addEventListener('resize', syncPanelViewportLayout);
-
-        const prevPassageBtn = document.getElementById('prevPassageBtn');
-        if (prevPassageBtn) {
-            prevPassageBtn.addEventListener('click', goToPrevPassage);
-        }
-
-        const nextPassageBtn = document.getElementById('nextPassageBtn');
-        if (nextPassageBtn) {
-            nextPassageBtn.addEventListener('click', goToNextPassage);
-        }
-
-        resizer.addEventListener('mousedown', function(e) {
-            x = e.clientX; leftWidth = leftPanel.getBoundingClientRect().width;
-            document.addEventListener('mousemove', mouseMoveHandler);
-            document.addEventListener('mouseup', mouseUpHandler);
-            resizer.classList.add('resizing');
-            document.body.style.userSelect = 'none';
-        });
-
-        const mouseMoveHandler = function(e) {
-            const containerWidth = resizer.parentNode.getBoundingClientRect().width;
-            const newLeftWidth = ((leftWidth + (e.clientX - x)) * 100) / containerWidth;
-            if (newLeftWidth > 25 && newLeftWidth < 75) leftPanel.style.width = `${newLeftWidth}%`;
-        };
-        const mouseUpHandler = function() {
-            document.removeEventListener('mousemove', mouseMoveHandler);
-            document.removeEventListener('mouseup', mouseUpHandler);
-            resizer.classList.remove('resizing');
-            document.body.style.userSelect = '';
-        };
-
-        let timeInSeconds = 3600;
-        const timerElement = document.getElementById('timer');
-        let timerInterval;
-
-        function startTimer() {
-            clearInterval(timerInterval);
-            timeInSeconds = 3600;
-            timerElement.classList.remove('warning');
-            
-            timerInterval = setInterval(() => {
-                const minutes = Math.floor(timeInSeconds / 60);
-                let seconds = timeInSeconds % 60;
-                if (seconds < 10) seconds = '0' + seconds;
-                timerElement.textContent = `${minutes}:${seconds}`;
-                if (timeInSeconds <= 300) timerElement.classList.add('warning');
-                
-                if (timeInSeconds > 0) {
-                    timeInSeconds--;
-                } else {
-                    clearInterval(timerInterval);
-                    alert("Time is up! Submitting your test.");
-                    submitTest(true);
-                }
-            }, 1000);
-        }
-
-        function goToNextModule() {
-            window.location.href = NEXT_URL;
-        }
-
-        function recordDailyModuleResult(moduleKey, scoreValue, extras) {
-            if (!DAY_VALUE) {
-                return;
-            }
-
-            const safeExtras = extras || {};
-            const store = JSON.parse(localStorage.getItem(DAILY_TEST_KEY) || "{}");
-            if (!store[DAY_VALUE]) {
-                store[DAY_VALUE] = {
-                    date: DAY_VALUE,
-                    modules: {
-                        listening: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] },
-                        reading: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] },
-                        writing: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] },
-                        speaking: { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] }
-                    }
-                };
-            }
-
-            const dateEntry = store[DAY_VALUE];
-            if (!dateEntry.modules[moduleKey]) {
-                dateEntry.modules[moduleKey] = { taken: false, score: null, attempts: 0, lastTakenAt: null, history: [] };
-            }
-
-            const moduleEntry = dateEntry.modules[moduleKey];
-            moduleEntry.taken = true;
-            moduleEntry.score = scoreValue;
-            moduleEntry.attempts = (moduleEntry.attempts || 0) + 1;
-            moduleEntry.lastTakenAt = new Date().toISOString();
-            if (!Array.isArray(moduleEntry.history)) {
-                moduleEntry.history = [];
-            }
-            moduleEntry.history.push({
-                score: scoreValue,
-                timestamp: moduleEntry.lastTakenAt,
-                details: safeExtras
-            });
-
-            localStorage.setItem(DAILY_TEST_KEY, JSON.stringify(store));
-        }
-
-        function submitTest(isAutoContinue) {
-            clearInterval(timerInterval);
-            snapshotCurrentAnswers();
-
-            const correctAnswers = {};
-            const questionMeta = {};
-            const passages = getProblemPassages();
-            passages.forEach((passage, pIndex) => {
-                const groups = getPassageQuestionGroups(passage, currentProblem.questionGroups || []);
-                groups.forEach((group, gIndex) => {
-                    group.questions.forEach((q, qIndex) => {
-                        const key = `q_${pIndex}_${gIndex}_${qIndex}`;
-                        if (q.type === 'matching-headings') {
-                            const matching = normalizeMatchingHeadings(q);
-                            const answerMap = parseMatchingHeadingsAnswerMap(q.answer);
-                            matching.rows.forEach((row) => {
-                                const answerKey = `${key}__mh__${row.number}`;
-                                const correctOptionId = String(answerMap[row.number] || row.answerOptionId || "").trim();
-                                correctAnswers[answerKey] = correctOptionId.toLowerCase();
-                                const optionMeta = matching.optionMap.get(correctOptionId);
-                                questionMeta[answerKey] = {
-                                    text: `${row.number}. ${row.prompt}`,
-                                    correctAnswer: optionMeta ? `${optionMeta.label} ${optionMeta.text}`.trim() : correctOptionId
-                                };
-                            });
-                            return;
-                        }
-                        const numberedDefs = extractNumberedBlankDefs(q.text);
-                        const numberedAnswers = parseNumberedBlankAnswerMap(q.answer);
-
-                        if (numberedDefs.length > 0) {
-                            numberedDefs.forEach((def) => {
-                                const answerKey = `${key}__${def.number}`;
-                                const correctAnswer = String(numberedAnswers[def.number] || "").trim();
-                                correctAnswers[answerKey] = correctAnswer.toLowerCase();
-                                questionMeta[answerKey] = {
-                                    text: `${q.text || `Question ${qIndex + 1}`} (${def.number})`,
-                                    correctAnswer
-                                };
-                            });
-                        } else {
-                            correctAnswers[key] = getCorrectTextAnswer(q).toLowerCase();
-                            questionMeta[key] = {
-                                text: q.text || `Question ${qIndex + 1}`,
-                                correctAnswer: getCorrectTextAnswer(q)
-                            };
-                        }
-                    });
-                });
-            });
-
-            let score = 0;
-            const totalQuestions = Object.keys(correctAnswers).length;
-            const answerDetails = [];
-
-            for (const [inputName, answerLowerCase] of Object.entries(correctAnswers)) {
-                const rawUserValue = String(answerState[inputName] || "").trim();
-                const userValue = rawUserValue ? rawUserValue.toLowerCase() : null;
-
-                if (userValue === answerLowerCase) {
-                    score++;
-                }
-
-                answerDetails.push({
-                    question: questionMeta[inputName]?.text || inputName,
-                    userAnswer: userValue || "",
-                    correctAnswer: questionMeta[inputName]?.correctAnswer || "",
-                    isCorrect: userValue === answerLowerCase
-                });
-            }
-
-            const scorePercentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
-            const resultDiv = document.getElementById('result');
-            resultDiv.style.display = 'block';
-            
-            if (score === totalQuestions && totalQuestions > 0) {
-                resultDiv.innerHTML = ` Perfect! You scored ${score}/${totalQuestions} (${scorePercentage}%)`;
-                resultDiv.className = 'result-good';
-            } else {
-                resultDiv.innerHTML = `Score: ${score}/${totalQuestions} (${scorePercentage}%)`;
-                resultDiv.className = 'result-bad';
-            }
-
-            // Save test results
-            const results = JSON.parse(localStorage.getItem(TEST_RESULTS_KEY) || "{}");
-            results["reading"] = {
-                timestamp: new Date().toISOString(),
-                score: scorePercentage,
-                total: 100,
-                correct: score,
-                questions: totalQuestions,
-                timeSpent: timerElement.textContent
-            };
-
-            const aiReviewBoxId = `ai-review-reading-${Date.now()}`;
-            resultDiv.insertAdjacentHTML("beforeend", `<div id="${aiReviewBoxId}" style="margin-top:10px;font-size:0.9rem;">Analyzing with AI reviewer...</div>`);
-
-            requestAiReview({
-                module: "reading",
-                promptTitle: currentProblem.title || "Reading Test",
-                passageTitle: currentProblem.passageTitle || "",
-                passageExcerpt: String(currentProblem.passageContent || "").slice(0, 1200),
-                score: scorePercentage,
-                totalQuestions: totalQuestions,
-                correct: score,
-                answers: answerDetails
-            }).then((review) => {
-                results["reading"].aiReview = review;
-                localStorage.setItem(TEST_RESULTS_KEY, JSON.stringify(results));
-                const reviewBox = document.getElementById(aiReviewBoxId);
-                if (reviewBox) {
-                    reviewBox.outerHTML = formatAiReviewHtml(review);
-                }
-            }).catch((error) => {
-                const reviewBox = document.getElementById(aiReviewBoxId);
-                if (reviewBox) {
-                    reviewBox.textContent = `AI review unavailable: ${error.message}`;
-                }
-            });
-            localStorage.setItem(TEST_RESULTS_KEY, JSON.stringify(results));
-            recordDailyModuleResult("reading", scorePercentage, {
-                correct: score,
-                questions: totalQuestions,
-                timeSpent: timerElement.textContent
-            });
-            
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Test Submitted ';
-            const continueBtn = document.getElementById('continueBtn');
-            
-            document.querySelectorAll('input[type="radio"], input[type="text"]').forEach(input => {
-                input.disabled = true;
-            });
-
-            // Save data for reading-test-answered page
-            const answeredPageState = {
-                testTitle: currentProblem.title || "Reading Test",
-                testDate: currentProblem.scheduledDate || currentProblem.date || currentProblem.scheduled_at || new Date().toISOString(),
-                rawScore: score,
-                totalQuestions: totalQuestions,
-                passages: passages.map((passage, pIdx) => {
-                    const groups = getPassageQuestionGroups(passage, currentProblem.questionGroups || []);
-                    const questionsMap = new Map();
-                    const expectedNumbers = new Set();
-                    const explanationMap = parseNumberedTextMap(
-                        htmlToPlainText(String(passage?.autoFillDraft?.explanationText || ""))
-                    );
-
-                    const resolveGroupRange = (group) => {
-                        const direct = parseQuestionRange(group?.questionRange || "");
-                        if (direct && Number.isFinite(direct.start) && Number.isFinite(direct.end) && direct.end >= direct.start) {
-                            return { start: Number(direct.start), end: Number(direct.end) };
-                        }
-
-                        const sourcePool = [
-                            String(group?.questionRange || ""),
-                            String(group?.title || ""),
-                            htmlToPlainText(String(group?.instruction || ""))
-                        ];
-
-                        const numbers = [];
-                        sourcePool.forEach((source) => {
-                            const normalized = String(source || "").replace(/[–—−]/g, "-");
-                            const matches = normalized.match(/\d+/g) || [];
-                            matches.forEach((m) => numbers.push(Number(m)));
-                        });
-
-                        const filtered = numbers.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b);
-                        if (filtered.length >= 2) {
-                            return { start: filtered[0], end: filtered[filtered.length - 1] };
-                        }
-                        if (filtered.length === 1) {
-                            const start = filtered[0];
-                            const count = Math.max(1, Number(group?.questions?.length || 1));
-                            return { start, end: start + count - 1 };
-                        }
-                        return null;
-                    };
-
-                    const putQuestion = (num, payload = {}) => {
-                        const n = Number(num);
-                        if (!Number.isFinite(n) || n <= 0) return;
-
-                        const prev = questionsMap.get(n) || {};
-                        const mergedOptions = (payload.options && Object.keys(payload.options).length)
-                            ? payload.options
-                            : (prev.options || {});
-
-                        const merged = {
-                            number: n,
-                            question: String(payload.question || prev.question || `Question ${n}`),
-                            options: mergedOptions,
-                            correctAnswer: String(payload.correctAnswer || prev.correctAnswer || ""),
-                            explanation: String(
-                                payload.explanation
-                                || prev.explanation
-                                || explanationMap[String(n)]
-                                || "No explanation provided."
-                            )
-                        };
-
-                        questionsMap.set(n, merged);
-                    };
-                    
-                    groups.forEach((group, gIdx) => {
-                        const range = resolveGroupRange(group);
-                        if (range) {
-                            for (let n = range.start; n <= range.end; n++) {
-                                expectedNumbers.add(n);
-                            }
-                        }
-                        let absoluteQNum = range ? Number(range.start || 1) : 1;
-                        
-                        group.questions.forEach((q, qIdx) => {
-                            const numberedDefs = extractNumberedBlankDefs(q.text);
-                            const explanation = q.explanation || q.autoExplanation || q.pembahasan || q.discussion || q.notes || "";
-                            
-                            const opts = parseStoredOptions(q.options);
-                            const optionsMap = ['A', 'B', 'C', 'D'].reduce((acc, letter, idx) => {
-                                if (opts[idx]) acc[letter] = opts[idx];
-                                return acc;
-                            }, {});
-
-                            if (q.type === 'matching-headings') {
-                                const matching = normalizeMatchingHeadings(q);
-                                const answerMap = parseMatchingHeadingsAnswerMap(q.answer);
-                                // Build a group-level fallback: use any available row explanation or q.explanation
-                                const groupFallback = explanation ||
-                                    matching.rows.reduce((found, r) => found || explanationMap[String(r.number)] || "", "");
-                                matching.rows.forEach((row) => {
-                                    const correctOptionId = String(answerMap[row.number] || row.answerOptionId || "").trim();
-                                    const optionMeta = matching.optionMap.get(correctOptionId);
-                                    putQuestion(row.number, {
-                                        question: String(row.prompt || `Question ${row.number}`),
-                                        options: {},
-                                        correctAnswer: optionMeta ? `${optionMeta.label} ${optionMeta.text}`.trim() : correctOptionId,
-                                        explanation: explanationMap[String(row.number)] || groupFallback || ""
-                                    });
-                                });
-                                return;
-                            }
-
-                            if (numberedDefs.length > 0) {
-                                const numberedAnswers = parseNumberedBlankAnswerMap(q.answer);
-                                numberedDefs.forEach((def) => {
-                                    putQuestion(def.number, {
-                                        question: stripLeadingQuestionNumber(q.text) || `Question ${def.number}`,
-                                        options: optionsMap,
-                                        correctAnswer: String(numberedAnswers[def.number] || "").trim(),
-                                        explanation: explanation || explanationMap[String(def.number)] || ""
-                                    });
-                                });
-                                return;
-                            }
-
-                            const qNumber = Number(extractQuestionDisplayNumber(q, absoluteQNum));
-                            
-                            putQuestion(qNumber, {
-                                question: stripLeadingQuestionNumber(q.text) || `Question ${qNumber}`,
-                                options: optionsMap,
-                                correctAnswer: getCorrectTextAnswer(q),
-                                explanation: explanation || explanationMap[String(qNumber)] || ""
-                            });
-                            
-                            if (!numberedDefs || numberedDefs.length === 0) {
-                                absoluteQNum++;
-                            }
-                        });
-
-                    });
-
-                    // Ensure every expected number exists, even when parser grouped content unusually.
-                    Array.from(expectedNumbers).sort((a, b) => a - b).forEach((n) => {
-                        if (!questionsMap.has(n)) {
-                            putQuestion(n, {
-                                question: `Question ${n}`,
-                                options: {},
-                                correctAnswer: "",
-                                explanation: explanationMap[String(n)] || "No explanation provided."
-                            });
-                        }
-                    });
-
-                    const sortedQuestions = Array.from(questionsMap.values()).sort((a, b) => a.number - b.number);
-                    const expectedSorted = Array.from(expectedNumbers).sort((a, b) => a - b);
-                    const rangeStart = expectedSorted[0] || sortedQuestions[0]?.number || 1;
-                    const rangeEnd = expectedSorted[expectedSorted.length - 1] || sortedQuestions[sortedQuestions.length - 1]?.number || rangeStart;
-                    
-                    return {
-                        title: passage.title || `Passage ${pIdx + 1}`,
-                        content: passage.content,
-                        questionRange: [
-                            rangeStart,
-                            rangeEnd
-                        ],
-                        questions: sortedQuestions
-                    };
-                })
-            };
-            
-            const answeredPageAnswers = answerDetails.map((detail) => {
-                const numberMatch = String(detail.question || "").match(/\b(\d+)\b/);
-                return {
-                    ...detail,
-                    questionNumber: numberMatch ? Number(numberMatch[1]) : null
-                };
-            });
-
-            localStorage.setItem('readingTestState', JSON.stringify(answeredPageState));
-            localStorage.setItem('readingTestAnswers', JSON.stringify(answeredPageAnswers));
-
-            continueBtn.textContent = 'Show The Result';
-            continueBtn.style.display = 'block';
-            continueBtn.onclick = () => window.location.href = 'reading-test-answered.html';
-            setTimeout(() => window.location.href = 'reading-test-answered.html', 450);
-        }
-
-        function goBackToDeveloper() {
-            const target = RETURN_TO || "study-plan.html";
-            if(confirm("Leave test and go back?")) {
-                window.location.href = target;
-            }
-        }
-
-        function initializeBackToDeveloper() {
-            const btn = document.getElementById("backToDeveloperBtn");
-            if (!btn) return;
-            btn.style.display = "inline-flex";
-            btn.textContent = RETURN_TO ? "Back" : "Back to Study Plan";
-        }
-
-        function escapeHtml(value) {
-            return String(value || "")
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#39;");
-        }
-
-        function htmlToPlainText(value) {
-            const temp = document.createElement("div");
-            temp.innerHTML = String(value || "");
-            return String(temp.textContent || temp.innerText || "").replace(/\u00a0/g, " ");
-        }
-
-        function parseQuestionRange(value) {
-            const raw = String(value || "").replace(/[–—−]/g, "-").trim();
-            if (!raw) return null;
-
-            const pair = raw.match(/(\d+)\s*-\s*(\d+)/);
-            if (pair) {
-                const start = Number(pair[1]);
-                const end = Number(pair[2]);
-                if (Number.isFinite(start) && Number.isFinite(end) && end >= start) {
-                    return { start, end };
-                }
-            }
-
-            const single = raw.match(/(\d+)/);
-            if (single) {
-                const n = Number(single[1]);
-                if (Number.isFinite(n)) return { start: n, end: n };
-            }
-
-            return null;
-        }
-
-        function parseNumberedTextMap(value) {
-            const text = String(value || "").replace(/\r/g, "");
-            const map = {};
-            if (!text.trim()) return map;
-
-            const lines = text.split("\n");
-            let currentKey = "";
-            let buffer = [];
-
-            const flush = () => {
-                if (!currentKey) return;
-                const merged = buffer.join(" ").replace(/\s+/g, " ").trim();
-                if (merged) map[currentKey] = merged;
-            };
-
-            lines.forEach((line) => {
-                const rawLine = String(line || "").trim();
-                if (!rawLine) return;
-                const match = rawLine.match(/^(\d+)\s*[.):-]?\s*(.*)$/);
-                if (match) {
-                    flush();
-                    currentKey = String(match[1]);
-                    buffer = [String(match[2] || "").trim()];
-                } else if (currentKey) {
-                    buffer.push(rawLine);
-                }
-            });
-
-            flush();
-            return map;
-        }
-
-        function formatAiReviewHtml(review) {
-            if (!review) {
-                return '<div style="margin-top:10px;font-size:0.9rem;">AI review unavailable.</div>';
-            }
-
-            const strengths = Array.isArray(review.strengths) ? review.strengths : [];
-            const improvements = Array.isArray(review.improvements) ? review.improvements : [];
-            const nextSteps = Array.isArray(review.nextSteps) ? review.nextSteps : [];
-
-            return `
-                <div style="margin-top:10px;padding:12px;border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4;color:#14532d;">
-                    <strong>AI Review ${review.estimatedBand ? `(Band ${escapeHtml(review.estimatedBand)})` : ""}</strong>
-                    <div style="margin-top:6px;line-height:1.5;">${escapeHtml(review.summary || "No summary returned.")}</div>
-                    ${strengths.length ? `<div style="margin-top:8px;"><strong>Strengths:</strong><ul style="margin:4px 0 0 18px;">${strengths.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
-                    ${improvements.length ? `<div style="margin-top:8px;"><strong>Needs improvement:</strong><ul style="margin:4px 0 0 18px;">${improvements.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
-                    ${nextSteps.length ? `<div style="margin-top:8px;"><strong>Next steps:</strong><ul style="margin:4px 0 0 18px;">${nextSteps.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+                <NavigatorGroup
+                  title={activePart.sectionLabels.a}
+                  questions={groupedQuestions.a}
+                  selectedOption={selectedOption}
+                  onPick={scrollToQuestion}
+                />
+                <NavigatorGroup
+                  title={activePart.sectionLabels.b}
+                  questions={groupedQuestions.b}
+                  selectedOption={selectedOption}
+                  onPick={scrollToQuestion}
+                />
+              </div>
+
+              <div className="border-t border-bordersoft p-4">
+                <button
+                  type="button"
+                  onClick={focusNextQuestion}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-navy px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#002844]"
+                >
+                  Next Question
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M5 12H19M13 6L19 12L13 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </aside>
+        </>
+      );
+    }
+
+    function NavigatorGroup({ title, questions, selectedOption, onPick }) {
+      return (
+        <section className="rounded-lg border border-bordersoft bg-white p-3">
+          <h4 className="mb-3 font-body text-xs font-semibold uppercase tracking-wide text-mutedtxt">{title}</h4>
+          <div className="grid grid-cols-5 gap-2">
+            {questions.map((question) => {
+              const answered = selectedOption(question.id) !== null;
+              return (
+                <button
+                  key={question.id}
+                  type="button"
+                  onClick={() => onPick(question.id)}
+                  className={`grid h-9 w-9 place-items-center rounded-md border text-sm font-semibold transition ${
+                    answered
+                      ? 'border-navy bg-navy text-white shadow-cyanGlow'
+                      : 'border-bordersoft bg-white text-[#6E86A0] hover:border-accent'
+                  }`}
+                >
+                  {question.number}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      );
+    }
+
+    function MainLayout() {
+      const { isDrawerOpen } = useTest();
+
+      return (
+        <main className="relative h-[calc(100%-104px)] w-full lg:h-[calc(100%-130px)]">
+          <div className="mx-auto h-full w-full max-w-[1700px] p-4 lg:pr-6">
+            <div className={`grid h-full gap-4 ${isDrawerOpen ? 'lg:pr-[346px]' : ''} lg:grid-cols-[1fr_1.1fr]`}>
+              <div className="min-h-[440px] overflow-hidden lg:min-h-0">
+                <div className="hide-scrollbar h-full overflow-y-auto">
+                  <PassagePanel />
                 </div>
-            `;
-        }
+              </div>
+              <div className="min-h-[480px] overflow-hidden lg:min-h-0">
+                <QuestionsPanel />
+              </div>
+            </div>
+          </div>
+          <DrawerNavigator />
+        </main>
+      );
+    }
 
-        async function requestAiReview(payload) {
-            const response = await fetch(AI_REVIEW_ENDPOINT, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+    function App() {
+      return (
+        <TestProvider>
+          <div className="flex h-full flex-col bg-bgsoft font-body text-navy">
+            <Header />
+            <MainLayout />
+          </div>
+        </TestProvider>
+      );
+    }
 
-            if (!response.ok) {
-                const message = await response.text();
-                throw new Error(message || `AI review failed (${response.status})`);
-            }
-
-            return response.json();
-        }
-
-        // Initialize
-        (async () => {
-            initializeBackToDeveloper();
-            await loadProblem();
-            startTimer();
-        })();
-    </script>
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
 </body>
 </html>

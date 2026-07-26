@@ -16,6 +16,10 @@
 const TOEFL_FIREBASE_URL = "https://quickcheck-25590-default-rtdb.asia-southeast1.firebasedatabase.app";
 const TOEFL_STORAGE_BUCKET = "quickcheck-25590.firebasestorage.app";
 const TOEFL_STORAGE_BASE = `https://firebasestorage.googleapis.com/v0/b/${TOEFL_STORAGE_BUCKET}/o`;
+const AUDIO_CACHE_CONTROL = "public, max-age=31536000, immutable";
+const AUDIO_COMPRESS_MIN_BYTES = 8 * 1024 * 1024;
+const AUDIO_COMPRESS_TARGET_SAMPLE_RATE = 22050;
+const AUDIO_COMPRESS_BITRATE = 96000;
 
 class ToeflStorageSync {
   constructor() {
@@ -30,6 +34,7 @@ class ToeflStorageSync {
     this._draftsV2LocalKey = "toefl_developer_drafts_v2";
     this._setsLocalKey = "toefl_developer_sets_v1";
     this._lastStorageError = "";
+    this._lastUploadInfo = null;
   }
 
   _url(path) {
@@ -390,6 +395,10 @@ class ToeflStorageSync {
     return this._lastStorageError || "";
   }
 
+  getLastUploadInfo() {
+    return this._lastUploadInfo || null;
+  }
+
   _extractPrimaryDownloadToken(rawTokenValue) {
     const raw = String(rawTokenValue || "").trim();
     if (!raw) return "";
@@ -410,6 +419,140 @@ class ToeflStorageSync {
     const normalizedToken = this._extractPrimaryDownloadToken(token);
     const tokenQuery = normalizedToken ? `&token=${encodeURIComponent(normalizedToken)}` : "";
     return `${base}/${encodedPath}?alt=media${tokenQuery}`;
+  }
+
+  _pickCompressionMimeType() {
+    if (typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") {
+      return "";
+    }
+
+    const candidates = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus",
+      "audio/ogg"
+    ];
+
+    return candidates.find((mimeType) => MediaRecorder.isTypeSupported(mimeType)) || "";
+  }
+
+  async _resampleAudioBuffer(audioBuffer, targetSampleRate) {
+    const OfflineAudioContextCtor = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!OfflineAudioContextCtor || !targetSampleRate || targetSampleRate >= audioBuffer.sampleRate) {
+      return audioBuffer;
+    }
+
+    const numberOfChannels = Math.min(Math.max(Number(audioBuffer.numberOfChannels || 1), 1), 2);
+    const frameCount = Math.ceil(audioBuffer.duration * targetSampleRate);
+    const offlineContext = new OfflineAudioContextCtor(numberOfChannels, frameCount, targetSampleRate);
+    const source = offlineContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(offlineContext.destination);
+    source.start(0);
+    return offlineContext.startRendering();
+  }
+
+  async _compressAudioBlob(audioBlob) {
+    if (!audioBlob || typeof window === "undefined") return audioBlob;
+
+    const mimeType = this._pickCompressionMimeType();
+    const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextCtor || !mimeType) return audioBlob;
+
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const decodeContext = new AudioContextCtor();
+
+    try {
+      const decodedBuffer = await decodeContext.decodeAudioData(arrayBuffer.slice());
+      const targetSampleRate = Math.min(decodedBuffer.sampleRate || AUDIO_COMPRESS_TARGET_SAMPLE_RATE, AUDIO_COMPRESS_TARGET_SAMPLE_RATE);
+      const renderedBuffer = await this._resampleAudioBuffer(decodedBuffer, targetSampleRate);
+      const recordContext = new AudioContextCtor({ sampleRate: renderedBuffer.sampleRate });
+
+      try {
+        const destination = recordContext.createMediaStreamDestination();
+        const source = recordContext.createBufferSource();
+        source.buffer = renderedBuffer;
+        source.connect(destination);
+
+        const chunks = [];
+        const compressedBlob = await new Promise((resolve, reject) => {
+          let recorder;
+
+          try {
+            recorder = new MediaRecorder(destination.stream, {
+              mimeType,
+              audioBitsPerSecond: AUDIO_COMPRESS_BITRATE
+            });
+          } catch (error) {
+            reject(error);
+            return;
+          }
+
+          recorder.ondataavailable = (event) => {
+            if (event.data && event.data.size > 0) chunks.push(event.data);
+          };
+          recorder.onerror = () => reject(recorder.error || new Error("Audio compression failed"));
+          recorder.onstop = () => resolve(new Blob(chunks, { type: mimeType }));
+          source.onended = () => {
+            if (recorder.state !== "inactive") recorder.stop();
+          };
+
+          recorder.start();
+          recordContext.resume?.().catch(() => {});
+          source.start(0);
+        });
+
+        const compressedSize = Number(compressedBlob?.size || 0);
+        if (compressedBlob && compressedSize > 0 && compressedSize < Number(audioBlob.size || 0)) {
+          return compressedBlob;
+        }
+        return audioBlob;
+      } finally {
+        await recordContext.close().catch(() => {});
+      }
+    } catch {
+      return audioBlob;
+    } finally {
+      await decodeContext.close().catch(() => {});
+    }
+  }
+
+  async _prepareAudioUpload(audioBlob) {
+    const originalSize = Number(audioBlob?.size || 0);
+    const originalName = String(audioBlob?.name || "audio");
+    const shouldCompress = originalSize >= AUDIO_COMPRESS_MIN_BYTES;
+    const uploadedBlob = shouldCompress ? await this._compressAudioBlob(audioBlob) : audioBlob;
+    const compressed = uploadedBlob !== audioBlob && Number(uploadedBlob?.size || 0) > 0 && Number(uploadedBlob.size || 0) < originalSize;
+    const contentType = String(uploadedBlob?.type || audioBlob?.type || "audio/mpeg");
+
+    return {
+      blob: uploadedBlob,
+      compressed,
+      contentType,
+      originalName,
+      originalSize,
+      uploadedSize: Number(uploadedBlob?.size || 0)
+    };
+  }
+
+  _buildMultipartUploadBody(storagePath, audioBlob, contentType) {
+    const boundary = `----toeflAudioBoundary${Date.now()}${Math.random().toString(36).slice(2)}`;
+    const metadata = JSON.stringify({
+      name: storagePath,
+      contentType,
+      cacheControl: AUDIO_CACHE_CONTROL
+    });
+
+    return {
+      boundary,
+      body: new Blob([
+        `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
+        metadata,
+        `\r\n--${boundary}\r\nContent-Type: ${contentType}\r\n\r\n`,
+        audioBlob,
+        `\r\n--${boundary}--`
+      ], { type: `multipart/related; boundary=${boundary}` })
+    };
   }
 
   _extractStoragePathFromUrl(url) {
@@ -489,17 +632,19 @@ class ToeflStorageSync {
       return false;
     }
 
-    const extension = this._guessAudioExtension(audioBlob.name || "", audioBlob.type || "");
+    const prepared = await this._prepareAudioUpload(audioBlob);
+    const extension = this._guessAudioExtension(prepared.originalName || "", prepared.contentType || "");
     const storagePath = `toefl_itp/audio/${setId}/part_${partId}.${extension}`;
     const uploadNameQuery = new URLSearchParams({ name: storagePath }).toString();
     const errors = [];
 
     for (const base of this._getStorageBases()) {
       try {
-        const res = await fetch(`${base}?uploadType=media&${uploadNameQuery}`, {
+        const multipart = this._buildMultipartUploadBody(storagePath, prepared.blob, prepared.contentType);
+        const res = await fetch(`${base}?uploadType=multipart&${uploadNameQuery}`, {
           method: "POST",
-          headers: { "Content-Type": audioBlob.type || "audio/mpeg" },
-          body: audioBlob
+          headers: { "Content-Type": `multipart/related; boundary=${multipart.boundary}` },
+          body: multipart.body
         });
 
         if (!res.ok) {
@@ -529,17 +674,35 @@ class ToeflStorageSync {
           mediaLink: String(meta?.mediaLink || ""),
           storagePath,
           token,
+          cacheControl: AUDIO_CACHE_CONTROL,
+          compressed: Boolean(prepared.compressed),
+          originalName: prepared.originalName,
+          originalSize: prepared.originalSize,
+          uploadedSize: prepared.uploadedSize,
+          contentType: prepared.contentType,
           candidateUrls,
-          fileName: audioBlob.name || `audio_part${partId}`,
-          size: Number(audioBlob.size || 0),
-          type: audioBlob.type || "audio/mpeg",
+          fileName: prepared.originalName || `audio_part${partId}`,
+          size: prepared.uploadedSize,
+          type: prepared.contentType,
           uploadedAt: new Date().toISOString()
         });
 
         this.isRemoteAvailable = true;
         this._lastStorageError = "";
-        console.log("[ToeflSync] Audio uploaded to Storage:", { setId, partId, size: audioBlob.size, base });
-        return true;
+        this._lastUploadInfo = {
+          success: true,
+          setId,
+          partId,
+          storagePath,
+          compressed: Boolean(prepared.compressed),
+          originalSize: prepared.originalSize,
+          uploadedSize: prepared.uploadedSize,
+          contentType: prepared.contentType,
+          cacheControl: AUDIO_CACHE_CONTROL,
+          base
+        };
+        console.log("[ToeflSync] Audio uploaded to Storage:", { setId, partId, size: prepared.uploadedSize, base, compressed: prepared.compressed });
+        return this._lastUploadInfo;
       } catch (e) {
         errors.push(`${base} -> ${e?.message || String(e)}`);
       }
@@ -547,6 +710,7 @@ class ToeflStorageSync {
 
     this.isRemoteAvailable = false;
     this._lastStorageError = errors.join(" | ");
+    this._lastUploadInfo = { success: false, setId, partId, error: this._lastStorageError };
     console.warn(`[ToeflSync] Storage upload failed - ${setId} part ${partId}:`, this._lastStorageError);
     return false;
   }

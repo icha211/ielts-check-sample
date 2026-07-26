@@ -5,6 +5,442 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TOEFL ITP Simulator - Section 3: Reading Comprehension</title>
     <link rel="stylesheet" href="css/editor.css">
+    <style>
+        .figma-header--listening {
+            gap: 20px;
+            justify-content: flex-start;
+            padding: 0 16px;
+            font-family: "Outfit", Arial, sans-serif;
+        }
+
+        .figma-header--listening .logo-test-package-timer {
+            width: auto;
+            flex: 0 1 auto;
+            min-width: 0;
+            gap: 18px;
+        }
+
+        .figma-header--listening .test-package-timer {
+            width: auto;
+            gap: 24px;
+            display: flex;
+            align-items: center;
+        }
+
+        .figma-header--listening .test-package-frame {
+            width: 214px;
+            height: 32px;
+            gap: 8px;
+        }
+
+        .figma-header--listening .structure-writing {
+            font: 500 19px/32px "Outfit", Arial, sans-serif;
+            color: #000;
+            white-space: nowrap;
+        }
+
+        .figma-header--listening .package-01-jan {
+            font: 500 14px/32px "Outfit", Arial, sans-serif;
+            color: #7a8fa6;
+            margin-top: -8px;
+            white-space: nowrap;
+        }
+
+        .figma-header--listening .timer-header-parent {
+            padding: 12px 16px;
+        }
+
+        .figma-header--listening .timer {
+            position: static !important;
+            left: auto !important;
+            transform: none !important;
+            margin-right: 0;
+            flex-shrink: 0;
+        }
+
+        .figma-header--listening .progressbar-final {
+            width: auto;
+            flex: 0 1 auto;
+            min-width: 0;
+            margin-left: auto;
+            justify-content: flex-end;
+            gap: 20px;
+        }
+
+        .figma-header--listening .features {
+            width: auto;
+            gap: 16px;
+            padding: 0;
+        }
+
+        .figma-header--listening .div {
+            font: 400 24px/32px "JetBrains Mono", Consolas, monospace;
+            color: #005faa;
+        }
+
+        .reading-part-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: auto;
+            max-width: none;
+            height: 64px;
+            overflow: visible;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            flex: 0 1 auto;
+            min-width: auto;
+            margin-left: 0;
+            margin-right: 0;
+        }
+
+        .reading-part-chip {
+            border: none;
+            border-radius: 0;
+            background: transparent;
+            width: auto;
+            min-width: 33px;
+            height: 28px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .reading-part-chip.active {
+            width: 219px;
+            min-width: 219px;
+            height: 48px;
+            align-items: center;
+            cursor: default;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        .reading-part-title {
+            width: 100%;
+            text-align: center;
+            color: #000;
+            white-space: nowrap;
+        }
+
+        .reading-part-chip.active .reading-part-title {
+            height: 21px;
+            border-bottom: 1px solid #d1dce8;
+            font: 700 14px/18px "Plus Jakarta Sans", Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reading-part-chip:not(.active) .reading-part-title {
+            height: 16px;
+            border-bottom: 1px solid #d1dce8;
+            font: 700 10px/16px "Plus Jakarta Sans", Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reading-part-fraction {
+            margin-top: 2px;
+            font: 700 8px/1 "Plus Jakarta Sans", Arial, sans-serif;
+            color: #7a8fa6;
+            white-space: nowrap;
+        }
+
+        .reading-part-fraction small {
+            font-size: 5px;
+            color: #c7c7cc;
+        }
+
+        .reading-part-circles {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            margin-top: 6px;
+            flex-wrap: nowrap;
+        }
+
+        .reading-q-circle {
+            width: 20px;
+            height: 20px;
+            border-radius: 999px;
+            border: 1px solid #d1dce8;
+            background: #e8eef5;
+            color: #fff;
+            font: 400 10px/1 "Plus Jakarta Sans", Arial, sans-serif;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 1px;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .reading-q-circle.is-answered {
+            background: #003560;
+            color: #fff;
+            border-color: #fff;
+            box-shadow: 0 0 2px #0ea5e9;
+        }
+
+        .reading-q-circle:not(.is-answered) {
+            background: #7a8fa6;
+            border-color: #d1dce8;
+            color: #fff;
+        }
+
+        .reading-q-circle:hover {
+            border-color: #0ea5e9;
+        }
+
+        .section3-layout #user-passages-container .question-item.is-focused {
+            border-color: #0ea5e9 !important;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+        }
+
+        .section3-layout #user-passages-container .user-main {
+            height: 100%;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr);
+            gap: 10px;
+            padding: 10px 16px 14px;
+        }
+
+        .section3-layout #user-passages-container .passage-section,
+        .section3-layout #user-passages-container .question-section {
+            border-radius: 8px;
+            border: 1px solid #d1dce8;
+            background: #fff;
+            box-shadow: none;
+        }
+
+        .section3-layout #user-passages-container .passage-section {
+            width: auto;
+            min-width: 0;
+            max-width: none;
+            padding: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section3-layout #user-passages-container .question-section {
+            min-width: 0;
+            padding: 12px;
+            gap: 8px;
+            overflow-y: auto;
+        }
+
+        .section3-layout #user-passages-container .passage-header-block {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            padding: 18px 16px 10px;
+            border-bottom: 1px solid #d1dce8;
+            background: #fff;
+        }
+
+        .section3-layout #user-passages-container .passage-part-label {
+            font: 600 18px/1.2 "Outfit", Arial, sans-serif;
+            color: #000;
+        }
+
+        .section3-layout #user-passages-container .passage-heading {
+            position: static;
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            border-bottom: 0;
+            color: #7a8fa6;
+            font: 500 14px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .section3-layout #user-passages-container .passage-shell {
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr);
+            gap: 10px;
+            padding: 18px 16px 16px;
+            height: auto;
+            min-height: 0;
+            flex: 0 0 auto;
+            align-items: start;
+        }
+
+        .section3-layout #user-passages-container .passage-line-column {
+            position: relative;
+            min-height: 100%;
+            color: #000;
+            font-family: Arial, sans-serif;
+            font-style: italic;
+        }
+
+        .section3-layout #user-passages-container .passage-line-text,
+        .section3-layout #user-passages-container .passage-line-marker-fixed {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .section3-layout #user-passages-container .passage-line-text {
+            top: 0;
+            transform: translateY(-100%);
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .section3-layout #user-passages-container .passage-line-marker-fixed {
+            font-size: 18px;
+            transform: translateY(-50%);
+        }
+
+        .section3-layout #user-passages-container .passage-line-marker-fixed[data-marker-index="0"] { top: 25%; }
+        .section3-layout #user-passages-container .passage-line-marker-fixed[data-marker-index="1"] { top: 44%; }
+        .section3-layout #user-passages-container .passage-line-marker-fixed[data-marker-index="2"] { top: 63%; }
+
+        .section3-layout #user-passages-container .passage-box {
+            flex: none;
+            min-height: 0;
+            height: auto;
+            align-self: start;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            border: 1px solid #000;
+            border-radius: 0;
+            background: #fff;
+            box-shadow: none;
+            color: #000;
+            font: 400 16px/1.55 Arial, sans-serif;
+            text-align: left;
+            overflow: visible;
+            word-break: normal;
+            overflow-wrap: break-word;
+        }
+
+        .section3-layout #user-passages-container .passage-box p {
+            margin: 0 0 22px;
+        }
+
+        .section3-layout #user-passages-container .passage-box .line-marker {
+            display: none;
+        }
+
+        .section3-layout #user-passages-container .question-item {
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #e6edf5;
+            gap: 12px;
+            background: #fff;
+        }
+
+        .section3-layout #user-passages-container .question-item.is-answered {
+            border-color: #d1dce8;
+            background: #fff;
+            box-shadow: none;
+        }
+
+        .section3-layout #user-passages-container .question-head {
+            grid-template-columns: 36px minmax(0, 1fr);
+            column-gap: 20px;
+            align-items: center;
+        }
+
+        .section3-layout #user-passages-container .question-index-pill {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid #d1dce8;
+            background: #fff;
+            color: #003560;
+            font: 500 18px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .section3-layout #user-passages-container .question-stem-text {
+            color: #000;
+            font: 500 18px/1.4 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .section3-layout #user-passages-container .radio-group {
+            gap: 8px;
+        }
+
+        .section3-layout #user-passages-container .radio-group label {
+            gap: 12px;
+            min-height: 48px;
+            font-family: "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .section3-layout #user-passages-container .option-letter-badge {
+            flex: 0 0 30px;
+            width: 30px;
+            height: 30px;
+            font: 500 18px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .section3-layout #user-passages-container .option-card-text {
+            min-height: 48px;
+            border-radius: 8px;
+            border: 1px solid #d1dce8;
+            padding: 10px 14px;
+            color: #000;
+            font: 400 18px/1.42 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .section3-layout #user-passages-container .radio-group label.selected .option-card-text,
+        .section3-layout #user-passages-container .radio-group input[type="radio"]:checked + .option-letter-badge + .option-card-text {
+            border-color: #003560;
+            background: rgba(14, 165, 233, 0.15);
+            box-shadow: none;
+        }
+
+        @media (max-width: 1100px) {
+            .figma-header--listening {
+                gap: 16px;
+                padding: 0 12px;
+            }
+
+            .figma-header--listening .logo-test-package-timer,
+            .figma-header--listening .test-package-timer,
+            .figma-header--listening .progressbar-final {
+                width: auto;
+                min-width: 0;
+            }
+
+            .reading-part-header {
+                gap: 12px;
+                width: auto;
+                margin-right: 10px;
+            }
+
+            .reading-part-chip.active {
+                min-width: 219px;
+            }
+
+            .section3-layout #user-passages-container .user-main {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .section3-layout #user-passages-container .passage-shell {
+                height: auto;
+                min-height: 420px;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -32,32 +468,7 @@
                 </div>
             </div>
             <div class="progressbar-final">
-                <div class="progress-bar-question">
-                    <div class="progress-bar-question-inner">
-                        <div class="progressbar-wrapper">
-                            <div class="progressbar">
-                                <div class="progressbar-child" id="progress-part-a"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="progress-bar-question-inner">
-                        <div class="progressbar-wrapper">
-                            <div class="progressbar">
-                                <div class="progressbar-child" id="progress-part-b"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="frame-parent">
-                        <div class="answered-030-wrapper">
-                            <div class="answered-030" id="answered-count-label">Answered 0/0</div>
-                        </div>
-                        <div class="progressbar-frame">
-                            <div class="progressbar">
-                                <div class="progressbar-child" id="progress-part-c"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <div class="reading-part-header" id="reading-part-header" aria-label="Section 3 part navigator"></div>
                 <div class="features">
                     <button class="header-feature-btn nav-toggle-btn" type="button" id="fullscreen-btn" aria-label="Enter fullscreen" onclick="toggleFullScreenMode()">
                         <i class="ph ph-frame-corners icon-regular" aria-hidden="true"></i>
@@ -130,7 +541,6 @@
 
         <div id="user-passages-container" style="display: flex; flex: 1; flex-direction: column; overflow: hidden;"></div>
 
-        <div class="user-sub-nav" id="user-sub-nav-container"></div>
     </div>
 
     <div id="dev-view" class="tab-content">
@@ -449,31 +859,82 @@
             label.textContent = `Package ${day} ${months[date.getMonth()]}`;
         }
 
-        function updateHeaderProgress() {
-            const uids = Object.keys(globalQuestions || {});
-            const total = uids.length;
-            const answered = uids.reduce((count, uid) => {
+        function getActivePassageNumber() {
+            const activePanel = document.querySelector('#user-passages-container .sub-content.active');
+            if (!activePanel) return 1;
+            const match = activePanel.id.match(/user-part-(\d+)/);
+            return match ? Number(match[1]) : 1;
+        }
+
+        function openUserPassage(passageNumber) {
+            const target = Math.min(Math.max(Number(passageNumber || 1), 1), TOTAL_PASSAGES);
+            document.querySelectorAll('#user-passages-container .sub-content').forEach((content) => {
+                content.classList.remove('active');
+            });
+            const targetPanel = document.getElementById(`user-part-${target}`);
+            if (targetPanel) targetPanel.classList.add('active');
+            updateHeaderProgress();
+            renderSection3NavigatorDrawer();
+        }
+
+        function getPassageQuestionUIDs(passageNumber) {
+            return Object.keys(globalQuestions || {})
+                .filter((uid) => uid.startsWith(`${passageNumber}_`))
+                .sort((left, right) => {
+                    const leftNum = Number(left.split('_')[1]) || 0;
+                    const rightNum = Number(right.split('_')[1]) || 0;
+                    return leftNum - rightNum;
+                });
+        }
+
+        function buildPartChip(passageNumber, activePassage, answered, total, questionUIDs) {
+            const isActive = passageNumber === activePassage;
+            if (!isActive) {
+                return `<button type="button" class="reading-part-chip" onclick="openUserPassage(${passageNumber})"><span class="reading-part-title">PART ${passageNumber}</span><span class="reading-part-fraction"><span>${answered}</span><small>/${total || 0}</small></span></button>`;
+            }
+
+            const circles = questionUIDs.map((uid, index) => {
                 const checked = document.querySelector(`input[name="q_${uid}"]:checked`);
-                return count + (checked ? 1 : 0);
-            }, 0);
+                const circleClass = checked ? 'reading-q-circle is-answered' : 'reading-q-circle';
+                const questionNumber = uid.split('_')[1] || String(index + 1);
+                return `<button type="button" class="${circleClass}" onclick="scrollToUserQuestion('${uid}')">${questionNumber}</button>`;
+            }).join('');
 
-            const label = document.getElementById("answered-count-label");
-            if (label) label.textContent = `Answered ${answered}/${total}`;
+            return `<div class="reading-part-chip active"><span class="reading-part-title">PART ${passageNumber}</span><div class="reading-part-circles">${circles}</div></div>`;
+        }
 
-            const setBar = (id, done, all) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                if (!all) {
-                    el.style.width = "8px";
-                    return;
-                }
-                const width = Math.max(8, Math.round((done / all) * 146));
-                el.style.width = `${width}px`;
-            };
+        function updateHeaderProgress() {
+            const header = document.getElementById('reading-part-header');
+            if (!header) return;
 
-            setBar("progress-part-a", answered, total);
-            setBar("progress-part-b", answered, total);
-            setBar("progress-part-c", answered, total);
+            const activePassage = getActivePassageNumber();
+            let html = '';
+
+            for (let passageNumber = 1; passageNumber <= TOTAL_PASSAGES; passageNumber++) {
+                const questionUIDs = getPassageQuestionUIDs(passageNumber);
+                const total = questionUIDs.length;
+                const answered = questionUIDs.reduce((count, uid) => {
+                    const checked = document.querySelector(`input[name="q_${uid}"]:checked`);
+                    return count + (checked ? 1 : 0);
+                }, 0);
+                html += buildPartChip(passageNumber, activePassage, answered, total, questionUIDs);
+            }
+
+            header.innerHTML = html;
+        }
+
+        function scrollToUserQuestion(uid) {
+            if (!uid) return;
+            const passageNumber = Number(uid.split('_')[0] || 1);
+            if (passageNumber !== getActivePassageNumber()) {
+                openUserPassage(passageNumber);
+            }
+
+            const card = document.getElementById(`q-container-${uid}`);
+            if (!card) return;
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            card.classList.add('is-focused');
+            setTimeout(() => card.classList.remove('is-focused'), 900);
         }
 
         function updateFullScreenButton() {
@@ -499,6 +960,37 @@
                 console.warn("[Fullscreen] Unable to toggle full screen:", error);
             } finally {
                 handleFullScreenStateChange();
+            }
+        }
+
+        function setSection3DrawerOpen(open) {
+            return;
+        }
+
+        function toggleSection3Drawer(event) {
+            if (event) event.stopPropagation();
+        }
+
+        function buildDrawerQuestionButton(uid, label) {
+            const checked = document.querySelector(`input[name="q_${uid}"]:checked`);
+            const buttonClass = checked ? 's3-nav-btn is-answered' : 's3-nav-btn';
+            return `<button type="button" class="${buttonClass}" onclick="scrollToUserQuestion('${uid}')">${label}</button>`;
+        }
+
+        function renderSection3NavigatorDrawer() {
+            return;
+        }
+
+        function focusNextQuestionInPassage() {
+            const activePassage = getActivePassageNumber();
+            const questionUIDs = getPassageQuestionUIDs(activePassage);
+            const nextUID = questionUIDs.find((uid) => !document.querySelector(`input[name="q_${uid}"]:checked`));
+            if (nextUID) {
+                scrollToUserQuestion(nextUID);
+                return;
+            }
+            if (questionUIDs.length) {
+                scrollToUserQuestion(questionUIDs[questionUIDs.length - 1]);
             }
         }
 
@@ -534,29 +1026,12 @@
         function positionListeningHeaderTimer() {
             const header = document.querySelector(".figma-header--listening");
             const timer = header ? header.querySelector(".timer") : null;
-            const packageFrame = header ? header.querySelector(".test-package-frame") : null;
-            const progressBlock = header ? header.querySelector(".progressbar-final") : null;
-            if (!header || !timer || !packageFrame || !progressBlock) return;
-
-            const packageRight = packageFrame.offsetLeft + packageFrame.offsetWidth;
-            const progressLeft = progressBlock.offsetLeft;
-            const timerWidth = timer.offsetWidth || 0;
-            const sidePadding = 16;
-
-            const targetCenterX = (packageRight + progressLeft) / 2;
-            const minCenterX = packageRight + (timerWidth / 2) + sidePadding;
-            const maxCenterX = progressLeft - (timerWidth / 2) - sidePadding;
-            const defaultCenterX = header.offsetWidth / 2;
-            const clampedCenterX = maxCenterX < minCenterX
-                ? defaultCenterX
-                : Math.min(Math.max(targetCenterX, minCenterX), maxCenterX);
-
-            timer.style.left = `${clampedCenterX}px`;
+            if (!timer) return;
+            timer.style.left = "";
         }
 
         function initStructure() {
             const userContainer = document.getElementById('user-passages-container');
-            const userNavContainer = document.getElementById('user-sub-nav-container');
             const devContainer = document.getElementById('dev-panels-container');
             const devNavContainer = document.getElementById('dev-sub-nav-container');
 
@@ -565,17 +1040,26 @@
                 <div id="user-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
                     <div class="user-main">
                         <div class="passage-section">
-                            <div class="passage-heading" id="display-title-${p}">Questions 1-10</div>
-                            <div class="passage-box" id="display-passage-${p}"></div>
+                            <div class="passage-header-block">
+                                <div class="passage-part-label">PART ${p}</div>
+                                <div class="passage-heading" id="display-title-${p}">Questions 1-10</div>
+                            </div>
+                            <div class="passage-shell">
+                                <div class="passage-line-column" aria-hidden="true">
+                                    <div class="passage-line-text">Line</div>
+                                    <div class="passage-line-marker-fixed" data-marker-index="0" id="line-marker-${p}-0">(5)</div>
+                                    <div class="passage-line-marker-fixed" data-marker-index="1" id="line-marker-${p}-1">(10)</div>
+                                    <div class="passage-line-marker-fixed" data-marker-index="2" id="line-marker-${p}-2">(15)</div>
+                                </div>
+                                <div class="passage-box" id="display-passage-${p}"></div>
+                            </div>
                         </div>
                         <div class="question-section">
                             <div id="display-questions-${p}"></div>
-                            ${p === TOTAL_PASSAGES ? `<button class="btn-submit-all" onclick="submitAnswers()">Submit Section 3 (Finish Test)</button>` : `<button class="btn-submit-all" style="background:#7f8c8d" onclick="document.getElementById('btn-nav-${p+1}').click()">Next Passage âž”</button>`}
+                            ${p === TOTAL_PASSAGES ? `<button class="btn-submit-all" onclick="submitAnswers()">Submit Section 3 (Finish Test)</button>` : `<button class="btn-submit-all" style="background:#7f8c8d" onclick="openUserPassage(${p + 1})">Next Passage</button>`}
                         </div>
                     </div>
                 </div>`;
-
-                userNavContainer.innerHTML += `<button id="btn-nav-${p}" class="user-sub-btn ${p === 1 ? 'active' : ''}" onclick="openSubTab(event, 'user-part-${p}', 'user-sub-btn')">Passage ${p}</button>`;
 
                 const devBtn = document.createElement('button');
                 devBtn.className = `dev-sub-btn ${p === 1 ? 'active' : ''}`;
@@ -704,19 +1188,53 @@
         function renumberPassageLineMarkers(passageId) {
             const box = document.getElementById(`display-passage-${passageId}`);
             if (!box) return;
-            const markers = Array.from(box.querySelectorAll('.line-marker'));
             const paragraphs = Array.from(box.querySelectorAll('p'));
-            if (!markers.length || !paragraphs.length) return;
+            const lineColumn = box.closest('.passage-shell')?.querySelector('.passage-line-column');
+            const lineTextLabel = lineColumn?.querySelector('.passage-line-text');
+            const fixedLabels = [
+                document.getElementById(`line-marker-${passageId}-0`),
+                document.getElementById(`line-marker-${passageId}-1`),
+                document.getElementById(`line-marker-${passageId}-2`)
+            ].filter(Boolean);
 
-            const baseTop = paragraphs[0].getBoundingClientRect().top;
-            const lineHeight = parseFloat(getComputedStyle(box).lineHeight) || 30;
+            if (!fixedLabels.length || !paragraphs.length || !lineColumn) return;
 
-            markers.forEach((marker) => {
-                const markerTop = marker.getBoundingClientRect().top;
-                const lineNumber = Math.max(1, Math.round(((markerTop - baseTop) / lineHeight) + 1));
-                marker.textContent = `(${lineNumber})`;
-                marker.setAttribute('data-line', String(lineNumber));
-            });
+            const lineHeight = parseFloat(getComputedStyle(box).lineHeight) || 24;
+            const boxRect = box.getBoundingClientRect();
+            const boxTop = boxRect.top + 10;
+            const columnRect = lineColumn.getBoundingClientRect();
+
+            const syncLabelToParagraph = (label, paragraph) => {
+                if (!label || !paragraph) return;
+                const paragraphTop = paragraph.getBoundingClientRect().top;
+                const lineNumber = Math.max(1, Math.round((paragraphTop - boxTop) / lineHeight) + 1);
+                const relativeTop = paragraphTop - columnRect.top;
+                label.textContent = `(${lineNumber})`;
+                label.style.top = `${relativeTop}px`;
+                return relativeTop;
+            };
+
+            const syncFirstLabelToParagraphLine = (label, paragraph, targetLine) => {
+                if (!label || !paragraph) return;
+                const paragraphTop = paragraph.getBoundingClientRect().top;
+                const relativeTop = (paragraphTop - columnRect.top) + ((Math.max(1, targetLine) - 1) * lineHeight);
+                label.textContent = `(${targetLine})`;
+                label.style.top = `${relativeTop}px`;
+                return relativeTop;
+            };
+
+            const firstParagraph = paragraphs[0];
+            const secondParagraph = paragraphs[1];
+            const thirdParagraph = paragraphs[2];
+
+            const firstMarkerTop = syncFirstLabelToParagraphLine(fixedLabels[0], firstParagraph, 5);
+            syncLabelToParagraph(fixedLabels[1], secondParagraph);
+            syncLabelToParagraph(fixedLabels[2], thirdParagraph);
+
+            if (lineTextLabel && Number.isFinite(firstMarkerTop)) {
+                const lineTop = Math.max(0, firstMarkerTop - (lineHeight * 0.6));
+                lineTextLabel.style.top = `${lineTop}px`;
+            }
         }
 
         function renumberAllPassageMarkers() {
@@ -750,13 +1268,14 @@
 
                     if (optionCard) {
                         optionCard.style.backgroundColor = isSelected ? 'rgba(14, 165, 233, 0.14)' : '#ffffff';
-                        optionCard.style.borderColor = isSelected ? '#8eb4da' : '#d1dce8';
+                        optionCard.style.borderColor = isSelected ? '#003560' : '#d1dce8';
                         optionCard.style.boxShadow = isSelected ? '0 0 0 2px rgba(14, 165, 233, 0.18)' : 'none';
                     }
                 });
             });
 
             updateHeaderProgress();
+            renderSection3NavigatorDrawer();
         }
 
         function isDeveloperMode() {
@@ -942,11 +1461,24 @@
         function startTimer() {
             let t = 3300; 
             clearInterval(timerInterval);
-            document.getElementById('time').style.color = "#d32f2f";
+            const timeEl = document.getElementById('time');
+            if (timeEl) {
+                timeEl.style.color = "#005FAA";
+                timeEl.style.animation = "none";
+                const startMinutes = Math.floor(t / 60);
+                const startSeconds = t % 60;
+                timeEl.innerText = `${startMinutes < 10 ? '0' + startMinutes : startMinutes}:${startSeconds < 10 ? '0' + startSeconds : startSeconds}`;
+            }
             timerInterval = setInterval(() => {
                 let m = Math.floor(t/60), s = t%60;
                 document.getElementById('time').innerText = `${m<10?'0'+m:m}:${s<10?'0'+s:s}`;
-                if(t <= 300) { document.getElementById('time').style.animation = "blink 1s infinite"; }
+                if(t <= 300) {
+                    document.getElementById('time').style.color = "#d32f2f";
+                    document.getElementById('time').style.animation = "blink 1s infinite";
+                } else {
+                    document.getElementById('time').style.color = "#005FAA";
+                    document.getElementById('time').style.animation = "none";
+                }
                 if(--t < 0) { 
                     clearInterval(timerInterval); 
                     alert("Waktu Habis! Jawaban Anda disubmit otomatis.");
@@ -1003,15 +1535,12 @@
             } catch (error) {
                 console.warn("[Init] Failed to fully restore section data:", error);
             }
-            positionListeningHeaderTimer();
-            setTimeout(positionListeningHeaderTimer, 60);
             const featuresOverlay = document.getElementById("features-overlay");
             if (featuresOverlay) {
                 featuresOverlay.addEventListener("click", handleFeaturesOverlayClick);
             }
             document.addEventListener("keydown", handleFeaturesMenuKeydown);
             window.addEventListener("resize", () => {
-                positionListeningHeaderTimer();
                 renumberAllPassageMarkers();
             });
             const setDateEl = document.getElementById("set-date");

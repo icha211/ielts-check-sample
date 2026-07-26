@@ -173,7 +173,7 @@
                         </div>
 
                         <p class="audio-shell__status" id="audio-shell-status">Click To Play....</p>
-                        <audio id="cbt-audio-player" preload="metadata" style="display:none"></audio>
+                        <audio id="cbt-audio-player" preload="auto" style="display:none"></audio>
                     </section>
 
                     <div class="question-stack" id="question-sections-container"></div>
@@ -592,6 +592,8 @@
             audio.muted = false;
             audio.volume = 1;
             audio.src = currentAudioObjectUrl;
+            audio.preload = "auto";
+            audio.load();
             audio.currentTime = 0;
             audioIsLocked = false;
             updateAudioShellStatus();
@@ -612,6 +614,8 @@
             audio.muted = false;
             audio.volume = 1;
             audio.src = url;
+            audio.preload = "auto";
+            audio.load();
             audio.currentTime = 0;
             audioIsLocked = false;
             updateAudioShellStatus();
@@ -2311,11 +2315,15 @@
                 await saveSectionMeta();
 
                 // Upload to Firebase Storage for cross-device access.
-                const synced = await window.toeflStorage.saveAudioToFirebase(setId, file, partId);
+                const uploadInfo = await window.toeflStorage.saveAudioToFirebase(setId, file, partId);
 
-                if (synced) {
+                if (uploadInfo && uploadInfo.success !== false) {
                     if (fileLabel) { fileLabel.innerText = `${file.name} (synced)`; fileLabel.style.color = "green"; }
-                    alert(`Audio saved and synced to cloud (${fileMB} MB).\nIt will work on other devices.`);
+                    const uploadedMB = Number(uploadInfo.uploadedSize || file.size) / 1024 / 1024;
+                    const sizeNote = uploadInfo.compressed
+                        ? `Compressed to ${uploadedMB.toFixed(1)} MB before upload.`
+                        : `Uploaded at ${uploadedMB.toFixed(1)} MB.`;
+                    alert(`Audio saved and synced to cloud (${fileMB} MB original).\n${sizeNote}\nIt will work on other devices.`);
                 } else {
                     if (fileLabel) { fileLabel.innerText = `${file.name} (not synced)`; fileLabel.style.color = "#b91c1c"; }
                     const detail = window.toeflStorage && typeof window.toeflStorage.getLastStorageError === "function"

@@ -359,7 +359,7 @@
                     <h3 id="display-audio-title">Audio Title</h3>
                     <p id="display-audio-description">Sample audio file</p>
                 </div>
-                <audio id="audioPlayer" controls>
+                <audio id="audioPlayer" controls preload="auto">
                     <source src="" type="audio/mpeg">
                     Your browser does not support the audio element.
                 </audio>
@@ -508,7 +508,10 @@
             document.getElementById('display-title').innerText = currentProblem.title || "IELTS Listening";
             document.getElementById('display-audio-title').innerText = currentProblem.audioTitle || "Audio";
             document.getElementById('display-audio-description').innerHTML = formatContentText(currentProblem.audioDescription || "");
-            document.getElementById('audioPlayer').src = currentProblem.audioUrl || "";
+            const audioPlayer = document.getElementById('audioPlayer');
+            audioPlayer.preload = 'auto';
+            audioPlayer.src = currentProblem.audioUrl || "";
+            audioPlayer.load();
 
             const container = document.getElementById('dynamic-questions-container');
             let navHtml = '';

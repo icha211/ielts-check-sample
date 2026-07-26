@@ -180,6 +180,7 @@
         var reviewExplainationTab = 'explaination';
         var reviewCurrentQuestion = null;
         var reviewSidebarMode = 'correct';
+        var qcCoreExpandState = {};
 
         function parseJsonSafe(raw, fallback) {
             try {
@@ -1185,6 +1186,8 @@
         }
 
         function buildPartAAnalysisBlock(question, blueprint) {
+            var questionNumber = Number(question && question.number) || 0;
+            var isExpanded = qcCoreExpandState[questionNumber] !== false;
             var correct = normalizeLetter(question && question.correctAnswer) || '-';
             var mainVerb = normalizeText((blueprint && blueprint.mainVerb) || 'unknown');
             var descriptivePhrase = normalizeText((blueprint && blueprint.descriptivePhrase) || 'frasa diapit koma');
@@ -1209,11 +1212,19 @@
                     + '</li>';
             }
 
-            return '<section class="section2-qc-analysis">'
-                + '<header class="section2-qc-core-head">'
-                + '<span>💡 QC C.O.R.E ANALYSIS</span>'
-                + '<i class="ph ph-caret-circle-down" aria-hidden="true"></i>'
-                + '</header>'
+            return '<section class="section2-qc-analysis ' + (isExpanded ? 'is-expanded' : 'is-collapsed') + '">'
+                + '<div class="section2-qc-core-banner">'
+                + '<button type="button" class="section2-qc-core-head" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" onclick="toggleQcCoreExpand(' + questionNumber + ')">'
+                + '<span>💡 QC CORE ANALYSIS</span>'
+                + '<i class="ph ' + (isExpanded ? 'ph-caret-circle-up' : 'ph-caret-circle-down') + '" aria-hidden="true"></i>'
+                + '</button>'
+                + '<div class="section2-qc-core-expand-lines">'
+                + '<p><b>C - Concept</b><span>Menentukan Topik Grammar atau materi apa yang sedang diuji</span></p>'
+                + '<p><b>O - Observe S-V-C (Subject-Verb-Complement)</b><span>Melakukan Identifikasi S-V-C dan Mencari apa yang sudah ada dan apa yang hilang di kalimat</span></p>'
+                + '<p><b>R - Requirement</b><span>Menarik Kesimpulan Kebutuhan dan Menentukan apa yang harus dicari di pilihan ganda</span></p>'
+                + '<p><b>E - Eliminate</b><span>Melakukan Eliminasi Opsi dengan Membedah A, B, C, D dengan alasan kenapa salah/benar berdasarkan S-V-C</span></p>'
+                + '</div>'
+                + '</div>'
                 + '<div class="section2-qc-core-body">'
                 + '<p><span class="section2-qc-core-key">C - Concept</span> : <mark>Subject & Appositive</mark> (Subjek & Keterangan Tambahan)</p>'
                 + '<p><span class="section2-qc-core-key">O - Observe S-V-C</span>:</p>'
@@ -1229,6 +1240,13 @@
                 + '</div>'
                 + '</section>';
         }
+
+            function toggleQcCoreExpand(questionNumber) {
+                var key = Number(questionNumber) || Number(reviewCurrentQuestion && reviewCurrentQuestion.number) || 0;
+                if (!key) return;
+                qcCoreExpandState[key] = qcCoreExpandState[key] === false;
+                if (reviewCurrentQuestion) renderExplainationTabDetail(reviewCurrentQuestion);
+            }
 
         function renderBlueprintCard(question, blueprint) {
             if (!blueprint) return '';
@@ -2655,6 +2673,7 @@
         window.toggleCaretOnly = toggleCaretOnly;
         window.toggleVideoTutorDrawer = toggleVideoTutorDrawer;
         window.toggleAiQcPanel = toggleAiQcPanel;
+        window.toggleQcCoreExpand = toggleQcCoreExpand;
         window.seedAiQcPrompt = seedAiQcPrompt;
         window.submitAiQcPrompt = submitAiQcPrompt;
         window.setReviewSidebarMode = setReviewSidebarMode;
