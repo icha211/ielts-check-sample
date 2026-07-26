@@ -24,6 +24,7 @@ const MODULE_CONFIG = {
 };
 const MONTH_LABELS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
 const MODULES = ["listening", "structure", "reading"];
+let sectionSets = [];
 
 const DIFFICULTY_LABELS = {
     beginner: "Beginner",
@@ -120,6 +121,75 @@ async function loadSetsFromFirebase() {
         updateSyncStatus(false);
         return getStoredSets();
     }
+}
+
+function hasMeaningfulDraftContent(moduleId, draft) {
+    if (!draft || typeof draft !== "object") return false;
+
+    if (moduleId === "reading") {
+        const passages = draft.passages && typeof draft.passages === "object" ? draft.passages : {};
+        return Object.values(passages).some((row) => {
+            const title = String(row?.title || "").trim();
+            const passage = String(row?.passage || "").trim();
+            const questions = String(row?.questions || "").trim();
+            const answerKey = String(row?.answerKey || "").trim();
+            const explanation = String(row?.explanation || "").trim();
+            return Boolean(title || passage || questions || answerKey || explanation);
+        });
+    }
+
+    const parts = draft.parts && typeof draft.parts === "object" ? draft.parts : {};
+    return Object.values(parts).some((row) => {
+        const questions = String(row?.questions || "").trim();
+        const answerKey = String(row?.answerKey || "").trim();
+        const explanation = String(row?.explanation || "").trim();
+        const transcript = String(row?.transcript || "").trim();
+        const videoStep = String(row?.videoStep || "").trim();
+        return Boolean(questions || answerKey || explanation || transcript || videoStep);
+    });
+}
+
+async function filterSetsWithRealContent(records) {
+    const list = Array.isArray(records) ? records : [];
+    if (list.length === 0) return [];
+
+    let audioIndexMap = {};
+    if (window.toeflStorage && typeof toeflStorage.getAudioIndexMap === "function") {
+        try {
+            audioIndexMap = await toeflStorage.getAudioIndexMap();
+        } catch {
+            audioIndexMap = {};
+        }
+    }
+
+    const draftsV2 = safeParse(localStorage.getItem("toefl_developer_drafts_v2"), {});
+
+    const keepFlags = await Promise.all(list.map(async (item) => {
+        const setId = String(item?.setId || "").trim();
+        if (!setId) return false;
+
+        if (item.module === "listening") {
+            const audioParts = audioIndexMap && typeof audioIndexMap === "object" ? audioIndexMap[setId] : null;
+            const hasAudio = Boolean(
+                audioParts && typeof audioParts === "object" &&
+                Object.keys(audioParts).some((key) => key !== "_updatedAt")
+            );
+            if (hasAudio) return true;
+        }
+
+        let draft = draftsV2 && typeof draftsV2 === "object" ? draftsV2[setId] : null;
+        if ((!draft || typeof draft !== "object") && window.toeflStorage && typeof toeflStorage.getDraftBySetId === "function") {
+            try {
+                draft = await toeflStorage.getDraftBySetId(setId);
+            } catch {
+                draft = null;
+            }
+        }
+
+        return hasMeaningfulDraftContent(item.module, draft);
+    }));
+
+    return list.filter((_, index) => keepFlags[index]);
 }
 
 function persistSets(records) {
@@ -448,7 +518,8 @@ async function importData(file) {
 }
 
 async function renderAll() {
-    sectionSets = await loadSetsFromFirebase();
+    const loadedSets = await loadSetsFromFirebase();
+    sectionSets = await filterSetsWithRealContent(loadedSets);
     renderStats();
     renderModuleOverview();
     renderLibrary();

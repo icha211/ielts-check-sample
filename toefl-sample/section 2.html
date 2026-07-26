@@ -338,9 +338,18 @@
                 return;
             }
 
+            if (isDeveloperMode()) {
+                currentSetId = "";
+                clearSectionDraftInputs();
+                await saveSectionMeta();
+                updateUserView();
+                return;
+            }
+
+            // User mode: do not create empty package metadata for dates with no real content.
             currentSetId = "";
             clearSectionDraftInputs();
-            await saveSectionMeta();
+            updateHeaderPackageLabel(selectedDate);
             updateUserView();
         }
 
