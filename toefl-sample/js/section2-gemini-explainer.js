@@ -11,7 +11,7 @@
 
 class Section2GeminiExplainer {
     static apiKey = null;
-    static baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+    static baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
     
     /**
      * Initialize the explainer
@@ -189,9 +189,9 @@ class Section2GeminiExplainer {
     }
 
     /**
-     * Generate explanation using Gemini API
+     * Generate explanation using Gemini API with retry logic
      */
-    static async generateExplanation(questionData, apiKey = null) {
+    static async generateExplanation(questionData, apiKey = null, retryCount = 0, maxRetries = 3) {
         // Use provided API key or fall back to instance property
         const key = apiKey || this.apiKey;
         
@@ -203,27 +203,42 @@ class Section2GeminiExplainer {
         const userMessage = this._buildUserMessage(questionData);
 
         try {
+            // Combine system prompt with user message for Gemini API
+            const fullMessage = `${systemPrompt}\n\n${userMessage}`;
+
             const response = await fetch(`${this.baseUrl}?key=${key}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    system: {
-                        parts: [{ text: systemPrompt }]
-                    },
-                    contents: {
-                        parts: [{ text: userMessage }]
-                    }
+                    contents: [{
+                        role: "user",
+                        parts: [{ text: fullMessage }]
+                    }]
                 })
             });
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(
-                    error.error?.message || 
-                    `API Error: ${response.status} ${response.statusText}`
-                );
+                const errorMessage = error.error?.message || `API Error: ${response.status} ${response.statusText}`;
+                
+                // Check if it's a rate limit error
+                if (response.status === 429 || errorMessage.includes("quota") || errorMessage.includes("Quota")) {
+                    const retryAfter = error.error?.details?.[0]?.retryDelay?.seconds || 
+                                      this._extractRetryAfter(errorMessage) || 
+                                      Math.pow(2, retryCount); // exponential backoff
+                    
+                    console.warn(`[Section2Explainer] Rate limited. Retrying in ${retryAfter}s (attempt ${retryCount + 1}/${maxRetries})`);
+                    
+                    if (retryCount < maxRetries) {
+                        // Wait and retry
+                        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+                        return this.generateExplanation(questionData, key, retryCount + 1, maxRetries);
+                    }
+                }
+                
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
@@ -237,6 +252,18 @@ class Section2GeminiExplainer {
             console.error("[Section2Explainer] API Error:", error);
             throw new Error(`Failed to generate explanation: ${error.message}`);
         }
+    }
+
+    /**
+     * Extract retry-after seconds from error message
+     */
+    static _extractRetryAfter(errorMessage) {
+        // Look for "Please retry in XX.XXXXXXXXXXs" pattern
+        const match = errorMessage.match(/retry in (\d+\.?\d*)/i);
+        if (match) {
+            return Math.ceil(parseFloat(match[1]) + 2); // Add 2 second buffer
+        }
+        return null;
     }
 
     /**
