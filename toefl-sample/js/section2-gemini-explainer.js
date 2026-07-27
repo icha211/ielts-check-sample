@@ -191,8 +191,11 @@ class Section2GeminiExplainer {
     /**
      * Generate explanation using Gemini API
      */
-    static async generateExplanation(questionData) {
-        if (!this.apiKey) {
+    static async generateExplanation(questionData, apiKey = null) {
+        // Use provided API key or fall back to instance property
+        const key = apiKey || this.apiKey;
+        
+        if (!key) {
             throw new Error("Gemini API key not configured");
         }
 
@@ -200,7 +203,7 @@ class Section2GeminiExplainer {
         const userMessage = this._buildUserMessage(questionData);
 
         try {
-            const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+            const response = await fetch(`${this.baseUrl}?key=${key}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"

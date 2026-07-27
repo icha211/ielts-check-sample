@@ -24,16 +24,51 @@ class Section2ReviewExplainer {
                       sessionStorage.getItem(this.apiKeyStorageKey);
 
         if (!this.apiKey) {
-            console.warn("[Section2ReviewExplainer] No Gemini API key found. Set it via localStorage or show config prompt.");
+            console.warn("[Section2ReviewExplainer] No Gemini API key found.");
+            console.info("[Section2ReviewExplainer] Run: Section2ReviewExplainer.setApiKey('YOUR_KEY') or localStorage.setItem('toefl_section2_gemini_api_key', 'YOUR_KEY')");
             this._setupConfigPrompt();
             return;
         }
 
         this.isInitialized = true;
-        console.log("[Section2ReviewExplainer] Initialized with Gemini API");
+        console.log("[Section2ReviewExplainer] ✅ Initialized with Gemini API");
         
         // Watch for question changes and generate explanations
         this._watchQuestionChanges();
+    }
+
+    /**
+     * Manually set API key
+     */
+    static setApiKey(key) {
+        if (!key || typeof key !== 'string' || key.trim() === '') {
+            console.error("[Section2ReviewExplainer] Invalid API key");
+            return;
+        }
+        
+        const trimmedKey = key.trim();
+        localStorage.setItem(this.apiKeyStorageKey, trimmedKey);
+        this.apiKey = trimmedKey;
+        this.isInitialized = true;
+        
+        console.log("[Section2ReviewExplainer] ✅ API key set successfully");
+        console.log("[Section2ReviewExplainer] Reloading page to initialize...");
+        
+        // Reload page to trigger explanation generation
+        setTimeout(() => {
+            location.reload();
+        }, 500);
+    }
+
+    /**
+     * Clear API key
+     */
+    static clearApiKey() {
+        localStorage.removeItem(this.apiKeyStorageKey);
+        sessionStorage.removeItem(this.apiKeyStorageKey);
+        this.apiKey = null;
+        this.isInitialized = false;
+        console.log("[Section2ReviewExplainer] API key cleared");
     }
 
     /**
@@ -42,16 +77,15 @@ class Section2ReviewExplainer {
     static _setupConfigPrompt() {
         const key = prompt(
             "🔑 Enter your Google Gemini API key to enable AI explanations:\n\n" +
-            "Get one from: https://aistudio.google.com/app/apikey\n\n" +
-            "Format: AIza..."
+            "Get free key from: https://aistudio.google.com/app/apikey\n\n" +
+            "Example format: AIzaXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         );
 
-        if (key) {
-            localStorage.setItem(this.apiKeyStorageKey, key);
-            this.apiKey = key;
-            this.isInitialized = true;
-            console.log("[Section2ReviewExplainer] API key saved and initialized");
-            location.reload();
+        if (key && key.trim()) {
+            this.setApiKey(key.trim());
+        } else {
+            console.warn("[Section2ReviewExplainer] API key entry cancelled. Explanations will not generate.");
+            console.info("[Section2ReviewExplainer] To enable later, run: Section2ReviewExplainer.setApiKey('YOUR_KEY')");
         }
     }
 
@@ -132,13 +166,17 @@ class Section2ReviewExplainer {
      * Generate explanation via Gemini API
      */
     static async _generateExplanation(question) {
+        if (!this.apiKey) {
+            throw new Error("Gemini API key not configured");
+        }
+
         const questionData = {
             questionText: question.questionText,
             options: question.options || {},
             correctAnswer: question.correctAnswer
         };
 
-        return await Section2GeminiExplainer.generateExplanation(questionData);
+        return await Section2GeminiExplainer.generateExplanation(questionData, this.apiKey);
     }
 
     /**
@@ -270,15 +308,23 @@ class Section2ReviewExplainer {
      * Set API key manually
      */
     static setApiKey(key) {
-        if (!key) {
-            console.error("[Section2ReviewExplainer] API key cannot be empty");
+        if (!key || typeof key !== 'string' || key.trim() === '') {
+            console.error("[Section2ReviewExplainer] Invalid API key");
             return false;
         }
-
-        localStorage.setItem(this.apiKeyStorageKey, key);
-        this.apiKey = key;
+        
+        const trimmedKey = key.trim();
+        localStorage.setItem(this.apiKeyStorageKey, trimmedKey);
+        this.apiKey = trimmedKey;
         this.isInitialized = true;
-        console.log("[Section2ReviewExplainer] API key updated");
+        
+        console.log("[Section2ReviewExplainer] ✅ API key set successfully");
+        console.log("[Section2ReviewExplainer] Reloading page to initialize...");
+        
+        // Reload page to trigger explanation generation
+        setTimeout(() => {
+            location.reload();
+        }, 500);
         return true;
     }
 
@@ -290,7 +336,7 @@ class Section2ReviewExplainer {
         sessionStorage.removeItem(this.apiKeyStorageKey);
         this.apiKey = null;
         this.isInitialized = false;
-        console.log("[Section2ReviewExplainer] API key cleared");
+        console.log("[Section2ReviewExplainer] ✅ API key cleared");
     }
 
     /**
@@ -300,8 +346,46 @@ class Section2ReviewExplainer {
         return {
             initialized: this.isInitialized,
             hasApiKey: !!this.apiKey,
-            cacheSize: Object.keys(this.explanationCache).length
+            cacheSize: Object.keys(this.explanationCache).length,
+            apiKeyStorageKey: this.apiKeyStorageKey
         };
+    }
+
+    /**
+     * Debug: Show setup instructions
+     */
+    static showSetupInstructions() {
+        console.log(`
+╔════════════════════════════════════════════════════════════════╗
+║         Section 2 Gemini Explainer - Setup Instructions        ║
+╚════════════════════════════════════════════════════════════════╝
+
+📌 STATUS: ${this.isInitialized ? '✅ Initialized' : '❌ Not Initialized'}
+🔑 API Key: ${this.apiKey ? '✅ Configured' : '❌ Not Configured'}
+💾 Cache Size: ${Object.keys(this.explanationCache).length} questions
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 QUICK START:
+
+1️⃣  Get a free API key:
+    https://aistudio.google.com/app/apikey
+
+2️⃣  Set it in console:
+    Section2ReviewExplainer.setApiKey("AIza...")
+
+3️⃣  Reload page and navigate to a question
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚙️  COMMANDS:
+
+setApiKey(key)       - Set API key and reload
+clearApiKey()        - Remove API key
+getStatus()          - Show current status
+showSetupInstructions() - Show this help
+
+        `);
     }
 }
 

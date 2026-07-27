@@ -1,12 +1,13 @@
 /**
  * Section 2 Part A - AI Explanation Generator
- * Uses Claude API to generate QC C.O.R.E ANALYSIS explanations
+ * Uses Google Gemini API to generate QC C.O.R.E ANALYSIS explanations
  * 
- * Integration with developer.js for test creation workflows
+ * Integration with section 2-answered.html for inline explanations
  */
 
 class Section2AIExplanationGenerator {
-    static API_MODEL = "claude-3-5-sonnet-20241022";
+    static API_MODEL = "gemini-2.0-flash";
+    static GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models";
     static API_TIMEOUT = 30000; // 30 seconds
     
     /**
@@ -15,7 +16,7 @@ class Section2AIExplanationGenerator {
      */
     static SYSTEM_PROMPT = `You are an expert TOEFL/Grammar AI Assistant specializing in generating detailed, visually appealing question explanations for an interactive learning website.
 
-Your task is to analyze a given multiple-choice grammar question (Part A: Structure) and generate an explanation following the strict QC C.O.R.E ANALYSIS framework along with precise HTML formatting for sentence visual breakdown.
+Your task is to analyze a given multiple-choice grammar question (Part A: Structure) and generate an explanation following the strict QC C.O.R.E ANALYSIS framework.
 
 ## REQUIRED OUTPUT FORMAT & RULES:
 
