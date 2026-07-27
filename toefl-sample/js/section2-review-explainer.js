@@ -161,7 +161,21 @@ class Section2ReviewExplainer {
      * Make cache key from question
      */
     static _makeQuestionKey(question) {
-        return `q_${question.number || question.questionText.substring(0, 30)}`;
+        // Use question number for most reliable key
+        if (question.number) {
+            return `q_${question.number}`;
+        }
+        // Fallback to first 50 chars of text
+        const textKey = (question.questionText || '').substring(0, 50).replace(/\s+/g, '_');
+        return `q_text_${textKey}`;
+    }
+
+    /**
+     * Clear explanation cache
+     */
+    static clearCache() {
+        this.explanationCache = {};
+        console.log("[Section2ReviewExplainer] Cache cleared");
     }
 
     /**
