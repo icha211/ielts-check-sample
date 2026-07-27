@@ -108,9 +108,27 @@ function normalizeSetsMapToList(raw) {
 
 
 function getStoredSets() {
-    const parsedV2 = safeParse(localStorage.getItem(SETS_KEY_V2), {});
-    const hasV2 = parsedV2 && typeof parsedV2 === "object" && Object.keys(parsedV2).length > 0;
-    const parsed = hasV2 ? parsedV2 : safeParse(localStorage.getItem(SETS_KEY), {});
+    // Look for test-type-specific keys first
+    const mockTestKey = "toefl_developer_mocktest_sets_v2";
+    const practiceTestKey = "toefl_developer_practicetest_sets_v2";
+    
+    // Determine which key to look for based on current test type
+    const typeSpecificKey = currentTestType === "practicetest" ? practiceTestKey : mockTestKey;
+    
+    // Try type-specific key first
+    let parsed = safeParse(localStorage.getItem(typeSpecificKey), {});
+    if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+        return normalizeSetsMapToList(parsed);
+    }
+    
+    // Fall back to old v2 key for backward compatibility
+    parsed = safeParse(localStorage.getItem(SETS_KEY_V2), {});
+    if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+        return normalizeSetsMapToList(parsed);
+    }
+    
+    // Fall back to v1 key
+    parsed = safeParse(localStorage.getItem(SETS_KEY), {});
     return normalizeSetsMapToList(parsed);
 }
 
