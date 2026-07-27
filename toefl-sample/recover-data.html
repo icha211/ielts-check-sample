@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Recovery Tool - TOEFL ITP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .status-box {
+            background: #f5f5f5;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .status-box.success {
+            border-left-color: #10b981;
+            background: #f0fdf4;
+        }
+        
+        .status-box.error {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+        
+        .status-box.warning {
+            border-left-color: #f59e0b;
+            background: #fffbeb;
+        }
+        
+        .status-box h3 {
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .status-box p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .status-box code {
+            background: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+            color: #d63031;
+        }
+        
+        .data-table {
+            width: 100%;
+            margin: 20px 0;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        .data-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .data-table tr:hover {
+            background: #f9fafb;
+        }
+        
+        .data-table .count {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+        
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #059669;
+        }
+        
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .output {
+            background: #1f2937;
+            color: #10b981;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .output.error {
+            color: #ef4444;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #667eea;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .section {
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .icon {
+            font-size: 20px;
+        }
+        
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .alert.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+        
+        .alert.success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+        
+        .alert.error {
+            background: #fee2e2;
+            color: #7f1d1d;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 Data Recovery Tool</h1>
+        <p class="subtitle">Recover your TOEFL test data from local backup</p>
+        
+        <div id="status" class="status-box">
+            <h3><span class="spinner"></span>Analyzing local data...</h3>
+            <p>Please wait while we scan for your backed-up data...</p>
+        </div>
+        
+        <div id="results" class="hidden">
+            <!-- Results will be populated here -->
+        </div>
+        
+        <div id="output" class="output hidden"></div>
+        
+        <div id="actions" class="button-group hidden">
+            <!-- Action buttons will be populated here -->
+        </div>
+    </div>
+
+    <script>
+        const storageKeys = {
+            mockTestSets: "toefl_developer_mocktest_sets_v2",
+            mockTestDrafts: "toefl_developer_mocktest_drafts_v2",
+            practiceTestSets: "toefl_developer_practicetest_sets_v2",
+            practiceTestDrafts: "toefl_developer_practicetest_drafts_v2",
+            oldSets: "toefl_developer_sets_v2",
+            oldDrafts: "toefl_developer_drafts_v2"
+        };
+
+        let recoveredData = {};
+
+        async function analyzeData() {
+            const output = document.getElementById("output");
+            const results = document.getElementById("results");
+            const actions = document.getElementById("actions");
+            
+            log("Scanning localStorage for backed-up data...\n");
+            
+            try {
+                // Check each storage location
+                for (const [key, storageKey] of Object.entries(storageKeys)) {
+                    const data = localStorage.getItem(storageKey);
+                    if (data) {
+                        try {
+                            const parsed = JSON.parse(data);
+                            const count = Object.keys(parsed).filter(k => k !== "_updatedAt").length;
+                            recoveredData[key] = { data: parsed, count, storageKey };
+                            log(`✅ Found ${count} items in ${key}`);
+                        } catch (e) {
+                            log(`❌ Failed to parse ${key}: ${e.message}`);
+                        }
+                    } else {
+                        log(`⊘ No data in ${key}`);
+                    }
+                }
+                
+                // Generate report
+                generateReport();
+                
+                // Show output and results
+                output.classList.remove("hidden");
+                results.classList.remove("hidden");
+                actions.classList.remove("hidden");
+                
+                // Hide status
+                document.getElementById("status").classList.add("hidden");
+                
+            } catch (e) {
+                log(`\n❌ Error analyzing data: ${e.message}`);
+                output.classList.remove("hidden");
+            }
+        }
+
+        function generateReport() {
+            const results = document.getElementById("results");
+            const actions = document.getElementById("actions");
+            
+            let html = `<div class="section">
+                <div class="section-title">📊 Data Summary</div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Storage Location</th>
+                            <th>Items Found</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            
+            const hasData = Object.keys(recoveredData).length > 0;
+            
+            for (const [key, info] of Object.entries(recoveredData)) {
+                html += `<tr>
+                    <td>${key}</td>
+                    <td class="count">${info.count}</td>
+                    <td>✅ Ready</td>
+                </tr>`;
+            }
+            
+            html += `</tbody></table>`;
+            
+            if (hasData) {
+                html += `<div class="alert success">
+                    ✅ Found backup data! You can recover it to your developer dashboard.
+                </div>`;
+            } else {
+                html += `<div class="alert error">
+                    ⚠️ No backup data found in localStorage. Data may have been cleared.
+                </div>`;
+            }
+            
+            html += `</div>`;
+            
+            results.innerHTML = html;
+            
+            // Generate action buttons
+            let actionsHtml = "";
+            
+            if (recoveredData.oldSets && recoveredData.oldSets.count > 0) {
+                actionsHtml += `<button class="btn-success" onclick="recoverOldData()">
+                    📦 Recover Old Test Data (${recoveredData.oldSets.count} items)
+                </button>`;
+            }
+            
+            if (hasData) {
+                actionsHtml += `<button class="btn-primary" onclick="exportData()">
+                    💾 Export All Data as JSON
+                </button>`;
+                actionsHtml += `<button class="btn-secondary" onclick="viewRawData()">
+                    👁️ View Raw Data
+                </button>`;
+            }
+            
+            actionsHtml += `<button class="btn-secondary" onclick="location.href='developer.html'">
+                📱 Go to Developer Dashboard
+            </button>`;
+            
+            actions.innerHTML = actionsHtml;
+        }
+
+        function log(message) {
+            const output = document.getElementById("output");
+            output.textContent += message + "\n";
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function recoverOldData() {
+            if (!recoveredData.oldSets) {
+                log("No old data to recover");
+                return;
+            }
+            
+            log("\n📦 Recovering old test data...\n");
+            
+            const oldSets = recoveredData.oldSets.data;
+            const mockTestSets = {};
+            let migratedCount = 0;
+            
+            // Migrate each old set to mocktest format
+            Object.entries(oldSets).forEach(([setId, value]) => {
+                if (setId === "_updatedAt") return;
+                
+                // Add mocktest prefix if not already there
+                const migratedId = setId.startsWith("mocktest_") || setId.startsWith("practicetest_") 
+                    ? setId 
+                    : `mocktest_${setId}`;
+                
+                mockTestSets[migratedId] = {
+                    ...value,
+                    setId: migratedId,
+                    _migratedAt: new Date().toISOString()
+                };
+                
+                log(`✅ Migrated: ${setId} → ${migratedId}`);
+                migratedCount++;
+            });
+            
+            // Save to new location in localStorage
+            mockTestSets._updatedAt = new Date().toISOString();
+            mockTestSets._migratedAt = new Date().toISOString();
+            localStorage.setItem(storageKeys.mockTestSets, JSON.stringify(mockTestSets));
+            
+            log(`\n✅ Successfully recovered ${migratedCount} tests!`);
+            log("📊 Data has been migrated to: toefl_developer_mocktest_sets_v2");
+            log("\n👉 Next step: Go to developer dashboard to see your recovered tests");
+            log("   The tests are now available under 'Mock Test' tab");
+            
+            // Update results
+            recoveredData.mockTestSets = {
+                data: mockTestSets,
+                count: migratedCount,
+                storageKey: storageKeys.mockTestSets
+            };
+            
+            generateReport();
+        }
+
+        function exportData() {
+            const allData = {};
+            
+            Object.entries(recoveredData).forEach(([key, info]) => {
+                allData[key] = info.data;
+            });
+            
+            const json = JSON.stringify(allData, null, 2);
+            const blob = new Blob([json], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `toefl-data-backup-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            log("\n💾 Exported data to file: toefl-data-backup-*.json");
+        }
+
+        function viewRawData() {
+            const output = document.getElementById("output");
+            output.textContent = JSON.stringify(recoveredData, null, 2);
+            output.classList.remove("hidden");
+        }
+
+        // Run analysis on load
+        window.addEventListener("load", analyzeData);
+    </script>
+</body>
+</html>
