@@ -815,6 +815,57 @@ class ToeflStorageSync {
     return `${protocol}://${host}:${port}`;
   }
 
+  async testApiGatewayConnection() {
+    const apiBase = this._getApiGatewayBase();
+    try {
+      const response = await fetch(`${apiBase}/api/docs`, { method: "HEAD" });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  setApiGatewayUrl(url) {
+    if (typeof url === "string" && url.trim()) {
+      localStorage.setItem("toefl_api_gateway_url", url.replace(/\/+$/, ""));
+    } else {
+      localStorage.removeItem("toefl_api_gateway_url");
+    }
+  }
+
+  setApiGatewayHost(host) {
+    if (typeof host === "string" && host.trim()) {
+      localStorage.setItem("toefl_api_gateway_host", host.trim());
+    } else {
+      localStorage.removeItem("toefl_api_gateway_host");
+    }
+  }
+
+  setApiGatewayPort(port) {
+    if ((typeof port === "string" || typeof port === "number") && String(port).trim()) {
+      localStorage.setItem("toefl_api_gateway_port", String(port).trim());
+    } else {
+      localStorage.removeItem("toefl_api_gateway_port");
+    }
+  }
+
+  setApiGatewayProtocol(protocol) {
+    if (typeof protocol === "string" && protocol.trim()) {
+      localStorage.setItem("toefl_api_gateway_protocol", protocol.trim().toLowerCase());
+    } else {
+      localStorage.removeItem("toefl_api_gateway_protocol");
+    }
+  }
+
+  getApiGatewayConfig() {
+    return {
+      baseUrl: this._getApiGatewayBase(),
+      host: String(localStorage.getItem("toefl_api_gateway_host") || "").trim() || "auto-detected",
+      port: String(localStorage.getItem("toefl_api_gateway_port") || "8000").trim(),
+      protocol: String(localStorage.getItem("toefl_api_gateway_protocol") || "http").trim()
+    };
+  }
+
   async saveAudioViaGateway(setId, audioBlob, partId = 1) {
     if (!setId || !audioBlob) {
       this._lastStorageError = "Missing setId or audioBlob";
@@ -827,11 +878,23 @@ class ToeflStorageSync {
     const apiBase = this._getApiGatewayBase();
 
     try {
-      const presignRes = await fetch(`${apiBase}/api/developer/upload-url`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName, fileType })
-      });
+      let presignRes;
+      try {
+        presignRes = await Promise.race([
+          fetch(`${apiBase}/api/developer/upload-url`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileName, fileType })
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("API gateway request timeout after 10s")), 10000))
+        ]);
+      } catch (fetchError) {
+        const msg = String(fetchError?.message || fetchError || "");
+        if (msg.includes("timeout")) {
+          throw new Error(`API gateway not responding at ${apiBase}. Ensure gateway is running (python -m uvicorn apps.api-gateway.main:app --port 8000 --reload)`);
+        }
+        throw new Error(`Failed to reach API gateway at ${apiBase}: ${msg}`);
+      }
 
       if (!presignRes.ok) {
         const detail = await presignRes.text().catch(() => "");

@@ -612,5 +612,96 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!document.hidden) renderAll();
     });
 
+    // API Gateway Configuration Panel event listeners
+    const settingsBtn = document.getElementById('settingsBtn');
+    const closeConfigBtn = document.getElementById('closeConfigBtn');
+    const testGatewayBtn = document.getElementById('testGatewayBtn');
+    const saveGatewayConfigBtn = document.getElementById('saveGatewayConfigBtn');
+    const apiGatewayConfigPanel = document.getElementById('apiGatewayConfigPanel');
+    const apiGatewayUrlInput = document.getElementById('apiGatewayUrl');
+    const apiGatewayHostInput = document.getElementById('apiGatewayHost');
+    const apiGatewayPortInput = document.getElementById('apiGatewayPort');
+    const apiGatewayProtocolInput = document.getElementById('apiGatewayProtocol');
+    const configStatus = document.getElementById('configStatus');
+
+    // Load saved configuration
+    function loadGatewayConfig() {
+        const savedUrl = localStorage.getItem('toefl_api_gateway_url');
+        const savedHost = localStorage.getItem('toefl_api_gateway_host');
+        const savedPort = localStorage.getItem('toefl_api_gateway_port');
+        const savedProtocol = localStorage.getItem('toefl_api_gateway_protocol');
+        
+        if (savedUrl) apiGatewayUrlInput.value = savedUrl;
+        if (savedHost) apiGatewayHostInput.value = savedHost;
+        if (savedPort) apiGatewayPortInput.value = savedPort;
+        if (savedProtocol) apiGatewayProtocolInput.value = savedProtocol;
+    }
+
+    settingsBtn.addEventListener('click', () => {
+        loadGatewayConfig();
+        apiGatewayConfigPanel.style.display = 'grid';
+        configStatus.textContent = '';
+        configStatus.className = 'config-status';
+    });
+
+    closeConfigBtn.addEventListener('click', () => {
+        apiGatewayConfigPanel.style.display = 'none';
+    });
+
+    testGatewayBtn.addEventListener('click', async () => {
+        configStatus.textContent = 'Testing...';
+        configStatus.className = 'config-status loading';
+        
+        try {
+            // Build the gateway URL from current inputs
+            let testUrl;
+            if (apiGatewayUrlInput.value.trim()) {
+                testUrl = apiGatewayUrlInput.value.trim();
+            } else {
+                const protocol = apiGatewayProtocolInput.value || 'http';
+                const host = apiGatewayHostInput.value || 'localhost';
+                const port = apiGatewayPortInput.value || '8000';
+                testUrl = `${protocol}://${host}:${port}`;
+            }
+            
+            const response = await fetch(`${testUrl}/api/docs`, { 
+                method: 'GET',
+                timeout: 5000
+            });
+            
+            if (response.ok) {
+                configStatus.textContent = '✅ Gateway is running!';
+                configStatus.className = 'config-status success';
+            } else {
+                configStatus.textContent = '❌ Gateway responded but with error. Check configuration.';
+                configStatus.className = 'config-status error';
+            }
+        } catch (error) {
+            configStatus.textContent = `❌ Cannot reach gateway. Start with: python -m uvicorn apps.api-gateway.main:app --port 8000`;
+            configStatus.className = 'config-status error';
+            console.error('Gateway test failed:', error);
+        }
+    });
+
+    saveGatewayConfigBtn.addEventListener('click', () => {
+        if (apiGatewayUrlInput.value.trim()) {
+            localStorage.setItem('toefl_api_gateway_url', apiGatewayUrlInput.value.trim());
+        } else {
+            localStorage.removeItem('toefl_api_gateway_url');
+        }
+        
+        if (apiGatewayHostInput.value.trim()) {
+            localStorage.setItem('toefl_api_gateway_host', apiGatewayHostInput.value.trim());
+        }
+        
+        if (apiGatewayPortInput.value.trim()) {
+            localStorage.setItem('toefl_api_gateway_port', apiGatewayPortInput.value.trim());
+        }
+        
+        localStorage.setItem('toefl_api_gateway_protocol', apiGatewayProtocolInput.value);
+        
+        configStatus.textContent = '✅ Configuration saved!';
+        configStatus.className = 'config-status success';
+    });
+
     renderAll().catch(console.error);
-});
