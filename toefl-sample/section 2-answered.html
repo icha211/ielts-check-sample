@@ -1784,6 +1784,61 @@
             return questionNumber >= 1 && questionNumber <= 15;
         }
 
+        function buildCustomPartAAnalysisBlock(question, customData) {
+            if (!customData) return '';
+            
+            var isCorrect = !!question.isCorrect;
+            var blueprint = deriveGrammarBlueprint(question);
+            
+            // Convert markdown to HTML (basic)
+            function markdownToHtml(text) {
+                if (!text) return '';
+                return String(text)
+                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+                    .replace(/\n/g, '<br>');
+            }
+            
+            var conceptHtml = markdownToHtml(customData.concept || '');
+            var observeHtml = markdownToHtml(customData.observe || '');
+            var observeVisualHtml = customData.observeVisual || '';
+            var requirementHtml = markdownToHtml(customData.requirement || '');
+            
+            var eliminateHtml = '';
+            if (customData.eliminate && Array.isArray(customData.eliminate)) {
+                eliminateHtml = customData.eliminate
+                    .map(function(item) {
+                        return '<div class="section2-part-a-eliminate-item">' + escapeHtml(item) + '</div>';
+                    })
+                    .join('');
+            }
+            
+            return '<div class="section2-figma-analysis section2-aiqc-analysis">'
+                + '<div class="section2-analysis-title">💡 QC C.O.R.E ANALYSIS</div>'
+                + '<div class="section2-analysis-section">'
+                + '<div class="section2-analysis-label">C - Concept:</div>'
+                + '<div class="section2-analysis-content">' + conceptHtml + '</div>'
+                + '</div>'
+                + '<div class="section2-analysis-section">'
+                + '<div class="section2-analysis-label">O - Observe S-V-C:</div>'
+                + '<div class="section2-analysis-subsection">'
+                + '<div class="section2-visual-breakdown">' + observeVisualHtml + '</div>'
+                + '</div>'
+                + '<div class="section2-analysis-subsection">'
+                + '<div class="section2-analysis-observations">' + observeHtml + '</div>'
+                + '</div>'
+                + '</div>'
+                + '<div class="section2-analysis-section">'
+                + '<div class="section2-analysis-label">R - Requirement:</div>'
+                + '<div class="section2-analysis-content">' + requirementHtml + '</div>'
+                + '</div>'
+                + '<div class="section2-analysis-section">'
+                + '<div class="section2-analysis-label">E - Eliminate:</div>'
+                + '<div class="section2-analysis-content">' + eliminateHtml + '</div>'
+                + '</div>'
+                + '</div>';
+        }
+
         function renderExplainationTabDetail(question) {
             var host = document.getElementById('explainationTabContent');
             if (!host || !question) return;
