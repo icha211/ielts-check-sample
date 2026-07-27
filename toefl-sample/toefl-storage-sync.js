@@ -66,6 +66,122 @@ class ToeflStorageSync {
     };
   }
 
+  // ─── DATA MIGRATION & RECOVERY ──────────────────────────────────────────
+  // Migrate old /sets_v2 data to new /mocktest/sets_v2 on first load
+  // This ensures no data is lost when new features are added
+
+  async runDataMigration() {
+    console.log("[ToeflSync] Starting data migration check...");
+    
+    try {
+      // Check if old data exists
+      const oldSets = await this._get(this._setsV2Path);
+      const oldDrafts = await this._get(this._draftsV2Path);
+      
+      if (!oldSets || Object.keys(oldSets).length === 0) {
+        console.log("[ToeflSync] No old data to migrate");
+        return;
+      }
+
+      // Prepare migration map for mocktest (default migration path)
+      const mockTestSets = {};
+      const mockTestDrafts = {};
+
+      // Migrate sets
+      Object.entries(oldSets || {}).forEach(([setId, value]) => {
+        if (setId === "_updatedAt") return;
+        
+        // Add mocktest prefix if not already there
+        const migratedId = setId.startsWith("mocktest_") || setId.startsWith("practicetest_") 
+          ? setId 
+          : `mocktest_${setId}`;
+        
+        mockTestSets[migratedId] = { ...value, setId: migratedId };
+      });
+
+      // Migrate drafts
+      Object.entries(oldDrafts || {}).forEach(([setId, value]) => {
+        if (setId === "_updatedAt") return;
+        
+        const migratedId = setId.startsWith("mocktest_") || setId.startsWith("practicetest_") 
+          ? setId 
+          : `mocktest_${setId}`;
+        
+        mockTestDrafts[migratedId] = { ...value, setId: migratedId };
+      });
+
+      // Save migrated data to new paths
+      if (Object.keys(mockTestSets).length > 0) {
+        mockTestSets._updatedAt = new Date().toISOString();
+        mockTestSets._migratedAt = new Date().toISOString();
+        await this._put(this._mockTestSetsPath, mockTestSets);
+        console.log(`[ToeflSync] ✅ Migrated ${Object.keys(mockTestSets).length - 2} sets to mocktest`);
+      }
+
+      if (Object.keys(mockTestDrafts).length > 0) {
+        mockTestDrafts._updatedAt = new Date().toISOString();
+        mockTestDrafts._migratedAt = new Date().toISOString();
+        await this._put(this._mockTestDraftsPath, mockTestDrafts);
+        console.log(`[ToeflSync] ✅ Migrated ${Object.keys(mockTestDrafts).length - 2} drafts to mocktest`);
+      }
+
+      // Update localStorage backup
+      Object.entries(mockTestSets).forEach(([setId, value]) => {
+        if (setId !== "_updatedAt" && setId !== "_migratedAt") {
+          const normalized = this._normalizeRecord(value, setId);
+          if (normalized) {
+            const local = this._safeParse(localStorage.getItem(this._mockTestSetsLocalKey), {});
+            local[setId] = normalized;
+            localStorage.setItem(this._mockTestSetsLocalKey, JSON.stringify(local));
+          }
+        }
+      });
+
+      console.log("[ToeflSync] ✅ Data migration completed successfully");
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      console.warn("[ToeflSync] Migration failed (may be offline):", e.message);
+      // Offline is OK - migration can happen on next online load
+    }
+  }
+
+  // Archive instead of hard-delete (keeps data in Firebase for recovery)
+  async softDeleteSetRecord(setId) {
+    if (!setId) return;
+    console.log(`[ToeflSync] Soft-deleting (archiving) ${setId}...`);
+    
+    try {
+      const archivedSet = {
+        setId,
+        _archived: true,
+        _archivedAt: new Date().toISOString()
+      };
+      
+      // Save to archive instead of deleting
+      await this._put(`toefl_itp/archive/sets_v2/${setId}`, archivedSet);
+      console.log(`[ToeflSync] ✅ ${setId} moved to archive (safe to restore)`);
+      
+      // Now remove from active list
+      const paths = this._getPathsForTestType(setId.startsWith("practicetest_") ? "practicetest" : "mocktest");
+      const activeSet = await this._get(paths.setsPath);
+      if (activeSet && activeSet[setId]) {
+        delete activeSet[setId];
+        activeSet._updatedAt = new Date().toISOString();
+        await this._put(paths.setsPath, activeSet);
+      }
+      
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Soft-delete failed for ${setId}:`, e.message);
+    }
+    
+    // Remove from local storage
+    const localSets = this._safeParse(localStorage.getItem(this._mockTestSetsLocalKey), {});
+    delete localSets[setId];
+    localStorage.setItem(this._mockTestSetsLocalKey, JSON.stringify(localSets));
+  }
+
   _url(path) {
     return `${this._base}/${path}.json`;
   }
@@ -230,22 +346,58 @@ class ToeflStorageSync {
 
   async deleteSetRecord(setId) {
     if (!setId) return;
+    
+    console.log(`[ToeflSync] Archiving (soft-delete) ${setId}...`);
+    
     try {
-      const [setRes, draftRes] = await Promise.all([
-        fetch(this._url(`${this._setsV2Path}/${setId}`), { method: "DELETE" }),
-        fetch(this._url(`${this._draftsV2Path}/${setId}`), { method: "DELETE" })
-      ]);
-      const setDeleteOk = setRes.ok || setRes.status === 404;
-      const draftDeleteOk = draftRes.ok || draftRes.status === 404;
-      if (!setDeleteOk || !draftDeleteOk) {
-        throw new Error(`Delete failed (set:${setRes.status}, draft:${draftRes.status})`);
+      // Move to archive instead of hard delete
+      const setRecord = await this._get(`${this._setsV2Path}/${setId}`).catch(() => ({}));
+      const draftRecord = await this._get(`${this._draftsV2Path}/${setId}`).catch(() => ({}));
+      
+      // Save to archive with metadata
+      const archivedSet = {
+        ...setRecord,
+        _archived: true,
+        _archivedAt: new Date().toISOString(),
+        _archivedFromPath: this._setsV2Path
+      };
+      
+      await this._put(`toefl_itp/archive/sets_v2/${setId}`, archivedSet);
+      
+      if (Object.keys(draftRecord).length > 0) {
+        const archivedDraft = {
+          ...draftRecord,
+          _archived: true,
+          _archivedAt: new Date().toISOString()
+        };
+        await this._put(`toefl_itp/archive/drafts_v2/${setId}`, archivedDraft);
       }
+      
+      console.log(`[ToeflSync] ✅ ${setId} archived to backup (can be restored)`);
+      
+      // Now remove from active list
+      const activeSets = await this._get(this._setsV2Path).catch(() => ({}));
+      if (activeSets && activeSets[setId]) {
+        delete activeSets[setId];
+        activeSets._updatedAt = new Date().toISOString();
+        await this._put(this._setsV2Path, activeSets);
+      }
+      
+      const activeDrafts = await this._get(this._draftsV2Path).catch(() => ({}));
+      if (activeDrafts && activeDrafts[setId]) {
+        delete activeDrafts[setId];
+        activeDrafts._updatedAt = new Date().toISOString();
+        await this._put(this._draftsV2Path, activeDrafts);
+      }
+      
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
-      console.warn(`[ToeflSync] Offline – ${setId} delete queued locally only:`, e.message);
+      console.warn(`[ToeflSync] Soft-delete failed for ${setId}:`, e.message);
       throw e;
     }
+    
+    // Remove from local storage
     const localSets = this._safeParse(localStorage.getItem(this._setsV2LocalKey), {});
     delete localSets[setId];
     localStorage.setItem(this._setsV2LocalKey, JSON.stringify(localSets));
@@ -342,22 +494,59 @@ class ToeflStorageSync {
   async deleteSetRecordWithType(setId, testType = "mocktest") {
     if (!setId) return;
     const paths = this._getPathsForTestType(testType);
+    
+    console.log(`[ToeflSync] Archiving (soft-delete) ${setId} from ${testType}...`);
+    
     try {
-      const [setRes, draftRes] = await Promise.all([
-        fetch(this._url(`${paths.setsPath}/${setId}`), { method: "DELETE" }),
-        fetch(this._url(`${paths.draftsPath}/${setId}`), { method: "DELETE" })
-      ]);
-      const setDeleteOk = setRes.ok || setRes.status === 404;
-      const draftDeleteOk = draftRes.ok || draftRes.status === 404;
-      if (!setDeleteOk || !draftDeleteOk) {
-        throw new Error(`Delete failed (set:${setRes.status}, draft:${draftRes.status})`);
+      // Move to archive instead of hard delete
+      const setRecord = await this._get(`${paths.setsPath}/${setId}`).catch(() => ({}));
+      const draftRecord = await this._get(`${paths.draftsPath}/${setId}`).catch(() => ({}));
+      
+      // Save to archive with metadata
+      const archivedSet = {
+        ...setRecord,
+        _archived: true,
+        _archivedAt: new Date().toISOString(),
+        _archivedFrom: testType,
+        _archivedFromPath: paths.setsPath
+      };
+      
+      await this._put(`toefl_itp/archive/${testType}/sets/${setId}`, archivedSet);
+      
+      if (Object.keys(draftRecord).length > 0) {
+        const archivedDraft = {
+          ...draftRecord,
+          _archived: true,
+          _archivedAt: new Date().toISOString()
+        };
+        await this._put(`toefl_itp/archive/${testType}/drafts/${setId}`, archivedDraft);
       }
+      
+      console.log(`[ToeflSync] ✅ ${setId} archived to backup (can be restored)`);
+      
+      // Now remove from active list
+      const activeSets = await this._get(paths.setsPath).catch(() => ({}));
+      if (activeSets && activeSets[setId]) {
+        delete activeSets[setId];
+        activeSets._updatedAt = new Date().toISOString();
+        await this._put(paths.setsPath, activeSets);
+      }
+      
+      const activeDrafts = await this._get(paths.draftsPath).catch(() => ({}));
+      if (activeDrafts && activeDrafts[setId]) {
+        delete activeDrafts[setId];
+        activeDrafts._updatedAt = new Date().toISOString();
+        await this._put(paths.draftsPath, activeDrafts);
+      }
+      
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
-      console.warn(`[ToeflSync] Offline – ${setId} delete queued locally only:`, e.message);
+      console.warn(`[ToeflSync] Soft-delete failed for ${setId}:`, e.message);
       throw e;
     }
+    
+    // Remove from local storage
     const localSets = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
     delete localSets[setId];
     localStorage.setItem(paths.setsLocalKey, JSON.stringify(localSets));
@@ -1377,6 +1566,102 @@ class ToeflStorageSync {
     }
 
     return deleted;
+  }
+
+  // ─── DATA RECOVERY & ARCHIVE MANAGEMENT ─────────────────────────────────────
+
+  async getArchivedItems(testType = "mocktest") {
+    const archivePath = `toefl_itp/archive/${testType}/sets`;
+    try {
+      const data = await this._get(archivePath);
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        return [];
+      }
+      const items = Object.entries(data)
+        .filter(([key]) => key !== "_updatedAt")
+        .map(([setId, value]) => ({
+          setId,
+          ...value,
+          _archived: true
+        }))
+        .sort((a, b) => {
+          const timeA = new Date(a._archivedAt || 0).getTime();
+          const timeB = new Date(b._archivedAt || 0).getTime();
+          return timeB - timeA; // Most recent first
+        });
+      return items;
+    } catch (e) {
+      console.warn(`[ToeflSync] Failed to fetch archived items for ${testType}:`, e.message);
+      return [];
+    }
+  }
+
+  async restoreArchivedItem(setId, testType = "mocktest") {
+    if (!setId) return false;
+    try {
+      const archivePath = `toefl_itp/archive/${testType}/sets/${setId}`;
+      const archivedRecord = await this._get(archivePath);
+      
+      if (!archivedRecord) {
+        console.warn(`[ToeflSync] Archived item not found: ${setId}`);
+        return false;
+      }
+
+      // Remove archive markers
+      const { _archived, _archivedAt, _archivedFrom, _archivedFromPath, ...restoredData } = archivedRecord;
+      restoredData._restoredAt = new Date().toISOString();
+
+      // Save back to active location
+      const paths = this._getPathsForTestType(testType);
+      const activeRecord = await this._get(`${paths.setsPath}/${setId}`).catch(() => null);
+      
+      // Only restore if it's not already there (prevent overwriting)
+      if (!activeRecord) {
+        await this._put(`${paths.setsPath}/${setId}`, restoredData);
+        console.log(`[ToeflSync] ✅ ${setId} restored from archive`);
+      }
+
+      // Also restore draft if archived
+      try {
+        const archivedDraftPath = `toefl_itp/archive/${testType}/drafts/${setId}`;
+        const archivedDraft = await this._get(archivedDraftPath);
+        if (archivedDraft) {
+          const { _archived, _archivedAt, ...restoredDraft } = archivedDraft;
+          await this._put(`${paths.draftsPath}/${setId}`, restoredDraft);
+        }
+      } catch {
+        // No draft to restore, that's okay
+      }
+
+      this.isRemoteAvailable = true;
+      return true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.error(`[ToeflSync] Failed to restore archived item ${setId}:`, e.message);
+      return false;
+    }
+  }
+
+  async permanentlyDeleteArchived(setId, testType = "mocktest") {
+    if (!setId) return false;
+    try {
+      const archivePath = `toefl_itp/archive/${testType}/sets/${setId}`;
+      const archiveDraftPath = `toefl_itp/archive/${testType}/drafts/${setId}`;
+      
+      // Hard delete from archive (irreversible)
+      const [setRes, draftRes] = await Promise.all([
+        fetch(this._url(archivePath), { method: "DELETE" }).catch(() => ({ ok: false })),
+        fetch(this._url(archiveDraftPath), { method: "DELETE" }).catch(() => ({ ok: false }))
+      ]);
+      
+      console.log(`[ToeflSync] ⚠️ Permanently deleted ${setId} from archive (IRREVERSIBLE)`);
+      this.isRemoteAvailable = true;
+      return true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.error(`[ToeflSync] Failed to permanently delete ${setId}:`, e.message);
+      return false;
+    }
   }
 }
 

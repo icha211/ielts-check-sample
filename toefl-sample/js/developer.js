@@ -524,7 +524,15 @@ async function renderAll() {
 }
 
 // Initialize event listeners
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    // Run data migration on startup to recover any lost data
+    console.log("[Developer] Running startup data migration check...");
+    if (typeof toeflStorage !== 'undefined' && toeflStorage.runDataMigration) {
+        await toeflStorage.runDataMigration().catch(err => {
+            console.error("[Developer] Migration error (non-blocking):", err);
+        });
+    }
+    
     document.getElementById("exportBtn").addEventListener("click", exportData);
     document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
     document.getElementById("importFile").addEventListener("change", (event) => {
