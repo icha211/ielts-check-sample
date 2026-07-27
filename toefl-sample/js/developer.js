@@ -1,5 +1,7 @@
 // Developer Dashboard JavaScript
 
+let currentTestType = "mocktest"; // Track current test type (mocktest or practicetest)
+
 const SETS_KEY = "toefl_developer_sets_v1";
 const SETS_KEY_V2 = "toefl_developer_sets_v2";
 const MODULE_CONFIG = {
@@ -114,7 +116,7 @@ function getStoredSets() {
 
 async function loadSetsFromFirebase() {
     try {
-        const records = await toeflStorage.getSetRecords();
+        const records = await toeflStorage.getSetRecordsByTestType(currentTestType);
         updateSyncStatus(toeflStorage.online);
         return normalizeSetsMapToList(records);
     } catch (e) {
@@ -195,7 +197,7 @@ async function filterSetsWithRealContent(records) {
 function persistSets(records) {
     const payload = {};
     records.forEach((item) => {
-        const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate);
+        const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate, currentTestType);
         payload[setId] = {
             setId,
             module: item.module,
@@ -205,8 +207,11 @@ function persistSets(records) {
             updatedAt: item.updatedAt || new Date().toISOString()
         };
     });
-    localStorage.setItem(SETS_KEY_V2, JSON.stringify(payload));
-    toeflStorage.saveSetRecords(Object.values(payload)).then(() => updateSyncStatus(toeflStorage.online));
+    const localKey = currentTestType === "practicetest" 
+        ? "toefl_developer_practicetest_sets_v2" 
+        : "toefl_developer_mocktest_sets_v2";
+    localStorage.setItem(localKey, JSON.stringify(payload));
+    toeflStorage.saveSetRecordsWithType(Object.values(payload), currentTestType).then(() => updateSyncStatus(toeflStorage.online));
 }
 
 function updateSyncStatus(online) {
@@ -223,7 +228,7 @@ function updateSyncStatus(online) {
 async function deleteSet(setId, module) {
     if (!confirm(`Delete this ${MODULE_CONFIG[module]?.label || module} set? This cannot be undone.`)) return;
     try {
-        await toeflStorage.deleteSetRecord(setId);
+        await toeflStorage.deleteSetRecordWithType(setId, currentTestType);
         updateSyncStatus(toeflStorage.online);
         toast(`${MODULE_CONFIG[module]?.label || module} set deleted`);
         await renderAll();
@@ -231,16 +236,6 @@ async function deleteSet(setId, module) {
         updateSyncStatus(false);
         toast(`Delete failed: ${error?.message || "unknown error"}`);
     }
-}
-
-function toggleCreateOptions(force) {
-    const menu = document.getElementById("createOptions");
-    if (!menu) return;
-    if (typeof force === "boolean") {
-        menu.classList.toggle("show", force);
-        return;
-    }
-    menu.classList.toggle("show");
 }
 
 function toggleExplanationOptions(force) {
@@ -253,11 +248,12 @@ function toggleExplanationOptions(force) {
     menu.classList.toggle("show");
 }
 
-function buildEditorUrl(moduleId, setDate, setId) {
+function buildEditorUrl(moduleId, setDate, setId, testType = "mocktest") {
     const params = new URLSearchParams();
     if (setDate) params.set("setDate", setDate);
     if (setId) params.set("setId", setId);
     params.set("mode", "dev");
+    params.set("testType", testType);
     const query = params.toString();
     if (!query) return MODULE_CONFIG[moduleId].createPage;
     return `${MODULE_CONFIG[moduleId].editorPage}?${query}#dev-view`;
@@ -342,7 +338,8 @@ function renderModuleOverview() {
 function renderLibrary() {
     const host = document.getElementById("library");
     if (sectionSets.length === 0) {
-        host.innerHTML = '<div class="empty">No TOEFL section sets saved yet. Open Listening, Structure, or Reading, set the date and difficulty, then click Update.</div>';
+        const testTypeLabel = currentTestType === "practicetest" ? "Practice" : "Mock";
+        host.innerHTML = `<div class="empty">No TOEFL ${testTypeLabel} Test sets saved yet. Open Listening, Structure, or Reading, set the date and difficulty, then click Update.</div>`;
         return;
     }
 
@@ -357,7 +354,7 @@ function renderLibrary() {
                     <span>Updated: ${escapeHtml(item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "Not saved")}</span>
                 </div>
                 <div class="actions">
-                    <a class="btn-mini edit" href="${buildEditorUrl(item.module, item.setDate, item.setId)}">Open Editor</a>
+                    <a class="btn-mini edit" href="${buildEditorUrl(item.module, item.setDate, item.setId, currentTestType)}">Open Editor</a>
                     <a class="btn-mini open" href="study-plan.html?year=${item.year ?? new Date().getFullYear()}&month=${item.monthIndex ?? new Date().getMonth()}">Schedule</a>
                     <button class="btn-mini" style="background:#d64545;color:#fff;border:none;cursor:pointer;" onclick="deleteSet('${item.setId}', '${item.module}')">Delete</button>
                 </div>
@@ -426,13 +423,13 @@ function renderMonthDetail(year, monthIndex) {
         const moduleActions = hasAny
             ? `
                 ${items.map((item) => `
-                    <a class="month-action complete" href="${buildEditorUrl(item.module, key, item.setId)}">
+                    <a class="month-action complete" href="${buildEditorUrl(item.module, key, item.setId, currentTestType)}">
                         <span>${item.icon} ${item.label}</span>
                         <span>${item.difficultyLabel}</span>
                     </a>
                 `).join("")}
                 ${missingModules.map((moduleId) => `
-                    <a class="month-action create" href="${buildEditorUrl(moduleId, key)}">
+                    <a class="month-action create" href="${buildEditorUrl(moduleId, key, undefined, currentTestType)}">
                         <span>＋ ${MODULE_CONFIG[moduleId].label}</span>
                         <span>Create</span>
                     </a>
@@ -440,7 +437,7 @@ function renderMonthDetail(year, monthIndex) {
             `
             : `
                 ${MODULES.map((moduleId) => `
-                    <a class="month-action create" href="${buildEditorUrl(moduleId, key)}">
+                    <a class="month-action create" href="${buildEditorUrl(moduleId, key, undefined, currentTestType)}">
                         <span>＋ ${MODULE_CONFIG[moduleId].label}</span>
                         <span>Create</span>
                     </a>
@@ -506,7 +503,7 @@ async function importData(file) {
         const existing = getStoredSets();
         const mergedMap = {};
         [...existing, ...normalized].forEach((item) => {
-            const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate);
+            const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate, currentTestType);
             mergedMap[setId] = { ...item, setId };
         });
         persistSets(Object.values(mergedMap));
@@ -535,7 +532,67 @@ document.addEventListener("DOMContentLoaded", () => {
         if (file) importData(file);
         event.target.value = "";
     });
-    document.getElementById("createBtn").addEventListener("click", () => toggleCreateOptions());
+    
+    // Test type tab switching
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+            currentTestType = e.target.dataset.testType;
+            document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+            e.target.classList.add("active");
+            await renderAll();
+        });
+    });
+
+    // Create button with test type selection
+    document.getElementById("createBtn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        const menu = document.getElementById("createOptions");
+        menu.classList.toggle("show");
+    });
+
+    // Test type selection in create menu
+    document.querySelectorAll("#createOptions .option-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            const testType = btn.dataset.testType;
+            currentTestType = testType;
+            
+            // Update tabs to reflect current selection
+            document.querySelectorAll(".tab-btn").forEach((tabBtn) => {
+                tabBtn.classList.toggle("active", tabBtn.dataset.testType === testType);
+            });
+            
+            // Show module selection modal
+            const modal = document.getElementById("moduleSelectionModal");
+            modal.style.display = "flex";
+            document.getElementById("createOptions").classList.remove("show");
+        });
+    });
+
+    // Module selection in modal
+    document.querySelectorAll(".module-option").forEach((option) => {
+        option.addEventListener("click", (e) => {
+            e.preventDefault();
+            const module = e.currentTarget.dataset.module;
+            const modal = document.getElementById("moduleSelectionModal");
+            modal.style.display = "none";
+            
+            const url = buildEditorUrl(module, undefined, undefined, currentTestType);
+            window.location.href = url;
+        });
+    });
+
+    // Close modal button
+    document.getElementById("closeModuleModal").addEventListener("click", () => {
+        document.getElementById("moduleSelectionModal").style.display = "none";
+    });
+
+    // Close modal when clicking outside
+    document.getElementById("moduleSelectionModal").addEventListener("click", (e) => {
+        if (e.target.id === "moduleSelectionModal") {
+            e.target.style.display = "none";
+        }
+    });
+
     document.getElementById("explanationBtn").addEventListener("click", () => toggleExplanationOptions());
 
     document.addEventListener("click", (event) => {

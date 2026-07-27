@@ -333,6 +333,7 @@
         };
 
         let currentSetId = "";
+        let currentTestType = "mocktest";
         let questionOrder = [];
         let globalAnswerKey = {};
         let globalExplanations = {};
@@ -831,7 +832,7 @@
         function ensureCurrentSetId(setDate) {
             if (currentSetId) return currentSetId;
             if (window.toeflStorage && typeof toeflStorage.createSetId === "function") {
-                currentSetId = toeflStorage.createSetId(MODULE_ID, setDate);
+                currentSetId = toeflStorage.createSetId(MODULE_ID, setDate, currentTestType);
             } else {
                 currentSetId = `${MODULE_ID}_${Date.now()}`;
             }
@@ -911,7 +912,7 @@
 
             if (window.toeflStorage && typeof toeflStorage.getSetRecordById === "function") {
                 try {
-                    const remote = await toeflStorage.getSetRecordById(setId);
+                    const remote = await toeflStorage.getSetRecordByIdAndType(setId, currentTestType);
                     if (remote && remote.setId) return remote;
                 } catch (error) {
                     console.warn("[ToeflSync] setId lookup failed:", error);
@@ -1045,7 +1046,7 @@
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
 
                     for (const record of ordered) {
-                        const draft = await toeflStorage.getDraftBySetId(record.setId).catch(() => null);
+                        const draft = await toeflStorage.getDraftBySetIdAndType(record.setId, currentTestType).catch(() => null);
                         if (hasListeningDraftContent(draft)) {
                             return record;
                         }
@@ -2077,7 +2078,7 @@
             if (window.toeflStorage) {
                 const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
                 const setId = ensureCurrentSetId(setDate);
-                toeflStorage.saveDraftBySetId(setId, MODULE_ID, draft).catch((error) => console.warn("[ToeflSync] draft save failed:", error));
+                toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType).catch((error) => console.warn("[ToeflSync] draft save failed:", error));
             }
         }
 
@@ -2085,7 +2086,7 @@
             let draft = {};
             if (currentSetId && window.toeflStorage) {
                 try {
-                    draft = await toeflStorage.getDraftBySetId(currentSetId);
+                    draft = await toeflStorage.getDraftBySetIdAndType(currentSetId, currentTestType);
                 } catch {
                     draft = {};
                 }
@@ -2112,8 +2113,14 @@
 
         async function loadSectionMeta() {
             const dateInput = document.getElementById("set-date");
+            const dateContainer = dateInput?.parentElement?.parentElement;
             const difficultyInput = document.getElementById("set-difficulty");
             const params = new URLSearchParams(window.location.search);
+            currentTestType = params.get("testType") || "mocktest";
+            
+            if (dateContainer) {
+                dateContainer.style.display = currentTestType === "practicetest" ? "none" : "flex";
+            }
             const requestedDate = params.get("setDate");
             const normalizedRequestedDate = normalizeDateKey(requestedDate);
             currentSetId = params.get("setId") || "";
@@ -2161,7 +2168,7 @@
             if (window.toeflStorage) {
                 try {
                     if (currentSetId && typeof toeflStorage.getSetRecordById === "function") {
-                        stored = await toeflStorage.getSetRecordById(currentSetId) || {};
+                        stored = await toeflStorage.getSetRecordByIdAndType(currentSetId, currentTestType) || {};
                     }
                 } catch {
                     stored = stored || {};
@@ -2210,7 +2217,7 @@
             updatePackageLabel(setDate);
             if (window.toeflStorage && typeof toeflStorage.upsertSetRecord === "function") {
                 try {
-                    await toeflStorage.upsertSetRecord(record);
+                    await toeflStorage.upsertSetRecordWithType(record, currentTestType);
                 } catch (error) {
                     console.warn("[ToeflSync] set save failed:", error);
                 }
@@ -2959,7 +2966,7 @@
 
             let fullSetDraft = null;
             try {
-                fullSetDraft = await toeflStorage.getDraftBySetId(currentSetId);
+                fullSetDraft = await toeflStorage.getDraftBySetIdAndType(currentSetId, currentTestType);
             } catch {
                 fullSetDraft = null;
             }
@@ -3498,3 +3505,6 @@
     </script>
 </body>
 </html>
+
+
+

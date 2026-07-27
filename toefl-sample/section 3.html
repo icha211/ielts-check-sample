@@ -584,6 +584,7 @@
         const MODULE_LABEL = "Reading";
         const DRAFT_KEY = "toefl_section3_dev_draft_v1";
         let currentSetId = "";
+        let currentTestType = "mocktest";
 
         function safeParse(raw, fallback) {
             try {
@@ -629,7 +630,7 @@
         function ensureCurrentSetId(setDate) {
             if (currentSetId) return currentSetId;
             if (window.toeflStorage && typeof toeflStorage.createSetId === "function") {
-                currentSetId = toeflStorage.createSetId(MODULE_ID, setDate);
+                currentSetId = toeflStorage.createSetId(MODULE_ID, setDate, currentTestType);
             } else {
                 currentSetId = `${MODULE_ID}_${Date.now()}`;
             }
@@ -738,7 +739,7 @@
                 localStorage.setItem(`${DRAFT_KEY}_${setId}`, JSON.stringify(draft));
             }
             if (window.toeflStorage) {
-                toeflStorage.saveDraftBySetId(setId, MODULE_ID, draft).catch((e) => console.warn("[ToeflSync] draft save failed:", e));
+                toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType).catch((e) => console.warn("[ToeflSync] draft save failed:", e));
             }
         }
 
@@ -746,7 +747,7 @@
             let draft = {};
             if (currentSetId && window.toeflStorage) {
                 try {
-                    draft = await toeflStorage.getDraftBySetId(currentSetId);
+                    draft = await toeflStorage.getDraftBySetIdAndType(currentSetId, currentTestType);
                 } catch { /* fallback below */ }
             }
 
@@ -788,8 +789,14 @@
 
         async function loadSectionMeta() {
             const dateInput = document.getElementById("set-date");
+            const dateContainer = dateInput?.parentElement?.parentElement;
             const difficultyInput = document.getElementById("set-difficulty");
             const params = new URLSearchParams(window.location.search);
+            currentTestType = params.get("testType") || "mocktest";
+            
+            if (dateContainer) {
+                dateContainer.style.display = currentTestType === "practicetest" ? "none" : "flex";
+            }
             const requestedDate = params.get("setDate");
             currentSetId = params.get("setId") || "";
             let stored = {};
@@ -810,7 +817,7 @@
             if (window.toeflStorage) {
                 try {
                     if (currentSetId && typeof toeflStorage.getSetRecordById === "function") {
-                        stored = await toeflStorage.getSetRecordById(currentSetId) || {};
+                        stored = await toeflStorage.getSetRecordByIdAndType(currentSetId, currentTestType) || {};
                     }
                 } catch { /* fallback below */ }
             }
@@ -844,7 +851,7 @@
             updateEditorUrl(setId, setDate);
             if (window.toeflStorage && typeof toeflStorage.upsertSetRecord === "function") {
                 try {
-                    await toeflStorage.upsertSetRecord(record);
+                    await toeflStorage.upsertSetRecordWithType(record, currentTestType);
                 } catch (error) {
                     console.warn("[ToeflSync] set save failed:", error);
                 }
@@ -1573,4 +1580,5 @@
     </script>
 </body>
 </html>
+
 

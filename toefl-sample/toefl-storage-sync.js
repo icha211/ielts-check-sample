@@ -28,13 +28,42 @@ class ToeflStorageSync {
     this._draftsV2Path = "toefl_itp/drafts_v2";
     this._setsPath = "toefl_itp/sets_v1";
     this._draftsPath = "toefl_itp/drafts_v1";
+    
+    // New paths for mock and practice tests
+    this._mockTestSetsPath = "toefl_itp/mocktest/sets_v2";
+    this._mockTestDraftsPath = "toefl_itp/mocktest/drafts_v2";
+    this._practiceTestSetsPath = "toefl_itp/practicetest/sets_v2";
+    this._practiceTestDraftsPath = "toefl_itp/practicetest/drafts_v2";
+    
     this.isRemoteAvailable = true;
     // localStorage fallback keys
     this._setsV2LocalKey = "toefl_developer_sets_v2";
     this._draftsV2LocalKey = "toefl_developer_drafts_v2";
     this._setsLocalKey = "toefl_developer_sets_v1";
+    this._mockTestSetsLocalKey = "toefl_developer_mocktest_sets_v2";
+    this._mockTestDraftsLocalKey = "toefl_developer_mocktest_drafts_v2";
+    this._practiceTestSetsLocalKey = "toefl_developer_practicetest_sets_v2";
+    this._practiceTestDraftsLocalKey = "toefl_developer_practicetest_drafts_v2";
     this._lastStorageError = "";
     this._lastUploadInfo = null;
+  }
+
+  _getPathsForTestType(testType = "mocktest") {
+    if (testType === "practicetest") {
+      return {
+        setsPath: this._practiceTestSetsPath,
+        draftsPath: this._practiceTestDraftsPath,
+        setsLocalKey: this._practiceTestSetsLocalKey,
+        draftsLocalKey: this._practiceTestDraftsLocalKey
+      };
+    }
+    // Default to mocktest
+    return {
+      setsPath: this._mockTestSetsPath,
+      draftsPath: this._mockTestDraftsPath,
+      setsLocalKey: this._mockTestSetsLocalKey,
+      draftsLocalKey: this._mockTestDraftsLocalKey
+    };
   }
 
   _url(path) {
@@ -61,13 +90,13 @@ class ToeflStorageSync {
     try { return JSON.parse(raw) || fallback; } catch { return fallback; }
   }
 
-  createSetId(module, setDate) {
+  createSetId(module, setDate, testType = "mocktest") {
     const normalizedDate = /^\d{4}-\d{2}-\d{2}$/.test(String(setDate || ""))
       ? String(setDate)
       : new Date().toISOString().split("T")[0];
     const stamp = Date.now();
     const rand = Math.random().toString(36).slice(2, 8);
-    return `${module}_${normalizedDate}_${stamp}_${rand}`;
+    return `${testType}_${module}_${normalizedDate}_${stamp}_${rand}`;
   }
 
   _normalizeRecord(item, fallbackSetId) {
@@ -223,6 +252,158 @@ class ToeflStorageSync {
     const localDrafts = this._safeParse(localStorage.getItem(this._draftsV2LocalKey), {});
     delete localDrafts[setId];
     localStorage.setItem(this._draftsV2LocalKey, JSON.stringify(localDrafts));
+  }
+
+  // ─── SETS V2 WITH TEST TYPE SUPPORT ───────────────────────────────────────────
+
+  async getSetRecordsByTestType(testType = "mocktest") {
+    const paths = this._getPathsForTestType(testType);
+    try {
+      const v2 = await this._get(paths.setsPath);
+      const v2Map = (v2 && typeof v2 === "object" && !Array.isArray(v2)) ? v2 : {};
+      const records = Object.entries(v2Map)
+        .filter(([key]) => key !== "_updatedAt")
+        .map(([setId, value]) => this._normalizeRecord({ ...value, setId }, setId))
+        .filter(Boolean);
+      if (records.length > 0) {
+        localStorage.setItem(paths.setsLocalKey, JSON.stringify(this._recordsToMap(records)));
+        this.isRemoteAvailable = true;
+        return records;
+      }
+      this.isRemoteAvailable = true;
+      return [];
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline – using localStorage for ${testType} set records:`, e.message);
+    }
+
+    const localV2 = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    const localRecords = Object.entries(localV2 || {})
+      .map(([setId, value]) => this._normalizeRecord({ ...value, setId }, setId))
+      .filter(Boolean);
+    return localRecords;
+  }
+
+  async getSetRecordByIdAndType(setId, testType = "mocktest") {
+    if (!setId) return null;
+    const paths = this._getPathsForTestType(testType);
+    try {
+      const data = await this._get(`${paths.setsPath}/${setId}`);
+      const normalized = this._normalizeRecord({ ...data, setId }, setId);
+      if (normalized) {
+        const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+        local[setId] = normalized;
+        localStorage.setItem(paths.setsLocalKey, JSON.stringify(local));
+      }
+      this.isRemoteAvailable = true;
+      return normalized;
+    } catch {
+      this.isRemoteAvailable = false;
+    }
+    const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    return this._normalizeRecord({ ...(local[setId] || {}), setId }, setId);
+  }
+
+  async upsertSetRecordWithType(record, testType = "mocktest") {
+    const normalized = this._normalizeRecord(record, record?.setId);
+    if (!normalized) throw new Error("Invalid set record");
+    const paths = this._getPathsForTestType(testType);
+    const payload = { ...normalized, _updatedAt: new Date().toISOString() };
+    try {
+      await this._put(`${paths.setsPath}/${normalized.setId}`, payload);
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline – ${normalized.setId} set saved locally only:`, e.message);
+    }
+    const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    local[normalized.setId] = normalized;
+    localStorage.setItem(paths.setsLocalKey, JSON.stringify(local));
+    return normalized;
+  }
+
+  async saveSetRecordsWithType(records, testType = "mocktest") {
+    const normalized = (records || [])
+      .map((item) => this._normalizeRecord(item, item?.setId))
+      .filter(Boolean);
+    const paths = this._getPathsForTestType(testType);
+    const map = this._recordsToMap(normalized);
+    const payload = { ...map, _updatedAt: new Date().toISOString() };
+    try {
+      await this._put(paths.setsPath, payload);
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline – ${testType} set records saved locally only:`, e.message);
+    }
+    localStorage.setItem(paths.setsLocalKey, JSON.stringify(map));
+  }
+
+  async deleteSetRecordWithType(setId, testType = "mocktest") {
+    if (!setId) return;
+    const paths = this._getPathsForTestType(testType);
+    try {
+      const [setRes, draftRes] = await Promise.all([
+        fetch(this._url(`${paths.setsPath}/${setId}`), { method: "DELETE" }),
+        fetch(this._url(`${paths.draftsPath}/${setId}`), { method: "DELETE" })
+      ]);
+      const setDeleteOk = setRes.ok || setRes.status === 404;
+      const draftDeleteOk = draftRes.ok || draftRes.status === 404;
+      if (!setDeleteOk || !draftDeleteOk) {
+        throw new Error(`Delete failed (set:${setRes.status}, draft:${draftRes.status})`);
+      }
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline – ${setId} delete queued locally only:`, e.message);
+      throw e;
+    }
+    const localSets = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    delete localSets[setId];
+    localStorage.setItem(paths.setsLocalKey, JSON.stringify(localSets));
+    const localDrafts = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+    delete localDrafts[setId];
+    localStorage.setItem(paths.draftsLocalKey, JSON.stringify(localDrafts));
+  }
+
+  async getDraftBySetIdAndType(setId, testType = "mocktest") {
+    if (!setId) return {};
+    const paths = this._getPathsForTestType(testType);
+    try {
+      const data = await this._get(`${paths.draftsPath}/${setId}`);
+      const draft = (data && typeof data === "object" && !Array.isArray(data)) ? data : {};
+      const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+      local[setId] = draft;
+      localStorage.setItem(paths.draftsLocalKey, JSON.stringify(local));
+      this.isRemoteAvailable = true;
+      return draft;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline – using localStorage for ${testType} set draft ${setId}:`, e.message);
+    }
+    const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+    return local[setId] || {};
+  }
+
+  async saveDraftBySetIdAndType(setId, module, draft, testType = "mocktest") {
+    if (!setId) throw new Error("setId is required");
+    const paths = this._getPathsForTestType(testType);
+    const payload = {
+      ...(draft || {}),
+      setId,
+      module: String(module || draft?.module || ""),
+      _updatedAt: new Date().toISOString()
+    };
+    try {
+      await this._put(`${paths.draftsPath}/${setId}`, payload);
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline – ${testType} set draft ${setId} saved locally only:`, e.message);
+    }
+    const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+    local[setId] = draft || {};
+    localStorage.setItem(paths.draftsLocalKey, JSON.stringify(local));
   }
 
   async getDraftBySetId(setId) {
