@@ -447,6 +447,16 @@
 
         var reviewExplainationTab = 'explaination';
 
+        // Parse URL parameters to get package date from study-plan
+        var urlPackageDate = null;
+        try {
+            var params = new URLSearchParams(window.location.search);
+            var dateParam = params.get('date');
+            if (dateParam) urlPackageDate = String(dateParam).trim();
+        } catch (_) {
+            // Silently fail if URLSearchParams is not available
+        }
+
         var reviewActiveTranscriptKey = '';
         var reviewActiveSegmentRange = null;
         var reviewSegmentBoundaryRafId = 0;
@@ -1173,7 +1183,9 @@
             var monthName = parsedDate.toLocaleString('id-ID', { month: 'long' }) || '';
             if (!monthName) monthName = parsedDate.toLocaleString('en-US', { month: 'short' }) || 'Jan';
             monthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-            return 'Package ' + day + ' ' + monthName;
+            var year = parsedDate.getFullYear();
+            // Include year to distinguish tests from different years
+            return 'Package ' + day + ' ' + monthName + ' ' + year;
         }
 
         function renderReviewPackageLabel(dateValue) {
@@ -3946,7 +3958,7 @@
             });
             reviewResultData = result;
             var params = new URLSearchParams(window.location.search || '');
-            reviewSetDate = String(result.setDate || params.get('setDate') || '');
+            reviewSetDate = String(urlPackageDate || result.setDate || params.get('setDate') || '');
             reviewSetId = await resolveReviewSetId(result);
             renderReviewPackageLabel(reviewSetDate);
             if (reviewSetId && (!result.setId || String(result.setId) !== reviewSetId)) {
