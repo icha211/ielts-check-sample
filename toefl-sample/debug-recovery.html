@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recovery Diagnostic Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        
+        .section {
+            margin: 25px 0;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 12px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+        
+        .key-value {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            margin: 4px 0;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .key-value .label {
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
+        
+        .key-value .value {
+            background: #f0f0f0;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #667eea;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+        
+        .btn-success {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #45a049;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .alert.info {
+            background: #e3f2fd;
+            color: #1976d2;
+            border-left: 4px solid #1976d2;
+        }
+        
+        .alert.success {
+            background: #e8f5e9;
+            color: #388e3c;
+            border-left: 4px solid #388e3c;
+        }
+        
+        .alert.warning {
+            background: #fff3e0;
+            color: #f57c00;
+            border-left: 4px solid #f57c00;
+        }
+        
+        .alert.error {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 4px solid #c62828;
+        }
+        
+        .data-preview {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .steps {
+            list-style: none;
+            counter-reset: step-counter;
+        }
+        
+        .steps li {
+            counter-increment: step-counter;
+            margin: 12px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+        
+        .steps li:before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #667eea;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Recovery Diagnostic Tool</h1>
+        <p style="color: #666; margin-bottom: 20px;">Check localStorage keys and verify recovered data</p>
+        
+        <div class="section">
+            <h2>📊 localStorage Key Summary</h2>
+            <div id="keySummary"></div>
+        </div>
+        
+        <div class="section">
+            <h2>📝 What's in localStorage?</h2>
+            <div id="storageContent"></div>
+        </div>
+        
+        <div class="section">
+            <h2>🛠️ Actions</h2>
+            <div class="button-group">
+                <button class="btn-primary" onclick="reloadDashboard()">
+                    ✨ Reload Developer Dashboard
+                </button>
+                <button class="btn-secondary" onclick="clearAllData()">
+                    🗑️ Clear All Data
+                </button>
+                <button class="btn-secondary" onclick="location.reload()">
+                    🔄 Refresh This Page
+                </button>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>📋 Quick Reference: Expected Keys</h2>
+            <ul class="steps">
+                <li><strong>toefl_developer_mocktest_sets_v2</strong> - Mock Test sets (should have recovered data)</li>
+                <li><strong>toefl_developer_practicetest_sets_v2</strong> - Practice Test sets</li>
+                <li><strong>toefl_developer_mocktest_drafts_v2</strong> - Mock Test drafts</li>
+                <li><strong>toefl_developer_practicetest_drafts_v2</strong> - Practice Test drafts</li>
+                <li><strong>toefl_developer_sets_v2</strong> - Old backup (fallback)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function parseJson(str) {
+            try {
+                return JSON.parse(str);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function updateDiagnostics() {
+            const keyMap = {
+                'toefl_developer_mocktest_sets_v2': 'Mock Test Sets (NEW)',
+                'toefl_developer_practicetest_sets_v2': 'Practice Test Sets (NEW)',
+                'toefl_developer_mocktest_drafts_v2': 'Mock Test Drafts (NEW)',
+                'toefl_developer_practicetest_drafts_v2': 'Practice Test Drafts (NEW)',
+                'toefl_developer_sets_v2': 'Test Sets (OLD - Fallback)',
+                'toefl_developer_drafts_v2': 'Drafts (OLD - Fallback)',
+            };
+
+            let html = '<div>';
+            let hasRecoveredData = false;
+
+            for (const [key, label] of Object.entries(keyMap)) {
+                const value = localStorage.getItem(key);
+                const data = parseJson(value);
+                const itemCount = (data && typeof data === 'object') ? Object.keys(data).length : 0;
+                const size = value ? formatBytes(value.length) : '0 Bytes';
+
+                if (itemCount > 0) {
+                    hasRecoveredData = true;
+                }
+
+                const color = itemCount > 0 ? '#4caf50' : '#999';
+                const icon = itemCount > 0 ? '✓' : '○';
+
+                html += `
+                    <div class="key-value">
+                        <div class="label">
+                            <span style="color: ${color}; font-size: 18px;">${icon}</span>
+                            ${label}
+                        </div>
+                        <div class="value">
+                            ${itemCount} items · ${size}
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+
+            if (hasRecoveredData) {
+                html += '<div class="alert success">✓ Found recovered data in localStorage!</div>';
+            } else {
+                html += '<div class="alert warning">⚠️ No data found. Recovery may have failed or data needs to be recovered.</div>';
+            }
+
+            document.getElementById('keySummary').innerHTML = html;
+
+            // Show detailed content
+            let contentHtml = '';
+            for (const [key, label] of Object.entries(keyMap)) {
+                const value = localStorage.getItem(key);
+                const data = parseJson(value);
+                
+                if (value) {
+                    contentHtml += `
+                        <div style="margin-bottom: 20px;">
+                            <strong style="color: #667eea;">${label}</strong>
+                            <div class="data-preview">${JSON.stringify(data, null, 2).substring(0, 500)}${JSON.stringify(data, null, 2).length > 500 ? '\n... (truncated)' : ''}</div>
+                        </div>
+                    `;
+                }
+            }
+
+            document.getElementById('storageContent').innerHTML = contentHtml || '<div class="alert info">No data in any key</div>';
+        }
+
+        function reloadDashboard() {
+            if (confirm('This will reload the developer dashboard to show recovered data. Continue?')) {
+                // Try to trigger a data reload
+                if (window.opener || window.top !== window.self) {
+                    window.close();
+                    window.open('developer.html', 'developer');
+                } else {
+                    // Open in new tab
+                    window.open('developer.html', 'developer_dash');
+                    alert('Developer dashboard opened in a new tab. Refresh this page to see the updated data.');
+                }
+            }
+        }
+
+        function clearAllData() {
+            if (confirm('⚠️ This will DELETE all test data! Are you absolutely sure?')) {
+                if (confirm('⚠️⚠️ This is irreversible! Last chance to cancel.')) {
+                    localStorage.clear();
+                    alert('All localStorage cleared. Refresh page to confirm.');
+                    location.reload();
+                }
+            }
+        }
+
+        // Update on load
+        updateDiagnostics();
+
+        // Auto-refresh every 3 seconds
+        setInterval(updateDiagnostics, 3000);
+    </script>
+</body>
+</html>

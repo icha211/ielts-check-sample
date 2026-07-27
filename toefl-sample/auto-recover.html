@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automatic Data Recovery</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        
+        .status {
+            background: #f0f0f0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            min-height: 100px;
+            text-align: left;
+            font-family: monospace;
+            font-size: 13px;
+            color: #333;
+            max-height: 300px;
+            overflow-y: auto;
+            border-left: 4px solid #667eea;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+            color: #155724;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ Automatic Data Recovery</h1>
+        <p>Recovering your 23 test sets...</p>
+        
+        <div id="spinner" class="spinner"></div>
+        
+        <div id="status" class="status"></div>
+        
+        <button id="redirectBtn" onclick="goToDashboard()" disabled>
+            Go to Developer Dashboard
+        </button>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const redirectBtn = document.getElementById('redirectBtn');
+        
+        function log(message) {
+            statusDiv.textContent += message + '\n';
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+        }
+        
+        async function recover() {
+            try {
+                log('🔍 Step 1: Scanning localStorage...');
+                
+                const oldSetsKey = "toefl_developer_sets_v2";
+                const newMockKey = "toefl_developer_mocktest_sets_v2";
+                
+                const oldData = localStorage.getItem(oldSetsKey);
+                if (!oldData) {
+                    log('❌ No old data found!');
+                    statusDiv.classList.add('error');
+                    return;
+                }
+                
+                const oldSets = JSON.parse(oldData);
+                const itemCount = Object.keys(oldSets).filter(k => k !== '_updatedAt').length;
+                log(`✅ Found ${itemCount} items in old location`);
+                
+                log('\n🔄 Step 2: Migrating to new format...');
+                
+                const mockTestSets = {};
+                let migratedCount = 0;
+                
+                Object.entries(oldSets).forEach(([setId, value]) => {
+                    if (setId === "_updatedAt") return;
+                    
+                    const migratedId = setId.startsWith("mocktest_") || setId.startsWith("practicetest_") 
+                        ? setId 
+                        : `mocktest_${setId}`;
+                    
+                    mockTestSets[migratedId] = {
+                        ...value,
+                        setId: migratedId,
+                        _migratedAt: new Date().toISOString()
+                    };
+                    
+                    migratedCount++;
+                });
+                
+                mockTestSets._updatedAt = new Date().toISOString();
+                mockTestSets._migratedAt = new Date().toISOString();
+                
+                log(`✅ Prepared ${migratedCount} items for migration`);
+                
+                log('\n💾 Step 3: Saving to new location...');
+                localStorage.setItem(newMockKey, JSON.stringify(mockTestSets));
+                log('✅ Saved to toefl_developer_mocktest_sets_v2');
+                
+                log('\n✨ Step 4: Verifying...');
+                const verifyData = localStorage.getItem(newMockKey);
+                const verifyParsed = JSON.parse(verifyData);
+                const verifyCount = Object.keys(verifyParsed).filter(k => k !== '_updatedAt').length;
+                log(`✅ Verified: ${verifyCount} items in new location`);
+                
+                log('\n🎉 Recovery Complete!');
+                log('All 23 tests are now available in your developer dashboard.');
+                
+                statusDiv.classList.add('success');
+                document.getElementById('spinner').style.display = 'none';
+                redirectBtn.disabled = false;
+                
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+                statusDiv.classList.add('error');
+                document.getElementById('spinner').style.display = 'none';
+                redirectBtn.disabled = false;
+                redirectBtn.textContent = 'Go Back';
+            }
+        }
+        
+        function goToDashboard() {
+            window.location.href = 'developer.html';
+        }
+        
+        // Start recovery immediately
+        recover();
+    </script>
+</body>
+</html>
