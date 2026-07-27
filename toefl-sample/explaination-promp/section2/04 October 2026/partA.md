@@ -7,7 +7,7 @@ Cholesterol, a primary component of many biological membranes, is essential for 
 
 ### 💡 QC C.O.R.E ANALYSIS
 
-#### **C - Concept:** 
+#### **C - Concept:**
 Subject & Appositive (Subjek & Keterangan Tambahan)
 
 #### **O - Observe S-V-C:**
