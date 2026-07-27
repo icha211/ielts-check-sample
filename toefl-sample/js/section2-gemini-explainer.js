@@ -397,7 +397,8 @@ Provide your analysis in the exact JSON format specified in your system instruct
             complementComponent = "",
             requirement = "",
             eliminate = {},
-            keyTakeaway = ""
+            keyTakeaway = "",
+            fullSentence = ""
         } = explanation;
 
         // Generate eliminate options HTML
@@ -425,28 +426,13 @@ Provide your analysis in the exact JSON format specified in your system instruct
             })
             .join("");
 
-        // Generate S-V-C breakdown
-        const svcHTML = `
-        <div style="
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 16px;
-        ">
-            <div style="padding: 10px; background: #e0f2fe; border-radius: 6px; border-left: 4px solid #0ea5e9;">
-                <div style="font-size: 11px; font-weight: 600; color: #0c4a6e; text-transform: uppercase;">Subject</div>
-                <div style="font-size: 13px; color: #164e63; margin-top: 4px;">${this._escapeHTML(subjectComponent)}</div>
-            </div>
-            <div style="padding: 10px; background: #d1fae5; border-radius: 6px; border-left: 4px solid #30b0c7;">
-                <div style="font-size: 11px; font-weight: 600; color: #064e3b; text-transform: uppercase;">Verb</div>
-                <div style="font-size: 13px; color: #047857; margin-top: 4px;">${this._escapeHTML(verbComponent)}</div>
-            </div>
-            <div style="padding: 10px; background: #fce7f3; border-radius: 6px; border-left: 4px solid #e675c9;">
-                <div style="font-size: 11px; font-weight: 600; color: #831843; text-transform: uppercase;">Complement</div>
-                <div style="font-size: 13px; color: #be185d; margin-top: 4px;">${this._escapeHTML(complementComponent)}</div>
-            </div>
-        </div>
-        `;
+        // Build visual sentence breakdown with colored S-V-C components
+        const sentenceBreakdownHTML = this._buildVisualSentenceBreakdown(
+            subjectComponent,
+            verbComponent,
+            complementComponent,
+            sentenceFormula
+        );
 
         // Build final HTML
         return `
@@ -461,27 +447,39 @@ Provide your analysis in the exact JSON format specified in your system instruct
                 </p>
             </div>
 
-            <!-- Sentence Formula -->
-            <div style="margin-bottom: 16px; padding: 10px; background: #f3f4f6; border-radius: 6px;">
-                <div style="font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px;">Formula</div>
-                <code style="font-size: 14px; font-weight: 600; color: #1f2937;">${this._escapeHTML(sentenceFormula)}</code>
-            </div>
-
-            <!-- S-V-C Breakdown -->
+            <!-- O - Observe S-V-C Section -->
             <div style="margin-bottom: 16px;">
-                <div style="font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 8px;">Structure Breakdown</div>
-                ${svcHTML}
+                <div style="font-size: 12px; font-weight: 600; color: #667eea; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">O - Observe S-V-C</div>
+                
+                <!-- Sentence Formula -->
+                <div style="margin-bottom: 12px; padding: 10px; background: #f3f4f6; border-radius: 6px;">
+                    <div style="font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 4px;">Sentence Formula</div>
+                    <code style="font-size: 14px; font-weight: 600; color: #1f2937;">${this._escapeHTML(sentenceFormula)}</code>
+                </div>
+
+                <!-- Visual Sentence Breakdown -->
+                ${sentenceBreakdownHTML}
+
+                <!-- Textual Observation Bullets -->
+                <div style="margin-top: 12px; padding: 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb;">
+                    <div style="font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 8px;">Components</div>
+                    <div style="font-size: 13px; color: #374151; line-height: 1.8;">
+                        <div>• <strong>Subject:</strong> ${subjectComponent || '<span style="color: #9ca3af;">[KOSONG/BLANK]</span>'}</div>
+                        <div>• <strong>Verb:</strong> ${verbComponent || '<span style="color: #9ca3af;">[KOSONG/BLANK]</span>'}</div>
+                        <div>• <strong>Complement:</strong> ${complementComponent || '<span style="color: #9ca3af;">[KOSONG/BLANK]</span>'}</div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Requirement -->
+            <!-- R - Requirement -->
             <div style="margin-bottom: 16px; padding: 12px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
-                <div style="font-size: 12px; font-weight: 600; color: #92400e; text-transform: uppercase; margin-bottom: 4px;">Requirement</div>
+                <div style="font-size: 12px; font-weight: 600; color: #92400e; text-transform: uppercase; margin-bottom: 4px;">R - Requirement</div>
                 <div style="font-size: 13px; color: #78350f; line-height: 1.6;">${this._escapeHTML(requirement)}</div>
             </div>
 
-            <!-- Option Analysis -->
+            <!-- E - Eliminate -->
             <div style="margin-bottom: 16px;">
-                <div style="font-size: 12px; font-weight: 600; color: #666; text-transform: uppercase; margin-bottom: 8px;">E - Eliminate</div>
+                <div style="font-size: 12px; font-weight: 600; color: #667eea; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">E - Eliminate</div>
                 ${eliminateHTML}
             </div>
 
@@ -493,6 +491,56 @@ Provide your analysis in the exact JSON format specified in your system instruct
             </div>
             ` : ""}
 
+        </div>
+        `;
+    }
+
+    /**
+     * Build visual sentence breakdown with colored S-V-C components
+     */
+    static _buildVisualSentenceBreakdown(subject, verb, complement, formula) {
+        // Color scheme from section2-partA.md
+        const colors = {
+            subject: { bg: "#0EA5E9", text: "#FFFFFF" },
+            verb: { bg: "#30B0C7", text: "#FFFFFF" },
+            complement: { bg: "#E675C9", text: "#FFFFFF" }
+        };
+
+        // Build the colored sentence
+        const sentenceParts = [];
+        if (subject) {
+            sentenceParts.push(`<span style="background-color: ${colors.subject.bg}; color: ${colors.subject.text}; padding: 2px 4px; border-radius: 2px; display: inline-block; margin-right: 2px;">${this._escapeHTML(subject)}</span>`);
+        }
+        if (verb) {
+            sentenceParts.push(`<span style="background-color: ${colors.verb.bg}; color: ${colors.verb.text}; padding: 2px 4px; border-radius: 2px; display: inline-block; margin-right: 2px;">${this._escapeHTML(verb)}</span>`);
+        }
+        if (complement) {
+            sentenceParts.push(`<span style="background-color: ${colors.complement.bg}; color: ${colors.complement.text}; padding: 2px 4px; border-radius: 2px; display: inline-block; margin-right: 2px;">${this._escapeHTML(complement)}</span>`);
+        }
+
+        // Build label boxes
+        const labelBoxes = [];
+        if (subject) {
+            labelBoxes.push(`<span style="background-color: ${colors.subject.bg}; color: ${colors.subject.text}; border: 1px solid #D1DCE8; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; margin-right: 4px;">Subject</span>`);
+        }
+        if (verb) {
+            labelBoxes.push(`<span style="background-color: ${colors.verb.bg}; color: ${colors.verb.text}; border: 1px solid #D1DCE8; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; margin-right: 4px;">Verb</span>`);
+        }
+        if (complement) {
+            labelBoxes.push(`<span style="background-color: ${colors.complement.bg}; color: ${colors.complement.text}; border: 1px solid #D1DCE8; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; display: inline-block; margin-right: 4px;">Complement</span>`);
+        }
+
+        return `
+        <div style="margin: 12px 0; padding: 12px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;">
+            <!-- Colored Sentence -->
+            <div style="font-size: 13px; line-height: 2; margin-bottom: 8px; word-wrap: break-word;">
+                ${sentenceParts.length > 0 ? sentenceParts.join(' ') : '<span style="color: #9ca3af;">No components identified</span>'}
+            </div>
+            
+            <!-- Label Boxes -->
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+                ${labelBoxes.length > 0 ? labelBoxes.join('') : '<span style="color: #9ca3af; font-size: 12px;">No labels</span>'}
+            </div>
         </div>
         `;
     }
