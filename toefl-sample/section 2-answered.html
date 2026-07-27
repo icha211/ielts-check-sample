@@ -1778,9 +1778,42 @@
             }
         }
 
+        function isPartAQuestion(question) {
+            if (!question) return false;
+            var questionNumber = Number(question.number || 0);
+            return questionNumber >= 1 && questionNumber <= 15;
+        }
+
         function renderExplainationTabDetail(question) {
             var host = document.getElementById('explainationTabContent');
             if (!host || !question) return;
+            var questionNum = Number(question.number) || 0;
+             
+            // Route Part A questions (1-15)
+            if (isPartAQuestion(question)) {
+                if (questionNum === 2) {
+                    host.innerHTML = renderQuestionTwoExplanation(question);
+                    return;
+                }
+                var isCorrect = !!question.isCorrect;
+                var blueprint = deriveGrammarBlueprint(question);
+                var customData = partAExplanationsData && partAExplanationsData[questionNum] ? partAExplanationsData[questionNum] : null;
+
+                host.innerHTML = '<div class="explaination-figma section2-figma-shell section2-aiqc-host">'
+                    + '<div class="section2-figma-top">'
+                    + '<div class="section2-figma-question-row">'
+                    + '<div class="explaination-figma-qnum ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + escapeHtml(String(question.number || '-')) + '</div>'
+                    + '<div class="section2-figma-question-text">' + buildQuestionStemHtml(question) + '</div>'
+                    + '</div>'
+                    + '<b class="explaination-figma-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
+                    + '</div>'
+                    + '<div class="explaination-figma-options">' + buildOptionMarkup(question, { selected: 'Jawaban Kamu', correct: 'Jawaban Benar' }) + '</div>'
+                    + (customData ? buildCustomPartAAnalysisBlock(question, customData) : buildPartAAnalysisBlock(question, blueprint))
+                    + '</div>';
+                return;
+            }
+             
+            // Route Part B questions (16+)
             if (isPartBQuestion16FigmaCase(question)) {
                 host.innerHTML = renderPartBQuestion16Explanation(question);
                 return;
@@ -1789,27 +1822,9 @@
                 host.innerHTML = renderPartBGenericExplanation(question);
                 return;
             }
-            if (Number(question.number) === 2) {
-                host.innerHTML = renderQuestionTwoExplanation(question);
-                return;
-            }
-            var correct = normalizeLetter(question.correctAnswer) || 'A';
-            var isCorrect = !!question.isCorrect;
-            var blueprint = deriveGrammarBlueprint(question);
-            var questionNum = Number(question.number) || 0;
-            var customData = partAExplanationsData && partAExplanationsData[questionNum] ? partAExplanationsData[questionNum] : null;
-
-            host.innerHTML = '<div class="explaination-figma section2-figma-shell section2-aiqc-host">'
-                + '<div class="section2-figma-top">'
-                + '<div class="section2-figma-question-row">'
-                + '<div class="explaination-figma-qnum ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + escapeHtml(String(question.number || '-')) + '</div>'
-                + '<div class="section2-figma-question-text">' + buildQuestionStemHtml(question) + '</div>'
-                + '</div>'
-                + '<b class="explaination-figma-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
-                + '</div>'
-                + '<div class="explaination-figma-options">' + buildOptionMarkup(question, { selected: 'Jawaban Kamu', correct: 'Jawaban Benar' }) + '</div>'
-                + (customData ? buildCustomPartAAnalysisBlock(question, customData) : buildPartAAnalysisBlock(question, blueprint))
-                + '</div>';
+             
+            // Fallback (shouldn't reach here)
+            host.innerHTML = '<div class="explaination-figma section2-figma-shell"><p>Question ' + escapeHtml(String(questionNum)) + ' explanation not available</p></div>';
         }
 
         function renderGlobalAiQcWidget(question) {
