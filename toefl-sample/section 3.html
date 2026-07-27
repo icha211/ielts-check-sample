@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -547,8 +547,8 @@
         <header style="background:white; padding:10px 30px; display:flex; justify-content:space-between; border-bottom:1px solid #ccc; align-items: center;">
             <h2 style="color: var(--dev-color); margin:0; font-size: 18px;">TOEFL ITP | Content Manager</h2>
             <div style="display: flex; gap: 12px; align-items: center;">
-                <a href="section 3-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">ðŸ“– View Explanation</a>
-                <button class="btn-save" style="width:auto; margin:0;" onclick="updateUserView(true)">ðŸ”„ Update Tampilan Ujian</button>
+                <a href="section 3-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">📖 View Explanation</a>
+                <button class="btn-save" style="width:auto; margin:0;" onclick="updateUserView(true)">🔄 Update Tampilan Ujian</button>
             </div>
         </header>
 
@@ -568,7 +568,7 @@
         </div>
 
         <div class="dev-sub-nav" id="dev-sub-nav-container">
-            <button class="dev-sub-btn btn-guide" onclick="openSubTab(event, 'dev-guide', 'dev-sub-btn')">ðŸ“– Panduan Format Soal</button>
+            <button class="dev-sub-btn btn-guide" onclick="openSubTab(event, 'dev-guide', 'dev-sub-btn')">📖 Panduan Format Soal</button>
         </div>
         
         <div id="dev-panels-container"></div>
@@ -1093,11 +1093,11 @@
                         <div class="format-toolbar">
                             <button class="format-btn" title="Bold" onclick="formatText('input-passage-${p}', '<b>', '</b>')">B</button>
                             <button class="format-btn" title="Italic" onclick="formatText('input-passage-${p}', '<i>', '</i>')">I</button>
-                            <button class="format-btn" onclick="formatSource('${p}')" style="color:red; margin-left:10px;">ðŸ“ Highlight Lokasi Jawaban</button>
+                            <button class="format-btn" onclick="formatSource('${p}')" style="color:red; margin-left:10px;">📍 Highlight Lokasi Jawaban</button>
                         </div>
                         <textarea id="input-passage-${p}" class="passage-textarea" style="height:250px" placeholder="Masukkan teks Passage di sini...\n\nKetik (1), (5), (10) di awal paragraf untuk memunculkan nomor baris otomatis."></textarea>
                         
-                        <div class="format-toolbar" style="background:var(--dev-color); color:white; padding:8px 10px; border-radius:5px 5px 0 0;">ðŸ“ Soal Pilihan Ganda (Bisa (A), A., A), dll)</div>
+                        <div class="format-toolbar" style="background:var(--dev-color); color:white; padding:8px 10px; border-radius:5px 5px 0 0;">📝 Soal Pilihan Ganda (Bisa (A), A., A), dll)</div>
                         <textarea id="input-magic-questions-${p}" class="smart-textarea" placeholder="Ketik soal...\nContoh:\n34. What does the passage mainly discuss?\n(A) The function...\n(B) The connection..."></textarea>
                         
                         <div style="display:flex; gap:15px; margin-top:15px;">
@@ -1118,7 +1118,7 @@
             <div id="dev-guide" class="sub-content">
                 <div class="dev-container" style="max-width: 900px; padding-top: 10px;">
                     <div style="background: #fff; padding: 25px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-top: 5px solid #004b87;">
-                        <h2 style="color: #004b87; margin-top: 0;">ðŸ“– Panduan Fitur Otomatis</h2>
+                        <h2 style="color: #004b87; margin-top: 0;">📖 Panduan Fitur Otomatis</h2>
                         
                         <div style="background:#e3f2fd; padding:15px; border-left:4px solid #3498db; margin-bottom:20px;">
                             <strong style="color:#004b87;">Cara Memunculkan Nomor Baris Otomatis:</strong><br><br>
@@ -1536,8 +1536,71 @@
                 });
             }
         }
+        // ===== AUTO-SAVE FUNCTIONALITY =====
+        let autoSaveTimeout = null;
+        let lastAutoSaveTime = 0;
+        const AUTO_SAVE_DELAY = 2000;
+
+        function showAutoSaveStatus(msg, isSuccess = true) {
+            let statusEl = document.getElementById("auto-save-status");
+            if (!statusEl) {
+                statusEl = document.createElement("span");
+                statusEl.id = "auto-save-status";
+                statusEl.style.cssText = "font-size:12px; color:#64748b; margin-left:auto; padding:0 12px; transition:all 0.3s ease;";
+                const header = document.querySelector('header[style*="background:white"]');
+                if (header) {
+                    const actionDiv = header.querySelector('[style*="display: flex; gap"]');
+                    if (actionDiv) {
+                        actionDiv.insertBefore(statusEl, actionDiv.firstChild);
+                    }
+                }
+            }
+            if (!statusEl) return;
+            statusEl.textContent = msg;
+            statusEl.style.color = isSuccess ? "#16a34a" : "#dc2626";
+            statusEl.style.opacity = "1";
+            if (isSuccess) {
+                setTimeout(() => { statusEl.style.opacity = "0.5"; }, 2500);
+            }
+        }
+
+        async function performAutoSave() {
+            try {
+                saveSectionDraft();
+                await saveSectionMeta();
+                lastAutoSaveTime = Date.now();
+                showAutoSaveStatus("? Auto-saved", true);
+            } catch (error) {
+                console.error("[Auto-save] Error:", error);
+                showAutoSaveStatus("? Save failed", false);
+            }
+        }
+
+        function triggerAutoSave() {
+            clearTimeout(autoSaveTimeout);
+            showAutoSaveStatus("? Saving...", true);
+            autoSaveTimeout = setTimeout(() => {
+                performAutoSave();
+            }, AUTO_SAVE_DELAY);
+        }
+
+        function initAutoSave() {
+            const fields = ['set-date', 'set-difficulty', 'input-magic-questions-1', 'input-answer-key-1', 'input-explanation-1', 'input-video-step-1'];
+            fields.forEach(fieldId => {
+                const el = document.getElementById(fieldId);
+                if (el) {
+                    el.addEventListener('input', triggerAutoSave);
+                    el.addEventListener('change', triggerAutoSave);
+                }
+            });
+            showAutoSaveStatus("Ready", true);
+        }
+        // ===== END AUTO-SAVE FUNCTIONALITY =====
+
+        
 
         window.onload = async () => {
+            initAutoSave();
             initStructure();
             applyViewMode();
             activateInitialTab();
@@ -1580,5 +1643,6 @@
     </script>
 </body>
 </html>
+
 
 

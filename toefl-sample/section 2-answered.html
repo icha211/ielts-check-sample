@@ -2724,5 +2724,87 @@
     <!-- Section 2 Gemini AI Explainer - Auto-generates QC C.O.R.E ANALYSIS -->
     <script src="js/section2-gemini-explainer.js"></script>
     <script src="js/section2-review-explainer.js"></script>
+    
+    <!-- Local AI Explanation Generator (No External APIs) -->
+    <script src="js/explanation-generator.js"></script>
+    <script>
+        /**
+         * Integrate Local AI Explanation Generator
+         * Generates QC C.O.R.E ANALYSIS without external APIs
+         */
+
+        let explanationGeneratorInstance = new ExplanationGenerator();
+
+        /**
+         * Generate explanation using local AI
+         * @param {Object} question - Question data
+         * @returns {string} HTML explanation
+         */
+        function generateQCCOREExplanation(question) {
+            if (!question || !question.questionText || !question.options) {
+                return '<div style="color: #666;">Unable to generate explanation - missing question data</div>';
+            }
+
+            // Extract correct answer and text
+            const correctAnswer = String(question.correctAnswer || 'A').trim().toUpperCase();
+            const options = question.options || {};
+            const correctOptionText = options[correctAnswer] || '';
+
+            // Prepare explanation data
+            const explanationData = {
+                questionText: question.questionText,
+                options: Object.values(options),
+                correctAnswer: correctAnswer,
+                correctOptionText: correctOptionText,
+            };
+
+            try {
+                return explanationGeneratorInstance.generate(explanationData);
+            } catch (error) {
+                console.error('[QC C.O.R.E] Generation error:', error);
+                return '<div style="color: #dc2626; padding: 12px; background: #fee2e2; border-radius: 4px;">Error generating explanation. Please try again.</div>';
+            }
+        }
+
+        /**
+         * Render explanation in a designated container
+         * @param {string} containerId - HTML element ID
+         * @param {Object} question - Question data
+         */
+        function renderQCCOREExplanation(containerId, question) {
+            const container = document.getElementById(containerId);
+            if (!container) {
+                console.warn('[QC C.O.R.E] Container not found:', containerId);
+                return;
+            }
+
+            const explanationHtml = generateQCCOREExplanation(question);
+            container.innerHTML = explanationHtml;
+        }
+
+        // Make functions globally available
+        window.generateQCCOREExplanation = generateQCCOREExplanation;
+        window.renderQCCOREExplanation = renderQCCOREExplanation;
+        window.explanationGeneratorInstance = explanationGeneratorInstance;
+
+        // Hook into existing renderQuestion to add QC C.O.R.E explanation
+        const originalRenderQuestion = window.renderQuestion;
+        if (typeof originalRenderQuestion === 'function') {
+            window.renderQuestion = function(question, index) {
+                // Call original rendering
+                originalRenderQuestion.call(this, question, index);
+
+                // After DOM is ready, inject QC C.O.R.E explanation
+                setTimeout(() => {
+                    const explanationContainer = document.querySelector('[data-qc-core-host]');
+                    if (explanationContainer && question) {
+                        renderQCCOREExplanation(explanationContainer.id, question);
+                    }
+                }, 100);
+            };
+        }
+
+        console.log('✓ Local AI Explanation Generator initialized - QC C.O.R.E analysis ready');
+    </script>
 </body>
 </html>

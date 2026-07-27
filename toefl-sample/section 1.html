@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -11,8 +11,8 @@
 </head>
 <body>
     <div class="view-tab-navigation" id="view-tab-navigation" style="display:none;">
-        <button class="view-tab-button active" id="tab-user-view-btn" type="button" onclick="openUserPreviewFromDeveloper()">👁️ Simulasi Ujian User</button>
-        <button class="view-tab-button" id="tab-dev-view-btn" type="button" onclick="openDeveloperEditor()">⚙️ Panel Developer</button>
+        <button class="view-tab-button active" id="tab-user-view-btn" type="button" onclick="openUserPreviewFromDeveloper()">??? Simulasi Ujian User</button>
+        <button class="view-tab-button" id="tab-dev-view-btn" type="button" onclick="openDeveloperEditor()">?? Panel Developer</button>
     </div>
 
     <div id="user-view" class="tab-content active">
@@ -2422,7 +2422,7 @@
             setAudioLabelReady(file.name, partId);
 
             const fileLabel = document.getElementById(getAudioFileLabelId(partId));
-            if (fileLabel) { fileLabel.innerText = `${file.name} â€” uploadingâ€¦`; fileLabel.style.color = "#b45309"; }
+            if (fileLabel) { fileLabel.innerText = `${file.name} — uploading…`; fileLabel.style.color = "#b45309"; }
 
             try {
                 // Save metadata, but do not block cloud upload when local persistence is unavailable.
@@ -2635,13 +2635,13 @@
                     return;
                 }
 
-                const segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[—-]\s*(.+)$/);
+                const segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[�-]\s*(.+)$/);
                 let matched = segmentMatch;
                 if (!matched) {
                     matched = line.match(/(?:^\s*[-*]\s*)?\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(.+)$/);
                 }
                 if (!matched) {
-                    matched = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s*[—\-]\s*(.+)$/);
+                    matched = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s*[�\-]\s*(.+)$/);
                 }
 
                 if (matched) {
@@ -3455,8 +3455,71 @@
 
             timer.style.left = `${clampedCenterX}px`;
         }
+        // ===== AUTO-SAVE FUNCTIONALITY =====
+        let autoSaveTimeout = null;
+        let lastAutoSaveTime = 0;
+        const AUTO_SAVE_DELAY = 2000;
+
+        function showAutoSaveStatus(msg, isSuccess = true) {
+            let statusEl = document.getElementById("auto-save-status");
+            if (!statusEl) {
+                statusEl = document.createElement("span");
+                statusEl.id = "auto-save-status";
+                statusEl.style.cssText = "font-size:12px; color:#64748b; margin-left:auto; padding:0 12px; transition:all 0.3s ease;";
+                const header = document.querySelector('header[style*="background:white"]');
+                if (header) {
+                    const actionDiv = header.querySelector('[style*="display: flex; gap"]');
+                    if (actionDiv) {
+                        actionDiv.insertBefore(statusEl, actionDiv.firstChild);
+                    }
+                }
+            }
+            if (!statusEl) return;
+            statusEl.textContent = msg;
+            statusEl.style.color = isSuccess ? "#16a34a" : "#dc2626";
+            statusEl.style.opacity = "1";
+            if (isSuccess) {
+                setTimeout(() => { statusEl.style.opacity = "0.5"; }, 2500);
+            }
+        }
+
+        async function performAutoSave() {
+            try {
+                saveSectionDraft();
+                await saveSectionMeta();
+                lastAutoSaveTime = Date.now();
+                showAutoSaveStatus("? Auto-saved", true);
+            } catch (error) {
+                console.error("[Auto-save] Error:", error);
+                showAutoSaveStatus("? Save failed", false);
+            }
+        }
+
+        function triggerAutoSave() {
+            clearTimeout(autoSaveTimeout);
+            showAutoSaveStatus("? Saving...", true);
+            autoSaveTimeout = setTimeout(() => {
+                performAutoSave();
+            }, AUTO_SAVE_DELAY);
+        }
+
+        function initAutoSave() {
+            const fields = ['set-date', 'set-difficulty', 'input-magic-questions-1', 'input-answer-key-1', 'input-explanation-1', 'input-video-step-1'];
+            fields.forEach(fieldId => {
+                const el = document.getElementById(fieldId);
+                if (el) {
+                    el.addEventListener('input', triggerAutoSave);
+                    el.addEventListener('change', triggerAutoSave);
+                }
+            });
+            showAutoSaveStatus("Ready", true);
+        }
+        // ===== END AUTO-SAVE FUNCTIONALITY =====
+
+        
 
         window.onload = async () => {
+            initAutoSave();
             initStructure();
             applyViewMode();
             activateInitialTab();
@@ -3505,6 +3568,7 @@
     </script>
 </body>
 </html>
+
 
 
 

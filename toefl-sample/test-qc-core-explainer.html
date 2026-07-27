@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QC C.O.R.E Explanation Generator - Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #1e293b;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            color: #64748b;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .question-box {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .question-box strong {
+            display: block;
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .question-box .text {
+            font-size: 16px;
+            color: #334155;
+            line-height: 1.6;
+        }
+
+        .options-list {
+            display: grid;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .option {
+            padding: 10px 15px;
+            background: white;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #334155;
+        }
+
+        .option.correct {
+            background: #dcfce7;
+            border-color: #16a34a;
+            color: #15803d;
+            font-weight: 600;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
+
+        .explanation-output {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            min-height: 200px;
+        }
+
+        .loading {
+            text-align: center;
+            color: #64748b;
+            padding: 40px 20px;
+        }
+
+        .loading span {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #6366f1;
+            animation: bounce 1.4s infinite;
+            margin: 0 4px;
+        }
+
+        .loading span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%,
+            80%,
+            100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .footer {
+            text-align: center;
+            color: #64748b;
+            margin-top: 40px;
+            font-size: 14px;
+        }
+
+        .badge {
+            display: inline-block;
+            background: #dcfce7;
+            color: #15803d;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 QC C.O.R.E Explanation Generator</h1>
+            <p>Local AI-Powered TOEFL Grammar Analysis (No External APIs)</p>
+        </div>
+
+        <!-- Demo Section 1 -->
+        <div class="demo-section">
+            <div class="section-title">📚 Example Question 1: Subject & Appositive</div>
+            <span class="badge">✓ Local Processing</span>
+
+            <div class="question-box">
+                <strong>Question:</strong>
+                <div class="text">_____, a major source of renewable energy, harnesses the power of falling water to generate electricity.</div>
+                <div class="options-list">
+                    <div class="option correct">(A) Hydroelectric power ✓</div>
+                    <div class="option">(B) Hydroelectric power is</div>
+                    <div class="option">(C) That hydroelectric power</div>
+                    <div class="option">(D) It is hydroelectric power</div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="generateExplanation1()">Generate Explanation</button>
+                <button class="btn btn-secondary" onclick="clearOutput('output1')">Clear</button>
+            </div>
+
+            <div id="output1" class="explanation-output"></div>
+        </div>
+
+        <!-- Demo Section 2 -->
+        <div class="demo-section">
+            <div class="section-title">📚 Example Question 2: Subject-Verb Agreement</div>
+            <span class="badge">✓ Local Processing</span>
+
+            <div class="question-box">
+                <strong>Question:</strong>
+                <div class="text">The list of items that I need to purchase _____ on the desk.</div>
+                <div class="options-list">
+                    <div class="option">(A) have</div>
+                    <div class="option">(B) were</div>
+                    <div class="option correct">(C) is ✓</div>
+                    <div class="option">(D) are</div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="generateExplanation2()">Generate Explanation</button>
+                <button class="btn btn-secondary" onclick="clearOutput('output2')">Clear</button>
+            </div>
+
+            <div id="output2" class="explanation-output"></div>
+        </div>
+
+        <!-- Demo Section 3: Custom Question -->
+        <div class="demo-section">
+            <div class="section-title">⚙️ Test Your Own Question</div>
+            <span class="badge">✓ Local Processing</span>
+
+            <div class="question-box">
+                <strong>Question Text (use _____ for blank):</strong>
+                <textarea id="customQuestion" placeholder="Enter your question here..."
+                    style="width: 100%; height: 60px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-top: 10px; font-family: inherit;">The government _____ new policies to address climate change.</textarea>
+
+                <strong style="display: block; margin-top: 20px;">Options:</strong>
+                <input id="optionA" placeholder="(A) Option" style="width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 6px;"
+                    value="has implemented">
+                <input id="optionB" placeholder="(B) Option" style="width: 100%; padding: 8px; margin-top: 8px; border: 1px solid #cbd5e1; border-radius: 6px;"
+                    value="has been implementing">
+                <input id="optionC" placeholder="(C) Option" style="width: 100%; padding: 8px; margin-top: 8px; border: 1px solid #cbd5e1; border-radius: 6px;"
+                    value="implementing">
+                <input id="optionD" placeholder="(D) Option" style="width: 100%; padding: 8px; margin-top: 8px; border: 1px solid #cbd5e1; border-radius: 6px;"
+                    value="is implementing">
+
+                <strong style="display: block; margin-top: 20px;">Correct Answer:</strong>
+                <select id="correctAnswer"
+                    style="width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    <option value="A">(A) has implemented</option>
+                    <option value="B">(B) has been implementing</option>
+                    <option value="C">(C) implementing</option>
+                    <option value="D">(D) is implementing</option>
+                </select>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="generateCustomExplanation()">Generate Explanation</button>
+                <button class="btn btn-secondary" onclick="clearOutput('output3')">Clear</button>
+            </div>
+
+            <div id="output3" class="explanation-output"></div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number">5</div>
+                <div class="label">Sections Analyzed</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">0ms</div>
+                <div class="label">Processing Time</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">100%</div>
+                <div class="label">Local Processing</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>✓ No external APIs • ✓ Runs entirely in your browser • ✓ QC C.O.R.E framework • ✓ Color-coded explanations</p>
+        </div>
+    </div>
+
+    <!-- Load Explanation Generator -->
+    <script src="js/explanation-generator.js"></script>
+    <script>
+        let generator = new ExplanationGenerator();
+
+        function generateExplanation1() {
+            const output = document.getElementById('output1');
+            output.innerHTML = '<div class="loading"><span></span><span></span><span></span></div>';
+
+            setTimeout(() => {
+                const data = {
+                    questionText: '_____, a major source of renewable energy, harnesses the power of falling water to generate electricity.',
+                    options: [
+                        'Hydroelectric power',
+                        'Hydroelectric power is',
+                        'That hydroelectric power',
+                        'It is hydroelectric power'
+                    ],
+                    correctAnswer: 'A',
+                    correctOptionText: 'Hydroelectric power'
+                };
+
+                output.innerHTML = generator.generate(data);
+            }, 500);
+        }
+
+        function generateExplanation2() {
+            const output = document.getElementById('output2');
+            output.innerHTML = '<div class="loading"><span></span><span></span><span></span></div>';
+
+            setTimeout(() => {
+                const data = {
+                    questionText: 'The list of items that I need to purchase _____ on the desk.',
+                    options: [
+                        'have',
+                        'were',
+                        'is',
+                        'are'
+                    ],
+                    correctAnswer: 'C',
+                    correctOptionText: 'is'
+                };
+
+                output.innerHTML = generator.generate(data);
+            }, 500);
+        }
+
+        function generateCustomExplanation() {
+            const output = document.getElementById('output3');
+            output.innerHTML = '<div class="loading"><span></span><span></span><span></span></div>';
+
+            setTimeout(() => {
+                const data = {
+                    questionText: document.getElementById('customQuestion').value,
+                    options: [
+                        document.getElementById('optionA').value,
+                        document.getElementById('optionB').value,
+                        document.getElementById('optionC').value,
+                        document.getElementById('optionD').value
+                    ],
+                    correctAnswer: document.getElementById('correctAnswer').value,
+                    correctOptionText: document.getElementById('optionA').value
+                };
+
+                output.innerHTML = generator.generate(data);
+            }, 500);
+        }
+
+        function clearOutput(id) {
+            document.getElementById(id).innerHTML = '';
+        }
+    </script>
+</body>
+
+</html>
