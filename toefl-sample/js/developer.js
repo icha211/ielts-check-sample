@@ -182,7 +182,15 @@ async function filterSetsWithRealContent(records) {
         }
     }
 
-    const draftsV2 = safeParse(localStorage.getItem("toefl_developer_drafts_v2"), {});
+    // Look for test-type-specific drafts first, then fall back to old key
+    const draftsKeyForType = currentTestType === "practicetest" 
+        ? "toefl_developer_practicetest_drafts_v2" 
+        : "toefl_developer_mocktest_drafts_v2";
+    
+    let draftsV2 = safeParse(localStorage.getItem(draftsKeyForType), {});
+    if (!draftsV2 || Object.keys(draftsV2).length === 0) {
+        draftsV2 = safeParse(localStorage.getItem("toefl_developer_drafts_v2"), {});
+    }
 
     const keepFlags = await Promise.all(list.map(async (item) => {
         const setId = String(item?.setId || "").trim();
@@ -534,7 +542,8 @@ async function importData(file) {
 
 async function renderAll() {
     const loadedSets = await loadSetsFromFirebase();
-    sectionSets = await filterSetsWithRealContent(loadedSets);
+    // Don't filter sets - show all recovered data even if empty
+    sectionSets = Array.isArray(loadedSets) ? loadedSets : [];
     renderStats();
     renderModuleOverview();
     renderLibrary();
