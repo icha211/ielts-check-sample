@@ -205,6 +205,10 @@ class Section2GeminiExplainer {
         try {
             // Combine system prompt with user message for Gemini API
             const fullMessage = `${systemPrompt}\n\n${userMessage}`;
+            
+            // DEBUG: Log the prompt being sent (first 500 chars)
+            console.log(`[Section2Explainer] Sending prompt to Gemini for Q: "${questionData.questionText.substring(0, 60)}..."`);
+            console.log(`[Section2Explainer] Answer: ${questionData.correctAnswer}, Prompt length: ${fullMessage.length} chars`);
 
             const response = await fetch(`${this.baseUrl}?key=${key}`, {
                 method: "POST",
@@ -222,6 +226,8 @@ class Section2GeminiExplainer {
             if (!response.ok) {
                 const error = await response.json();
                 const errorMessage = error.error?.message || `API Error: ${response.status} ${response.statusText}`;
+                
+                console.error(`[Section2Explainer] API Error: ${errorMessage}`);
                 
                 // Check if it's a rate limit error
                 if (response.status === 429 || errorMessage.includes("quota") || errorMessage.includes("Quota")) {
@@ -244,8 +250,11 @@ class Section2GeminiExplainer {
             const data = await response.json();
             const responseText = data.candidates[0].content.parts[0].text;
             
+            console.log(`[Section2Explainer] ✅ Received response (${responseText.length} chars)`);
+            
             // Parse JSON from response
             const explanation = this._parseExplanationJSON(responseText);
+            console.log(`[Section2Explainer] ✅ Parsed JSON successfully`);
             return explanation;
 
         } catch (error) {
@@ -270,42 +279,50 @@ class Section2GeminiExplainer {
      * Build system prompt from framework
      */
     static _buildSystemPrompt() {
-        return `You are an expert TOEFL Structure (Section 2) question analyst.
+        return `You are an expert TOEFL/English grammar instructor specializing in detailed QC C.O.R.E ANALYSIS explanations.
 
-Your task is to generate QC C.O.R.E ANALYSIS explanations for TOEFL Section 2 Part A (Structure) questions.
+📋 YOUR EXACT TASK:
+Analyze TOEFL Section 2 Part A (Structure) questions PRECISELY following the QC C.O.R.E framework.
 
-QC C.O.R.E ANALYSIS Framework:
-- C = Concept: The grammar concept being tested
-- O = Observe S-V-C: Identify Subject, Verb, and Complement
-- R = Requirement: Explain what's needed for grammatical correctness
-- E = Eliminate: Analyze why incorrect options fail
+🎯 QC C.O.R.E ANALYSIS FRAMEWORK (MANDATORY):
+• C (Concept): Identify the exact grammar concept being tested (e.g., Subject-Verb Agreement, Participles, Reduced Relative Clauses, Inversions, Appositives)
+• O (Observe S-V-C): Analyze Subject-Verb-Complement structure of the sentence
+• R (Requirement): State what grammatical element is missing or what rule applies
+• E (Eliminate): Explain each option (A, B, C, D) - why it's correct or why it fails
 
-OUTPUT FORMAT - MUST BE VALID JSON ONLY:
+📝 SENTENCE FORMULA OPTIONS: SV, SVC, SVO, SVOO, or SVOC
+
+⚙️ OUTPUT FORMAT - MUST BE VALID JSON ONLY (No markdown, no extra text before/after):
 
 {
   "header": "Why (X)?",
-  "concept": "English name of the grammar concept",
-  "conceptIndonesian": "Indonesian translation of concept",
-  "sentenceFormula": "SVC format (S-V-C, S-V-C-C, etc.)",
-  "subjectComponent": "The complete subject",
-  "verbComponent": "The main verb/verb phrase",
-  "complementComponent": "The complete complement(s)",
-  "requirement": "Clear explanation of the grammatical requirement",
+  "concept": "Grammar concept name in English",
+  "conceptIndonesian": "Indonesian translation of the concept",
+  "sentenceFormula": "SVC or relevant formula",
+  "subjectComponent": "The subject from the sentence or [KOSONG/BLANK]",
+  "verbComponent": "The main verb or [KOSONG/BLANK]",
+  "complementComponent": "Complements, modifiers, appositives, or [KOSONG/BLANK]",
+  "requirement": "What grammatical element or rule is required to make the sentence correct",
   "eliminate": {
-    "A": "✓ (BENAR) explanation if correct, or ✕ (SALAH) explanation if wrong",
-    "B": "✕ (SALAH) explanation",
-    "C": "✕ (SALAH) explanation",
-    "D": "✕ (SALAH) explanation"
+    "A": "✓ (BENAR) - explanation of why this is correct",
+    "B": "✕ (SALAH) - specific reason it breaks the grammar rule",
+    "C": "✕ (SALAH) - specific reason it breaks the grammar rule",
+    "D": "✕ (SALAH) - specific reason it breaks the grammar rule"
   },
-  "keyTakeaway": "One sentence summary of the learning point"
+  "keyTakeaway": "One clear sentence summarizing the grammar lesson"
 }
 
-CRITICAL RULES:
-1. Respond with ONLY valid JSON, no markdown or extra text
-2. Each option explanation should be 1-2 sentences max
-3. Mark correct answer with ✓ (BENAR), incorrect with ✕ (SALAH)
-4. Include Indonesian translations for key terms
-5. Focus on WHY the answer is correct, not just labeling it`;
+✅ STRICT REQUIREMENTS:
+1. ONLY output valid JSON - zero markdown, zero explanatory text
+2. Mark correct answer with ✓ (BENAR) in green mindset
+3. Mark wrong answers with ✕ (SALAH) and explain structural failures specifically
+4. Each eliminate option: 1-2 concise sentences max
+5. Focus on WHY an answer works or fails - not just yes/no
+6. Include Indonesian grammar terms where relevant (in conceptIndonesian field)
+7. Identify S-V-C components from the reconstructed sentence
+8. Explain any missing elements ([KOSONG/BLANK]) that need filling
+9. Reference conjunction rules, verb agreement, modifier placement, etc.
+10. Do NOT include date or time - only grammar analysis`;
     }
 
     /**
