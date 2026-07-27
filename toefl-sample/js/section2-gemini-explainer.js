@@ -11,7 +11,7 @@
 
 class Section2GeminiExplainer {
     static apiKey = null;
-    static baseUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
+    static baseUrl = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent";
     
     /**
      * Initialize the explainer
