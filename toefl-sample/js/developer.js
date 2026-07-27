@@ -761,3 +761,4 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     renderAll().catch(console.error);
+});
