@@ -1293,11 +1293,13 @@
                 eliminationHtml += '<li>' + escapeHtml(eliminate[i]) + '</li>';
             }
 
-            // Process observe text (bullet points)
+            // Process observe text (bullet points) - convert **text** to <strong>text</strong>
             var observeHtml = '';
             if (observe) {
                 observeHtml = observe.split('\n\n').map(function(line) {
-                    return '<li>' + line.replace(/^• /, '').replace(/\*\*/g, '<strong>').replace(/<strong>/g, '<strong>').replace(/<\/strong>/g, '</strong>') + '</li>';
+                    var cleaned = line.replace(/^• /, '').trim();
+                    var withHtml = cleaned.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                    return '<li>' + withHtml + '</li>';
                 }).join('');
             }
 
