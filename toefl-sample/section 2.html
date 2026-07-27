@@ -378,9 +378,12 @@
         async function loadSectionDraft() {
             const params = new URLSearchParams(window.location.search);
             const requestedDate = params.get("setDate");
+            const requestedSetId = params.get("setId");
             
-            // If no currentSetId but we have a date from URL, try to find a set by date
-            let setIdToUse = currentSetId;
+            // Use setId from URL if provided
+            let setIdToUse = requestedSetId || currentSetId;
+            
+            // If no setId but we have a date, try to resolve it
             if (!setIdToUse && requestedDate) {
                 try {
                     const byDate = await resolveSetRecordByDate(requestedDate);
@@ -393,30 +396,57 @@
                 }
             }
             
-            if (!setIdToUse) {
-                // New set flow should always start blank.
-                return;
-            }
-            
             let draft = {};
-            if (window.toeflStorage) {
-                try {
-                    if (setIdToUse) {
-                        draft = await toeflStorage.getDraftBySetIdAndType(setIdToUse, currentTestType);
-                    }
-                } catch { /* fallback below */ }
-            }
             
-            // Also try fallback from local storage if toeflStorage fails
-            if (!draft || typeof draft !== "object" || !draft.parts) {
-                const local = getStoredSetMap();
-                if (setIdToUse && local[setIdToUse]) {
-                    draft = local[setIdToUse];
+            // Step 1: Try to load draft via toeflStorage if we have a setId
+            if (setIdToUse && window.toeflStorage) {
+                try {
+                    draft = await toeflStorage.getDraftBySetIdAndType(setIdToUse, currentTestType);
+                    if (draft && typeof draft === "object" && draft.parts) {
+                        console.log("[Draft] Loaded from toeflStorage with setId:", setIdToUse);
+                    }
+                } catch (error) {
+                    console.warn("[Draft] toeflStorage load failed:", error);
                 }
             }
             
-            if (!draft || typeof draft !== "object" || !draft.parts) return;
+            // Step 2: Fallback to toeflStorage's localStorage if available
+            if ((!draft || typeof draft !== "object" || !draft.parts) && setIdToUse) {
+                try {
+                    // Check the localStorage key that toeflStorage uses
+                    const draftsLocalKey = currentTestType === "practicetest" 
+                        ? "toefl_developer_practicetest_drafts_v2"
+                        : "toefl_developer_mocktest_drafts_v2";
+                    const local = safeParse(localStorage.getItem(draftsLocalKey), {});
+                    if (local[setIdToUse]) {
+                        draft = local[setIdToUse];
+                        console.log("[Draft] Loaded from localStorage with key:", draftsLocalKey);
+                    }
+                } catch (error) {
+                    console.warn("[Draft] localStorage key fallback failed:", error);
+                }
+            }
+            
+            // Step 3: Final fallback to legacy DRAFT_KEY (for old single-draft storage)
+            if (!draft || typeof draft !== "object" || !draft.parts) {
+                try {
+                    const localDraft = safeParse(localStorage.getItem(DRAFT_KEY), {});
+                    if (localDraft && localDraft.parts) {
+                        draft = localDraft;
+                        console.log("[Draft] Loaded from legacy DRAFT_KEY (fallback)");
+                    }
+                } catch (error) {
+                    console.warn("[Draft] Legacy DRAFT_KEY fallback failed:", error);
+                }
+            }
+            
+            // Final check: if still no draft, return blank
+            if (!draft || typeof draft !== "object" || !draft.parts) {
+                console.warn("[Draft] No draft found - starting with blank questions");
+                return;
+            }
 
+            // Populate textareas with draft data
             PARTS.forEach((part) => {
                 const p = part.id;
                 const row = draft.parts[p] || {};
