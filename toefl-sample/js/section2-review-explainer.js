@@ -20,12 +20,14 @@ class Section2ReviewExplainer {
      */
     static init() {
         // Try to get API key from localStorage or sessionStorage
-        this.apiKey = localStorage.getItem(this.apiKeyStorageKey) || 
+        // Check both old key name and new key name for compatibility
+        this.apiKey = localStorage.getItem("toefl_gemini_api_key") ||  // Existing key name
+                      localStorage.getItem(this.apiKeyStorageKey) || 
                       sessionStorage.getItem(this.apiKeyStorageKey);
 
         if (!this.apiKey) {
             console.warn("[Section2ReviewExplainer] No Gemini API key found.");
-            console.info("[Section2ReviewExplainer] Run: Section2ReviewExplainer.setApiKey('YOUR_KEY') or localStorage.setItem('toefl_section2_gemini_api_key', 'YOUR_KEY')");
+            console.info("[Section2ReviewExplainer] Set key using: localStorage.setItem('toefl_gemini_api_key', 'YOUR_KEY')");
             this._setupConfigPrompt();
             return;
         }
