@@ -543,55 +543,90 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
-    // Create button with test type selection
-    document.getElementById("createBtn").addEventListener("click", (e) => {
-        e.stopPropagation();
-        const menu = document.getElementById("createOptions");
-        menu.classList.toggle("show");
-    });
+    // Create button with test type selection - with error handling
+    const createBtn = document.getElementById("createBtn");
+    if (createBtn) {
+        createBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const menu = document.getElementById("createOptions");
+            if (menu) {
+                menu.classList.toggle("show");
+                console.log("Create menu toggled, now showing:", menu.classList.contains("show"));
+            } else {
+                console.error("Create options menu not found!");
+            }
+        });
+    } else {
+        console.error("Create button not found in DOM!");
+    }
 
     // Test type selection in create menu
-    document.querySelectorAll("#createOptions .option-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-            const testType = btn.dataset.testType;
-            currentTestType = testType;
-            
-            // Update tabs to reflect current selection
-            document.querySelectorAll(".tab-btn").forEach((tabBtn) => {
-                tabBtn.classList.toggle("active", tabBtn.dataset.testType === testType);
+    const createOptions = document.getElementById("createOptions");
+    if (createOptions) {
+        document.querySelectorAll("#createOptions .option-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const testType = btn.dataset.testType;
+                console.log("Selected test type:", testType);
+                currentTestType = testType;
+                
+                // Update tabs to reflect current selection
+                document.querySelectorAll(".tab-btn").forEach((tabBtn) => {
+                    tabBtn.classList.toggle("active", tabBtn.dataset.testType === testType);
+                });
+                
+                // Show module selection modal
+                const modal = document.getElementById("moduleSelectionModal");
+                if (modal) {
+                    modal.style.display = "flex";
+                    console.log("Module selection modal shown");
+                } else {
+                    console.error("Module selection modal not found!");
+                }
+                
+                if (createOptions) {
+                    createOptions.classList.remove("show");
+                }
             });
-            
-            // Show module selection modal
-            const modal = document.getElementById("moduleSelectionModal");
-            modal.style.display = "flex";
-            document.getElementById("createOptions").classList.remove("show");
         });
-    });
+    }
 
     // Module selection in modal
     document.querySelectorAll(".module-option").forEach((option) => {
         option.addEventListener("click", (e) => {
             e.preventDefault();
             const module = e.currentTarget.dataset.module;
+            console.log("Selected module:", module, "for test type:", currentTestType);
             const modal = document.getElementById("moduleSelectionModal");
-            modal.style.display = "none";
+            if (modal) {
+                modal.style.display = "none";
+            }
             
             const url = buildEditorUrl(module, undefined, undefined, currentTestType);
+            console.log("Navigating to:", url);
             window.location.href = url;
         });
     });
 
     // Close modal button
-    document.getElementById("closeModuleModal").addEventListener("click", () => {
-        document.getElementById("moduleSelectionModal").style.display = "none";
-    });
+    const closeModuleModal = document.getElementById("closeModuleModal");
+    if (closeModuleModal) {
+        closeModuleModal.addEventListener("click", () => {
+            const modal = document.getElementById("moduleSelectionModal");
+            if (modal) {
+                modal.style.display = "none";
+            }
+        });
+    }
 
     // Close modal when clicking outside
-    document.getElementById("moduleSelectionModal").addEventListener("click", (e) => {
-        if (e.target.id === "moduleSelectionModal") {
-            e.target.style.display = "none";
-        }
-    });
+    const moduleSelectionModal = document.getElementById("moduleSelectionModal");
+    if (moduleSelectionModal) {
+        moduleSelectionModal.addEventListener("click", (e) => {
+            if (e.target.id === "moduleSelectionModal") {
+                e.target.style.display = "none";
+            }
+        });
+    }
 
     document.getElementById("explanationBtn").addEventListener("click", () => toggleExplanationOptions());
 
@@ -612,7 +647,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!document.hidden) renderAll();
     });
 
-    // API Gateway Configuration Panel event listeners
+    // API Gateway Configuration Panel event listeners (with safety checks)
     const settingsBtn = document.getElementById('settingsBtn');
     const closeConfigBtn = document.getElementById('closeConfigBtn');
     const testGatewayBtn = document.getElementById('testGatewayBtn');
@@ -626,6 +661,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Load saved configuration
     function loadGatewayConfig() {
+        if (!apiGatewayUrlInput || !apiGatewayHostInput || !apiGatewayPortInput || !apiGatewayProtocolInput) return;
+        
         const savedUrl = localStorage.getItem('toefl_api_gateway_url');
         const savedHost = localStorage.getItem('toefl_api_gateway_host');
         const savedPort = localStorage.getItem('toefl_api_gateway_port');
@@ -637,71 +674,90 @@ document.addEventListener("DOMContentLoaded", () => {
         if (savedProtocol) apiGatewayProtocolInput.value = savedProtocol;
     }
 
-    settingsBtn.addEventListener('click', () => {
-        loadGatewayConfig();
-        apiGatewayConfigPanel.style.display = 'grid';
-        configStatus.textContent = '';
-        configStatus.className = 'config-status';
-    });
-
-    closeConfigBtn.addEventListener('click', () => {
-        apiGatewayConfigPanel.style.display = 'none';
-    });
-
-    testGatewayBtn.addEventListener('click', async () => {
-        configStatus.textContent = 'Testing...';
-        configStatus.className = 'config-status loading';
-        
-        try {
-            // Build the gateway URL from current inputs
-            let testUrl;
-            if (apiGatewayUrlInput.value.trim()) {
-                testUrl = apiGatewayUrlInput.value.trim();
-            } else {
-                const protocol = apiGatewayProtocolInput.value || 'http';
-                const host = apiGatewayHostInput.value || 'localhost';
-                const port = apiGatewayPortInput.value || '8000';
-                testUrl = `${protocol}://${host}:${port}`;
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            if (apiGatewayConfigPanel) {
+                loadGatewayConfig();
+                apiGatewayConfigPanel.style.display = 'grid';
+                if (configStatus) {
+                    configStatus.textContent = '';
+                    configStatus.className = 'config-status';
+                }
             }
+        });
+    }
+
+    if (closeConfigBtn) {
+        closeConfigBtn.addEventListener('click', () => {
+            if (apiGatewayConfigPanel) {
+                apiGatewayConfigPanel.style.display = 'none';
+            }
+        });
+    }
+
+    if (testGatewayBtn) {
+        testGatewayBtn.addEventListener('click', async () => {
+            if (!configStatus) return;
+            configStatus.textContent = 'Testing...';
+            configStatus.className = 'config-status loading';
             
-            const response = await fetch(`${testUrl}/api/docs`, { 
-                method: 'GET',
-                timeout: 5000
-            });
-            
-            if (response.ok) {
-                configStatus.textContent = '✅ Gateway is running!';
-                configStatus.className = 'config-status success';
-            } else {
-                configStatus.textContent = '❌ Gateway responded but with error. Check configuration.';
+            try {
+                // Build the gateway URL from current inputs
+                let testUrl;
+                if (apiGatewayUrlInput && apiGatewayUrlInput.value.trim()) {
+                    testUrl = apiGatewayUrlInput.value.trim();
+                } else {
+                    const protocol = (apiGatewayProtocolInput && apiGatewayProtocolInput.value) || 'http';
+                    const host = (apiGatewayHostInput && apiGatewayHostInput.value) || 'localhost';
+                    const port = (apiGatewayPortInput && apiGatewayPortInput.value) || '8000';
+                    testUrl = `${protocol}://${host}:${port}`;
+                }
+                
+                const response = await fetch(`${testUrl}/api/docs`, { 
+                    method: 'GET',
+                    timeout: 5000
+                });
+                
+                if (response.ok) {
+                    configStatus.textContent = '✅ Gateway is running!';
+                    configStatus.className = 'config-status success';
+                } else {
+                    configStatus.textContent = '❌ Gateway responded but with error. Check configuration.';
+                    configStatus.className = 'config-status error';
+                }
+            } catch (error) {
+                configStatus.textContent = `❌ Cannot reach gateway. Start with: python -m uvicorn apps.api-gateway.main:app --port 8000`;
                 configStatus.className = 'config-status error';
+                console.error('Gateway test failed:', error);
             }
-        } catch (error) {
-            configStatus.textContent = `❌ Cannot reach gateway. Start with: python -m uvicorn apps.api-gateway.main:app --port 8000`;
-            configStatus.className = 'config-status error';
-            console.error('Gateway test failed:', error);
-        }
-    });
+        });
+    }
 
-    saveGatewayConfigBtn.addEventListener('click', () => {
-        if (apiGatewayUrlInput.value.trim()) {
-            localStorage.setItem('toefl_api_gateway_url', apiGatewayUrlInput.value.trim());
-        } else {
-            localStorage.removeItem('toefl_api_gateway_url');
-        }
-        
-        if (apiGatewayHostInput.value.trim()) {
-            localStorage.setItem('toefl_api_gateway_host', apiGatewayHostInput.value.trim());
-        }
-        
-        if (apiGatewayPortInput.value.trim()) {
-            localStorage.setItem('toefl_api_gateway_port', apiGatewayPortInput.value.trim());
-        }
-        
-        localStorage.setItem('toefl_api_gateway_protocol', apiGatewayProtocolInput.value);
-        
-        configStatus.textContent = '✅ Configuration saved!';
-        configStatus.className = 'config-status success';
-    });
+    if (saveGatewayConfigBtn) {
+        saveGatewayConfigBtn.addEventListener('click', () => {
+            if (apiGatewayUrlInput && apiGatewayUrlInput.value.trim()) {
+                localStorage.setItem('toefl_api_gateway_url', apiGatewayUrlInput.value.trim());
+            } else {
+                localStorage.removeItem('toefl_api_gateway_url');
+            }
+            
+            if (apiGatewayHostInput && apiGatewayHostInput.value.trim()) {
+                localStorage.setItem('toefl_api_gateway_host', apiGatewayHostInput.value.trim());
+            }
+            
+            if (apiGatewayPortInput && apiGatewayPortInput.value.trim()) {
+                localStorage.setItem('toefl_api_gateway_port', apiGatewayPortInput.value.trim());
+            }
+            
+            if (apiGatewayProtocolInput) {
+                localStorage.setItem('toefl_api_gateway_protocol', apiGatewayProtocolInput.value);
+            }
+            
+            if (configStatus) {
+                configStatus.textContent = '✅ Configuration saved!';
+                configStatus.className = 'config-status success';
+            }
+        });
+    }
 
     renderAll().catch(console.error);
