@@ -2840,6 +2840,24 @@ class ToeflStorageSync {
     return normalized;
   }
 
+  async upsertSetRecordWithType(record, testType = "mocktest") {
+    if (!record) throw new Error("Record is required");
+    const payload = { ...record, testType, _updatedAt: new Date().toISOString() };
+    const setId = String(record?.setId || "");
+    if (!setId) throw new Error("setId is required in record");
+    try {
+      await this._put(`${this._setsV2Path}/${setId}`, payload);
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline – ${setId} set saved locally only:`, e.message);
+    }
+    const local = this._safeParse(localStorage.getItem(this._setsV2LocalKey), {});
+    local[setId] = { ...record, testType };
+    localStorage.setItem(this._setsV2LocalKey, JSON.stringify(local));
+    return { ...record, testType };
+  }
+
   async saveSetRecords(records) {
     const normalized = (records || [])
       .map((item) => this._normalizeRecord(item, item?.setId))
@@ -3275,20 +3293,38 @@ class ToeflStorageSync {
     }
   }
 
-  _getApiGatewayBase() {
+  _getApiGatewayBaseCandidates() {
     const baseOverride = String(localStorage.getItem("toefl_api_gateway_url") || "").trim();
     if (baseOverride) {
-      return baseOverride.replace(/\/+$/, "");
+      return [baseOverride.replace(/\/+$/, "")];
     }
 
-    const runtimeHost = (typeof window !== "undefined" && window.location && window.location.hostname)
-      ? window.location.hostname
-      : "";
     const hostOverride = String(localStorage.getItem("toefl_api_gateway_host") || "").trim();
-    const host = hostOverride || runtimeHost || "127.0.0.1";
     const port = String(localStorage.getItem("toefl_api_gateway_port") || "8000").trim() || "8000";
     const protocol = String(localStorage.getItem("toefl_api_gateway_protocol") || "http").trim() || "http";
-    return `${protocol}://${host}:${port}`;
+    const candidates = [];
+
+    if (hostOverride) candidates.push(`${protocol}://${hostOverride}:${port}`);
+
+    if (typeof window !== "undefined" && window.location && window.location.origin && window.location.protocol !== "file:") {
+      candidates.push(window.location.origin.replace(/\/+$/, ""));
+    }
+
+    candidates.push(`${protocol}://127.0.0.1:${port}`);
+    candidates.push(`${protocol}://localhost:${port}`);
+    return Array.from(new Set(candidates.filter(Boolean)));
+  }
+
+  getApiGatewayDebugInfo() {
+    const candidates = this._getApiGatewayBaseCandidates();
+    return {
+      "Gateway Candidates": candidates,
+      "Current Origin": typeof window !== "undefined" ? window.location.origin : "N/A",
+      "LocalStorage Override URL": localStorage.getItem("toefl_api_gateway_url") || "(none)",
+      "LocalStorage Override Host": localStorage.getItem("toefl_api_gateway_host") || "(none)",
+      "LocalStorage Override Port": localStorage.getItem("toefl_api_gateway_port") || "8000",
+      "LocalStorage Override Protocol": localStorage.getItem("toefl_api_gateway_protocol") || "http"
+    };
   }
 
   async saveAudioViaGateway(setId, audioBlob, partId = 1) {
@@ -3300,67 +3336,108 @@ class ToeflStorageSync {
     const prepared = await this._prepareAudioUpload(audioBlob);
     const fileName = String(prepared.originalName || `part_${partId}.mp3`);
     const fileType = String(prepared.contentType || "audio/mpeg");
-    const apiBase = this._getApiGatewayBase();
+    const apiBases = this._getApiGatewayBaseCandidates();
+    const errors = [];
 
     try {
-      const presignRes = await fetch(`${apiBase}/api/developer/upload-url`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName, fileType })
-      });
-
-      if (!presignRes.ok) {
-        const detail = await presignRes.text().catch(() => "");
-        throw new Error(detail || `upload-url request failed (${presignRes.status})`);
-      }
-
-      const payload = await presignRes.json();
-      const uploadUrl = String(payload?.uploadUrl || "").trim();
-      let objectKey = String(payload?.objectKey || "").trim();
-      let objectUrl = String(payload?.objectUrl || "").trim();
-
-      if (!uploadUrl || !objectUrl) {
-        throw new Error("upload-url response missing uploadUrl/objectUrl");
-      }
-
+      let objectKey = "";
+      let objectUrl = "";
       let uploadedVia = "presigned-put";
-      try {
-        const putRes = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": fileType
-          },
-          body: prepared.blob
-        });
+      let apiBaseUsed = "";
 
-        if (!putRes.ok) {
-          throw new Error(`R2 upload failed (${putRes.status})`);
+      for (const apiBase of apiBases) {
+        try {
+          const presignUrl = `${apiBase}/api/developer/upload-url`;
+          let presignRes;
+          try {
+            presignRes = await fetch(presignUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fileName, fileType })
+            });
+          } catch (fetchError) {
+            const msg = `Failed to fetch ${presignUrl} - ${fetchError?.message || String(fetchError)}`;
+            errors.push(msg);
+            console.error(`[ToeflSync Upload Debug] ${msg}`);
+            continue;
+          }
+
+          if (!presignRes.ok) {
+            const detail = await presignRes.text().catch(() => "");
+            const msg = `${apiBase} upload-url -> ${presignRes.status} ${detail}`.trim();
+            errors.push(msg);
+            console.error(`[ToeflSync Upload Debug] ${msg}`);
+            continue;
+          }
+
+          let payload;
+          try {
+            payload = await presignRes.json();
+          } catch (jsonError) {
+            const msg = `${apiBase} upload-url response not valid JSON - ${jsonError?.message}`;
+            errors.push(msg);
+            console.error(`[ToeflSync Upload Debug] ${msg}`);
+            continue;
+          }
+
+          const uploadUrl = String(payload?.uploadUrl || "").trim();
+          objectKey = String(payload?.objectKey || "").trim();
+          objectUrl = String(payload?.objectUrl || "").trim();
+
+          if (!uploadUrl || !objectUrl) {
+            const msg = `${apiBase} upload-url response missing uploadUrl=${Boolean(uploadUrl)}/objectUrl=${Boolean(objectUrl)}`;
+            errors.push(msg);
+            console.error(`[ToeflSync Upload Debug] ${msg}`, payload);
+            continue;
+          }
+
+          try {
+            const putRes = await fetch(uploadUrl, {
+              method: "PUT",
+              headers: {
+                "Content-Type": fileType
+              },
+              body: prepared.blob
+            });
+
+            if (!putRes.ok) {
+              throw new Error(`R2 upload failed (${putRes.status})`);
+            }
+          } catch (putError) {
+            const form = new FormData();
+            form.append("file", prepared.blob, fileName);
+            form.append("fileName", fileName);
+            form.append("fileType", fileType);
+
+            const proxyRes = await fetch(`${apiBase}/api/developer/upload-proxy`, {
+              method: "POST",
+              body: form
+            });
+
+            if (!proxyRes.ok) {
+              const proxyDetail = await proxyRes.text().catch(() => "");
+              const basePutError = String(putError?.message || putError || "Direct upload failed");
+              throw new Error(`${basePutError}; proxy upload failed (${proxyRes.status}) ${proxyDetail}`.trim());
+            }
+
+            const proxyPayload = await proxyRes.json();
+            objectKey = String(proxyPayload?.objectKey || objectKey).trim();
+            objectUrl = String(proxyPayload?.objectUrl || objectUrl).trim();
+            if (!objectUrl) {
+              throw new Error("proxy upload response missing objectUrl");
+            }
+            uploadedVia = "proxy-upload";
+          }
+
+          apiBaseUsed = apiBase;
+          break;
+        } catch (gatewayError) {
+          errors.push(`${apiBase} -> ${gatewayError?.message || String(gatewayError)}`);
         }
-      } catch (putError) {
-        // Fallback path for browsers that block direct PUT because of CORS/policy.
-        const form = new FormData();
-        form.append("file", prepared.blob, fileName);
-        form.append("fileName", fileName);
-        form.append("fileType", fileType);
+      }
 
-        const proxyRes = await fetch(`${apiBase}/api/developer/upload-proxy`, {
-          method: "POST",
-          body: form
-        });
-
-        if (!proxyRes.ok) {
-          const proxyDetail = await proxyRes.text().catch(() => "");
-          const basePutError = String(putError?.message || putError || "Direct upload failed");
-          throw new Error(`${basePutError}; proxy upload failed (${proxyRes.status}) ${proxyDetail}`.trim());
-        }
-
-        const proxyPayload = await proxyRes.json();
-        objectKey = String(proxyPayload?.objectKey || objectKey).trim();
-        objectUrl = String(proxyPayload?.objectUrl || objectUrl).trim();
-        if (!objectUrl) {
-          throw new Error("proxy upload response missing objectUrl");
-        }
-        uploadedVia = "proxy-upload";
+      if (!apiBaseUsed) {
+        throw new Error(errors.join(" | ") || "Gateway audio upload failed");
       }
 
       await this._put(`toefl_itp/audio_urls/${setId}/part_${partId}`, {
@@ -3387,6 +3464,7 @@ class ToeflStorageSync {
         partId,
         storageProvider: "r2",
         uploadPath: uploadedVia,
+        apiBase: apiBaseUsed,
         objectKey,
         objectUrl,
         compressed: Boolean(prepared.compressed),
@@ -3404,132 +3482,98 @@ class ToeflStorageSync {
     }
   }
 
+  async saveAudioToCloudflare(setId, audioBlob, partId = 1) {
+    return this.saveAudioViaGateway(setId, audioBlob, partId);
+  }
+
   /**
-   * Upload audio file to Firebase Storage and save download URL in RTDB.
+   * Legacy alias kept for compatibility. Uses the Cloudflare R2 gateway.
    * @param {string} setId
    * @param {Blob|File} audioBlob
    * @param {number} partId
    * @returns {Promise<boolean>}
    */
   async saveAudioToFirebase(setId, audioBlob, partId = 1) {
-    if (!setId || !audioBlob) {
-      this._lastStorageError = "Missing setId or audioBlob";
-      console.warn("[ToeflSync] Missing setId or audioBlob for audio upload");
-      return false;
-    }
-
-    const prepared = await this._prepareAudioUpload(audioBlob);
-    const extension = this._guessAudioExtension(prepared.originalName || "", prepared.contentType || "");
-    const storagePath = `toefl_itp/audio/${setId}/part_${partId}.${extension}`;
-    const uploadNameQuery = new URLSearchParams({ name: storagePath }).toString();
-    const errors = [];
-
-    for (const base of this._getStorageBases()) {
-      try {
-        const multipart = this._buildMultipartUploadBody(storagePath, prepared.blob, prepared.contentType);
-        const res = await fetch(`${base}?uploadType=multipart&${uploadNameQuery}`, {
-          method: "POST",
-          headers: { "Content-Type": `multipart/related; boundary=${multipart.boundary}` },
-          body: multipart.body
-        });
-
-        if (!res.ok) {
-          const errorText = await res.text().catch(() => "");
-          errors.push(`${base} -> ${res.status} ${errorText}`);
-          continue;
-        }
-
-        const meta = await res.json();
-        const token = this._extractPrimaryDownloadToken(
-          meta?.downloadTokens ||
-          meta?.downloadToken ||
-          meta?.metadata?.firebaseStorageDownloadTokens ||
-          ""
-        );
-        const downloadUrl = this._buildStorageDownloadUrl(base, storagePath, token);
-        const candidateUrls = Array.from(new Set([
-          meta?.mediaLink,
-          meta?.downloadUrl,
-          meta?.downloadURL,
-          downloadUrl,
-          ...this._buildAudioUrlCandidates(setId, partId, downloadUrl, storagePath)
-        ].map((item) => String(item || "").trim()).filter(Boolean)));
-
-        await this._put(`toefl_itp/audio_urls/${setId}/part_${partId}`, {
-          url: downloadUrl,
-          mediaLink: String(meta?.mediaLink || ""),
-          storagePath,
-          token,
-          cacheControl: AUDIO_CACHE_CONTROL,
-          compressed: Boolean(prepared.compressed),
-          originalName: prepared.originalName,
-          originalSize: prepared.originalSize,
-          uploadedSize: prepared.uploadedSize,
-          contentType: prepared.contentType,
-          candidateUrls,
-          fileName: prepared.originalName || `audio_part${partId}`,
-          size: prepared.uploadedSize,
-          type: prepared.contentType,
-          uploadedAt: new Date().toISOString()
-        });
-
-        this.isRemoteAvailable = true;
-        this._lastStorageError = "";
-        this._lastUploadInfo = {
-          success: true,
-          setId,
-          partId,
-          storagePath,
-          compressed: Boolean(prepared.compressed),
-          originalSize: prepared.originalSize,
-          uploadedSize: prepared.uploadedSize,
-          contentType: prepared.contentType,
-          cacheControl: AUDIO_CACHE_CONTROL,
-          base
-        };
-        console.log("[ToeflSync] Audio uploaded to Storage:", { setId, partId, size: prepared.uploadedSize, base, compressed: prepared.compressed });
-        return this._lastUploadInfo;
-      } catch (e) {
-        errors.push(`${base} -> ${e?.message || String(e)}`);
-      }
-    }
-
-    this.isRemoteAvailable = false;
-    this._lastStorageError = errors.join(" | ");
-    this._lastUploadInfo = { success: false, setId, partId, error: this._lastStorageError };
-    console.warn(`[ToeflSync] Storage upload failed - ${setId} part ${partId}:`, this._lastStorageError);
-    return false;
+    return this.saveAudioViaGateway(setId, audioBlob, partId);
   }
 
   /**
-   * Get download URL for an audio file from RTDB URL index.
+   * Get the stored Cloudflare audio record for a set/part.
    * @param {string} setId
    * @param {number} partId
-   * @returns {Promise<string|null>}
+   * @returns {Promise<object|null>}
    */
-  async getAudioFromFirebase(setId, partId = 1) {
+  async getAudioRecordFromCloudflare(setId, partId = 1) {
     if (!setId) return null;
     try {
       const data = await this._get(`toefl_itp/audio_urls/${setId}/part_${partId}`);
-      const savedUrl = data && data.url ? String(data.url) : "";
-      if (!savedUrl) return null;
-      this.isRemoteAvailable = true;
-      return savedUrl;
+      return (data && typeof data === "object" && !Array.isArray(data)) ? data : null;
     } catch (e) {
       this.isRemoteAvailable = false;
-      console.warn(`[ToeflSync] Storage URL fetch failed - ${setId} part ${partId}:`, e.message);
+      console.warn(`[ToeflSync] Cloudflare audio record fetch failed - ${setId} part ${partId}:`, e.message);
       return null;
     }
   }
 
   async getAudioRecordFromFirebase(setId, partId = 1) {
+    return this.getAudioRecordFromCloudflare(setId, partId);
+  }
+
+  async getPlayableAudioUrl(setId, partId = 1) {
     if (!setId) return null;
     try {
-      const data = await this._get(`toefl_itp/audio_urls/${setId}/part_${partId}`);
-      return (data && typeof data === "object" && !Array.isArray(data)) ? data : null;
-    } catch {
+      const record = await this.getAudioRecordFromCloudflare(setId, partId);
+      const savedUrl = String(record?.url || "").trim();
+      const objectKey = String(record?.objectKey || "").trim();
+      const storagePath = String(record?.storagePath || "").trim();
+      const storedCandidates = Array.isArray(record?.candidateUrls) ? record.candidateUrls : [];
+
+      if (objectKey) {
+        const apiBases = this._getApiGatewayBaseCandidates();
+        for (const apiBase of apiBases) {
+          try {
+            const response = await fetch(`${apiBase}/api/developer/audio-url?objectKey=${encodeURIComponent(objectKey)}`, {
+              method: "GET"
+            });
+            if (response.ok) {
+              const payload = await response.json().catch(() => ({}));
+              const signedUrl = String(payload?.audioUrl || "").trim();
+              if (signedUrl) {
+                return signedUrl;
+              }
+            }
+          } catch {
+            // Try the next base.
+          }
+        }
+      }
+
+      const candidates = Array.from(new Set([
+        savedUrl,
+        String(record?.mediaLink || "").trim(),
+        ...storedCandidates,
+        ...this._buildAudioUrlCandidates(setId, partId, savedUrl, storagePath)
+      ].filter(Boolean)));
+
+      if (candidates.length === 0) return null;
+
+      const fallbackCandidate = candidates.find((url) => url && url !== savedUrl) || savedUrl;
+      for (const url of candidates) {
+        if (await this._probeAudioUrl(url)) {
+          return url;
+        }
+      }
+
+      return fallbackCandidate;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Cloudflare audio URL lookup failed - ${setId} part ${partId}:`, e?.message || e);
       return null;
     }
+  }
+
+  async getPlayableAudioFromFirebase(setId, partId = 1) {
+    return this.getPlayableAudioUrl(setId, partId);
   }
 
   async _probeAudioUrl(url) {
@@ -3552,51 +3596,6 @@ class ToeflStorageSync {
     } catch {
       return false;
     }
-  }
-
-  async getPlayableAudioFromFirebase(setId, partId = 1) {
-    const record = await this.getAudioRecordFromFirebase(setId, partId);
-    const savedUrl = String(record?.url || "").trim();
-    const objectKey = String(record?.objectKey || "").trim();
-    const storagePath = String(record?.storagePath || "").trim();
-    const storedCandidates = Array.isArray(record?.candidateUrls) ? record.candidateUrls : [];
-
-    if (objectKey) {
-      try {
-        const apiBase = this._getApiGatewayBase();
-        const response = await fetch(`${apiBase}/api/developer/audio-url?objectKey=${encodeURIComponent(objectKey)}`, {
-          method: "GET"
-        });
-        if (response.ok) {
-          const payload = await response.json().catch(() => ({}));
-          const signedUrl = String(payload?.audioUrl || "").trim();
-          if (signedUrl) {
-            return signedUrl;
-          }
-        }
-      } catch {
-        // Fall through to legacy candidate probing.
-      }
-    }
-
-    const candidates = Array.from(new Set([
-      savedUrl,
-      String(record?.mediaLink || "").trim(),
-      ...storedCandidates,
-      ...this._buildAudioUrlCandidates(setId, partId, savedUrl, storagePath)
-    ].filter(Boolean)));
-
-    if (candidates.length === 0) return null;
-
-    const fallbackCandidate = candidates.find((url) => url && url !== savedUrl) || savedUrl;
-    for (const url of candidates) {
-      if (await this._probeAudioUrl(url)) {
-        return url;
-      }
-    }
-
-    // Probing can fail because of CORS even when media playback succeeds in <audio>.
-    return fallbackCandidate;
   }
 
   async saveTranscriptTextToFirebase(setId, transcriptText, partId = 1) {
@@ -3765,7 +3764,7 @@ class ToeflStorageSync {
    * @param {number} partId
    * @returns {Promise<boolean>}
    */
-  async deleteAudioFromFirebase(setId, partId = 1) {
+  async deleteAudioFromCloudflare(setId, partId = 1) {
     if (!setId) return false;
     const storagePath = `toefl_itp/audio/${setId}/part_${partId}`;
     const encodedPath = encodeURIComponent(storagePath);
@@ -3790,6 +3789,10 @@ class ToeflStorageSync {
     }
 
     return deleted;
+  }
+
+  async deleteAudioFromFirebase(setId, partId = 1) {
+    return this.deleteAudioFromCloudflare(setId, partId);
   }
 }
 

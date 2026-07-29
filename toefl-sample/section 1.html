@@ -299,7 +299,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="toefl-storage-sync.js?v=20260520b"></script>
+    <script src="toefl-storage-sync.js?v=20260729e"></script>
     <script>
         const PARTS = [
             { id: 1, name: "Part A: Short Dialogues", range: "Questions 1-30", start: 1, end: 30, instr: "<strong>Directions:</strong> In Part A, you will hear short conversations between two people. After each conversation, you will hear a question about the conversation. The conversations and questions will not be repeated. After you hear a question, choose the best answer." },
@@ -668,7 +668,7 @@
             }
 
             try {
-                // Try Firebase Storage first (cross-machine sync)
+                // Try Cloudflare R2 first (cross-machine sync)
                 const storageUrl = await getCloudAudioUrl(currentSetId, partId);
                 if (storageUrl) {
                     if (isPartActive(partId)) {
@@ -726,8 +726,8 @@
 
             await Promise.all(AUDIO_PART_IDS.map(async (partId) => {
                 try {
-                    // Try Firebase Storage first
-                    const storageUrl = await window.toeflStorage.getAudioFromFirebase(currentSetId, partId).catch(() => null);
+                    // Try Cloudflare R2 first
+                    const storageUrl = await window.toeflStorage.getPlayableAudioUrl(currentSetId, partId).catch(() => null);
                     if (storageUrl) {
                         setAudioLabelReady(`cloud saved`, partId);
                         return;
@@ -770,9 +770,12 @@
 
         async function getCloudAudioUrl(setId, partId = 1, timeoutMs = 3500) {
             if (!window.toeflStorage || !setId) return null;
-            const fetchPromise = (window.toeflStorage.getPlayableAudioFromFirebase
-                ? window.toeflStorage.getPlayableAudioFromFirebase(setId, partId)
-                : window.toeflStorage.getAudioFromFirebase(setId, partId)).catch(() => null);
+            const fetchAudioUrl = typeof window.toeflStorage.getPlayableAudioUrl === "function"
+                ? window.toeflStorage.getPlayableAudioUrl.bind(window.toeflStorage)
+                : (typeof window.toeflStorage.getPlayableAudioFromFirebase === "function"
+                    ? window.toeflStorage.getPlayableAudioFromFirebase.bind(window.toeflStorage)
+                    : window.toeflStorage.getAudioFromFirebase.bind(window.toeflStorage));
+            const fetchPromise = fetchAudioUrl(setId, partId).catch(() => null);
             return await withTimeout(fetchPromise, timeoutMs, null);
         }
 
@@ -1790,7 +1793,7 @@
             if (restoredCurrent && audio.src) return true;
 
             try {
-                // Try to get audio from Firebase for current set
+                // Try to get audio from Cloudflare for the current set.
                 if (currentSetId) {
                     const storageUrl = await getCloudAudioUrl(currentSetId, activePartId || 1);
                     if (storageUrl) {
@@ -2286,7 +2289,7 @@
                 <div class="dev-container">
                     <div class="dev-card">
                         <h2 class="dev-card-title">Setup Audio Utama</h2>
-                        <p style="font-size:14px; color:#475569; line-height:1.6;">Upload local MP3/WAV files for each listening part. Audio is linked per part and synced to Firebase for cross-device consistency.</p>
+                        <p style="font-size:14px; color:#475569; line-height:1.6;">Upload local MP3/WAV files for each listening part. Audio is linked per part and synced to Cloudflare R2 for cross-device consistency.</p>
                         <div style="margin-top:12px; display:grid; grid-template-columns:repeat(3, minmax(220px, 1fr)); gap:12px;">
                             <div style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
                                 <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part A Audio</div>
@@ -2635,13 +2638,13 @@
                     return;
                 }
 
-                const segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[—-]\s*(.+)$/);
+                const segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[ï¿½-]\s*(.+)$/);
                 let matched = segmentMatch;
                 if (!matched) {
                     matched = line.match(/(?:^\s*[-*]\s*)?\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(.+)$/);
                 }
                 if (!matched) {
-                    matched = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s*[—\-]\s*(.+)$/);
+                    matched = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s*[ï¿½\-]\s*(.+)$/);
                 }
 
                 if (matched) {
@@ -3568,7 +3571,3 @@
     </script>
 </body>
 </html>
-
-
-
-
