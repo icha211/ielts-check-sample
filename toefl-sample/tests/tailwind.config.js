@@ -1,0 +1,92 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+	content: ["./*.{html,js,ts,jsx,tsx}"],
+theme: {  
+		extend: {
+			colors: {
+				ghostwhite: {
+					100: "#f4f7fb",
+					200: "#f2f2f7",
+				},
+				white: "#fff",
+				lavender: "#d1dce8",
+				steelblue: "#005faa",
+				black: "#000",
+				darkcyan: {
+					100: "#0d9488",
+					200: "rgba(13, 148, 136, 0.8)",
+				},
+				lightcyan: "#ccfbf1",
+				mediumslateblue: "#676cff",
+				deepskyblue: "#0ea5e9",
+				cadetblue: "#30b0c7",
+				orchid: "#e675c9",
+				hotpink: "#f048a9",
+				lightslategray: "#7a8fa6",
+				crimson: {
+					100: "#dc2626",
+					200: "rgba(220, 38, 38, 0.8)",
+				},
+				mistyrose: "#fee2e2",
+				chocolate: "#d97706",
+				darkslategray: "#3a4a5c",
+				sandybrown: "#f3934f",
+			},
+			spacing: {
+				"num-18": "18px",
+				"num-17": "17px",
+				"num-9": "9px",
+				"num-348": "348px",
+				"num-30": "30px",
+				"num-262": "262px",
+				"num-440": "440px",
+				"num-15": "15px",
+				"num-1": "1px",
+				"num-2": "2px",
+				"num-3": "3px",
+				"num-4": "4px",
+				"num-11": "0.5px",
+			},
+			fontFamily: {
+				"plus-jakarta-sans": "Plus Jakarta Sans",
+				arial: "Arial",
+				outfit: "Outfit",
+				inherit: "inherit",
+				"times-new-roman": "Times New Roman",
+			},
+			borderRadius: {
+				"num-8": "8px",
+				"num-100": "100px",
+			},
+			padding: {
+				"num-15": "15px",
+				"num-1": "1px",
+				"num-16": "16px",
+				"num-0": "0px",
+				"num-10": "10px",
+				"num-5": "5px",
+				"num-6": "6px",
+				"num-19": "19px",
+			},
+			fontSize: {
+				"num-14": "14px",
+				"num-18": "18px",
+				"num-inherit": "inherit",
+				"num-8": "8px",
+				"num-7": "7px",
+				"num-20": "20px",
+				"num-13": "13px",
+				"num-16": "16px",
+			},
+			lineHeight: {
+				"num-25_6": "25.6px",
+			},
+			letterSpacing: {
+				"num-0_09": "0.09em",
+			},
+		},
+  },
+	corePlugins: {
+		preflight: false,
+	},
+};

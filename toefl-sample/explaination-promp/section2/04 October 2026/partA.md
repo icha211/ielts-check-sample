@@ -448,6 +448,10 @@ Inverted Conditional Sentence (Pengandaian Inversi Type 3)
 
 <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">**Had**</span> <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">**they**</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">**more time**</span>, <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">**the research team**</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">**would have been**</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">**able to complete the clinical trials**</span>
 
+Subject ( _____ ), Complement (a primary component of many biological membranes), Verb (is), Complement (essential for cell function).
+
+
+
 ##### Textual Observations:
 
 • **Conditional Clause:** Dimulai dengan "Had they more time" (Inversi dari If they had)

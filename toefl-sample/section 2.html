@@ -165,7 +165,7 @@
             <div style="display: flex; gap: 12px; align-items: center;">
                 <a id="view-explanation-btn" href="section 2-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">📖 View Explanation</a>
                 <button class="mode-switch-btn" type="button" onclick="openUserPreviewFromDeveloper()">�� Apply + Open User View</button>
-                <button class="btn-save" onclick="updateUserView(true)">🔄 Terapkan & Update Tampilan</button>
+                <button class="btn-save" onclick="applyAndRefreshStructureView()">🔄 Terapkan & Update Tampilan</button>
             </div>
         </header>
 
@@ -199,6 +199,7 @@
         const SETS_KEY_V2 = "toefl_developer_sets_v2";
         const MODULE_ID = "structure";
         const MODULE_LABEL = "Structure";
+        const EDITOR_APPLY_SYNC_KEY = "toefl_section2_editor_apply_sync";
         const DRAFT_KEY = "toefl_section2_dev_draft_v1";
         const ONBOARDING_KEY_BASE = "toefl_section2_onboarding_seen_v1";
         const DARK_MODE_KEY = "toefl_section2_dark_mode_v1";
@@ -528,12 +529,105 @@
             };
             upsertLocalRecord(record);
             updateEditorUrl(setId, setDate);
+            updateExplanationLink();
             if (window.toeflStorage && typeof toeflStorage.upsertSetRecord === "function") {
                 try {
                     await toeflStorage.upsertSetRecordWithType(record, currentTestType);
                 } catch (error) {
                     console.warn("[ToeflSync] set save failed:", error);
                 }
+            }
+        }
+
+        function emitSection2EditorApplySync() {
+            try {
+                localStorage.setItem(EDITOR_APPLY_SYNC_KEY, JSON.stringify({
+                    at: Date.now(),
+                    module: MODULE_ID,
+                    setId: currentSetId || "",
+                    setDate: ((document.getElementById("set-date") || {}).value || "")
+                }));
+            } catch (_) {
+                // Keep UI flow intact even when localStorage is blocked.
+            }
+        }
+
+        async function applyAndRefreshStructureView() {
+            try {
+                await saveSectionMeta();
+            } catch (error) {
+                console.warn("[Apply] saveSectionMeta failed:", error);
+            }
+            saveSectionDraft();
+            updateUserView(false);
+            persistPreviewSection2Result();
+            updateExplanationLink();
+            emitSection2EditorApplySync();
+            showAutoSaveStatus("Applied", true);
+        }
+
+        function persistPreviewSection2Result() {
+            const dateValue = ((document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0]);
+            const questionUids = Object.keys(globalQuestions || {});
+            const answeredQs = questionUids.map((uid) => {
+                const pId = parseInt(uid.split("_")[0], 10);
+                const qNum = parseInt(uid.split("_")[1], 10);
+                const q = globalQuestions[uid] || {};
+                const part = PARTS.find((pt) => pt.id === pId) || {};
+
+                const normalizedOptions = {};
+                const optionMap = (q && q.options) || {};
+                const optionLetters = Object.keys(optionMap);
+                for (let i = 0; i < optionLetters.length; i += 1) {
+                    const upper = String(optionLetters[i] || "").toUpperCase();
+                    if (!upper) continue;
+                    normalizedOptions[upper] = String(optionMap[optionLetters[i]] || "").trim();
+                }
+
+                const correct = String(globalAnswerKey[uid] || "").trim().toUpperCase();
+                const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+                const userAnswer = (radio ? String(radio.value || "") : "").trim().toUpperCase();
+                const finalUserAnswer = userAnswer || correct;
+                const isCorrect = !!(finalUserAnswer && correct && finalUserAnswer === correct);
+
+                return {
+                    uid,
+                    number: Number.isFinite(qNum) ? qNum : 0,
+                    partId: Number.isFinite(pId) ? pId : 0,
+                    partName: part.name || "",
+                    questionText: String(q.questionText || `Question ${qNum}`),
+                    options: normalizedOptions,
+                    correctAnswer: correct,
+                    userAnswer: finalUserAnswer,
+                    isCorrect,
+                    isPartB: !!q.isPartB,
+                    explanation: String(globalExplanations[uid] || ""),
+                    setDate: dateValue
+                };
+            }).sort((a, b) => Number(a.number || 0) - Number(b.number || 0));
+
+            let rawScore = 0;
+            for (let i = 0; i < answeredQs.length; i += 1) {
+                if (answeredQs[i].isCorrect) rawScore += 1;
+            }
+
+            const total = Math.max(1, answeredQs.length);
+            const scaledScore = Math.round(31 + ((rawScore / total) * (68 - 31)));
+            const result = {
+                sectionTitle: "Section 2: Structure and Written Expression",
+                sectionKey: "structure",
+                totalQuestions: answeredQs.length,
+                rawScore,
+                scaledScore,
+                submittedAt: dateValue,
+                setDate: dateValue,
+                questions: answeredQs
+            };
+
+            try {
+                localStorage.setItem("toefl_section2_result", JSON.stringify(result));
+            } catch (_) {
+                // Ignore localStorage write failures and keep editor usable.
             }
         }
 
@@ -1433,6 +1527,9 @@
             if (shouldSaveMeta) {
                 saveSectionMeta();
                 saveSectionDraft();
+                persistPreviewSection2Result();
+                updateExplanationLink();
+                emitSection2EditorApplySync();
             }
             document.getElementById('global-score-board').style.display = 'none';
             globalAnswerKey = {};

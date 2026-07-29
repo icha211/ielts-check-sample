@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -29,6 +29,10 @@
                     <div class="header-part-block" id="headerPartBlock1">
                         <div class="header-part-title" id="headerPartTitle1">PART B</div>
                         <div class="header-question-grid" id="headerPartGrid1"></div>
+                    </div>
+                    <div class="header-part-block" id="headerPartBlock2">
+                        <div class="header-part-title" id="headerPartTitle2">PART C</div>
+                        <div class="header-question-grid" id="headerPartGrid2"></div>
                     </div>
                 </div>
 
@@ -135,7 +139,7 @@
                             <span>Video Step-by-Step</span>
                         </button>
                         <button type="button" class="section-explaination-tab" id="partbTabAsk" role="tab" aria-selected="false" onclick="setReviewExplainationTab('ask')">
-                            <img src="../asst/icon/Ask AIQC tab.svg" alt="Ask AIQC tab icon">
+                            <img src="../asst/icon/materials tab.png" alt="Ask AIQC tab icon">
                             <span>Materi</span>
                         </button>
                     </div>
@@ -174,19 +178,11 @@
         var reviewResultData = null;
         var reviewQuestionIndex = 0;
         var reviewExplainationTab = 'explaination';
-        
-        // Parse URL parameters to get package date from study-plan
-        var urlPackageDate = null;
-        try {
-            var params = new URLSearchParams(window.location.search);
-            var dateParam = params.get('date');
-            if (dateParam) urlPackageDate = String(dateParam).trim();
-        } catch (_) {
-            // Silently fail if URLSearchParams is not available
-        }
         var reviewCurrentQuestion = null;
         var reviewSidebarMode = 'correct';
         var qcCoreExpandState = {};
+        var observeAnalysisCache = {};
+        var observeAnalysisPending = {};
 
         function parseJsonSafe(raw, fallback) {
             try {
@@ -261,9 +257,7 @@
             if (isNaN(parsedDate.getTime())) return 'Package ' + normalized;
             var day = String(parsedDate.getDate()).padStart(2, '0');
             var monthName = parsedDate.toLocaleString('en-US', { month: 'short' }) || 'Jan';
-            var year = parsedDate.getFullYear();
-            // Include year to distinguish tests from different years
-            return 'Package ' + day + ' ' + monthName + ' ' + year;
+            return 'Package ' + day + ' ' + monthName;
         }
 
         function renderReviewPackageLabel(dateValue) {
@@ -520,14 +514,7 @@
                 totalQuestions: Number(source.totalQuestions) || questions.length,
                 rawScore: rawScore,
                 scaledScore: Number(source.scaledScore),
-                submittedAt: String(firstNonEmpty(
-                    urlPackageDate,  // Use URL parameter date first (from study-plan.html)
-                    source.submittedAt,
-                    source.setDate,
-                    source.createdAt,
-                    (questions.length > 0 && questions[0].setDate) || '',  // Extract from first question if available
-                    ''
-                )),
+                submittedAt: String(firstNonEmpty(source.submittedAt, source.setDate, source.createdAt, '')),
                 questions: questions
             };
         }
@@ -938,9 +925,12 @@
         }
 
         function buildQuestionStemHtml(question) {
-            var parts = splitStemBlank(question && question.questionText);
-            if (!parts.hasBlank) return escapeHtml(question && question.questionText || '');
-            return '<span class="section2-question-blank">_____</span>' + escapeHtml(parts.after || '');
+            var stemText = String(question && question.questionText || '').replace(/^\s*\d+[\.)]?\s+/, '');
+            var parts = splitStemBlank(stemText);
+            if (!parts.hasBlank) return escapeHtml(stemText);
+            return escapeHtml(parts.before || '')
+                + '<span class="section2-question-blank">_____</span>'
+                + escapeHtml(parts.after || '');
         }
 
         function buildFilledSentenceHtml(question) {
@@ -985,24 +975,6 @@
             return escapeHtml(blueprint && blueprint.sentence || question && question.questionText || '');
         }
 
-        var partAExplanationsData = {
-            1: { concept: 'Subject & Appositive (Subjek & Keterangan Tambahan)', observe: '• **Subject:** Cholesterol (Noun tunggal sebagai Subject utama)\n\n• **Verb:** is (Sudah ada)\n\n• **Complement:** Frasa "a primary component of many biological membranes" di antara dua koma adalah Appositive. Frasa "essential for cell function" adalah Complement utama.', observeVisual: '<span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">Cholesterol</span>, a primary component of many biological membranes, <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">is</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">essential for cell function</span> Tag Labels: - <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 8px; border: 1px solid #D1DCE8; border-radius: 4px; font-size: 12px;">Subject</span> - <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 8px; border: 1px solid #D1DCE8; border-radius: 4px; font-size: 12px;">Verb</span> - <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 8px; border: 1px solid #D1DCE8; border-radius: 4px; font-size: 12px;">Complement</span>', requirement: 'Kalimat ini sudah memiliki Verb (is) dan Subject (Cholesterol) yang lengkap. Subject berupa Noun tunggal yang berfungsi sempurna. Karena tidak ada Connector, struktur ini merupakan Main Clause. Dilarang menambahkan Verb ekstra atau Subject tambahan.', eliminate: ['(A) It is cholesterol ✕ : Terdapat Subject ekstra "It" dan Verb "is" yang menyebabkan Double Verb tanpa konektor.', '(B) Cholesterol ✓ : Noun tunggal yang berfungsi sempurna sebagai Subject.', '(C) Cholesterol is ✕ : Memiliki Verb tambahan "is", menyebabkan Double Verb.', '(D) That cholesterol ✕ : Penggunaan konektor "That" membuat klausa ini menjadi Dependent Clause sehingga kalimat kehilangan Main Clause.'] },
-            2: { concept: 'Participle Modifier & Main Clause (Modifier & Klausa Utama)', observe: '• **Subject:** certain species (Noun Phrase yang terletak setelah Modifier)\n\n• **Verb:** thrive (Sudah ada)\n\n• **Modifier:** "Found in the deepest parts of the ocean" adalah Past Participle Modifier di awal kalimat.', observeVisual: '<span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">Found in the deepest parts of the ocean</span>, <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">certain species</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">thrive</span> under extreme pressure and in complete darkness. Tag Labels: - <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 8px; border: 1px solid #D1DCE8; border-radius: 4px; font-size: 12px;">Modifier</span> - <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 8px; border: 1px solid #D1DCE8; border-radius: 4px; font-size: 12px;">Subject</span> - <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 8px; border: 1px solid #D1DCE8; border-radius: 4px; font-size: 12px;">Verb</span>', requirement: 'Awal kalimat hanya berupa frasa keterangan (Modifier). Maka bagian rumpang (_____) membutuhkan Subject dan Verb lengkap (Main Clause) secara bersamaan.', eliminate: ['(A) thriving of certain species ✕ : Tidak memiliki Main Verb; thriving di sini adalah participle.', '(B) certain species that thrive ✕ : Menggunakan relative pronoun that, mengubahnya menjadi Dependent Clause tanpa Main Verb.', '(C) certain species thrive ✓ : Memiliki Subject (certain species) dan Main Verb (thrive) yang utuh.', '(D) when certain species thrive ✕ : Menggunakan subordinator when yang menciptakan Adverbial Clause tanpa adanya induk kalimat.'] },
-            3: { concept: 'Negative Inversion (Inversi akibat Negative Expression)', observe: '• **Subject:** electricity (Noun tunggal)\n\n• **Verb:** did become (Auxiliary + Main Verb dalam pola Inversion)\n\n• **Modifier:** "Not until the late nineteenth century" adalah Negative Expression di awal kalimat.', observeVisual: '<span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">Not until the late nineteenth century</span>, <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">did</span> <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">electricity</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">become</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">widely available to the general public</span>', requirement: 'Ketika Negative Expression (Not until) diletakkan di awal kalimat, struktur kalimat di posisi rumpang harus di-inversi: Auxiliary Verb + Subject + Main Verb (Bare Infinitive).', eliminate: ['(A) electricity became ✕ : Susunan normal (Subject + Verb), tidak mengikuti aturan inversi.', '(B) did electricity become ✓ : Menggunakan urutan inversi yang tepat: Auxiliary (did) + Subject (electricity) + Verb Base (become).', '(C) became electricity ✕ : Melakukan inversi langsung Main Verb tanpa Auxiliary Verb (did).', '(D) electricity did become ✕ : Posisi Auxiliary did berada setelah Subject, bukan di depannya.'] },
-            4: { concept: 'Prepositional Phrases (Frasa Kata Depan)', observe: '• **Subject:** books (Plural Noun)\n\n• **Verb:** were copied dan were (Auxiliary + Main Verb dalam struktur pasif)\n\n• **Prepositional Phrase:** "Prior to the invention of the printing press" adalah Modifier di awal kalimat yang membutuhkan preposition.', observeVisual: '<span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">Prior to</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">the invention of the printing press</span>, <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">books</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">were copied</span> by hand and <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">were</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">extremely expensive</span>.', requirement: 'Kalimat utama sudah lengkap dengan Subject dan Verb. Bagian rumpang membutuhkan kata depan (Preposition) yang tepat untuk melengkapi Noun Phrase menjadi Prepositional Phrase / Modifier.', eliminate: ['(A) It was prior to ✕ : Menambahkan Subject (It) dan Verb (was) ekstra yang berlebihan.', '(B) Prior ✕ : Berfungsi sebagai Adjective, memerlukan pasangan preposition to jika diikuti oleh Noun Phrase.', '(C) Prior than ✕ : Idiom yang salah; ungkapan yang benar adalah "Prior to", bukan "Prior than".', '(D) Prior to ✓ : Prepositional phrase majemuk yang tepat bermakna "sebelum".'] },
-            5: { concept: 'Subject-Verb Agreement & Prepositional Distractor', observe: '• **Subject:** The widespread use (Singular Noun - pengecoh adalah "of pesticides and herbicides")\n\n• **Verb:** poses (Singular Verb)\n\n• **Complement:** "a significant threat to local water supplies" (Object dari Verb)', observeVisual: '<span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">The widespread use</span> of pesticides and herbicides <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">poses</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">a significant threat to local water supplies</span>', requirement: 'Subjek kalimat adalah kata tunggal "use" (bukan "pesticides and herbicides"). Oleh karena itu, posisi rumpang membutuhkan Singular Verb (Verb-s/es) untuk Present Tense.', eliminate: ['(A) pose ✕ : Merupakan Plural Verb (untuk subjek jamak).', '(B) poses ✓ : Merupakan Singular Verb yang sesuai dengan subjek tunggal use.', '(C) posing ✕ : Participle (Verb-ing) tidak bisa menjadi Main Verb tanpa to be.', '(D) are posing ✕ : Menggunakan Auxiliary plural are, tidak cocok dengan subjek tunggal.'] },
-            6: { concept: 'Expletive "It" & Noun Clause (Appositive Noun Clause)', observe: '• **Main Clause Subject:** It (Expletive)\n\n• **Main Clause Verb:** is\n\n• **Dependent Clause:** Mulai dari "that an asteroid impact caused..." adalah Noun Clause Appositive', observeVisual: '<span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">It</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">is</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">a generally accepted scientific theory</span> <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">that an asteroid impact</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">caused</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">the extinction of the dinosaurs</span>', requirement: 'Kalimat ini memiliki dua klausa lengkap. Bagian rumpang memerlukan Connector (Noun Clause Connector) untuk merujuk pada isi dari teori ilmiah tersebut.', eliminate: ['(A) which ✕ : Relative pronoun which biasanya menjelaskan kata benda secara spesifik, bukan mengenalkan klausa penyataan fakta dari teori.', '(B) that ✓ : Connector Noun Clause yang tepat setelah frasa abstract noun/theory untuk menyatakan isi teorinya.', '(C) why ✕ : Digunakan untuk alasan/sebab, tidak cocok dalam mendefinisikan teori fakta.', '(D) as ✕ : Preposition/Conjunction perbandingan atau waktu, salah secara tata bahasa di sini.'] },
-            7: { concept: 'Parallel Structure (Struktur Pararel/Sejajar)', observe: '• **Subject:** A typical modern orchestra\n\n• **Verb:** is composed of (Passive Voice)\n\n• **Complement:** Deretan kata sifat/kata benda penjelas sebelum instruments: string, woodwind, brass, and [...]', observeVisual: '<span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">A typical modern orchestra</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">is composed of</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">string, woodwind, brass, and percussion instruments</span>', requirement: 'Penggunaan kata penghubung "and" menuntut struktur yang sejajar (Parallel Structure). Kata "string", "woodwind", dan "brass" semuanya bertindak sebagai Noun Adjunct. Maka bagian rumpang harus berupa Noun tunggal pemodifikasi.', eliminate: ['(A) percussion ✓ : Bentuk Noun sejenis yang sejajar dengan string, woodwind, brass.', '(B) they are percussion ✕ : Merusak paralelisme karena memasukkan Subject dan Verb baru.', '(C) playing percussion ✕ : Menggunakan Participle (playing) yang tidak setara dengan kata-kata sebelumnya.', '(D) percussionists ✕ : Berarti "pemain perkusi" (orang), bukan jenis instrumen musiknya.'] },
-            8: { concept: 'Double Comparative (Perbandingan Ganda)', observe: '• **First Clause Subject:** a living organism\n\n• **First Clause Verb:** consumes\n\n• **Second Clause Subject:** it\n\n• **Second Clause Verb:** produces', observeVisual: '<span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">The more oxygen</span> <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">a living organism</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">consumes</span>, <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">the more energy</span> <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">it</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">produces</span>', requirement: 'Pola Double Comparative wajib mengikuti rumusan sejajar: The + comparative (+ Noun) + S + V, The + comparative (+ Noun) + S + V. Bagian rumpang membutuhkan pola "The + comparative + Noun".', eliminate: ['(A) more energy ✕ : Kehilangan article the di depannya.', '(B) energy is more ✕ : Memasukkan Verb is yang salah letak dan merusak pola komparatif.', '(C) the more energy ✓ : Mengikuti pola baku the + comparative + noun dengan tepat.', '(D) that the more energy ✕ : Menambahkan konektor that yang tidak diperlukan.'] },
-            9: { concept: 'Possessive Relative Clause (Klausa Relatif Kepemilikan)', observe: '• **Main Clause Subject:** Mount Everest\n\n• **Relative Clause:** Dimulai dengan "whose peak is over 8,800 meters" adalah Adjective Clause non-restrictive\n\n• **Main Clause Verb:** is', observeVisual: '<span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">Mount Everest</span>, <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">whose peak</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">is</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">over 8,800 meters</span>, <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">is</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">the highest mountain in the world</span>', requirement: 'Bagian rumpang memerlukan kata ganti relatif kepemilikan (Possessive Relative Pronoun) untuk menyatakan kepemilikan puncak (peak) dari Mount Everest, diikuti oleh Verb penjelasnya.', eliminate: ['(A) which peaks ✕ : Menggunakan peaks sebagai kata kerja, mengubah maknanya secara keliru.', '(B) its peak is ✕ : its adalah possessive pronoun baku, tidak bisa menghubungkan dua klausa (run-on sentence).', '(C) the peak of which is ✕ : Secara tata bahasa mungkin, tetapi terlalu kaku dan kurang tepat dibandingkan kepemilikan langsung.', '(D) whose peak is ✓ : whose secara sempurna menyatakan kepemilikan (whose peak = puncak milik Gunung Everest) disusul verb is.'] },
-            10: { concept: 'Infinitive of Purpose (To-Infinitive Tujuan)', observe: '• **Subject:** engineers\n\n• **Main Verb:** conduct\n\n• **To-Infinitive Phrase:** "To ensure the structural integrity of the bridge" menyatakan tujuan (purpose) tindakan', observeVisual: '<span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">To ensure</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">the structural integrity of the bridge</span>, <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">engineers</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">conduct</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">routine inspections every six months</span>', requirement: 'Kalimat utama sudah utuh dengan Subject (engineers) dan Verb (conduct). Bagian rumpang di awal kalimat berfungsi menyatakan tujuan tindakan (purpose), yang membutuhkan To-Infinitive (To + Verb 1).', eliminate: ['(A) Ensuring ✕ : Present Participle di awal kalimat menyatakan aktivitas yang terjadi bersamaan atau sebab, bukan menyatakan tujuan mutlak.', '(B) To ensure ✓ : To-Infinitive mengekspresikan "Untuk memastikan..." (tujuan tindakan) secara tepat.', '(C) They ensure ✕ : Menambahkan Subject dan Verb baru yang menyebabkan Comma Splice.', '(D) For ensure ✕ : Preposition for wajib diikuti oleh Noun/Gerund (for ensuring), bukan Verb 1.'] },
-            11: { concept: 'Inverted Conditional Sentence (Pengandaian Inversi Type 3)', observe: '• **Conditional Clause:** Dimulai dengan "Had they more time" (Inversi dari If they had)\n\n• **Main Clause Subject:** the research team\n\n• **Main Clause Verb:** would have been', observeVisual: '<span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">Had</span> <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">they</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">more time</span>, <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">the research team</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">would have been</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">able to complete the clinical trials</span>', requirement: 'Kalimat ini menggunakan pola Conditional Type 3 (would have been). Jika kata penghubung "If" dihilangkan (omission of IF), maka klausa syarat di bagian rumpang harus di-inversi menjadi: Had + Subject + (Verb 3/Object).', eliminate: ['(A) Had they ✓ : Inversi tepat dari If they had (had).', '(B) If they have ✕ : Tense salah (Present Tense have tidak cocok dengan klausa utama would have been).', '(C) They had ✕ : Klausa independen biasa tanpa konektor If atau inversi, salah secara tata bahasa.', '(D) Have they ✕ : Tense salah (Present Tense).'] },
-            12: { concept: 'Reduced Adverbial Clause (Peringkasan Klausa Pasif)', observe: '• **Reduced Clause:** "dropped in a vacuum" adalah Past Participle (Verb 3) dalam bentuk ringkas\n\n• **Main Clause Subject:** all objects\n\n• **Main Clause Verb:** fall', observeVisual: 'When <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">dropped</span> in a vacuum, <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">all objects</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">fall</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">at exactly the same rate regardless of their mass</span>', requirement: 'Setelah konjungsi waktu (When), klausa dapat diringkas (reduced). Karena objek (all objects) menerima perlakuan/pasif ("ketika dijatuhkan"), maka bentuk ringkasan di rumpang adalah Past Participle (Verb 3).', eliminate: ['(A) are dropped ✕ : Tidak ada Subject (they) setelah When.', '(B) dropping ✕ : Present Participle (Verb-ing) bermakna aktif ("ketika menjatuhkan"), salah secara logika.', '(C) they drop ✕ : Bermakna aktif ("ketika mereka menjatuhkan").', '(D) dropped ✓ : Past Participle (Verb 3) pasif ringkas dari When (they are) dropped.'] },
-            13: { concept: 'Noun Phrase Structure & Modifiers (Urutan Kata Sifat)', observe: '• **Subject:** The bald eagle\n\n• **Verb:** is\n\n• **Complement:** Noun Phrase yang membutuhkan Article, Adjective, dan Noun yang tepat', observeVisual: '<span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">The bald eagle</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">is</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">a large and powerful bird of prey native to North America</span>', requirement: 'Rumpang membutuhkan Article (a) yang diletakkan di awal susunan kata sifat penjelas sebelum Noun "bird".', eliminate: ['(A) a large and powerful ✓ : Susunan sempurna: Article (a) + Adjective (large and powerful) + Noun (bird).', '(B) powerful and a large ✕ : Salah meletakkan article a di tengah-tengah kata sifat.', '(C) large and a powerful ✕ : Memisah article a dari awal susunan Noun Phrase.', '(D) a powerful, large that is ✕ : Menambahkan that is di akhir secara janggal yang merusak Noun Phrase.'] },
-            14: { concept: 'Gerund Phrase as Subject (Gerund sebagai Subjek)', observe: '• **Subject:** "Piloting a commercial jet" adalah Gerund Phrase\n\n• **Verb:** requires (Singular Verb untuk Subject singular)\n\n• **Complement:** a high level of concentration and physical endurance', observeVisual: '<span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">Piloting a commercial jet</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">requires</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">a high level of concentration and physical endurance</span>', requirement: 'Kalimat sudah memiliki Verb singular (requires). Diperlukan sebuah Subject berbentuk kata benda (Noun/Gerund Phrase) di posisi rumpang.', eliminate: ['(A) Pilot a commercial jet ✕ : Pilot di awal adalah Verb 1 (Imperative/kalimat perintah), tidak bisa menjadi Subject.', '(B) Piloting a commercial jet ✓ : Gerund phrase (Verb-ing + object) berfungsi sempurna sebagai Subject singular.', '(C) A commercial jet piloted ✕ : Menjadikan jet sebagai subjek yang diikuti participle, mengubah makna kalimat secara tidak logis.', '(D) To piloting a commercial jet ✕ : Bentuk tata bahasa salah (To preposition tidak bisa langsung bertemu Verb-ing untuk fungsi ini).'] },
-            15: { concept: 'Contrast Preposition vs Conjunction (Preposisi Pertentangan)', observe: '• **Subject:** the outdoor graduation ceremony\n\n• **Verb:** proceeded\n\n• **Prepositional Phrase:** "Despite the heavy rain" adalah kontras preposisi di awal kalimat', observeVisual: '<span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">Despite the heavy rain</span>, <span style="background-color: #0EA5E9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">the outdoor graduation ceremony</span> <span style="background-color: #30B0C7; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">proceeded</span> <span style="background-color: #E675C9; color: #FFFFFF; padding: 2px 6px; border-radius: 3px;">as planned</span>', requirement: 'Kata "the heavy rain" hanya berupa Noun Phrase (tanpa Verb). Maka posisi rumpang memerlukan Preposition (Kata Depan) pertentangan, BUKAN Conjunction (Kata Hubung Klausa).', eliminate: ['(A) Although ✕ : Merupakan Conjunction, harus diikuti oleh klausa lengkap (Subject + Verb).', '(B) In spite ✕ : Tidak lengkap; bentuk prepositional yang benar harus menggunakan of (In spite of).', '(C) Despite ✓ : Merupakan Preposition yang langsung diikuti Noun Phrase.', '(D) Even though ✕ : Merupakan Conjunction, wajib diikuti klausa utuh (Subject + Verb).'] }
-        };
-
         function buildPreviewReviewState() {
             var questions = [];
             var wrongSet = { 3: true, 4: true, 31: true, 34: true };
@@ -1010,7 +982,7 @@
                 questions.push({
                     number: number,
                     partId: number <= 30 ? 1 : (number <= 38 ? 2 : 3),
-                    partName: number <= 15 ? 'Part A' : 'Part B',
+                    partName: number <= 30 ? 'Part A' : (number <= 38 ? 'Part B' : 'Part C'),
                     questionText: 'Question ' + number,
                     options: { A: 'Preview option A', B: 'Preview option B', C: 'Preview option C', D: 'Preview option D' },
                     correctAnswer: 'B',
@@ -1093,7 +1065,7 @@
                 totalQuestions: 50,
                 rawScore: 46,
                 scaledScore: 62,
-                submittedAt: urlPackageDate || new Date().toISOString().split('T')[0],
+                submittedAt: '2026-01-01',
                 isPreview: true,
                 questions: questions
             };
@@ -1222,11 +1194,338 @@
             var questionNumber = Number(question && question.number) || 0;
             var isExpanded = qcCoreExpandState[questionNumber] !== false;
             var correct = normalizeLetter(question && question.correctAnswer) || '-';
+            var correctChoiceText = extractChoiceText(question && question.options, correct);
             var mainVerb = normalizeText((blueprint && blueprint.mainVerb) || 'unknown');
+            var subjectToken = normalizeText((blueprint && blueprint.subject) || '');
+            var aiObserve = getCachedGeminiObserveAnalysis(question);
+            if (aiObserve && aiObserve.subjectToken) subjectToken = normalizeText(aiObserve.subjectToken);
+            if (aiObserve && aiObserve.verbToken && aiObserve.verbToken !== '_____') mainVerb = normalizeText(aiObserve.verbToken);
+            var stemParts = splitStemBlank(question && question.questionText);
+            var stemBefore = String(stemParts.before || '');
+            var stemAfter = String(stemParts.after || '');
+            var normalizedStemBefore = normalizeText(stemBefore);
+            var normalizedStemAfter = normalizeText(stemAfter);
+            var normalizedStemAll = normalizeText((stemBefore || '') + ' ' + (stemAfter || ''));
             var descriptivePhrase = normalizeText((blueprint && blueprint.descriptivePhrase) || 'frasa diapit koma');
             var ruleLabel = normalizeText((blueprint && blueprint.ruleLabel) || 'Pilih opsi yang melengkapi Subject + Verb tanpa connector tambahan.');
             var letters = Object.keys((question && question.options) || {}).sort();
             var eliminationLines = '';
+            var subjectText = '_____';
+
+            function renderObserveColumn(text, label, color, topAlign) {
+                var topJustify = topAlign === 'center' ? 'center' : 'start';
+                return '<span style="display:inline-block; justify-self:' + topJustify + '; background-color:' + color + '; color:#FFFFFF; border-radius:4px; padding:2px 6px; font-weight:500; font-size:11px; line-height:1.25; white-space:nowrap; text-align:left;">' + escapeHtml(text) + '</span>'
+                    + '<span style="padding:2px 8px; border:1px solid #D1DCE8; border-radius:4px; font-size:13px; color:#FFFFFF; text-align:center; background-color:' + color + ';">' + escapeHtml(label) + '</span>';
+            }
+
+            function renderObservePlainColumn(text) {
+                return '<span style="display:inline-block; white-space:nowrap; color:#0f172a; font-size:11px; line-height:1.25;">' + escapeHtml(text) + '</span>'
+                    + '<span aria-hidden="true" style="display:block; height:29px;"></span>';
+            }
+
+            function escapeRegExpText(value) {
+                return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            }
+
+            function splitTextByVerb(text, verb) {
+                var source = String(text || '');
+                var token = String(verb || '').trim();
+                if (!source || !token) return null;
+                var match = source.match(new RegExp('\\b' + escapeRegExpText(token) + '\\b', 'i'));
+                if (!match || typeof match.index !== 'number') return null;
+                var start = match.index;
+                var matchedText = source.slice(start, start + match[0].length);
+                return {
+                    before: source.slice(0, start),
+                    verb: matchedText,
+                    after: source.slice(start + match[0].length)
+                };
+            }
+
+            function hasTokenInText(text, token) {
+                var source = String(text || '');
+                var target = String(token || '').trim();
+                if (!source || !target) return false;
+                return new RegExp('\\b' + escapeRegExpText(target) + '\\b', 'i').test(source);
+            }
+
+            function findTokenMatch(text, token) {
+                var source = String(text || '');
+                var target = String(token || '').trim();
+                if (!source || !target) return null;
+                var match = source.match(new RegExp('\\b' + escapeRegExpText(target) + '\\b', 'i'));
+                if (!match || typeof match.index !== 'number') return null;
+                return {
+                    index: match.index,
+                    text: source.slice(match.index, match.index + match[0].length)
+                };
+            }
+
+            function tokenizeWords(text) {
+                return String(text || '').replace(/[^A-Za-z\s']/g, ' ').trim().split(/\s+/).filter(Boolean);
+            }
+
+            function isLikelyVerbWord(word) {
+                var token = String(word || '').toLowerCase();
+                if (!token) return false;
+                if (/^(a|an|the|this|that|these|those)$/.test(token)) return false;
+                if (/^(is|are|was|were|be|being|been|am|do|does|did|has|have|had|can|could|will|would|should|may|might|must)$/.test(token)) return true;
+                if (/^(become|pose|poses|posed|posing|threaten|threatens|threatened|threatening|remain|remains|remained|becomes)$/.test(token)) return true;
+                if (/(ed|ing|en|ify|ise|ize|ate|s)$/.test(token) && token.length > 3) return true;
+                return false;
+            }
+
+            function extractAnswerRoles(answerText) {
+                var words = tokenizeWords(answerText);
+                if (!words.length) return { subject: '', verb: '' };
+
+                var auxSet = {
+                    is: true, are: true, was: true, were: true, be: true, being: true, been: true, am: true,
+                    do: true, does: true, did: true, has: true, have: true, had: true, can: true, could: true,
+                    will: true, would: true, should: true, may: true, might: true, must: true
+                };
+
+                var lastVerbIndex = -1;
+                for (var wi = words.length - 1; wi >= 0; wi -= 1) {
+                    if (isLikelyVerbWord(words[wi])) {
+                        lastVerbIndex = wi;
+                        break;
+                    }
+                }
+
+                if (lastVerbIndex < 0) return { subject: normalizeText(answerText), verb: '' };
+
+                var verb = words[lastVerbIndex];
+                var subject = '';
+                var firstAuxIndex = -1;
+                for (var aj = 0; aj < lastVerbIndex; aj += 1) {
+                    if (auxSet[String(words[aj] || '').toLowerCase()]) {
+                        firstAuxIndex = aj;
+                        break;
+                    }
+                }
+
+                if (firstAuxIndex >= 0 && firstAuxIndex + 1 < lastVerbIndex) {
+                    subject = words.slice(firstAuxIndex + 1, lastVerbIndex).join(' ');
+                } else if (lastVerbIndex > 0) {
+                    subject = words.slice(0, lastVerbIndex).join(' ');
+                }
+
+                return { subject: normalizeText(subject), verb: normalizeText(verb) };
+            }
+
+            function inferStemSubjectHead(beforeText) {
+                var source = normalizeText(beforeText);
+                if (!source) return '';
+
+                var cleaned = source.replace(/[,:;]+$/g, '').trim();
+                if (!cleaned) return '';
+
+                var ofMatch = cleaned.match(/\bof\b/i);
+                if (ofMatch && typeof ofMatch.index === 'number') {
+                    var leftChunk = normalizeText(cleaned.slice(0, ofMatch.index));
+                    var leftWords = tokenizeWords(leftChunk);
+                    if (leftWords.length) return leftWords[leftWords.length - 1];
+                }
+
+                var words = tokenizeWords(cleaned);
+                if (!words.length) return '';
+                var skip = { the: true, a: true, an: true, this: true, that: true, these: true, those: true };
+                for (var ix = words.length - 1; ix >= 0; ix -= 1) {
+                    var token = String(words[ix] || '').toLowerCase();
+                    if (!skip[token]) return words[ix];
+                }
+                return words[words.length - 1];
+            }
+
+            function looksLikeInversionStem(beforeText) {
+                var source = normalizeText(beforeText).toLowerCase();
+                if (!source) return false;
+                return /^(not\s+until|only\s+after|only\s+when|only\s+if|rarely|seldom|never|hardly|scarcely|no\s+sooner|under\s+no\s+circumstances)\b/.test(source);
+            }
+
+            function inferVerbFromStem(text) {
+                var words = tokenizeWords(text);
+                for (var iWord = 0; iWord < words.length; iWord += 1) {
+                    if (isLikelyVerbWord(words[iWord])) return words[iWord];
+                }
+                return '';
+            }
+
+            var answerRoles = extractAnswerRoles(correctChoiceText);
+
+            var inferredStemSubject = inferStemSubjectHead(stemBefore);
+            var inversionStem = looksLikeInversionStem(stemBefore);
+            var inferredStemVerb = inferVerbFromStem(normalizedStemAll);
+
+            if ((!subjectToken || subjectToken === '_____') && inferredStemSubject) {
+                subjectToken = inferredStemSubject;
+            }
+            if ((!mainVerb || mainVerb === 'unknown') && inferredStemVerb) {
+                mainVerb = inferredStemVerb;
+            }
+
+            var hasKnownVerb = !!mainVerb && mainVerb !== 'unknown';
+            var hasKnownSubject = !!subjectToken;
+            var verbInBefore = hasKnownVerb && hasTokenInText(stemBefore, mainVerb);
+            var verbInAfter = hasKnownVerb && hasTokenInText(stemAfter, mainVerb);
+            var hasVerbInStem = verbInBefore || verbInAfter;
+            var verbInCorrectChoice = hasKnownVerb && hasTokenInText(correctChoiceText, mainVerb);
+            var answerVerb = normalizeText(answerRoles.verb || '');
+            var answerVerbInStem = answerVerb ? hasTokenInText(stemBefore, answerVerb) || hasTokenInText(stemAfter, answerVerb) : false;
+            var missingVerb = (!hasVerbInStem && verbInCorrectChoice) || (!!answerVerb && !answerVerbInStem && !hasVerbInStem);
+            var subjectInBefore = hasKnownSubject && hasTokenInText(stemBefore, subjectToken);
+            var subjectInAfter = hasKnownSubject && hasTokenInText(stemAfter, subjectToken);
+            var hasSubjectInStem = subjectInBefore || subjectInAfter;
+            var answerSubject = normalizeText(answerRoles.subject || '');
+            var answerSubjectInStem = answerSubject ? hasTokenInText(stemBefore, answerSubject) || hasTokenInText(stemAfter, answerSubject) : false;
+
+            var hasStrongPreBlankSubject = !!normalizedStemBefore && !/[,:;]\s*$/.test(String(stemBefore || '').trim()) && !inversionStem;
+            var missingSubject = !hasSubjectInStem && !hasStrongPreBlankSubject;
+
+            if (inversionStem) {
+                missingSubject = !answerSubjectInStem;
+            }
+
+            if (answerSubject && !answerSubjectInStem && !hasStrongPreBlankSubject) {
+                missingSubject = true;
+            }
+
+            if (missingSubject && inversionStem && answerSubject) {
+                subjectToken = answerSubject;
+            } else if (!missingSubject && inferredStemSubject) {
+                subjectToken = inferredStemSubject;
+            }
+
+            if (missingVerb) {
+                mainVerb = answerVerb || mainVerb;
+            }
+
+            var hasAiDecision = !!(aiObserve && (
+                typeof aiObserve.missingSubject === 'boolean'
+                || typeof aiObserve.missingVerb === 'boolean'
+                || aiObserve.subjectToken
+                || aiObserve.verbToken
+            ));
+
+            if (hasAiDecision) {
+                var aiSubjectToken = normalizeText(aiObserve.subjectToken || '');
+                var aiVerbToken = normalizeText(aiObserve.verbToken || '');
+
+                if (typeof aiObserve.missingSubject === 'boolean') missingSubject = aiObserve.missingSubject;
+                if (typeof aiObserve.missingVerb === 'boolean') missingVerb = aiObserve.missingVerb;
+
+                if (aiSubjectToken === '_____') {
+                    missingSubject = true;
+                } else if (aiSubjectToken) {
+                    subjectToken = aiSubjectToken;
+                    if (typeof aiObserve.missingSubject !== 'boolean') missingSubject = false;
+                }
+
+                if (aiVerbToken === '_____') {
+                    missingVerb = true;
+                } else if (aiVerbToken) {
+                    mainVerb = aiVerbToken;
+                    if (typeof aiObserve.missingVerb !== 'boolean') missingVerb = false;
+                }
+            }
+
+            hasKnownVerb = !!mainVerb && mainVerb !== 'unknown';
+            hasKnownSubject = !!subjectToken;
+
+            var observeSegments = [];
+            var subjectPlaced = false;
+            var verbPlaced = false;
+
+            function pushPlain(text) {
+                var chunk = String(text || '');
+                if (!chunk) return;
+                observeSegments.push({ type: 'plain', text: chunk });
+            }
+
+            function pushVerbToken(text) {
+                observeSegments.push({ type: 'verb', text: text || '_____', label: 'Verb', color: '#30B0C7' });
+                verbPlaced = true;
+            }
+
+            function pushSubjectToken(text) {
+                observeSegments.push({ type: 'subject', text: text || '_____', label: 'Subject', color: '#0EA5E9' });
+                subjectPlaced = true;
+            }
+
+            function appendStemChunkWithRoleDetection(text) {
+                var source = String(text || '');
+                if (!source) return;
+
+                var remaining = source;
+                while (remaining) {
+                    var roleMatches = [];
+                    if (hasKnownSubject && !missingSubject && !subjectPlaced) {
+                        var subjectMatch = findTokenMatch(remaining, subjectToken);
+                        if (subjectMatch) roleMatches.push({ role: 'subject', index: subjectMatch.index, text: subjectMatch.text });
+                    }
+                    if (hasKnownVerb && !missingVerb && !verbPlaced) {
+                        var verbMatch = findTokenMatch(remaining, mainVerb);
+                        if (verbMatch) roleMatches.push({ role: 'verb', index: verbMatch.index, text: verbMatch.text });
+                    }
+
+                    if (!roleMatches.length) {
+                        pushPlain(remaining);
+                        break;
+                    }
+
+                    roleMatches.sort(function (left, right) { return left.index - right.index; });
+                    var next = roleMatches[0];
+                    if (next.index > 0) pushPlain(remaining.slice(0, next.index));
+
+                    if (next.role === 'subject') {
+                        pushSubjectToken(next.text || subjectToken);
+                    } else {
+                        pushVerbToken(next.text || mainVerb);
+                    }
+
+                    remaining = remaining.slice(next.index + String(next.text || '').length);
+                }
+            }
+
+            appendStemChunkWithRoleDetection(stemBefore);
+            var missingSubjectDisplayToken = (!inversionStem && missingSubject) ? subjectText : (subjectToken || subjectText);
+
+            if (missingSubject) pushSubjectToken(missingSubjectDisplayToken);
+            if (missingVerb) pushVerbToken('_____');
+            appendStemChunkWithRoleDetection(stemAfter);
+            if (hasKnownSubject && !missingSubject && !subjectPlaced) pushSubjectToken(subjectToken);
+            if (hasKnownVerb && !missingVerb && !verbPlaced) pushVerbToken(mainVerb);
+
+            var observeColumnsHtml = '';
+            for (var segmentIndex = 0; segmentIndex < observeSegments.length; segmentIndex += 1) {
+                var segment = observeSegments[segmentIndex];
+                if (segmentIndex > 0) observeColumnsHtml += renderObservePlainColumn('+');
+                if (segment.type === 'subject' || segment.type === 'verb') {
+                    observeColumnsHtml += renderObserveColumn(segment.text, segment.label, segment.color, 'center');
+                } else {
+                    observeColumnsHtml += renderObservePlainColumn(segment.text);
+                }
+            }
+
+            var observeVisualHtml = '<div style="display:flex; justify-content:center; width:100%; margin-top:8px; overflow-x:hidden;">'
+                + '<div style="display:grid; grid-template-rows:auto auto; grid-auto-flow:column; grid-auto-columns:max-content; column-gap:8px; row-gap:6px; align-items:start; justify-content:center; width:min(100%, 1100px);">'
+                + observeColumnsHtml
+                + '</div>'
+                + '</div>';
+
+            var observedSubjectText = missingSubject ? '[KOSONG/BLANK]' : escapeHtml(subjectToken || '[TERSEDIA]');
+            var observedVerbText = missingVerb ? '[KOSONG/BLANK]' : escapeHtml(mainVerb);
+            var requirementLead = '';
+            if (missingSubject && missingVerb) {
+                requirementLead = 'Kalimat ini belum memiliki Subject dan Verb pada slot kosong.';
+            } else if (missingSubject) {
+                requirementLead = 'Kalimat ini sudah memiliki Verb namun belum memiliki Subject.';
+            } else if (missingVerb) {
+                requirementLead = 'Kalimat ini sudah memiliki Subject namun belum memiliki Verb.';
+            } else {
+                requirementLead = 'Kalimat ini sudah memiliki Subject dan Verb; analisis fokus pada kecocokan struktur pilihan.';
+            }
 
             for (var i = 0; i < letters.length; i += 1) {
                 var letter = letters[i];
@@ -1261,68 +1560,16 @@
                 + '<div class="section2-qc-core-body">'
                 + '<p><span class="section2-qc-core-key">C - Concept</span> : <mark>Subject & Appositive</mark> (Subjek & Keterangan Tambahan)</p>'
                 + '<p><span class="section2-qc-core-key">O - Observe S-V-C</span>:</p>'
+                + observeVisualHtml
                 + '<ul class="section2-qc-core-list">'
-                + '<li><b>Subject</b> : [KOSONG/BLANK]</li>'
-                + '<li><b>Verb</b> : ' + escapeHtml(mainVerb) + ' (Sudah ada)</li>'
+                + '<li><b>Subject</b> : ' + observedSubjectText + '</li>'
+                + '<li><b>Verb</b> : ' + observedVerbText + '</li>'
                 + '<li><b>Compliance</b> : Frasa diapit dua koma (' + escapeHtml(descriptivePhrase) + ') adalah Appositive.</li>'
                 + '</ul>'
                 + '<p><span class="section2-qc-core-key">R - Requirement</span>:</p>'
-                + '<p>Kalimat ini sudah memiliki Verb namun belum memiliki Subject. ' + escapeHtml(ruleLabel) + '</p>'
+                + '<p>' + requirementLead + ' ' + escapeHtml(ruleLabel) + '</p>'
                 + '<p><span class="section2-qc-core-key">E - Eliminate</span>:</p>'
                 + '<ul class="section2-qc-core-list section2-qc-core-list--elim">' + eliminationLines + '</ul>'
-                + '</div>'
-                + '</section>';
-        }
-
-        function buildCustomPartAAnalysisBlock(question, data) {
-            if (!data) return buildPartAAnalysisBlock(question, null);
-            var questionNumber = Number(question && question.number) || 0;
-            var isExpanded = qcCoreExpandState[questionNumber] !== false;
-            var concept = escapeHtml(data.concept || '');
-            var observe = data.observe || '';
-            var observeVisual = data.observeVisual || ''; // HTML with colored spans
-            var requirement = escapeHtml(data.requirement || '');
-            var eliminate = data.eliminate || [];
-
-            var eliminationHtml = '';
-            for (var i = 0; i < eliminate.length; i += 1) {
-                eliminationHtml += '<li>' + escapeHtml(eliminate[i]) + '</li>';
-            }
-
-            // Process observe text (bullet points) - convert **text** to <strong>text</strong>
-            var observeHtml = '';
-            if (observe) {
-                observeHtml = observe.split('\n\n').map(function(line) {
-                    var cleaned = line.replace(/^• /, '').trim();
-                    var withHtml = cleaned.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                    return '<li>' + withHtml + '</li>';
-                }).join('');
-            }
-
-            return '<section class="section2-qc-analysis ' + (isExpanded ? 'is-expanded' : 'is-collapsed') + '">'
-                + '<div class="section2-qc-core-banner">'
-                + '<button type="button" class="section2-qc-core-head" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" onclick="toggleQcCoreExpand(' + questionNumber + ')">'
-                + '<span>💡 QC CORE ANALYSIS</span>'
-                + '<i class="ph ' + (isExpanded ? 'ph-caret-circle-up' : 'ph-caret-circle-down') + '" aria-hidden="true"></i>'
-                + '</button>'
-                + '<div class="section2-qc-core-expand-lines">'
-                + '<p><b>C - Concept</b><span>Menentukan Topik Grammar atau materi apa yang sedang diuji</span></p>'
-                + '<p><b>O - Observe S-V-C (Subject-Verb-Complement)</b><span>Melakukan Identifikasi S-V-C dan Mencari apa yang sudah ada dan apa yang hilang di kalimat</span></p>'
-                + '<p><b>R - Requirement</b><span>Menarik Kesimpulan Kebutuhan dan Menentukan apa yang harus dicari di pilihan ganda</span></p>'
-                + '<p><b>E - Eliminate</b><span>Melakukan Eliminasi Opsi dengan Membedah A, B, C, D dengan alasan kenapa salah/benar berdasarkan S-V-C</span></p>'
-                + '</div>'
-                + '</div>'
-                + '<div class="section2-qc-core-body">'
-                + '<p><span class="section2-qc-core-key">C - Concept</span> : <mark>' + concept + '</mark></p>'
-                + '<p><span class="section2-qc-core-key">O - Observe S-V-C</span>:</p>'
-                + (observeVisual ? '<div class="section2-qc-visual-breakdown">' + observeVisual + '</div>' : '')
-                + '<ul class="section2-qc-core-list">'
-                + observeHtml
-                + '</ul>'
-                + '<p><span class="section2-qc-core-key">R - Requirement</span>:</p>'
-                + '<p>' + requirement + '</p>'
-                + '<p><span class="section2-qc-core-key">E - Eliminate</span>:</p>'
-                + '<ul class="section2-qc-core-list section2-qc-core-list--elim">' + eliminationHtml + '</ul>'
                 + '</div>'
                 + '</section>';
         }
@@ -1387,6 +1634,7 @@
         function renderQuestionTwoExplanation(question) {
             var displayQuestion = buildQuestionTwoExplanationQuestion(question);
             var blueprint = deriveGrammarBlueprint(displayQuestion);
+            ensureGeminiObserveAnalysis(displayQuestion, blueprint);
 
             return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q2 section2-aiqc-host">'
                 + '<div class="section2-figma-top">'
@@ -1421,15 +1669,52 @@
                 C: 'are',
                 D: 'desk'
             };
+            var userAnswer = normalizeLetter(base.userAnswer) || 'C';
             return Object.assign({}, base, {
                 number: 16,
                 partId: 2,
                 questionText: 'The list of items that I need to purchase are on the desk.',
                 options: fixedOptions,
                 correctAnswer: 'C',
-                userAnswer: 'C',
-                isCorrect: true
+                userAnswer: userAnswer,
+                isCorrect: userAnswer === 'C'
             });
+        }
+
+        function buildReviewInlineFragment(text) {
+            return '<span class="section2-q16-inline-fragment">' + escapeHtml(text) + '</span>';
+        }
+
+        function buildReviewInlineWord(word, isSelected) {
+            return '<span class="section2-q16-inline-word' + (isSelected ? ' correctanswer' : ' is-underline') + '">' + escapeHtml(word) + '</span>';
+        }
+
+        function buildReviewInlineOptionBox(letter, isSelected) {
+            return '<span class="section2-q16-inline-option' + (isSelected ? ' correctoption-parent' : '') + '">' + escapeHtml(letter) + '</span>';
+        }
+
+        function buildPartBQuestion16SentenceHtml(question) {
+            var selectedAnswer = normalizeLetter(question && question.userAnswer);
+            return '<span class="section2-q16-inline-grid">'
+                + buildReviewInlineFragment('The ')
+                + buildReviewInlineWord('list', selectedAnswer === 'A')
+                + buildReviewInlineFragment(' of items that ')
+                + buildReviewInlineWord('I need', selectedAnswer === 'B')
+                + buildReviewInlineFragment(' to purchase ')
+                + buildReviewInlineWord('are', selectedAnswer === 'C')
+                + buildReviewInlineFragment(' on the ')
+                + buildReviewInlineWord('desk', selectedAnswer === 'D')
+                + buildReviewInlineFragment('.')
+                + '<span class="section2-q16-inline-gap" aria-hidden="true"></span>'
+                + buildReviewInlineOptionBox('A', selectedAnswer === 'A')
+                + '<span class="section2-q16-inline-gap" aria-hidden="true"></span>'
+                + buildReviewInlineOptionBox('B', selectedAnswer === 'B')
+                + '<span class="section2-q16-inline-gap" aria-hidden="true"></span>'
+                + buildReviewInlineOptionBox('C', selectedAnswer === 'C')
+                + '<span class="section2-q16-inline-gap" aria-hidden="true"></span>'
+                + buildReviewInlineOptionBox('D', selectedAnswer === 'D')
+                + '<span class="section2-q16-inline-gap" aria-hidden="true"></span>'
+                + '</span>';
         }
 
         function renderPartBQuestion16Explanation(question) {
@@ -1437,18 +1722,12 @@
             return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q16 section2-q16-exact section2-aiqc-host">'
                 + '<div class="section2-q16-top">'
                 + '<div class="section2-q16-stem-row">'
-                + '<div class="section2-q16-number">1</div>'
+                + '<div class="section2-q16-number">' + escapeHtml(String(displayQuestion.number || 16)) + '</div>'
                 + '<div class="section2-q16-stem">'
-                + '<div class="section2-q16-sentence">The <span class="is-underline">list</span> of items that <span class="is-underline">I need</span> to purchase <span class="is-highlight-teal">are</span> on the <span class="is-underline">desk</span>.</div>'
-                + '<div class="section2-q16-choice-row">'
-                + '<div class="section2-q16-choice-box">A</div>'
-                + '<div class="section2-q16-choice-box">B</div>'
-                + '<div class="section2-q16-choice-selected"><div class="section2-q16-choice-selected-word">are</div><div class="section2-q16-choice-selected-letter">C</div></div>'
-                + '<div class="section2-q16-choice-box">D</div>'
+                + '<div class="section2-q16-sentence section2-q16-sentence--inline-options">' + buildPartBQuestion16SentenceHtml(displayQuestion) + '</div>'
                 + '</div>'
                 + '</div>'
-                + '</div>'
-                + '<b class="section2-q16-status is-correct">CORRECT</b>'
+                + '<b class="section2-q16-status ' + (displayQuestion.isCorrect ? 'is-correct' : 'is-wrong') + '">' + (displayQuestion.isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
                 + '</div>'
                 + '<section class="section2-q16-why">'
                 + '<div class="section2-q16-divider" aria-hidden="true"></div>'
@@ -1752,6 +2031,122 @@
             return normalizeText(text) || 'Maaf, respons Gemini kosong. Coba ulangi pertanyaannya dengan kalimat lebih spesifik.';
         }
 
+        function getObserveAnalysisKey(question) {
+            return [
+                String(question && question.number || ''),
+                normalizeText(question && question.questionText),
+                normalizeLetter(question && question.correctAnswer)
+            ].join('::');
+        }
+
+        function getCachedGeminiObserveAnalysis(question) {
+            var key = getObserveAnalysisKey(question);
+            return key ? observeAnalysisCache[key] : null;
+        }
+
+        function parseGeminiObserveJson(rawText) {
+            var source = String(rawText || '').trim();
+            if (!source) return null;
+            var parsed = parseJsonSafe(source, null);
+            if (parsed && typeof parsed === 'object') return parsed;
+
+            var start = source.indexOf('{');
+            var end = source.lastIndexOf('}');
+            if (start < 0 || end <= start) return null;
+            var sliced = source.slice(start, end + 1);
+            return parseJsonSafe(sliced, null);
+        }
+
+        function sanitizeGeminiObserveAnalysis(candidate) {
+            if (!candidate || typeof candidate !== 'object') return null;
+            var output = {};
+            if (typeof candidate.missingSubject === 'boolean') output.missingSubject = candidate.missingSubject;
+            if (typeof candidate.missingVerb === 'boolean') output.missingVerb = candidate.missingVerb;
+
+            var subjectToken = normalizeText(candidate.subjectToken);
+            var verbToken = normalizeText(candidate.verbToken);
+            if (subjectToken) output.subjectToken = subjectToken;
+            if (verbToken) output.verbToken = verbToken;
+
+            if (typeof output.missingSubject !== 'boolean' && typeof output.missingVerb !== 'boolean' && !output.subjectToken && !output.verbToken) {
+                return null;
+            }
+            return output;
+        }
+
+        async function requestGeminiObserveAnalysis(question, blueprint) {
+            var apiKey = '';
+            try {
+                apiKey = String(window.TOEFL_GEMINI_API_KEY || localStorage.getItem('toefl_gemini_api_key') || '').trim();
+            } catch (_) {
+                apiKey = String(window.TOEFL_GEMINI_API_KEY || '').trim();
+            }
+            if (!apiKey) return null;
+
+            var correctLetter = normalizeLetter(question && question.correctAnswer);
+            var correctChoiceText = extractChoiceText(question && question.options, correctLetter);
+            var stemText = String(question && question.questionText || '');
+            var prompt = [
+                'You are a strict TOEFL structure parser.',
+                'Analyze ONLY this stem and answer key to detect which grammatical roles are missing in the blank.',
+                'Return ONLY JSON (no markdown) with keys:',
+                '{"missingSubject": boolean, "missingVerb": boolean, "subjectToken": string, "verbToken": string}',
+                'Rules:',
+                '- If subject is missing in blank, subjectToken must be "_____".',
+                '- If verb is missing in blank, verbToken must be "_____".',
+                '- If role exists in stem text, return the exact token from stem for that role.',
+                '- Do not invent words not present in stem unless the role is missing (then use "_____").',
+                '',
+                'Stem: ' + stemText,
+                'Correct answer letter: ' + correctLetter,
+                'Correct answer text: ' + correctChoiceText,
+                'Blueprint subject hint: ' + String((blueprint && blueprint.subject) || ''),
+                'Blueprint verb hint: ' + String((blueprint && blueprint.mainVerb) || '')
+            ].join('\n');
+
+            var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        temperature: 0,
+                        maxOutputTokens: 220,
+                        responseMimeType: 'application/json'
+                    }
+                })
+            });
+
+            if (!response.ok) return null;
+
+            var data = await response.json();
+            var text = firstNonEmpty(
+                data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text,
+                data && data.output_text
+            );
+            return sanitizeGeminiObserveAnalysis(parseGeminiObserveJson(text));
+        }
+
+        function ensureGeminiObserveAnalysis(question, blueprint) {
+            if (!question || isPartBFigmaCase(question)) return;
+            var key = getObserveAnalysisKey(question);
+            if (!key || observeAnalysisCache[key] || observeAnalysisPending[key]) return;
+            observeAnalysisPending[key] = true;
+
+            requestGeminiObserveAnalysis(question, blueprint).then(function (analysis) {
+                if (analysis) observeAnalysisCache[key] = analysis;
+            }).catch(function () {
+                // Keep deterministic fallback when Gemini parsing fails.
+            }).finally(function () {
+                observeAnalysisPending[key] = false;
+                if (!reviewCurrentQuestion) return;
+                var sameQuestionNumber = Number(reviewCurrentQuestion.number || 0) === Number(question.number || 0);
+                if (sameQuestionNumber && reviewExplainationTab === 'explaination') {
+                    renderExplainationTabDetail(reviewCurrentQuestion);
+                }
+            });
+        }
+
         async function submitAiQcPrompt(event, directText) {
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
             var input = document.getElementById('aiqcInput');
@@ -1778,97 +2173,9 @@
             }
         }
 
-        function isPartAQuestion(question) {
-            if (!question) return false;
-            var questionNumber = Number(question.number || 0);
-            return questionNumber >= 1 && questionNumber <= 15;
-        }
-
-        function buildCustomPartAAnalysisBlock(question, customData) {
-            if (!customData) return '';
-            
-            var isCorrect = !!question.isCorrect;
-            var blueprint = deriveGrammarBlueprint(question);
-            
-            // Convert markdown to HTML (basic)
-            function markdownToHtml(text) {
-                if (!text) return '';
-                return String(text)
-                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-                    .replace(/\n/g, '<br>');
-            }
-            
-            var conceptHtml = markdownToHtml(customData.concept || '');
-            var observeHtml = markdownToHtml(customData.observe || '');
-            var observeVisualHtml = customData.observeVisual || '';
-            var requirementHtml = markdownToHtml(customData.requirement || '');
-            
-            var eliminateHtml = '';
-            if (customData.eliminate && Array.isArray(customData.eliminate)) {
-                eliminateHtml = customData.eliminate
-                    .map(function(item) {
-                        return '<div class="section2-part-a-eliminate-item">' + escapeHtml(item) + '</div>';
-                    })
-                    .join('');
-            }
-            
-            return '<div class="section2-figma-analysis section2-aiqc-analysis">'
-                + '<div class="section2-analysis-title">💡 QC C.O.R.E ANALYSIS</div>'
-                + '<div class="section2-analysis-section">'
-                + '<div class="section2-analysis-label">C - Concept:</div>'
-                + '<div class="section2-analysis-content">' + conceptHtml + '</div>'
-                + '</div>'
-                + '<div class="section2-analysis-section">'
-                + '<div class="section2-analysis-label">O - Observe S-V-C:</div>'
-                + '<div class="section2-analysis-subsection">'
-                + '<div class="section2-visual-breakdown">' + observeVisualHtml + '</div>'
-                + '</div>'
-                + '<div class="section2-analysis-subsection">'
-                + '<div class="section2-analysis-observations">' + observeHtml + '</div>'
-                + '</div>'
-                + '</div>'
-                + '<div class="section2-analysis-section">'
-                + '<div class="section2-analysis-label">R - Requirement:</div>'
-                + '<div class="section2-analysis-content">' + requirementHtml + '</div>'
-                + '</div>'
-                + '<div class="section2-analysis-section">'
-                + '<div class="section2-analysis-label">E - Eliminate:</div>'
-                + '<div class="section2-analysis-content">' + eliminateHtml + '</div>'
-                + '</div>'
-                + '</div>';
-        }
-
         function renderExplainationTabDetail(question) {
             var host = document.getElementById('explainationTabContent');
             if (!host || !question) return;
-            var questionNum = Number(question.number) || 0;
-             
-            // Route Part A questions (1-15)
-            if (isPartAQuestion(question)) {
-                if (questionNum === 2) {
-                    host.innerHTML = renderQuestionTwoExplanation(question);
-                    return;
-                }
-                var isCorrect = !!question.isCorrect;
-                var blueprint = deriveGrammarBlueprint(question);
-                var customData = partAExplanationsData && partAExplanationsData[questionNum] ? partAExplanationsData[questionNum] : null;
-
-                host.innerHTML = '<div class="explaination-figma section2-figma-shell section2-aiqc-host">'
-                    + '<div class="section2-figma-top">'
-                    + '<div class="section2-figma-question-row">'
-                    + '<div class="explaination-figma-qnum ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + escapeHtml(String(question.number || '-')) + '</div>'
-                    + '<div class="section2-figma-question-text">' + buildQuestionStemHtml(question) + '</div>'
-                    + '</div>'
-                    + '<b class="explaination-figma-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
-                    + '</div>'
-                    + '<div class="explaination-figma-options">' + buildOptionMarkup(question, { selected: 'Jawaban Kamu', correct: 'Jawaban Benar' }) + '</div>'
-                    + (customData ? buildCustomPartAAnalysisBlock(question, customData) : buildPartAAnalysisBlock(question, blueprint))
-                    + '</div>';
-                return;
-            }
-             
-            // Route Part B questions (16+)
             if (isPartBQuestion16FigmaCase(question)) {
                 host.innerHTML = renderPartBQuestion16Explanation(question);
                 return;
@@ -1877,9 +2184,25 @@
                 host.innerHTML = renderPartBGenericExplanation(question);
                 return;
             }
-             
-            // Fallback (shouldn't reach here)
-            host.innerHTML = '<div class="explaination-figma section2-figma-shell"><p>Question ' + escapeHtml(String(questionNum)) + ' explanation not available</p></div>';
+            if (Number(question.number) === 2) {
+                host.innerHTML = renderQuestionTwoExplanation(question);
+                return;
+            }
+            var correct = normalizeLetter(question.correctAnswer) || 'A';
+            var isCorrect = !!question.isCorrect;
+            var blueprint = deriveGrammarBlueprint(question);
+
+            host.innerHTML = '<div class="explaination-figma section2-figma-shell section2-aiqc-host">'
+                + '<div class="section2-figma-top">'
+                + '<div class="section2-figma-question-row">'
+                + '<div class="explaination-figma-qnum ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + escapeHtml(String(question.number || '-')) + '</div>'
+                + '<div class="section2-figma-question-text">' + buildQuestionStemHtml(question) + '</div>'
+                + '</div>'
+                + '<b class="explaination-figma-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
+                + '</div>'
+                + '<div class="explaination-figma-options">' + buildOptionMarkup(question, { selected: 'Jawaban Kamu', correct: 'Jawaban Benar' }) + '</div>'
+                + buildPartAAnalysisBlock(question, blueprint)
+                + '</div>';
         }
 
         function renderGlobalAiQcWidget(question) {
@@ -2711,10 +3034,12 @@
                 var num = Number(item && item.number) || 0;
                 var isActive = reviewCurrentQuestion && Number(reviewCurrentQuestion.number || 0) === num;
                 var badgeClass = item && item.isCorrect ? 'is-correct' : 'is-wrong';
+                var iconClass = item && item.isCorrect ? 'ph-check' : 'ph-x';
+                var iconStyle = item && item.isCorrect ? '' : ' style="color:#DC2626;"';
                 return '<button type="button" class="section2-sidebar-question ' + (isActive ? 'is-active' : '') + '" onclick="selectReviewQuestion(' + num + ')">'
                     + '<span class="section2-sidebar-qbadge ' + badgeClass + '">' + escapeHtml(String(num)) + '</span>'
                     + '<span class="section2-sidebar-qtext">' + escapeHtml(stemPreview(item && item.questionText)) + '</span>'
-                    + '<i class="ph ph-check" aria-hidden="true"></i>'
+                    + '<i class="ph ' + iconClass + '" aria-hidden="true"' + iconStyle + '></i>'
                     + '</button>';
             }
 
@@ -2729,8 +3054,8 @@
                 + '<div class="section2-sidebar-grid">'
                 + '<article class="section2-sidebar-stat is-teal"><strong>Part A: ' + escapeHtml(String(correctQuestions.filter(function (q) { return Number(q.partId) === 1; }).length)) + '</strong><strong>Part B: ' + escapeHtml(String(correctQuestions.filter(function (q) { return Number(q.partId) !== 1; }).length)) + '</strong><span>Jawaban Benar</span></article>'
                 + '<article class="section2-sidebar-stat is-red"><strong>Part A: ' + escapeHtml(String(wrongQuestions.filter(function (q) { return Number(q.partId) === 1; }).length)) + '</strong><strong>Part B: ' + escapeHtml(String(wrongQuestions.filter(function (q) { return Number(q.partId) !== 1; }).length)) + '</strong><span>Jawaban Salah</span></article>'
-                + '<article class="section2-sidebar-stat is-indigo"><strong>40m 30sec</strong><span>Total Waktu yang Dihabiskan</span></article>'
-                + '<article class="section2-sidebar-stat is-orange"><strong>40m 30sec</strong><span>Rata-rata Waktu / Jawaban</span></article>'
+                + '<article class="section2-sidebar-stat is-indigo"><i class="ph ph-clock section2-sidebar-stat-icon" aria-hidden="true"></i><strong>40m 30sec</strong><span>Total Waktu yang Dihabiskan</span></article>'
+                + '<article class="section2-sidebar-stat is-orange"><i class="ph ph-timer section2-sidebar-stat-icon" aria-hidden="true"></i><strong>40m 30sec</strong><span>Rata-rata Waktu / Jawaban</span></article>'
                 + '</div>'
                 + '<article class="section2-sidebar-feedback">'
                 + '<div class="section2-sidebar-feedback-title"><i class="ph ph-sparkle" aria-hidden="true"></i><span>AI Feedback</span></div>'
@@ -2756,6 +3081,7 @@
             reviewCurrentQuestion = question;
             document.getElementById('sectionReviewTitle').textContent = reviewResultData && reviewResultData.sectionTitle ? reviewResultData.sectionTitle : 'Structure and Written Expression';
             renderExplainationTabDetail(question);
+            ensureGeminiObserveAnalysis(question, deriveGrammarBlueprint(question));
             renderStepByStepTabDetail(question);
             renderSidebar(question);
             renderGlobalAiQcWidget(question);
@@ -2819,7 +3145,7 @@
 
         function handleReviewCrossTabSync(event) {
             if (!event || !event.key) return;
-            if (event.key === 'toefl_section2_result' || event.key === 'userSubmissions' || event.key === 'aiReviews') window.location.reload();
+            if (event.key === 'toefl_section2_result' || event.key === 'userSubmissions' || event.key === 'aiReviews' || event.key === 'toefl_section2_editor_apply_sync') window.location.reload();
         }
 
         window.setReviewExplainationTab = setReviewExplainationTab;
@@ -2877,92 +3203,6 @@
 
         window.addEventListener('DOMContentLoaded', init);
         window.addEventListener('storage', handleReviewCrossTabSync);
-    </script>
-
-    <!-- Section 2 Gemini AI Explainer - Auto-generates QC C.O.R.E ANALYSIS -->
-    <script src="js/section2-gemini-explainer.js"></script>
-    <script src="js/section2-review-explainer.js"></script>
-    
-    <!-- Local AI Explanation Generator (No External APIs) -->
-    <script src="js/explanation-generator.js"></script>
-    <script>
-        /**
-         * Integrate Local AI Explanation Generator
-         * Generates QC C.O.R.E ANALYSIS without external APIs
-         */
-
-        let explanationGeneratorInstance = new ExplanationGenerator();
-
-        /**
-         * Generate explanation using local AI
-         * @param {Object} question - Question data
-         * @returns {string} HTML explanation
-         */
-        function generateQCCOREExplanation(question) {
-            if (!question || !question.questionText || !question.options) {
-                return '<div style="color: #666;">Unable to generate explanation - missing question data</div>';
-            }
-
-            // Extract correct answer and text
-            const correctAnswer = String(question.correctAnswer || 'A').trim().toUpperCase();
-            const options = question.options || {};
-            const correctOptionText = options[correctAnswer] || '';
-
-            // Prepare explanation data
-            const explanationData = {
-                questionText: question.questionText,
-                options: Object.values(options),
-                correctAnswer: correctAnswer,
-                correctOptionText: correctOptionText,
-            };
-
-            try {
-                return explanationGeneratorInstance.generate(explanationData);
-            } catch (error) {
-                console.error('[QC C.O.R.E] Generation error:', error);
-                return '<div style="color: #dc2626; padding: 12px; background: #fee2e2; border-radius: 4px;">Error generating explanation. Please try again.</div>';
-            }
-        }
-
-        /**
-         * Render explanation in a designated container
-         * @param {string} containerId - HTML element ID
-         * @param {Object} question - Question data
-         */
-        function renderQCCOREExplanation(containerId, question) {
-            const container = document.getElementById(containerId);
-            if (!container) {
-                console.warn('[QC C.O.R.E] Container not found:', containerId);
-                return;
-            }
-
-            const explanationHtml = generateQCCOREExplanation(question);
-            container.innerHTML = explanationHtml;
-        }
-
-        // Make functions globally available
-        window.generateQCCOREExplanation = generateQCCOREExplanation;
-        window.renderQCCOREExplanation = renderQCCOREExplanation;
-        window.explanationGeneratorInstance = explanationGeneratorInstance;
-
-        // Hook into existing renderQuestion to add QC C.O.R.E explanation
-        const originalRenderQuestion = window.renderQuestion;
-        if (typeof originalRenderQuestion === 'function') {
-            window.renderQuestion = function(question, index) {
-                // Call original rendering
-                originalRenderQuestion.call(this, question, index);
-
-                // After DOM is ready, inject QC C.O.R.E explanation
-                setTimeout(() => {
-                    const explanationContainer = document.querySelector('[data-qc-core-host]');
-                    if (explanationContainer && question) {
-                        renderQCCOREExplanation(explanationContainer.id, question);
-                    }
-                }, 100);
-            };
-        }
-
-        console.log('✓ Local AI Explanation Generator initialized - QC C.O.R.E analysis ready');
     </script>
 </body>
 </html>
