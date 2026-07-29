@@ -137,7 +137,6 @@ function bindRichEditorToolbar(editorId) { const toolbar = document.getElementBy
 
 let draft = { moduleId: "listening", icon: "🎧", moduleName: "Listening", title: "", difficulty: "beginner", level: 1, scheduledDate: "", audioTitle: "", audioDescription: "", audioUrl: "", questionGroups: [] };
 let currentUploadedAudio = null;
-const MAX_UPLOAD_ERROR_DETAIL_LENGTH = 500;
 
 function getApiGatewayBase(){
   const runtimeHost = window.location.hostname || "127.0.0.1";
@@ -170,15 +169,6 @@ function ensureSupportedAudioFile(file){
 async function uploadAudioToR2(file){
   const safeFile = ensureSupportedAudioFile(file);
   if (!safeFile) return null;
-  const readResponseDetail = async (response) => {
-    if (!response) return "";
-    const text = await response.text().catch(() => "");
-    const normalized = String(text || "").replace(/\s+/g, " ").trim();
-    const detail = normalized.length > MAX_UPLOAD_ERROR_DETAIL_LENGTH
-      ? `${normalized.slice(0, MAX_UPLOAD_ERROR_DETAIL_LENGTH)}…`
-      : normalized;
-    return detail ? `${response.status} ${detail}` : String(response.status || "");
-  };
 
   setAudioUploadStatus("Requesting secure upload URL...");
   const apiBase = getApiGatewayBase();
@@ -189,48 +179,24 @@ async function uploadAudioToR2(file){
   });
 
   if (!presignResponse.ok) {
-    const detail = await readResponseDetail(presignResponse);
-    throw new Error(`Failed to request upload URL (${detail || "unknown error"})`);
+    const detail = await presignResponse.text().catch(() => "Failed to request upload URL");
+    throw new Error(detail || "Failed to request upload URL");
   }
 
   const uploadConfig = await presignResponse.json();
   setAudioUploadStatus("Uploading audio file to cloud storage...");
-  let uploaded = false;
-  try {
-    const putResponse = await fetch(uploadConfig.uploadUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": safeFile.type || "audio/mpeg"
-      },
-      body: safeFile
-    });
-    if (!putResponse.ok) {
-      const putDetail = await readResponseDetail(putResponse);
-      throw new Error(`Direct upload failed (${putDetail})`);
-    }
-    uploaded = true;
-  } catch (putError) {
-    const formData = new FormData();
-    formData.append("file", safeFile, safeFile.name || "audio.mp3");
-    formData.append("fileName", safeFile.name || "audio.mp3");
-    formData.append("fileType", safeFile.type || "audio/mpeg");
-    const proxyResponse = await fetch(`${apiBase}/api/developer/upload-proxy`, {
-      method: "POST",
-      body: formData
-    });
-    if (!proxyResponse.ok) {
-      const proxyDetail = await readResponseDetail(proxyResponse);
-      throw new Error(`${String(putError?.message || putError || "Direct upload failed")}; proxy upload failed (${proxyDetail})`);
-    }
-    const proxyPayload = await proxyResponse.json().catch(() => ({}));
-    uploadConfig.objectKey = String(proxyPayload.objectKey || uploadConfig.objectKey || "").trim();
-    uploadConfig.objectUrl = String(proxyPayload.objectUrl || uploadConfig.objectUrl || "").trim();
-    uploaded = true;
+  const putResponse = await fetch(uploadConfig.uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": safeFile.type || "audio/mpeg"
+    },
+    body: safeFile
+  });
+
+  if (!putResponse.ok) {
+    throw new Error(`Upload failed with status ${putResponse.status}`);
   }
 
-  if (!uploaded || !uploadConfig.objectUrl) {
-    throw new Error(uploaded ? "Upload succeeded but Cloudflare object URL is missing" : "Audio upload did not complete");
-  }
   setAudioUploadStatus("Upload completed.");
   return {
     objectKey: uploadConfig.objectKey,
@@ -357,3 +323,4 @@ renderGroups();
 </script>
 </body>
 </html>
+

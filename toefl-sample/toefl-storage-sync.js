@@ -2677,7 +2677,6 @@ const AUDIO_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const AUDIO_COMPRESS_MIN_BYTES = 8 * 1024 * 1024;
 const AUDIO_COMPRESS_TARGET_SAMPLE_RATE = 22050;
 const AUDIO_COMPRESS_BITRATE = 96000;
-const MAX_UPLOAD_ERROR_DETAIL_LENGTH = 500;
 
 class ToeflStorageSync {
   constructor() {
@@ -3276,48 +3275,10 @@ class ToeflStorageSync {
     }
   }
 
-  _isLocalHost(hostname = "") {
-    const host = String(hostname || "").trim().toLowerCase();
-    return host === "localhost" || host === "::1" || host === "127.0.0.1" || host.endsWith(".localhost");
-  }
-
-  _normalizeGatewayBase(rawBase = "") {
-    const trimmed = String(rawBase || "").trim();
-    if (!trimmed) return "";
-
-    try {
-      const runtimeProtocol = (typeof window !== "undefined" && window.location && window.location.protocol === "https:")
-        ? "https:"
-        : "http:";
-      const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `${runtimeProtocol}//${trimmed.replace(/^\/+/, "")}`;
-      const parsed = new URL(withProtocol);
-      if (runtimeProtocol === "https:" && parsed.protocol === "http:" && !this._isLocalHost(parsed.hostname)) {
-        parsed.protocol = "https:";
-      }
-      return parsed.toString().replace(/\/+$/, "");
-    } catch {
-      return trimmed.replace(/\/+$/, "");
-    }
-  }
-
-  async _readResponseErrorDetail(response) {
-    if (!response) return "";
-    try {
-      const bodyText = await response.text();
-      const trimmed = String(bodyText || "").replace(/\s+/g, " ").trim();
-      const safeDetail = trimmed.length > MAX_UPLOAD_ERROR_DETAIL_LENGTH
-        ? `${trimmed.slice(0, MAX_UPLOAD_ERROR_DETAIL_LENGTH)}…`
-        : trimmed;
-      return safeDetail ? `${response.status} ${safeDetail}` : `${response.status}`;
-    } catch {
-      return String(response.status || "");
-    }
-  }
-
   _getApiGatewayBase() {
-    const baseOverride = this._normalizeGatewayBase(localStorage.getItem("toefl_api_gateway_url") || "");
+    const baseOverride = String(localStorage.getItem("toefl_api_gateway_url") || "").trim();
     if (baseOverride) {
-      return baseOverride;
+      return baseOverride.replace(/\/+$/, "");
     }
 
     const runtimeHost = (typeof window !== "undefined" && window.location && window.location.hostname)
@@ -3326,14 +3287,8 @@ class ToeflStorageSync {
     const hostOverride = String(localStorage.getItem("toefl_api_gateway_host") || "").trim();
     const host = hostOverride || runtimeHost || "127.0.0.1";
     const port = String(localStorage.getItem("toefl_api_gateway_port") || "8000").trim() || "8000";
-    const runtimeProtocol = (typeof window !== "undefined" && window.location && window.location.protocol === "https:")
-      ? "https"
-      : "http";
-    const protocolCandidate = String(localStorage.getItem("toefl_api_gateway_protocol") || runtimeProtocol).trim().toLowerCase() || runtimeProtocol;
-    const protocol = (protocolCandidate === "http" && runtimeProtocol === "https" && !this._isLocalHost(host))
-      ? "https"
-      : protocolCandidate;
-    return this._normalizeGatewayBase(`${protocol}://${host}:${port}`);
+    const protocol = String(localStorage.getItem("toefl_api_gateway_protocol") || "http").trim() || "http";
+    return `${protocol}://${host}:${port}`;
   }
 
   async saveAudioViaGateway(setId, audioBlob, partId = 1) {
@@ -3355,8 +3310,8 @@ class ToeflStorageSync {
       });
 
       if (!presignRes.ok) {
-        const detail = await this._readResponseErrorDetail(presignRes);
-        throw new Error(`upload-url request failed (${detail})`);
+        const detail = await presignRes.text().catch(() => "");
+        throw new Error(detail || `upload-url request failed (${presignRes.status})`);
       }
 
       const payload = await presignRes.json();
@@ -3379,8 +3334,7 @@ class ToeflStorageSync {
         });
 
         if (!putRes.ok) {
-          const putDetail = await this._readResponseErrorDetail(putRes);
-          throw new Error(`R2 upload failed (${putDetail})`);
+          throw new Error(`R2 upload failed (${putRes.status})`);
         }
       } catch (putError) {
         // Fallback path for browsers that block direct PUT because of CORS/policy.
@@ -3395,9 +3349,9 @@ class ToeflStorageSync {
         });
 
         if (!proxyRes.ok) {
-          const proxyDetail = await this._readResponseErrorDetail(proxyRes);
+          const proxyDetail = await proxyRes.text().catch(() => "");
           const basePutError = String(putError?.message || putError || "Direct upload failed");
-          throw new Error(`${basePutError}; proxy upload failed (${proxyDetail})`.trim());
+          throw new Error(`${basePutError}; proxy upload failed (${proxyRes.status}) ${proxyDetail}`.trim());
         }
 
         const proxyPayload = await proxyRes.json();
@@ -3451,20 +3405,13 @@ class ToeflStorageSync {
   }
 
   /**
-   * Legacy Firebase audio upload path. Disabled by default.
-   * Set localStorage key "toefl_allow_firebase_audio_write" to "1" to re-enable.
-   * Otherwise this forwards to Cloudflare gateway upload.
+   * Upload audio file to Firebase Storage and save download URL in RTDB.
    * @param {string} setId
    * @param {Blob|File} audioBlob
    * @param {number} partId
    * @returns {Promise<boolean>}
    */
   async saveAudioToFirebase(setId, audioBlob, partId = 1) {
-    const allowLegacyFirebaseWrite = String(localStorage.getItem("toefl_allow_firebase_audio_write") || "").trim() === "1";
-    if (!allowLegacyFirebaseWrite) {
-      const uploadInfo = await this.saveAudioViaGateway(setId, audioBlob, partId);
-      return Boolean(uploadInfo && uploadInfo.success === true);
-    }
     if (!setId || !audioBlob) {
       this._lastStorageError = "Missing setId or audioBlob";
       console.warn("[ToeflSync] Missing setId or audioBlob for audio upload");
