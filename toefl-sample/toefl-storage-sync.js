@@ -2677,6 +2677,7 @@ const AUDIO_CACHE_CONTROL = "public, max-age=31536000, immutable";
 const AUDIO_COMPRESS_MIN_BYTES = 8 * 1024 * 1024;
 const AUDIO_COMPRESS_TARGET_SAMPLE_RATE = 22050;
 const AUDIO_COMPRESS_BITRATE = 96000;
+const MAX_UPLOAD_ERROR_DETAIL_LENGTH = 500;
 
 class ToeflStorageSync {
   constructor() {
@@ -3277,7 +3278,7 @@ class ToeflStorageSync {
 
   _isLocalHost(hostname = "") {
     const host = String(hostname || "").trim().toLowerCase();
-    return host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host.endsWith(".local");
+    return host === "localhost" || host === "::1" || host === "127.0.0.1" || host.endsWith(".localhost");
   }
 
   _normalizeGatewayBase(rawBase = "") {
@@ -3303,8 +3304,11 @@ class ToeflStorageSync {
     if (!response) return "";
     try {
       const bodyText = await response.text();
-      const trimmed = String(bodyText || "").trim();
-      return trimmed ? `${response.status} ${trimmed}` : `${response.status}`;
+      const trimmed = String(bodyText || "").replace(/\s+/g, " ").trim();
+      const safeDetail = trimmed.length > MAX_UPLOAD_ERROR_DETAIL_LENGTH
+        ? `${trimmed.slice(0, MAX_UPLOAD_ERROR_DETAIL_LENGTH)}…`
+        : trimmed;
+      return safeDetail ? `${response.status} ${safeDetail}` : `${response.status}`;
     } catch {
       return String(response.status || "");
     }
@@ -3459,7 +3463,7 @@ class ToeflStorageSync {
     const allowLegacyFirebaseWrite = String(localStorage.getItem("toefl_allow_firebase_audio_write") || "").trim() === "1";
     if (!allowLegacyFirebaseWrite) {
       const uploadInfo = await this.saveAudioViaGateway(setId, audioBlob, partId);
-      return Boolean(uploadInfo && uploadInfo.success !== false);
+      return Boolean(uploadInfo && uploadInfo.success === true);
     }
     if (!setId || !audioBlob) {
       this._lastStorageError = "Missing setId or audioBlob";

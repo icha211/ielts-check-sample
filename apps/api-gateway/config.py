@@ -37,5 +37,11 @@ def get_cors_allow_origins() -> list[str]:
     raw_value = str(settings.cors_allow_origins or "").strip()
     if not raw_value:
         return []
-    origins = [item.strip() for item in raw_value.split(",") if item.strip()]
-    return origins or []
+    origins: list[str] = []
+    for item in raw_value.split(","):
+        origin = item.strip()
+        if not origin:
+            continue
+        if origin == "*" or origin.startswith("http://") or origin.startswith("https://"):
+            origins.append(origin)
+    return origins
