@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import settings
+from config import get_cors_allow_origins, settings
 from routes.chat import router as chat_router
 from routes.evaluation import router as evaluation_router
 from routes.health import router as health_router
@@ -9,6 +9,7 @@ from routes.developer import router as developer_router
 
 
 def create_app() -> FastAPI:
+    cors_origins = get_cors_allow_origins()
     app = FastAPI(
         title=settings.app_name,
         debug=settings.debug,
@@ -16,10 +17,11 @@ def create_app() -> FastAPI:
 
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if settings.debug else [],
+        allow_origins=cors_origins,
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"],
+        # Accept/Range support audio metadata probes and partial stream requests.
+        allow_headers=["Authorization", "Content-Type", "Accept", "Range"],
     )
 
     app.include_router(health_router)
