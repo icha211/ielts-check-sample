@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     r2_region_name: str = Field(default="auto", validation_alias="R2_REGION_NAME")
     r2_presign_expire_seconds: int = Field(default=900, validation_alias="R2_PRESIGN_EXPIRE_SECONDS")
     r2_read_expire_seconds: int = Field(default=3600, validation_alias="R2_READ_EXPIRE_SECONDS")
+    cors_allow_origins: str = Field(default="*", validation_alias="CORS_ALLOW_ORIGINS")
 
     model_config = SettingsConfigDict(
         env_prefix="IELTS_API_",
@@ -30,3 +31,11 @@ settings = Settings()
 
 def build_r2_endpoint(account_id: str) -> str:
     return f"https://{account_id}.r2.cloudflarestorage.com"
+
+
+def get_cors_allow_origins() -> list[str]:
+    raw_value = str(settings.cors_allow_origins or "").strip()
+    if not raw_value:
+        return []
+    origins = [item.strip() for item in raw_value.split(",") if item.strip()]
+    return origins or []
