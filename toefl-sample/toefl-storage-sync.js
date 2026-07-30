@@ -2683,33 +2683,99 @@ class ToeflStorageSync {
     this._base = TOEFL_FIREBASE_URL;
     this._setsV2Path = "toefl_itp/sets_v2";
     this._draftsV2Path = "toefl_itp/drafts_v2";
+    this._mockTestSetsPath = "toefl_itp/mocktest/sets_v2";
+    this._mockTestDraftsPath = "toefl_itp/mocktest/drafts_v2";
+    this._practiceTestSetsPath = "toefl_itp/practicetest/sets_v2";
+    this._practiceTestDraftsPath = "toefl_itp/practicetest/drafts_v2";
     this._setsPath = "toefl_itp/sets_v1";
     this._draftsPath = "toefl_itp/drafts_v1";
+    this._audioFoldersPath = "toefl_itp/audio_folder_urls";
     this.isRemoteAvailable = true;
     // localStorage fallback keys
     this._setsV2LocalKey = "toefl_developer_sets_v2";
     this._draftsV2LocalKey = "toefl_developer_drafts_v2";
+    this._mockTestSetsLocalKey = "toefl_developer_mocktest_sets_v2";
+    this._mockTestDraftsLocalKey = "toefl_developer_mocktest_drafts_v2";
+    this._practiceTestSetsLocalKey = "toefl_developer_practicetest_sets_v2";
+    this._practiceTestDraftsLocalKey = "toefl_developer_practicetest_drafts_v2";
     this._setsLocalKey = "toefl_developer_sets_v1";
-    this._lastStorageError = "";
-    this._lastUploadInfo = null;
+    this._audioFoldersLocalKey = "toefl_audio_folder_urls_v1";
+    this._lastStorageError = String(localStorage.getItem("toefl_last_storage_error") || "");
+    this._lastUploadInfo = this._safeParse(localStorage.getItem("toefl_last_upload_info"), null);
+  }
+
+  _setLastStorageError(message = "") {
+    this._lastStorageError = String(message || "");
+    try {
+      localStorage.setItem("toefl_last_storage_error", this._lastStorageError);
+    } catch {
+      // Ignore storage write failures.
+    }
+  }
+
+  _setLastUploadInfo(info = null) {
+    this._lastUploadInfo = info || null;
+    try {
+      localStorage.setItem("toefl_last_upload_info", JSON.stringify(this._lastUploadInfo));
+    } catch {
+      // Ignore storage write failures.
+    }
+  }
+
+  get online() {
+    return Boolean(this.isRemoteAvailable);
+  }
+
+  _getPathsForTestType(testType = "mocktest") {
+    const normalized = String(testType || "mocktest").toLowerCase();
+    if (normalized === "practicetest") {
+      return {
+        setsPath: this._practiceTestSetsPath,
+        draftsPath: this._practiceTestDraftsPath,
+        setsLocalKey: this._practiceTestSetsLocalKey,
+        draftsLocalKey: this._practiceTestDraftsLocalKey
+      };
+    }
+
+    return {
+      setsPath: this._mockTestSetsPath,
+      draftsPath: this._mockTestDraftsPath,
+      setsLocalKey: this._mockTestSetsLocalKey,
+      draftsLocalKey: this._mockTestDraftsLocalKey
+    };
   }
 
   _url(path) {
     return `${this._base}/${path}.json`;
   }
 
+  async _fetchWithTimeout(url, init = {}, timeoutMs = 20000) {
+    const controller = new AbortController();
+    const timerId = setTimeout(() => controller.abort(), Math.max(1000, Number(timeoutMs) || 20000));
+    try {
+      return await fetch(url, { ...init, signal: controller.signal });
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        throw new Error(`Request timed out after ${Math.max(1000, Number(timeoutMs) || 20000)}ms: ${url}`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timerId);
+    }
+  }
+
   async _get(path) {
-    const r = await fetch(this._url(path), { method: "GET" });
+    const r = await this._fetchWithTimeout(this._url(path), { method: "GET" }, 15000);
     if (!r.ok) throw new Error(`Firebase GET failed (${r.status})`);
     return r.json();
   }
 
   async _put(path, data) {
-    const r = await fetch(this._url(path), {
+    const r = await this._fetchWithTimeout(this._url(path), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
-    });
+    }, 25000);
     if (!r.ok) throw new Error(`Firebase PUT failed (${r.status})`);
     return r.json();
   }
@@ -2882,6 +2948,153 @@ class ToeflStorageSync {
     localStorage.setItem(this._draftsV2LocalKey, JSON.stringify(localDrafts));
   }
 
+  // Compatibility layer for test-type aware callers in section/developer pages.
+  async getSetRecordsByTestType(testType = "mocktest") {
+    const paths = this._getPathsForTestType(testType);
+    try {
+      const v2 = await this._get(paths.setsPath);
+      const v2Map = (v2 && typeof v2 === "object" && !Array.isArray(v2)) ? v2 : {};
+      const records = Object.entries(v2Map)
+        .filter(([key]) => key !== "_updatedAt")
+        .map(([setId, value]) => this._normalizeRecord({ ...value, setId }, setId))
+        .filter(Boolean);
+      localStorage.setItem(paths.setsLocalKey, JSON.stringify(this._recordsToMap(records)));
+      this.isRemoteAvailable = true;
+      return records;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline - using localStorage for ${testType} set records:`, e.message);
+    }
+
+    const localV2 = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    return Object.entries(localV2 || {})
+      .map(([setId, value]) => this._normalizeRecord({ ...value, setId }, setId))
+      .filter(Boolean);
+  }
+
+  async getSetRecordByIdAndType(setId, testType = "mocktest") {
+    if (!setId) return null;
+    const paths = this._getPathsForTestType(testType);
+    try {
+      const data = await this._get(`${paths.setsPath}/${setId}`);
+      const normalized = this._normalizeRecord({ ...data, setId }, setId);
+      if (normalized) {
+        const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+        local[setId] = normalized;
+        localStorage.setItem(paths.setsLocalKey, JSON.stringify(local));
+      }
+      this.isRemoteAvailable = true;
+      return normalized;
+    } catch {
+      this.isRemoteAvailable = false;
+    }
+    const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    return this._normalizeRecord({ ...(local[setId] || {}), setId }, setId);
+  }
+
+  async upsertSetRecordWithType(record, testType = "mocktest") {
+    const normalized = this._normalizeRecord(record, record?.setId);
+    if (!normalized) throw new Error("Invalid set record");
+    const paths = this._getPathsForTestType(testType);
+    const payload = { ...normalized, _updatedAt: new Date().toISOString() };
+    try {
+      await this._put(`${paths.setsPath}/${normalized.setId}`, payload);
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline - ${normalized.setId} set saved locally only:`, e.message);
+    }
+    const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    local[normalized.setId] = normalized;
+    localStorage.setItem(paths.setsLocalKey, JSON.stringify(local));
+    return normalized;
+  }
+
+  async saveSetRecordsWithType(records, testType = "mocktest") {
+    const normalized = (records || [])
+      .map((item) => this._normalizeRecord(item, item?.setId))
+      .filter(Boolean);
+    const paths = this._getPathsForTestType(testType);
+    const map = this._recordsToMap(normalized);
+    const payload = { ...map, _updatedAt: new Date().toISOString() };
+    try {
+      await this._put(paths.setsPath, payload);
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline - ${testType} set records saved locally only:`, e.message);
+    }
+    localStorage.setItem(paths.setsLocalKey, JSON.stringify(map));
+  }
+
+  async deleteSetRecordWithType(setId, testType = "mocktest") {
+    if (!setId) return;
+    const paths = this._getPathsForTestType(testType);
+    try {
+      const [setRes, draftRes] = await Promise.all([
+        fetch(this._url(`${paths.setsPath}/${setId}`), { method: "DELETE" }),
+        fetch(this._url(`${paths.draftsPath}/${setId}`), { method: "DELETE" })
+      ]);
+      const setDeleteOk = setRes.ok || setRes.status === 404;
+      const draftDeleteOk = draftRes.ok || draftRes.status === 404;
+      if (!setDeleteOk || !draftDeleteOk) {
+        throw new Error(`Delete failed (set:${setRes.status}, draft:${draftRes.status})`);
+      }
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline - ${setId} delete queued locally only:`, e.message);
+      throw e;
+    }
+
+    const localSets = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    delete localSets[setId];
+    localStorage.setItem(paths.setsLocalKey, JSON.stringify(localSets));
+    const localDrafts = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+    delete localDrafts[setId];
+    localStorage.setItem(paths.draftsLocalKey, JSON.stringify(localDrafts));
+  }
+
+  async getDraftBySetIdAndType(setId, testType = "mocktest") {
+    if (!setId) return {};
+    const paths = this._getPathsForTestType(testType);
+    try {
+      const data = await this._get(`${paths.draftsPath}/${setId}`);
+      const draft = (data && typeof data === "object" && !Array.isArray(data)) ? data : {};
+      const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+      local[setId] = draft;
+      localStorage.setItem(paths.draftsLocalKey, JSON.stringify(local));
+      this.isRemoteAvailable = true;
+      return draft;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline - using localStorage for ${testType} set draft ${setId}:`, e.message);
+    }
+    const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+    return local[setId] || {};
+  }
+
+  async saveDraftBySetIdAndType(setId, module, draft, testType = "mocktest") {
+    if (!setId) throw new Error("setId is required");
+    const paths = this._getPathsForTestType(testType);
+    const payload = {
+      ...(draft || {}),
+      setId,
+      module: String(module || draft?.module || ""),
+      _updatedAt: new Date().toISOString()
+    };
+    try {
+      await this._put(`${paths.draftsPath}/${setId}`, payload);
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline - ${testType} set draft ${setId} saved locally only:`, e.message);
+    }
+    const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+    local[setId] = draft || {};
+    localStorage.setItem(paths.draftsLocalKey, JSON.stringify(local));
+  }
+
   async getDraftBySetId(setId) {
     if (!setId) return {};
     try {
@@ -3049,11 +3262,13 @@ class ToeflStorageSync {
   }
 
   getLastStorageError() {
-    return this._lastStorageError || "";
+    if (this._lastStorageError) return this._lastStorageError;
+    return String(localStorage.getItem("toefl_last_storage_error") || "");
   }
 
   getLastUploadInfo() {
-    return this._lastUploadInfo || null;
+    if (this._lastUploadInfo) return this._lastUploadInfo;
+    return this._safeParse(localStorage.getItem("toefl_last_upload_info"), null);
   }
 
   _extractPrimaryDownloadToken(rawTokenValue) {
@@ -3178,7 +3393,19 @@ class ToeflStorageSync {
     const originalSize = Number(audioBlob?.size || 0);
     const originalName = String(audioBlob?.name || "audio");
     const shouldCompress = originalSize >= AUDIO_COMPRESS_MIN_BYTES;
-    const uploadedBlob = shouldCompress ? await this._compressAudioBlob(audioBlob) : audioBlob;
+    let uploadedBlob = audioBlob;
+    if (shouldCompress) {
+      try {
+        // Browser audio decode/recorder can stall on some large MP3s.
+        // Fall back to original blob so upload always proceeds.
+        uploadedBlob = await Promise.race([
+          this._compressAudioBlob(audioBlob),
+          new Promise((resolve) => setTimeout(() => resolve(audioBlob), 12000))
+        ]);
+      } catch {
+        uploadedBlob = audioBlob;
+      }
+    }
     const compressed = uploadedBlob !== audioBlob && Number(uploadedBlob?.size || 0) > 0 && Number(uploadedBlob.size || 0) < originalSize;
     const contentType = String(uploadedBlob?.type || audioBlob?.type || "audio/mpeg");
 
@@ -3224,6 +3451,193 @@ class ToeflStorageSync {
     } catch {
       return "";
     }
+  }
+
+  _extractR2ObjectKeyFromUrl(url) {
+    const text = String(url || "").trim();
+    if (!text || !text.includes("/r2.cloudflarestorage.com/")) return "";
+    try {
+      const parsed = new URL(text);
+      const path = String(parsed.pathname || "").replace(/^\/+/, "");
+      const segments = path.split("/");
+      if (segments.length < 2) return "";
+      // R2 object URL path is /<bucket>/<objectKey>
+      const objectKey = segments.slice(1).join("/");
+      return decodeURIComponent(objectKey);
+    } catch {
+      return "";
+    }
+  }
+
+  _normalizeAudioFolderUrl(url = "") {
+    const raw = String(url || "").trim();
+    if (!raw) return "";
+    return raw.replace(/\/+$/, "");
+  }
+
+  _extractR2ObjectPrefixFromFolderUrl(folderUrl = "") {
+    const normalized = this._normalizeAudioFolderUrl(folderUrl);
+    if (!normalized) return "";
+
+    if (/^audio\//i.test(normalized)) {
+      return normalized.replace(/^\/+/, "");
+    }
+
+    if (/^https?:\/\//i.test(normalized)) {
+      try {
+        const parsed = new URL(normalized);
+        const segments = String(parsed.pathname || "")
+          .replace(/^\/+/, "")
+          .split("/")
+          .filter(Boolean);
+        if (segments.length >= 2) {
+          // URL path is /<bucket>/<objectPrefix>
+          return decodeURIComponent(segments.slice(1).join("/"));
+        }
+      } catch {
+        return "";
+      }
+    }
+
+    return "";
+  }
+
+  _buildR2ObjectKeyCandidatesFromFolderUrl(folderUrl = "", partId = 1, extensionHint = "mp3") {
+    const prefix = this._extractR2ObjectPrefixFromFolderUrl(folderUrl);
+    const safePartId = Number(partId || 1);
+    if (!prefix || !Number.isFinite(safePartId) || safePartId < 1) return [];
+
+    const rawExt = String(extensionHint || "mp3").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const preferredExt = rawExt || "mp3";
+    const extensions = Array.from(new Set([
+      preferredExt,
+      "mp3",
+      "m4a",
+      "wav",
+      "ogg",
+      "aac",
+      "webm"
+    ]));
+    const normalizedPrefix = prefix.replace(/\/+$/, "");
+
+    return extensions.map((ext) => `${normalizedPrefix}/part_${safePartId}.${ext}`);
+  }
+
+  _buildR2ObjectKeyCandidates(setId, partId = 1, extensionHint = "mp3") {
+    const safeSetId = String(setId || "").trim();
+    const safePartId = Number(partId || 1);
+    if (!safeSetId || !Number.isFinite(safePartId) || safePartId < 1) return [];
+
+    const rawExt = String(extensionHint || "mp3").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const preferredExt = rawExt || "mp3";
+    const extensions = Array.from(new Set([
+      preferredExt,
+      "mp3",
+      "m4a",
+      "wav",
+      "ogg",
+      "aac",
+      "webm"
+    ]));
+
+    return extensions.map((ext) => `audio/listening/sets/${safeSetId}/part_${safePartId}.${ext}`);
+  }
+
+  getDerivedObjectKeyForPart(setId, partId = 1, folderUrl = "", extensionHint = "mp3") {
+    const fromFolder = this._buildR2ObjectKeyCandidatesFromFolderUrl(folderUrl, partId, extensionHint);
+    if (fromFolder.length > 0) {
+      return String(fromFolder[0] || "").trim();
+    }
+    const fromSet = this._buildR2ObjectKeyCandidates(setId, partId, extensionHint);
+    return String(fromSet[0] || "").trim();
+  }
+
+  getDerivedObjectKeysForSet(setId, folderUrl = "", extensionHint = "mp3") {
+    return {
+      1: this.getDerivedObjectKeyForPart(setId, 1, folderUrl, extensionHint),
+      2: this.getDerivedObjectKeyForPart(setId, 2, folderUrl, extensionHint),
+      3: this.getDerivedObjectKeyForPart(setId, 3, folderUrl, extensionHint)
+    };
+  }
+
+  _readLocalAudioFolderMap() {
+    return this._safeParse(localStorage.getItem(this._audioFoldersLocalKey), {});
+  }
+
+  _writeLocalAudioFolderMap(map) {
+    localStorage.setItem(this._audioFoldersLocalKey, JSON.stringify(map || {}));
+  }
+
+  async getAudioFolderUrlForSet(setId) {
+    const safeSetId = String(setId || "").trim();
+    if (!safeSetId) return "";
+    try {
+      const data = await this._get(`${this._audioFoldersPath}/${safeSetId}`);
+      const fromRemote = this._normalizeAudioFolderUrl(
+        typeof data === "string" ? data : (data?.folderUrl || data?.url || "")
+      );
+      if (fromRemote) {
+        const local = this._readLocalAudioFolderMap();
+        local[safeSetId] = { folderUrl: fromRemote, updatedAt: new Date().toISOString() };
+        this._writeLocalAudioFolderMap(local);
+      }
+      this.isRemoteAvailable = true;
+      return fromRemote;
+    } catch {
+      this.isRemoteAvailable = false;
+    }
+
+    const local = this._readLocalAudioFolderMap();
+    return this._normalizeAudioFolderUrl(local?.[safeSetId]?.folderUrl || local?.[safeSetId] || "");
+  }
+
+  async setAudioFolderUrlForSet(setId, folderUrl) {
+    const safeSetId = String(setId || "").trim();
+    if (!safeSetId) throw new Error("setId is required");
+    const normalizedUrl = this._normalizeAudioFolderUrl(folderUrl);
+    const payload = {
+      folderUrl: normalizedUrl,
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      await this._put(`${this._audioFoldersPath}/${safeSetId}`, payload);
+      this.isRemoteAvailable = true;
+    } catch (e) {
+      this.isRemoteAvailable = false;
+      console.warn(`[ToeflSync] Offline - audio folder URL saved locally only for ${safeSetId}:`, e.message);
+    }
+
+    const local = this._readLocalAudioFolderMap();
+    local[safeSetId] = payload;
+    this._writeLocalAudioFolderMap(local);
+    return payload;
+  }
+
+  async ensureAudioFolderForSet(setId) {
+    const safeSetId = String(setId || "").trim();
+    if (!safeSetId) throw new Error("setId is required");
+
+    const apiBase = this._getApiGatewayBase();
+    const response = await this._fetchWithTimeout(`${apiBase}/api/developer/ensure-audio-folder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ setId: safeSetId })
+    }, 30000);
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      throw new Error(`Failed to create audio folder (${response.status}) ${detail}`.trim());
+    }
+
+    const payload = await response.json().catch(() => ({}));
+    const folderUrl = this._normalizeAudioFolderUrl(String(payload?.folderUrl || ""));
+    if (!folderUrl) {
+      throw new Error("Audio folder creation response missing folderUrl");
+    }
+
+    await this.setAudioFolderUrlForSet(safeSetId, folderUrl);
+    return payload;
   }
 
   _guessAudioExtension(fileName = "", mimeType = "") {
@@ -3291,9 +3705,30 @@ class ToeflStorageSync {
     return `${protocol}://${host}:${port}`;
   }
 
+  getApiGatewayDebugInfo() {
+    const baseOverride = String(localStorage.getItem("toefl_api_gateway_url") || "").trim();
+    const hostOverride = String(localStorage.getItem("toefl_api_gateway_host") || "").trim();
+    const portOverride = String(localStorage.getItem("toefl_api_gateway_port") || "").trim();
+    const protocolOverride = String(localStorage.getItem("toefl_api_gateway_protocol") || "").trim();
+    const runtimeHost = (typeof window !== "undefined" && window.location && window.location.hostname)
+      ? window.location.hostname
+      : "";
+
+    return {
+      apiBase: this._getApiGatewayBase(),
+      baseOverride,
+      hostOverride,
+      portOverride,
+      protocolOverride,
+      runtimeHost,
+      lastStorageError: this.getLastStorageError(),
+      lastUploadInfo: this.getLastUploadInfo()
+    };
+  }
+
   async saveAudioViaGateway(setId, audioBlob, partId = 1) {
     if (!setId || !audioBlob) {
-      this._lastStorageError = "Missing setId or audioBlob";
+      this._setLastStorageError("Missing setId or audioBlob");
       return false;
     }
 
@@ -3301,73 +3736,111 @@ class ToeflStorageSync {
     const fileName = String(prepared.originalName || `part_${partId}.mp3`);
     const fileType = String(prepared.contentType || "audio/mpeg");
     const apiBase = this._getApiGatewayBase();
+    const normalizedPartId = Number(partId || 1);
+
+    // Prevent duplicate Cloudflare objects for the same set+part when file is unchanged.
+    try {
+      const existing = await this.getAudioRecordFromFirebase(setId, normalizedPartId);
+      const existingProvider = String(existing?.storageProvider || "").toLowerCase();
+      const existingSize = Number(existing?.originalSize || existing?.uploadedSize || existing?.size || 0);
+      const existingType = String(existing?.contentType || existing?.type || "").toLowerCase();
+      const existingKey = String(existing?.objectKey || existing?.audioObjectKey || "").trim();
+      const sameSize = existingSize > 0 && existingSize === Number(prepared.originalSize || 0);
+      const sameType = !existingType || existingType === fileType.toLowerCase();
+
+      if (existingProvider === "r2" && existingKey && sameSize && sameType) {
+        this._setLastStorageError("");
+        this._setLastUploadInfo({
+          success: true,
+          skipped: true,
+          reason: "already-uploaded",
+          setId,
+          partId: normalizedPartId,
+          storageProvider: "r2",
+          objectKey: existingKey,
+          objectUrl: String(existing?.objectUrl || existing?.audioUrl || existing?.url || "").trim(),
+          originalSize: Number(prepared.originalSize || 0),
+          uploadedSize: Number(existing?.uploadedSize || existing?.size || prepared.originalSize || 0),
+          contentType: fileType
+        });
+        return this._lastUploadInfo;
+      }
+    } catch {
+      // Ignore dedupe lookup errors and continue upload.
+    }
 
     try {
-      const presignRes = await fetch(`${apiBase}/api/developer/upload-url`, {
+      let objectKey = "";
+      let objectUrl = "";
+      let uploadedVia = "proxy-upload";
+
+      // Proxy-first upload avoids browser CORS preflight failures against R2.
+      const form = new FormData();
+      form.append("file", prepared.blob, fileName);
+      form.append("fileName", fileName);
+      form.append("fileType", fileType);
+      form.append("setId", String(setId));
+      form.append("partId", String(normalizedPartId));
+
+      const proxyRes = await this._fetchWithTimeout(`${apiBase}/api/developer/upload-proxy`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName, fileType })
-      });
+        body: form
+      }, 180000);
 
-      if (!presignRes.ok) {
-        const detail = await presignRes.text().catch(() => "");
-        throw new Error(detail || `upload-url request failed (${presignRes.status})`);
-      }
+      if (proxyRes.ok) {
+        const proxyPayload = await proxyRes.json();
+        objectKey = String(proxyPayload?.objectKey || "").trim();
+        objectUrl = String(proxyPayload?.objectUrl || "").trim();
+        if (!objectUrl) {
+          throw new Error("proxy upload response missing objectUrl");
+        }
+      } else {
+        // Fallback path: presigned direct PUT.
+        const proxyDetail = await proxyRes.text().catch(() => "");
 
-      const payload = await presignRes.json();
-      const uploadUrl = String(payload?.uploadUrl || "").trim();
-      let objectKey = String(payload?.objectKey || "").trim();
-      let objectUrl = String(payload?.objectUrl || "").trim();
+        const presignRes = await this._fetchWithTimeout(`${apiBase}/api/developer/upload-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName, fileType, setId, partId: normalizedPartId })
+        }, 30000);
 
-      if (!uploadUrl || !objectUrl) {
-        throw new Error("upload-url response missing uploadUrl/objectUrl");
-      }
+        if (!presignRes.ok) {
+          const detail = await presignRes.text().catch(() => "");
+          throw new Error(`proxy upload failed (${proxyRes.status}) ${proxyDetail}; upload-url request failed (${presignRes.status}) ${detail}`.trim());
+        }
 
-      let uploadedVia = "presigned-put";
-      try {
-        const putRes = await fetch(uploadUrl, {
+        const payload = await presignRes.json();
+        const uploadUrl = String(payload?.uploadUrl || "").trim();
+        objectKey = String(payload?.objectKey || "").trim();
+        objectUrl = String(payload?.objectUrl || "").trim();
+
+        if (!uploadUrl || !objectUrl) {
+          throw new Error("upload-url response missing uploadUrl/objectUrl");
+        }
+
+        const putRes = await this._fetchWithTimeout(uploadUrl, {
           method: "PUT",
           headers: {
             "Content-Type": fileType
           },
           body: prepared.blob
-        });
+        }, 180000);
 
         if (!putRes.ok) {
           throw new Error(`R2 upload failed (${putRes.status})`);
         }
-      } catch (putError) {
-        // Fallback path for browsers that block direct PUT because of CORS/policy.
-        const form = new FormData();
-        form.append("file", prepared.blob, fileName);
-        form.append("fileName", fileName);
-        form.append("fileType", fileType);
 
-        const proxyRes = await fetch(`${apiBase}/api/developer/upload-proxy`, {
-          method: "POST",
-          body: form
-        });
-
-        if (!proxyRes.ok) {
-          const proxyDetail = await proxyRes.text().catch(() => "");
-          const basePutError = String(putError?.message || putError || "Direct upload failed");
-          throw new Error(`${basePutError}; proxy upload failed (${proxyRes.status}) ${proxyDetail}`.trim());
-        }
-
-        const proxyPayload = await proxyRes.json();
-        objectKey = String(proxyPayload?.objectKey || objectKey).trim();
-        objectUrl = String(proxyPayload?.objectUrl || objectUrl).trim();
-        if (!objectUrl) {
-          throw new Error("proxy upload response missing objectUrl");
-        }
-        uploadedVia = "proxy-upload";
+        uploadedVia = "presigned-put";
       }
 
-      await this._put(`toefl_itp/audio_urls/${setId}/part_${partId}`, {
+      await this._put(`toefl_itp/audio_urls/${setId}/part_${normalizedPartId}`, {
         url: objectUrl,
+        audioUrl: objectUrl,
+        objectUrl,
         objectKey,
+        audioObjectKey: objectKey,
         storageProvider: "r2",
-        candidateUrls: [objectUrl],
+        candidateUrls: Array.from(new Set([objectUrl, ...this._buildAudioUrlCandidates(setId, normalizedPartId, objectUrl)])),
         compressed: Boolean(prepared.compressed),
         originalName: prepared.originalName,
         originalSize: prepared.originalSize,
@@ -3380,11 +3853,11 @@ class ToeflStorageSync {
       });
 
       this.isRemoteAvailable = true;
-      this._lastStorageError = "";
-      this._lastUploadInfo = {
+      this._setLastStorageError("");
+      this._setLastUploadInfo({
         success: true,
         setId,
-        partId,
+        partId: normalizedPartId,
         storageProvider: "r2",
         uploadPath: uploadedVia,
         objectKey,
@@ -3393,13 +3866,13 @@ class ToeflStorageSync {
         originalSize: prepared.originalSize,
         uploadedSize: prepared.uploadedSize,
         contentType: prepared.contentType
-      };
+      });
 
       return this._lastUploadInfo;
     } catch (error) {
       this.isRemoteAvailable = false;
-      this._lastStorageError = String(error?.message || error || "Gateway audio upload failed");
-      this._lastUploadInfo = { success: false, setId, partId, error: this._lastStorageError };
+      this._setLastStorageError(String(error?.message || error || "Gateway audio upload failed"));
+      this._setLastUploadInfo({ success: false, setId, partId, error: this._lastStorageError });
       return false;
     }
   }
@@ -3511,7 +3984,9 @@ class ToeflStorageSync {
     if (!setId) return null;
     try {
       const data = await this._get(`toefl_itp/audio_urls/${setId}/part_${partId}`);
-      const savedUrl = data && data.url ? String(data.url) : "";
+      const savedUrl = data && (data.url || data.audioUrl || data.objectUrl || data.playbackUrl)
+        ? String(data.url || data.audioUrl || data.objectUrl || data.playbackUrl)
+        : "";
       if (!savedUrl) return null;
       this.isRemoteAvailable = true;
       return savedUrl;
@@ -3556,32 +4031,57 @@ class ToeflStorageSync {
 
   async getPlayableAudioFromFirebase(setId, partId = 1) {
     const record = await this.getAudioRecordFromFirebase(setId, partId);
-    const savedUrl = String(record?.url || "").trim();
-    const objectKey = String(record?.objectKey || "").trim();
+    const manualFolderUrl = await this.getAudioFolderUrlForSet(setId);
+    const savedUrl = String(record?.url || record?.audioUrl || record?.objectUrl || record?.playbackUrl || "").trim();
+    const objectKey = String(record?.objectKey || record?.audioObjectKey || "").trim() || this._extractR2ObjectKeyFromUrl(savedUrl);
     const storagePath = String(record?.storagePath || "").trim();
     const storedCandidates = Array.isArray(record?.candidateUrls) ? record.candidateUrls : [];
+    const keyExtHint = this._guessAudioExtension(
+      String(record?.fileName || record?.originalName || ""),
+      String(record?.contentType || record?.type || "audio/mpeg")
+    );
+    const objectKeyCandidates = Array.from(new Set([
+      ...this._buildR2ObjectKeyCandidatesFromFolderUrl(manualFolderUrl, partId, keyExtHint),
+      ...this._buildR2ObjectKeyCandidates(setId, partId, keyExtHint),
+      objectKey
+    ].filter(Boolean)));
 
-    if (objectKey) {
-      try {
-        const apiBase = this._getApiGatewayBase();
-        const response = await fetch(`${apiBase}/api/developer/audio-url?objectKey=${encodeURIComponent(objectKey)}`, {
-          method: "GET"
-        });
-        if (response.ok) {
+    if (objectKeyCandidates.length > 0) {
+      let firstSignedUrl = "";
+      for (const candidateKey of objectKeyCandidates) {
+        try {
+          const apiBase = this._getApiGatewayBase();
+          const response = await fetch(`${apiBase}/api/developer/audio-url?objectKey=${encodeURIComponent(candidateKey)}`, {
+            method: "GET"
+          });
+          if (!response.ok) continue;
+
           const payload = await response.json().catch(() => ({}));
-          const signedUrl = String(payload?.audioUrl || "").trim();
-          if (signedUrl) {
+          const signedUrl = String(payload?.audioUrl || payload?.url || payload?.signedUrl || payload?.downloadUrl || payload?.playbackUrl || "").trim();
+          if (!signedUrl) continue;
+
+          if (!firstSignedUrl) {
+            firstSignedUrl = signedUrl;
+          }
+
+          if (await this._probeAudioUrl(signedUrl)) {
             return signedUrl;
           }
+        } catch {
+          // Try next object key candidate.
         }
-      } catch {
-        // Fall through to legacy candidate probing.
+      }
+
+      if (firstSignedUrl) {
+        return firstSignedUrl;
       }
     }
 
     const candidates = Array.from(new Set([
       savedUrl,
       String(record?.mediaLink || "").trim(),
+      String(record?.objectUrl || "").trim(),
+      String(record?.audioUrl || "").trim(),
       ...storedCandidates,
       ...this._buildAudioUrlCandidates(setId, partId, savedUrl, storagePath)
     ].filter(Boolean)));
@@ -3793,4 +4293,21 @@ class ToeflStorageSync {
   }
 }
 
-window.toeflStorage = window.toeflStorage || new ToeflStorageSync();
+window.ToeflStorageSync = ToeflStorageSync;
+
+const __existingToeflStorage = window.toeflStorage;
+const __requiredMethods = [
+  "saveAudioViaGateway",
+  "getPlayableAudioFromFirebase",
+  "getLastUploadInfo",
+  "getApiGatewayDebugInfo"
+];
+const __hasRequiredMethods = !!__existingToeflStorage && __requiredMethods.every(
+  (name) => typeof __existingToeflStorage[name] === "function"
+);
+
+if (!__hasRequiredMethods) {
+  window.toeflStorage = new ToeflStorageSync();
+} else {
+  window.toeflStorage = __existingToeflStorage;
+}

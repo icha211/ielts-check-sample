@@ -575,7 +575,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="toefl-storage-sync.js?v=20260506"></script>
+    <script src="toefl-storage-sync.js?v=20260730i"></script>
     <script>
         const TOTAL_PASSAGES = 5; 
         const SETS_KEY = "toefl_developer_sets_v1";
@@ -1044,6 +1044,161 @@
             const timer = header ? header.querySelector(".timer") : null;
             if (!timer) return;
             timer.style.left = "";
+        }
+
+        function normalizeCloudAudioFolderUrl(value = "") {
+            return String(value || "").trim().replace(/\/+$/, "");
+        }
+
+        function setCloudAudioFolderStatus(message, isError = false) {
+            const statusElement = document.getElementById("cloud-audio-folder-status");
+            if (!statusElement) return;
+            statusElement.innerText = String(message || "");
+            statusElement.style.color = isError ? "#b91c1c" : "#1e3a5f";
+        }
+
+        function renderDerivedObjectKeysForCurrentSet() {
+            const pre = document.getElementById("cloud-audio-derived-keys");
+            if (!pre) return;
+            const input = document.getElementById("cloud-audio-folder-url");
+            const folderUrl = normalizeCloudAudioFolderUrl(input?.value || "");
+            const setId = String(currentSetId || "").trim();
+            if (!setId || !window.toeflStorage || typeof window.toeflStorage.getDerivedObjectKeysForSet !== "function") {
+                pre.textContent = "Waiting for setId...";
+                return;
+            }
+            const keys = window.toeflStorage.getDerivedObjectKeysForSet(setId, folderUrl, "mp3");
+            pre.textContent = [
+                `part_1 -> ${keys[1] || ""}`,
+                `part_2 -> ${keys[2] || ""}`,
+                `part_3 -> ${keys[3] || ""}`
+            ].join("\n");
+        }
+
+        function setCloudAudioValidationStatus(partId, exists, objectKey, errorText = "") {
+            const row = document.getElementById(`cloud-audio-check-${partId}`);
+            if (!row) return;
+            const icon = exists ? "OK" : "Missing";
+            const color = exists ? "#166534" : "#b91c1c";
+            const reason = errorText ? ` (${errorText})` : "";
+            row.innerText = `Part ${partId}: ${icon}${reason}\n${objectKey}`;
+            row.style.color = color;
+        }
+
+        async function syncCloudAudioFolderInputForCurrentSet() {
+            const input = document.getElementById("cloud-audio-folder-url");
+            if (!input) return;
+            if (!currentSetId) {
+                input.value = "";
+                setCloudAudioFolderStatus("Create/select a package first to bind a Cloudflare folder URL.");
+                renderDerivedObjectKeysForCurrentSet();
+                return;
+            }
+            try {
+                const folderUrl = await window.toeflStorage.getAudioFolderUrlForSet(currentSetId);
+                input.value = folderUrl || "";
+                setCloudAudioFolderStatus(folderUrl ? "Cloudflare folder linked for this package." : "No Cloudflare folder URL linked yet for this package.");
+            } catch (error) {
+                setCloudAudioFolderStatus(`Cannot load folder URL: ${error?.message || "Unknown error"}`, true);
+            }
+            renderDerivedObjectKeysForCurrentSet();
+        }
+
+        async function saveCloudAudioFolderUrlForCurrentSet() {
+            const input = document.getElementById("cloud-audio-folder-url");
+            if (!input) return;
+            const dateInput = document.getElementById("set-date");
+            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
+            const setId = ensureCurrentSetId(setDate);
+            if (!setId) {
+                setCloudAudioFolderStatus("Unable to resolve setId for this package.", true);
+                return;
+            }
+            const folderUrl = normalizeCloudAudioFolderUrl(input.value);
+            if (!folderUrl) {
+                setCloudAudioFolderStatus("Please enter a Cloudflare folder URL first.", true);
+                return;
+            }
+            setCloudAudioFolderStatus("Saving folder URL...");
+            try {
+                await saveSectionMeta();
+                await window.toeflStorage.setAudioFolderUrlForSet(setId, folderUrl);
+                input.value = folderUrl;
+                setCloudAudioFolderStatus("Folder URL saved for this package.");
+            } catch (error) {
+                setCloudAudioFolderStatus(`Failed to save folder URL: ${error?.message || "Unknown error"}`, true);
+            }
+            renderDerivedObjectKeysForCurrentSet();
+        }
+
+        async function createCloudAudioFolderForCurrentSet() {
+            const createButton = document.getElementById("create-cloud-audio-folder-btn");
+            const input = document.getElementById("cloud-audio-folder-url");
+            const dateInput = document.getElementById("set-date");
+            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
+            const setId = ensureCurrentSetId(setDate);
+
+            if (!setId) {
+                setCloudAudioFolderStatus("Unable to resolve setId for this package.", true);
+                return;
+            }
+            if (!window.toeflStorage || typeof window.toeflStorage.ensureAudioFolderForSet !== "function") {
+                setCloudAudioFolderStatus("Audio folder API is not available in this build.", true);
+                return;
+            }
+
+            if (createButton) createButton.disabled = true;
+            setCloudAudioFolderStatus("Creating Cloudflare folder...");
+            try {
+                await saveSectionMeta();
+                const payload = await window.toeflStorage.ensureAudioFolderForSet(setId);
+                const folderUrl = normalizeCloudAudioFolderUrl(String(payload?.folderUrl || ""));
+                if (input) input.value = folderUrl;
+                setCloudAudioFolderStatus("Folder created and linked. Use part_1.mp3, part_2.mp3, part_3.mp3 in this folder.");
+            } catch (error) {
+                setCloudAudioFolderStatus(`Failed to create folder: ${error?.message || "Unknown error"}`, true);
+            } finally {
+                if (createButton) createButton.disabled = false;
+            }
+            renderDerivedObjectKeysForCurrentSet();
+        }
+
+        async function validateCloudAudioFolderPartsForCurrentSet() {
+            const btn = document.getElementById("validate-cloud-audio-folder-btn");
+            const setId = String(currentSetId || "").trim();
+            if (!setId) {
+                setCloudAudioFolderStatus("No setId selected yet.", true);
+                return;
+            }
+
+            const input = document.getElementById("cloud-audio-folder-url");
+            const folderUrl = normalizeCloudAudioFolderUrl(input?.value || "");
+            const keys = window.toeflStorage.getDerivedObjectKeysForSet(setId, folderUrl, "mp3");
+            renderDerivedObjectKeysForCurrentSet();
+
+            if (btn) btn.disabled = true;
+            setCloudAudioFolderStatus("Validating part_1/part_2/part_3 in Cloudflare...");
+            try {
+                const apiBase = window.toeflStorage.getApiGatewayDebugInfo().apiBase;
+                const checks = await Promise.all([1, 2, 3].map(async (partId) => {
+                    const objectKey = String(keys[partId] || "").trim();
+                    const response = await fetch(`${apiBase}/api/developer/audio-exists?objectKey=${encodeURIComponent(objectKey)}`, { method: "GET" });
+                    if (!response.ok) return { partId, objectKey, exists: false, error: `HTTP ${response.status}` };
+                    const payload = await response.json().catch(() => ({}));
+                    return { partId, objectKey, exists: Boolean(payload?.exists), error: String(payload?.error || "") };
+                }));
+
+                let allGood = true;
+                checks.forEach((entry) => {
+                    setCloudAudioValidationStatus(entry.partId, entry.exists, entry.objectKey, entry.error);
+                    if (!entry.exists) allGood = false;
+                });
+                setCloudAudioFolderStatus(allGood ? "Validation passed: part_1, part_2, and part_3 are available." : "Validation found missing audio files. Check rows below.", !allGood);
+            } catch (error) {
+                setCloudAudioFolderStatus(`Validation failed: ${error?.message || "Unknown error"}`, true);
+            } finally {
+                if (btn) btn.disabled = false;
+            }
         }
 
         function initStructure() {
@@ -1643,6 +1798,5 @@
     </script>
 </body>
 </html>
-
 
 

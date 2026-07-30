@@ -299,7 +299,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="toefl-storage-sync.js?v=20260520b"></script>
+    <script src="toefl-storage-sync.js?v=20260730i"></script>
     <script>
         const PARTS = [
             { id: 1, name: "Part A: Short Dialogues", range: "Questions 1-30", start: 1, end: 30, instr: "<strong>Directions:</strong> In Part A, you will hear short conversations between two people. After each conversation, you will hear a question about the conversation. The conversations and questions will not be repeated. After you hear a question, choose the best answer." },
@@ -555,6 +555,16 @@
             return `audio-upload-file-${suffix}`;
         }
 
+        function prepareAudioFileInputForReselect(partId = 1) {
+            const input = document.getElementById(getAudioFileInputId(partId));
+            if (!input || input.dataset.reselectReady === "1") return;
+            input.dataset.reselectReady = "1";
+            input.addEventListener("click", () => {
+                // If the user picks the same file again, clear first so onchange still fires.
+                input.value = "";
+            });
+        }
+
         function setAudioLabelReady(fileName, partId = 1) {
             const fileLabel = document.getElementById(getAudioFileLabelId(partId));
             if (!fileLabel) return;
@@ -647,6 +657,7 @@
                 const nextUrl = currentAudioFallbackUrls.shift();
                 if (!nextUrl || nextUrl === audio.src) continue;
                 audio.src = nextUrl;
+                audio.load();
                 audio.currentTime = 0;
                 try {
                     await audio.play();
@@ -658,6 +669,20 @@
             }
 
             return false;
+        }
+
+        async function tryRefreshCloudAudioSource(partId = activePartId || 1) {
+            const audio = document.getElementById("cbt-audio-player");
+            if (!audio || !currentSetId) return false;
+
+            try {
+                const freshUrl = await getCloudAudioUrl(currentSetId, partId, 7000);
+                if (!freshUrl) return false;
+                setAudioSourceFromUrl(freshUrl, currentSetId, partId);
+                return Boolean(audio.src);
+            } catch {
+                return false;
+            }
         }
 
         async function restoreAudioForCurrentSet(partId = activePartId || 1) {
@@ -726,8 +751,7 @@
 
             await Promise.all(AUDIO_PART_IDS.map(async (partId) => {
                 try {
-                    // Try Firebase Storage first
-                    const storageUrl = await window.toeflStorage.getAudioFromFirebase(currentSetId, partId).catch(() => null);
+                    const storageUrl = await getCloudAudioUrl(currentSetId, partId, 3500);
                     if (storageUrl) {
                         setAudioLabelReady(`cloud saved`, partId);
                         return;
@@ -744,6 +768,202 @@
                     setAudioLabelEmpty(partId);
                 }
             }));
+        }
+
+        function normalizeCloudAudioFolderUrl(value = "") {
+            return String(value || "").trim().replace(/\/+$/, "");
+        }
+
+        function setCloudAudioFolderStatus(message, isError = false) {
+            const statusElement = document.getElementById("cloud-audio-folder-status");
+            if (!statusElement) return;
+            statusElement.innerText = String(message || "");
+            statusElement.style.color = isError ? "#b91c1c" : "#1e3a5f";
+        }
+
+        async function syncCloudAudioFolderInputForCurrentSet() {
+            const input = document.getElementById("cloud-audio-folder-url");
+            if (!input) return;
+
+            if (!currentSetId) {
+                input.value = "";
+                setCloudAudioFolderStatus("Create/select a package first to bind a Cloudflare folder URL.");
+                renderDerivedObjectKeysForCurrentSet();
+                return;
+            }
+
+            try {
+                const folderUrl = await window.toeflStorage.getAudioFolderUrlForSet(currentSetId);
+                input.value = folderUrl || "";
+                if (folderUrl) {
+                    setCloudAudioFolderStatus("Cloudflare folder linked for this package.");
+                } else {
+                    setCloudAudioFolderStatus("No Cloudflare folder URL linked yet for this package.");
+                }
+                renderDerivedObjectKeysForCurrentSet();
+            } catch (error) {
+                setCloudAudioFolderStatus(`Cannot load folder URL: ${error?.message || "Unknown error"}`, true);
+                renderDerivedObjectKeysForCurrentSet();
+            }
+        }
+
+        async function saveCloudAudioFolderUrlForCurrentSet() {
+            const input = document.getElementById("cloud-audio-folder-url");
+            if (!input) return;
+
+            const dateInput = document.getElementById("set-date");
+            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
+            const setId = ensureCurrentSetId(setDate);
+            if (!setId) {
+                setCloudAudioFolderStatus("Unable to resolve setId for this package.", true);
+                return;
+            }
+
+            const folderUrl = normalizeCloudAudioFolderUrl(input.value);
+            if (!folderUrl) {
+                setCloudAudioFolderStatus("Please enter a Cloudflare folder URL first.", true);
+                return;
+            }
+
+            setCloudAudioFolderStatus("Saving folder URL...");
+            try {
+                await saveSectionMeta();
+                await window.toeflStorage.setAudioFolderUrlForSet(setId, folderUrl);
+                input.value = folderUrl;
+                setCloudAudioFolderStatus("Folder URL saved for this package.");
+                renderDerivedObjectKeysForCurrentSet();
+                await refreshAudioLabelsForCurrentSet();
+                await restoreAudioForCurrentSet(activePartId || 1);
+            } catch (error) {
+                setCloudAudioFolderStatus(`Failed to save folder URL: ${error?.message || "Unknown error"}`, true);
+            }
+        }
+
+        async function createCloudAudioFolderForCurrentSet() {
+            const createButton = document.getElementById("create-cloud-audio-folder-btn");
+            const input = document.getElementById("cloud-audio-folder-url");
+            const dateInput = document.getElementById("set-date");
+            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
+            const setId = ensureCurrentSetId(setDate);
+
+            if (!setId) {
+                setCloudAudioFolderStatus("Unable to resolve setId for this package.", true);
+                return;
+            }
+
+            if (!window.toeflStorage || typeof window.toeflStorage.ensureAudioFolderForSet !== "function") {
+                setCloudAudioFolderStatus("Audio folder API is not available in this build.", true);
+                return;
+            }
+
+            if (createButton) createButton.disabled = true;
+            setCloudAudioFolderStatus("Creating Cloudflare folder...");
+            try {
+                await saveSectionMeta();
+                const payload = await window.toeflStorage.ensureAudioFolderForSet(setId);
+                const folderUrl = normalizeCloudAudioFolderUrl(String(payload?.folderUrl || ""));
+                if (input) input.value = folderUrl;
+                setCloudAudioFolderStatus("Folder created and linked. Use part_1.mp3, part_2.mp3, part_3.mp3 in this folder.");
+                renderDerivedObjectKeysForCurrentSet();
+                await refreshAudioLabelsForCurrentSet();
+                await restoreAudioForCurrentSet(activePartId || 1);
+            } catch (error) {
+                setCloudAudioFolderStatus(`Failed to create folder: ${error?.message || "Unknown error"}`, true);
+            } finally {
+                if (createButton) createButton.disabled = false;
+            }
+        }
+
+        function renderDerivedObjectKeysForCurrentSet() {
+            const pre = document.getElementById("cloud-audio-derived-keys");
+            if (!pre) return;
+
+            const input = document.getElementById("cloud-audio-folder-url");
+            const folderUrl = normalizeCloudAudioFolderUrl(input?.value || "");
+            const setId = String(currentSetId || "").trim();
+            if (!setId || !window.toeflStorage || typeof window.toeflStorage.getDerivedObjectKeysForSet !== "function") {
+                pre.textContent = "Waiting for setId...";
+                return;
+            }
+
+            const keys = window.toeflStorage.getDerivedObjectKeysForSet(setId, folderUrl, "mp3");
+            pre.textContent = [
+                `part_1 -> ${keys[1] || ""}`,
+                `part_2 -> ${keys[2] || ""}`,
+                `part_3 -> ${keys[3] || ""}`
+            ].join("\n");
+        }
+
+        function setCloudAudioValidationStatus(partId, exists, objectKey, errorText = "") {
+            const row = document.getElementById(`cloud-audio-check-${partId}`);
+            if (!row) return;
+
+            const icon = exists ? "OK" : "Missing";
+            const color = exists ? "#166534" : "#b91c1c";
+            const reason = errorText ? ` (${errorText})` : "";
+            row.innerText = `Part ${partId}: ${icon}${reason}\n${objectKey}`;
+            row.style.color = color;
+        }
+
+        async function validateCloudAudioFolderPartsForCurrentSet() {
+            const btn = document.getElementById("validate-cloud-audio-folder-btn");
+            const setId = String(currentSetId || "").trim();
+            if (!setId) {
+                setCloudAudioFolderStatus("No setId selected yet.", true);
+                return;
+            }
+
+            if (!window.toeflStorage || typeof window.toeflStorage.getDerivedObjectKeysForSet !== "function") {
+                setCloudAudioFolderStatus("Validation helper is unavailable.", true);
+                return;
+            }
+
+            const input = document.getElementById("cloud-audio-folder-url");
+            const folderUrl = normalizeCloudAudioFolderUrl(input?.value || "");
+            const keys = window.toeflStorage.getDerivedObjectKeysForSet(setId, folderUrl, "mp3");
+            renderDerivedObjectKeysForCurrentSet();
+
+            if (btn) btn.disabled = true;
+            setCloudAudioFolderStatus("Validating part_1/part_2/part_3 in Cloudflare...");
+
+            try {
+                const apiBase = window.toeflStorage.getApiGatewayDebugInfo().apiBase;
+                const checks = await Promise.all([1, 2, 3].map(async (partId) => {
+                    const objectKey = String(keys[partId] || "").trim();
+                    if (!objectKey) {
+                        return { partId, objectKey, exists: false, error: "empty object key" };
+                    }
+
+                    const response = await fetch(`${apiBase}/api/developer/audio-exists?objectKey=${encodeURIComponent(objectKey)}`, { method: "GET" });
+                    if (!response.ok) {
+                        return { partId, objectKey, exists: false, error: `HTTP ${response.status}` };
+                    }
+
+                    const payload = await response.json().catch(() => ({}));
+                    return {
+                        partId,
+                        objectKey,
+                        exists: Boolean(payload?.exists),
+                        error: String(payload?.error || "")
+                    };
+                }));
+
+                let allGood = true;
+                checks.forEach((entry) => {
+                    setCloudAudioValidationStatus(entry.partId, entry.exists, entry.objectKey, entry.error);
+                    if (!entry.exists) allGood = false;
+                });
+
+                if (allGood) {
+                    setCloudAudioFolderStatus("Validation passed: part_1, part_2, and part_3 are available.");
+                } else {
+                    setCloudAudioFolderStatus("Validation found missing audio files. Check rows below.", true);
+                }
+            } catch (error) {
+                setCloudAudioFolderStatus(`Validation failed: ${error?.message || "Unknown error"}`, true);
+            } finally {
+                if (btn) btn.disabled = false;
+            }
         }
 
         function safeParse(raw, fallback) {
@@ -1895,6 +2115,11 @@
                 void (async () => {
                     const recovered = await tryFallbackAudioSource();
                     if (!recovered) {
+                        const refreshed = await tryRefreshCloudAudioSource(activePartId || 1);
+                        if (refreshed) {
+                            updateAudioShellStatus();
+                            return;
+                        }
                         alert(`Audio error (${codeText}). Please re-upload this part audio in Developer mode.`);
                     }
                     updateAudioShellStatus();
@@ -2197,6 +2422,7 @@
             } catch (error) {
                 console.warn("[AudioPersistence] label refresh during meta load failed:", error);
             }
+            await syncCloudAudioFolderInputForCurrentSet();
         }
 
         async function saveSectionMeta() {
@@ -2238,6 +2464,7 @@
                 await loadSectionDraft();
                 await restoreAudioForCurrentSet(activePartId || 1);
                 await refreshAudioLabelsForCurrentSet();
+                await syncCloudAudioFolderInputForCurrentSet();
                 updateUserView();
                 updateOnboardingVisibility();
                 return;
@@ -2248,6 +2475,7 @@
                 currentSetId = "";
                 await saveSectionMeta();
                 await refreshAudioLabelsForCurrentSet();
+                await syncCloudAudioFolderInputForCurrentSet();
                 updateUserView();
                 updateOnboardingVisibility();
                 return;
@@ -2265,6 +2493,7 @@
             }
             updateUserView();
             updateOnboardingVisibility();
+            await syncCloudAudioFolderInputForCurrentSet();
         }
 
         function initStructure() {
@@ -2286,12 +2515,29 @@
                 <div class="dev-container">
                     <div class="dev-card">
                         <h2 class="dev-card-title">Setup Audio Utama</h2>
-                        <p style="font-size:14px; color:#475569; line-height:1.6;">Upload local MP3/WAV files for each listening part. Audio is linked per part and synced to Firebase for cross-device consistency.</p>
+                        <p style="font-size:14px; color:#475569; line-height:1.6;">You can either upload audio from this page or link a Cloudflare folder and play directly from files named part_1, part_2, and part_3.</p>
+                        <div style="margin-top:12px; padding:14px; border:1px solid #dbe7f2; border-radius:8px; background:#f8fbff;">
+                            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;">
+                                <button type="button" id="create-cloud-audio-folder-btn" class="audio-upload-label" onclick="createCloudAudioFolderForCurrentSet()">Create Cloudflare Folder for This Package</button>
+                                <button type="button" class="audio-upload-label" onclick="saveCloudAudioFolderUrlForCurrentSet()">Save Folder URL</button>
+                                <button type="button" id="validate-cloud-audio-folder-btn" class="audio-upload-label" onclick="validateCloudAudioFolderPartsForCurrentSet()">Validate part_1 / part_2 / part_3</button>
+                            </div>
+                            <div style="margin-top:10px; display:grid; gap:6px;">
+                                <label for="cloud-audio-folder-url" style="font-size:12px; font-weight:700; color:#1e3a5f; text-transform:uppercase; letter-spacing:0.04em;">Cloudflare Folder URL (per package)</label>
+                                <input id="cloud-audio-folder-url" type="text" placeholder="https://...r2.cloudflarestorage.com/toefl-test-assets/audio/listening/sets/your_set_id" style="padding:10px 12px; border:1px solid #cbd5e1; border-radius:8px; font:inherit;">
+                                <div id="cloud-audio-folder-status" style="font-size:12px; color:#1e3a5f;">Create/select a package first to bind a Cloudflare folder URL.</div>
+                                <div id="cloud-audio-check-1" style="font-size:12px; color:#1e3a5f; white-space:pre-wrap; border:1px solid #e2e8f0; border-radius:6px; padding:8px; background:#fff;">Part 1: Not checked</div>
+                                <div id="cloud-audio-check-2" style="font-size:12px; color:#1e3a5f; white-space:pre-wrap; border:1px solid #e2e8f0; border-radius:6px; padding:8px; background:#fff;">Part 2: Not checked</div>
+                                <div id="cloud-audio-check-3" style="font-size:12px; color:#1e3a5f; white-space:pre-wrap; border:1px solid #e2e8f0; border-radius:6px; padding:8px; background:#fff;">Part 3: Not checked</div>
+                                <label for="cloud-audio-derived-keys" style="font-size:12px; font-weight:700; color:#1e3a5f; text-transform:uppercase; letter-spacing:0.04em;">Derived Object Keys (read only)</label>
+                                <pre id="cloud-audio-derived-keys" style="margin:0; font-size:12px; color:#334155; white-space:pre-wrap; border:1px solid #e2e8f0; border-radius:6px; padding:8px; background:#fff;">Waiting for setId...</pre>
+                            </div>
+                        </div>
                         <div style="margin-top:12px; display:grid; grid-template-columns:repeat(3, minmax(220px, 1fr)); gap:12px;">
                             <div style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
                                 <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part A Audio</div>
                                 <label for="audio-upload-file-a" class="audio-upload-label">Choose Local Audio File</label>
-                                <input type="file" class="audio-upload-file" id="audio-upload-file-a" accept="audio/*" onchange="handleAudioUpload(event, 1)">
+                                <input type="file" class="audio-upload-file" id="audio-upload-file-a" accept=".mp3,.m4a,audio/mpeg,audio/mp4,audio/x-m4a" onchange="handleAudioUpload(event, 1)">
                                 <div id="audio-file-name-1" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
                                 <div style="margin-top:12px; font-size:12px; color:#475569; text-align:left;">Transcript (.txt/.md)</div>
                                 <button type="button" class="audio-upload-label" style="margin-top:6px; padding:8px 12px; font-size:13px;" onclick="autoTranscribePart(1)">Auto Transcribe Part A</button>
@@ -2302,7 +2548,7 @@
                             <div style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
                                 <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part B Audio</div>
                                 <label for="audio-upload-file-b" class="audio-upload-label">Choose Local Audio File</label>
-                                <input type="file" class="audio-upload-file" id="audio-upload-file-b" accept="audio/*" onchange="handleAudioUpload(event, 2)">
+                                <input type="file" class="audio-upload-file" id="audio-upload-file-b" accept=".mp3,.m4a,audio/mpeg,audio/mp4,audio/x-m4a" onchange="handleAudioUpload(event, 2)">
                                 <div id="audio-file-name-2" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
                                 <div style="margin-top:12px; font-size:12px; color:#475569; text-align:left;">Transcript (.txt/.md)</div>
                                 <button type="button" class="audio-upload-label" style="margin-top:6px; padding:8px 12px; font-size:13px;" onclick="autoTranscribePart(2)">Auto Transcribe Part B</button>
@@ -2313,7 +2559,7 @@
                             <div style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
                                 <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part C Audio</div>
                                 <label for="audio-upload-file-c" class="audio-upload-label">Choose Local Audio File</label>
-                                <input type="file" class="audio-upload-file" id="audio-upload-file-c" accept="audio/*" onchange="handleAudioUpload(event, 3)">
+                                <input type="file" class="audio-upload-file" id="audio-upload-file-c" accept=".mp3,.m4a,audio/mpeg,audio/mp4,audio/x-m4a" onchange="handleAudioUpload(event, 3)">
                                 <div id="audio-file-name-3" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
                                 <div style="margin-top:12px; font-size:12px; color:#475569; text-align:left;">Transcript (.txt/.md)</div>
                                 <button type="button" class="audio-upload-label" style="margin-top:6px; padding:8px 12px; font-size:13px;" onclick="autoTranscribePart(3)">Auto Transcribe Part C</button>
@@ -2407,7 +2653,48 @@
 
         async function handleAudioUpload(event, partId = 1) {
             const file = event.target.files[0];
-            if (!file) return;
+            window.__lastPartUploadAttempt = {
+                at: new Date().toISOString(),
+                partId: Number(partId || 1),
+                hasFile: Boolean(file),
+                fileName: file ? String(file.name || "") : ""
+            };
+            window.__lastPartUploadStage = "selected";
+
+            if (!file) {
+                if (window.toeflStorage) {
+                    window.toeflStorage._lastStorageError = "No file selected (onchange fired without a file)";
+                    window.toeflStorage._lastUploadInfo = {
+                        success: false,
+                        partId: Number(partId || 1),
+                        reason: "no-file-selected",
+                        at: new Date().toISOString()
+                    };
+                }
+                window.__lastPartUploadStage = "no-file";
+                return;
+            }
+
+            const fileName = String(file.name || "").toLowerCase();
+            const fileType = String(file.type || "").toLowerCase();
+            const isSupportedType = fileName.endsWith(".mp3") || fileName.endsWith(".m4a") || fileType === "audio/mpeg" || fileType === "audio/mp4" || fileType === "audio/x-m4a";
+            if (!isSupportedType) {
+                if (window.toeflStorage) {
+                    window.toeflStorage._lastStorageError = `Unsupported audio format: ${file.type || file.name || "unknown"}`;
+                    window.toeflStorage._lastUploadInfo = {
+                        success: false,
+                        partId: Number(partId || 1),
+                        reason: "unsupported-format",
+                        fileName: String(file.name || ""),
+                        fileType: String(file.type || ""),
+                        at: new Date().toISOString()
+                    };
+                }
+                window.__lastPartUploadStage = "unsupported-format";
+                alert("Unsupported audio format. Please upload .mp3 or .m4a.");
+                event.target.value = "";
+                return;
+            }
 
             const dateInput = document.getElementById("set-date");
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
@@ -2425,16 +2712,40 @@
             if (fileLabel) { fileLabel.innerText = `${file.name} â€” uploadingâ€¦`; fileLabel.style.color = "#b45309"; }
 
             try {
-                // Save metadata, but do not block cloud upload when local persistence is unavailable.
-                await saveSectionMeta();
+                // Save metadata, but do not block cloud upload when this path fails.
+                window.__lastPartUploadStage = "metadata-saving";
+                try {
+                    await saveSectionMeta();
+                } catch (metaError) {
+                    console.warn("[AudioUpload] metadata save failed, continuing cloud upload:", metaError);
+                }
 
                 // Cloudflare-only path: upload through FastAPI presigned URL to R2.
                 let uploadInfo = false;
+                window.__lastPartUploadStage = "cloud-upload-start";
                 if (window.toeflStorage && typeof window.toeflStorage.saveAudioViaGateway === "function") {
                     uploadInfo = await window.toeflStorage.saveAudioViaGateway(setId, file, partId);
+                    window.__lastPartUploadStage = "cloud-upload-finished";
+                } else {
+                    console.error("[AudioUpload] window.toeflStorage.saveAudioViaGateway is missing", {
+                        hasStorage: Boolean(window.toeflStorage),
+                        storageType: typeof window.toeflStorage,
+                        storageKeys: window.toeflStorage ? Object.keys(window.toeflStorage).slice(0, 20) : []
+                    });
+                    if (window.toeflStorage) {
+                        window.toeflStorage._lastStorageError = "saveAudioViaGateway is missing on toeflStorage";
+                        window.toeflStorage._lastUploadInfo = {
+                            success: false,
+                            partId: Number(partId || 1),
+                            reason: "missing-saveAudioViaGateway",
+                            at: new Date().toISOString()
+                        };
+                    }
+                    window.__lastPartUploadStage = "missing-upload-method";
                 }
 
                 if (uploadInfo && uploadInfo.success !== false) {
+                    window.__lastPartUploadStage = "upload-success";
                     if (fileLabel) { fileLabel.innerText = `${file.name} (synced)`; fileLabel.style.color = "green"; }
                     const uploadedMB = Number(uploadInfo.uploadedSize || file.size) / 1024 / 1024;
                     const sizeNote = uploadInfo.compressed
@@ -2442,6 +2753,7 @@
                         : `Uploaded at ${uploadedMB.toFixed(1)} MB.`;
                     alert(`Audio saved and synced to cloud (${fileMB} MB original).\n${sizeNote}\nIt will work on other devices.`);
                 } else {
+                    window.__lastPartUploadStage = "upload-failed";
                     if (fileLabel) { fileLabel.innerText = `${file.name} (not synced)`; fileLabel.style.color = "#b91c1c"; }
                     const detail = window.toeflStorage && typeof window.toeflStorage.getLastStorageError === "function"
                         ? window.toeflStorage.getLastStorageError()
@@ -2451,6 +2763,17 @@
                 }
             } catch (error) {
                 console.warn("[AudioPersistence] save failed:", error);
+                window.__lastPartUploadStage = "exception";
+                if (window.toeflStorage) {
+                    window.toeflStorage._lastStorageError = String(error?.message || error || "Upload failed in handleAudioUpload");
+                    window.toeflStorage._lastUploadInfo = {
+                        success: false,
+                        partId: Number(partId || 1),
+                        reason: "exception",
+                        error: window.toeflStorage._lastStorageError,
+                        at: new Date().toISOString()
+                    };
+                }
                 if (fileLabel) { fileLabel.innerText = `${file.name} (upload error)`; fileLabel.style.color = "#b91c1c"; }
                 alert("Upload failed. Please check API gateway (port 8000), Cloudflare R2 credentials, and internet connection.");
             }
@@ -2635,13 +2958,13 @@
                     return;
                 }
 
-                const segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[—-]\s*(.+)$/);
+                const segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[ï¿½-]\s*(.+)$/);
                 let matched = segmentMatch;
                 if (!matched) {
                     matched = line.match(/(?:^\s*[-*]\s*)?\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(.+)$/);
                 }
                 if (!matched) {
-                    matched = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s*[—\-]\s*(.+)$/);
+                    matched = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s*[ï¿½\-]\s*(.+)$/);
                 }
 
                 if (matched) {
@@ -3521,6 +3844,9 @@
         window.onload = async () => {
             initAutoSave();
             initStructure();
+            prepareAudioFileInputForReselect(1);
+            prepareAudioFileInputForReselect(2);
+            prepareAudioFileInputForReselect(3);
             applyViewMode();
             activateInitialTab();
             initZoom();
@@ -3545,6 +3871,7 @@
                 // even if non-critical startup steps (e.g. audio restore) fail.
                 updateUserView();
             }
+            await syncCloudAudioFolderInputForCurrentSet();
             positionListeningHeaderTimer();
             setTimeout(positionListeningHeaderTimer, 60);
             const featuresOverlay = document.getElementById("features-overlay");
@@ -3560,15 +3887,15 @@
             setTimeout(updateOnboardingVisibility, 120);
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
+            const folderUrlEl = document.getElementById("cloud-audio-folder-url");
             if (setDateEl) setDateEl.addEventListener("change", handleSetDateChange);
             if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
+            if (folderUrlEl) folderUrlEl.addEventListener("input", renderDerivedObjectKeysForCurrentSet);
             window.addEventListener("beforeunload", revokeCurrentAudioUrl);
             window.addEventListener("storage", handleCrossTabApplySync);
         };
     </script>
 </body>
 </html>
-
-
 
 

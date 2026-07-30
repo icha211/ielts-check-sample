@@ -197,7 +197,7 @@ async function uploadAudioToR2(file){
     throw new Error(`Upload failed with status ${putResponse.status}`);
   }
 
-  setAudioUploadStatus("Upload completed.");
+  setAudioUploadStatus("Cloud saved to R2.");
   return {
     objectKey: uploadConfig.objectKey,
     objectUrl: uploadConfig.objectUrl
@@ -283,6 +283,7 @@ async function saveListeningSet(){
       currentUploadedAudio = await uploadAudioToR2(selectedFile);
       if (currentUploadedAudio?.objectUrl) {
         document.getElementById("audioUrl").value = currentUploadedAudio.objectUrl;
+        setAudioUploadStatus("Cloud saved to R2.");
       }
     }
   } catch (error) {
@@ -323,4 +324,3 @@ renderGroups();
 </script>
 </body>
 </html>
-

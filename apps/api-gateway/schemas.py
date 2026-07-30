@@ -45,6 +45,8 @@ class EvaluationResponse(BaseModel):
 class DeveloperUploadUrlRequest(BaseModel):
     file_name: str = Field(min_length=1, alias="fileName")
     file_type: str = Field(min_length=1, alias="fileType")
+    set_id: str | None = Field(default=None, alias="setId")
+    part_id: int | None = Field(default=None, alias="partId")
 
 
 class DeveloperUploadUrlResponse(BaseModel):
@@ -59,3 +61,14 @@ class DeveloperUploadProxyResponse(BaseModel):
     object_url: str = Field(alias="objectUrl")
     content_type: str = Field(alias="contentType")
     size: int
+
+
+class DeveloperEnsureAudioFolderRequest(BaseModel):
+    set_id: str = Field(min_length=1, alias="setId")
+
+
+class DeveloperEnsureAudioFolderResponse(BaseModel):
+    set_id: str = Field(alias="setId")
+    object_prefix: str = Field(alias="objectPrefix")
+    folder_url: str = Field(alias="folderUrl")
+    marker_object_key: str = Field(alias="markerObjectKey")

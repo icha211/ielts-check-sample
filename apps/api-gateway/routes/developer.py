@@ -10,7 +10,13 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 
 from config import build_r2_endpoint, settings
-from schemas import DeveloperUploadProxyResponse, DeveloperUploadUrlRequest, DeveloperUploadUrlResponse
+from schemas import (
+    DeveloperEnsureAudioFolderRequest,
+    DeveloperEnsureAudioFolderResponse,
+    DeveloperUploadProxyResponse,
+    DeveloperUploadUrlRequest,
+    DeveloperUploadUrlResponse,
+)
 
 
 router = APIRouter(prefix="/developer", tags=["developer"])
@@ -29,14 +35,43 @@ def _split_extension(name: str) -> tuple[str, str]:
     return stem, ext.lower()
 
 
-def _build_object_key(file_name: str) -> str:
+def _sanitize_set_id(value: str | None) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    return re.sub(r"[^A-Za-z0-9_-]+", "-", raw).strip("-")
+
+
+def _normalize_part_id(value: int | str | None) -> int:
+    try:
+        part_id = int(value or 1)
+    except Exception:
+        part_id = 1
+    return max(1, part_id)
+
+
+def _build_object_key(file_name: str, set_id: str | None = None, part_id: int | str | None = None) -> str:
     safe_name = _sanitize_filename(file_name)
     stem, ext = _split_extension(safe_name)
     if ext not in _ALLOWED_EXTENSIONS:
         ext = ".mp3"
+
+    safe_set_id = _sanitize_set_id(set_id)
+    normalized_part_id = _normalize_part_id(part_id)
+    if safe_set_id:
+        # Stable key per set+part keeps Cloudflare usage bounded by overwriting prior upload.
+        return f"audio/listening/sets/{safe_set_id}/part_{normalized_part_id}{ext}"
+
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     suffix = uuid.uuid4().hex[:12]
     return f"audio/listening/{timestamp}-{suffix}-{stem}{ext}"
+
+
+def _build_set_audio_prefix(set_id: str) -> str:
+    safe_set_id = _sanitize_set_id(set_id)
+    if not safe_set_id:
+        raise HTTPException(status_code=400, detail="setId is required")
+    return f"audio/listening/sets/{safe_set_id}/"
 
 
 def _get_r2_client():
@@ -87,7 +122,7 @@ def create_upload_url(payload: DeveloperUploadUrlRequest) -> DeveloperUploadUrlR
     if ext and ext not in _ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Only .mp3 and .m4a files are supported")
 
-    object_key = _build_object_key(safe_name)
+    object_key = _build_object_key(safe_name, payload.set_id, payload.part_id)
 
     try:
         client = _get_r2_client()
@@ -119,6 +154,8 @@ async def upload_audio_proxy(
     file: UploadFile = File(...),
     file_name: str | None = Form(default=None, alias="fileName"),
     file_type: str | None = Form(default=None, alias="fileType"),
+    set_id: str | None = Form(default=None, alias="setId"),
+    part_id: int | None = Form(default=None, alias="partId"),
 ) -> DeveloperUploadProxyResponse:
     incoming_name = str(file_name or file.filename or "audio-file")
     incoming_type = str(file_type or file.content_type or "audio/mpeg").strip().lower()
@@ -131,7 +168,7 @@ async def upload_audio_proxy(
     if ext and ext not in _ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Only .mp3 and .m4a files are supported")
 
-    object_key = _build_object_key(safe_name)
+    object_key = _build_object_key(safe_name, set_id, part_id)
 
     data = await file.read()
     if not data:
@@ -183,3 +220,58 @@ def get_audio_url(
         "audioUrl": signed_url,
         "expiresIn": int(settings.r2_read_expire_seconds),
     }
+
+
+@router.get("/audio-exists")
+def get_audio_exists(
+    object_key: str = Query(..., alias="objectKey", min_length=1),
+):
+    exists = False
+    error = ""
+    try:
+        client = _get_r2_client()
+        client.head_object(
+            Bucket=settings.r2_bucket_name,
+            Key=object_key,
+        )
+        exists = True
+    except HTTPException:
+        raise
+    except ClientError as exc:
+        code = str(exc.response.get("Error", {}).get("Code", ""))
+        if code not in {"404", "NoSuchKey", "NotFound"}:
+            error = code or str(exc)
+    except BotoCoreError as exc:
+        error = str(exc)
+
+    return {
+        "objectKey": object_key,
+        "exists": exists,
+        "error": error,
+    }
+
+
+@router.post("/ensure-audio-folder", response_model=DeveloperEnsureAudioFolderResponse)
+def ensure_audio_folder(payload: DeveloperEnsureAudioFolderRequest) -> DeveloperEnsureAudioFolderResponse:
+    prefix = _build_set_audio_prefix(payload.set_id)
+    marker_key = f"{prefix}.folder"
+
+    try:
+        client = _get_r2_client()
+        client.put_object(
+            Bucket=settings.r2_bucket_name,
+            Key=marker_key,
+            Body=b"",
+            ContentType="text/plain",
+        )
+    except HTTPException:
+        raise
+    except (ClientError, BotoCoreError) as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to create set audio folder: {exc}") from exc
+
+    return DeveloperEnsureAudioFolderResponse(
+        setId=_sanitize_set_id(payload.set_id),
+        objectPrefix=prefix,
+        folderUrl=_build_object_url(prefix),
+        markerObjectKey=marker_key,
+    )
