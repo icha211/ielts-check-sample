@@ -267,7 +267,7 @@ def get_audio_folder_contents(
 ):
     """List actual files in an R2 audio folder (for validating manually uploaded files)."""
     set_id = _sanitize_set_id(set_id)
-    folder_prefix = f"toefl-test-assets/audio/listening/sets/{set_id}/"
+    folder_prefix = f"audio/listening/sets/{set_id}/"
     
     try:
         client = _get_r2_client()
