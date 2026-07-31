@@ -274,6 +274,16 @@ function toggleExplanationOptions(force) {
     menu.classList.toggle("show");
 }
 
+function toggleCreateOptions(force) {
+    const menu = document.querySelector(".create-stack");
+    if (!menu) return;
+    if (typeof force === "boolean") {
+        menu.classList.toggle("show", force);
+        return;
+    }
+    menu.classList.toggle("show");
+}
+
 function buildEditorUrl(moduleId, setDate, setId, testType = "mocktest") {
     const params = new URLSearchParams();
     if (setDate) params.set("setDate", setDate);
