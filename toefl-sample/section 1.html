@@ -2200,6 +2200,11 @@
             } catch (error) {
                 console.warn("[AudioPersistence] label refresh during meta load failed:", error);
             }
+            try {
+                await refreshCloudflareFolderPanelForCurrentSet();
+            } catch (error) {
+                console.warn("[CloudflareFolder] panel refresh during meta load failed:", error);
+            }
         }
 
         async function saveSectionMeta() {
@@ -2224,6 +2229,11 @@
                 } catch (error) {
                     console.warn("[ToeflSync] set save failed:", error);
                 }
+            }
+            try {
+                await refreshCloudflareFolderPanelForCurrentSet();
+            } catch (error) {
+                console.warn("[CloudflareFolder] panel refresh during set save failed:", error);
             }
         }
 
@@ -2290,6 +2300,31 @@
                     <div class="dev-card">
                         <h2 class="dev-card-title">Setup Audio Utama</h2>
                         <p style="font-size:14px; color:#475569; line-height:1.6;">Upload local MP3/WAV files for each listening part. Audio is linked per part and synced to Cloudflare R2 for cross-device consistency.</p>
+                        <div style="margin-top:14px; padding:16px; border:1px solid #d7e3ef; border-radius:16px; background:linear-gradient(180deg, rgba(255,255,255,0.96), rgba(246,250,255,0.92)); box-shadow:0 10px 30px rgba(30,58,95,0.08);">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+                                <div style="max-width:760px;">
+                                    <h3 class="dev-card-title" style="margin:0 0 6px 0;">Cloudflare folder connection</h3>
+                                    <p style="margin:0; font-size:14px; color:#475569; line-height:1.6; max-width:68ch;">Create or link the folder for this package, then verify each part is stored and retrievable from Cloudflare R2.</p>
+                                </div>
+                                <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                                    <button type="button" class="audio-upload-label" style="padding:8px 12px; font-size:13px;" onclick="createCloudAudioFolderForCurrentSet()">Create Cloudflare Folder for This Package</button>
+                                    <button type="button" class="audio-upload-label" style="padding:8px 12px; font-size:13px;" onclick="validateCloudAudioFolderPartsForCurrentSet()">Validate part_1 / part_2 / part_3</button>
+                                </div>
+                            </div>
+                            <div style="margin-top:12px; display:grid; gap:10px;">
+                                <label for="cloud-audio-folder-url" style="font-size:12px; font-weight:700; color:#1e3a5f; text-transform:uppercase; letter-spacing:0.04em;">Cloudflare Folder URL (per package)</label>
+                                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                                    <input id="cloud-audio-folder-url" type="text" placeholder="https://pub-1975cb14188340238a5d6d34750e4880.r2.dev/audio/listening/sets/your_set_id/" style="flex:1; min-width:280px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:10px; font:inherit; background:#fff;">
+                                    <button type="button" class="audio-upload-label" style="padding:8px 12px; font-size:13px;" onclick="saveCloudAudioFolderUrlForCurrentSet()">Save Folder URL</button>
+                                </div>
+                                <div id="cloud-audio-folder-status" style="font-size:12px; color:#1e3a5f;">Create or select a package to link a Cloudflare folder.</div>
+                                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:10px;">
+                                    <div id="cloud-audio-check-1" style="font-size:12px; color:#1e3a5f; white-space:pre-wrap; border:1px solid #e2e8f0; border-radius:10px; padding:10px; background:#fff;">Part 1: Not checked</div>
+                                    <div id="cloud-audio-check-2" style="font-size:12px; color:#1e3a5f; white-space:pre-wrap; border:1px solid #e2e8f0; border-radius:10px; padding:10px; background:#fff;">Part 2: Not checked</div>
+                                    <div id="cloud-audio-check-3" style="font-size:12px; color:#1e3a5f; white-space:pre-wrap; border:1px solid #e2e8f0; border-radius:10px; padding:10px; background:#fff;">Part 3: Not checked</div>
+                                </div>
+                            </div>
+                        </div>
                         <div style="margin-top:12px; display:grid; grid-template-columns:repeat(3, minmax(220px, 1fr)); gap:12px;">
                             <div style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
                                 <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part A Audio</div>
@@ -2406,6 +2441,264 @@
                     </div>
                 </div>
             </div>`;
+        }
+
+        function getApiGatewayBaseCandidates() {
+            const baseOverride = String(localStorage.getItem("toefl_api_gateway_url") || "").trim();
+            if (baseOverride) return [baseOverride.replace(/\/+$/, "")];
+
+            const hostOverride = String(localStorage.getItem("toefl_api_gateway_host") || "").trim();
+            const port = String(localStorage.getItem("toefl_api_gateway_port") || "8000").trim() || "8000";
+            const protocol = String(localStorage.getItem("toefl_api_gateway_protocol") || "http").trim() || "http";
+            const candidates = [];
+
+            if (hostOverride) candidates.push(`${protocol}://${hostOverride}:${port}`);
+            if (window.location && window.location.origin && window.location.protocol !== "file:") {
+                candidates.push(window.location.origin.replace(/\/+$/, ""));
+            }
+            candidates.push(`${protocol}://127.0.0.1:${port}`);
+            candidates.push(`${protocol}://localhost:${port}`);
+            return Array.from(new Set(candidates.filter(Boolean)));
+        }
+
+        function getCloudflareFolderStorageKey(setId) {
+            return `toefl_section1_cloudflare_folder_url_${currentTestType || "mocktest"}_${String(setId || "default")}`;
+        }
+
+        function normalizeCloudAudioFolderUrl(url = "") {
+            return String(url || "").trim().replace(/\/+$/, "");
+        }
+
+        function setCloudflareFolderStatus(message, color = "#1e3a5f") {
+            const statusElement = document.getElementById("cloud-audio-folder-status");
+            if (!statusElement) return;
+            statusElement.innerText = message;
+            statusElement.style.color = color;
+        }
+
+        function setCloudflarePartStatus(partId, message, color = "#1e3a5f") {
+            const row = document.getElementById(`cloud-audio-check-${partId}`);
+            if (!row) return;
+            row.innerText = `Part ${partId}: ${message}`;
+            row.style.color = color;
+        }
+
+        function getCloudflareFolderUrlInput() {
+            return document.getElementById("cloud-audio-folder-url");
+        }
+
+        function deriveCloudflareFolderUrlFromRecord(record) {
+            const rawUrl = String(record?.url || record?.objectUrl || record?.storageUrl || "").trim();
+            const objectKey = String(record?.objectKey || record?.storagePath || "").trim();
+            const candidates = [rawUrl, objectKey];
+
+            for (const candidate of candidates) {
+                if (!candidate) continue;
+                if (/^https?:\/\//i.test(candidate)) {
+                    try {
+                        const parsed = new URL(candidate);
+                        const path = String(parsed.pathname || "").replace(/\/+$/, "");
+                        const folderPath = path.replace(/\/[^/]+$/, "/");
+                        return `${parsed.origin}${folderPath}`;
+                    } catch {
+                        continue;
+                    }
+                }
+
+                if (candidate.includes("/")) {
+                    const folderPath = candidate.replace(/\/[^/]+$/, "/");
+                    if (folderPath !== candidate) {
+                        return normalizeCloudAudioFolderUrl(folderPath);
+                    }
+                }
+            }
+
+            return "";
+        }
+
+        async function checkAudioExistsViaGateway(objectKey) {
+            const key = String(objectKey || "").trim();
+            if (!key) return { exists: false, error: "Missing object key" };
+
+            const apiBases = getApiGatewayBaseCandidates();
+            const errors = [];
+            for (const apiBase of apiBases) {
+                try {
+                    const response = await fetch(`${apiBase}/api/developer/audio-exists?objectKey=${encodeURIComponent(key)}`, {
+                        method: "GET"
+                    });
+                    if (!response.ok) {
+                        const detail = await response.text().catch(() => "");
+                        errors.push(`${apiBase} -> ${response.status} ${detail}`.trim());
+                        continue;
+                    }
+                    const payload = await response.json().catch(() => ({}));
+                    return {
+                        exists: Boolean(payload?.exists),
+                        error: String(payload?.error || ""),
+                        objectKey: String(payload?.objectKey || key)
+                    };
+                } catch (error) {
+                    errors.push(`${apiBase} -> ${error?.message || String(error)}`);
+                }
+            }
+
+            return { exists: false, error: errors.join(" | ") || "Gateway lookup failed", objectKey: key };
+        }
+
+        async function refreshCloudflareFolderPanelForCurrentSet() {
+            const input = getCloudflareFolderUrlInput();
+            if (!input) return;
+
+            if (!currentSetId) {
+                input.value = "";
+                setCloudflareFolderStatus("Create or select a package first.", "#64748b");
+                setCloudflarePartStatus(1, "Not checked", "#64748b");
+                setCloudflarePartStatus(2, "Not checked", "#64748b");
+                setCloudflarePartStatus(3, "Not checked", "#64748b");
+                return;
+            }
+
+            let storedUrl = localStorage.getItem(getCloudflareFolderStorageKey(currentSetId)) || "";
+            let autoLinked = false;
+            if (!storedUrl && window.toeflStorage && typeof window.toeflStorage.getAudioRecordFromCloudflare === "function") {
+                for (const partId of [1, 2, 3]) {
+                    const record = await window.toeflStorage.getAudioRecordFromCloudflare(currentSetId, partId).catch(() => null);
+                    const inferredUrl = deriveCloudflareFolderUrlFromRecord(record);
+                    if (inferredUrl) {
+                        storedUrl = inferredUrl;
+                        saveCloudflareFolderUrlForCurrentSetValue(storedUrl);
+                        autoLinked = true;
+                        break;
+                    }
+                }
+            }
+
+            if (storedUrl) {
+                input.value = storedUrl;
+                setCloudflareFolderStatus(
+                    autoLinked ? `Folder auto-linked from existing Cloudflare audio for ${currentSetId}.` : `Folder linked for ${currentSetId}.`,
+                    "#0f766e"
+                );
+            } else {
+                input.value = "";
+                setCloudflareFolderStatus(`No folder URL linked yet for ${currentSetId}.`, "#b45309");
+            }
+        }
+
+        function saveCloudflareFolderUrlForCurrentSetValue(folderUrl) {
+            if (!currentSetId) return;
+            const normalized = normalizeCloudAudioFolderUrl(folderUrl);
+            const key = getCloudflareFolderStorageKey(currentSetId);
+            if (!normalized) {
+                localStorage.removeItem(key);
+                return;
+            }
+            localStorage.setItem(key, normalized);
+        }
+
+        async function createCloudAudioFolderForCurrentSet() {
+            const dateInput = document.getElementById("set-date");
+            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
+            const setId = ensureCurrentSetId(setDate);
+            const input = getCloudflareFolderUrlInput();
+            const apiBases = getApiGatewayBaseCandidates();
+            const errors = [];
+
+            await refreshCloudflareFolderPanelForCurrentSet();
+            if (input && normalizeCloudAudioFolderUrl(input.value || "")) {
+                setCloudflareFolderStatus(`Folder already linked for ${setId}.`, "#0f766e");
+                return;
+            }
+
+            setCloudflareFolderStatus("Creating Cloudflare folder…", "#1d4ed8");
+
+            for (const apiBase of apiBases) {
+                try {
+                    const response = await fetch(`${apiBase}/api/developer/ensure-audio-folder`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ setId, testType: currentTestType })
+                    });
+                    if (!response.ok) {
+                        const detail = await response.text().catch(() => "");
+                        errors.push(`${apiBase} -> ${response.status} ${detail}`.trim());
+                        continue;
+                    }
+                    const payload = await response.json().catch(() => ({}));
+                    const folderUrl = normalizeCloudAudioFolderUrl(String(payload?.folderUrl || ""));
+                    if (!folderUrl) {
+                        errors.push(`${apiBase} -> missing folderUrl in response`);
+                        continue;
+                    }
+                    saveCloudflareFolderUrlForCurrentSetValue(folderUrl);
+                    if (input) input.value = folderUrl;
+                    setCloudflareFolderStatus(`Folder created and linked for ${setId}.`, "#0f766e");
+                    return;
+                } catch (error) {
+                    errors.push(`${apiBase} -> ${error?.message || String(error)}`);
+                }
+            }
+
+            setCloudflareFolderStatus(`Folder creation failed. ${errors.join(" | ") || "No gateway response."}`, "#b91c1c");
+        }
+
+        async function saveCloudAudioFolderUrlForCurrentSet() {
+            const dateInput = document.getElementById("set-date");
+            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
+            const setId = ensureCurrentSetId(setDate);
+            const input = getCloudflareFolderUrlInput();
+            const folderUrl = normalizeCloudAudioFolderUrl(input?.value || "");
+
+            if (!folderUrl) {
+                setCloudflareFolderStatus("Paste a Cloudflare folder URL first.", "#b91c1c");
+                return;
+            }
+
+            saveCloudflareFolderUrlForCurrentSetValue(folderUrl);
+            setCloudflareFolderStatus(`Folder URL saved for ${setId}.`, "#0f766e");
+        }
+
+        async function validateCloudAudioFolderPartsForCurrentSet() {
+            const dateInput = document.getElementById("set-date");
+            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
+            const setId = ensureCurrentSetId(setDate);
+            const input = getCloudflareFolderUrlInput();
+            const folderUrl = normalizeCloudAudioFolderUrl(input?.value || localStorage.getItem(getCloudflareFolderStorageKey(setId)) || "");
+
+            if (!folderUrl) {
+                setCloudflareFolderStatus("Save a Cloudflare folder URL first.", "#b91c1c");
+                return;
+            }
+
+            saveCloudflareFolderUrlForCurrentSetValue(folderUrl);
+            setCloudflareFolderStatus(`Checking Cloudflare sync for ${setId}...`, "#1d4ed8");
+
+            for (const partId of [1, 2, 3]) {
+                setCloudflarePartStatus(partId, "Checking...", "#1d4ed8");
+                if (!window.toeflStorage || typeof window.toeflStorage.getAudioRecordFromCloudflare !== "function") {
+                    setCloudflarePartStatus(partId, "toeflStorage audio helpers are unavailable", "#b91c1c");
+                    continue;
+                }
+
+                const record = await window.toeflStorage.getAudioRecordFromCloudflare(setId, partId);
+                if (!record) {
+                    setCloudflarePartStatus(partId, "No Cloudflare record found", "#b91c1c");
+                    continue;
+                }
+
+                const objectKey = String(record?.objectKey || record?.storagePath || "").trim();
+                const existsCheck = await checkAudioExistsViaGateway(objectKey);
+                if (existsCheck.exists) {
+                    setCloudflarePartStatus(partId, `Synced in Cloudflare
+${existsCheck.objectKey || objectKey}`, "#0f766e");
+                } else {
+                    setCloudflarePartStatus(partId, `Found record but playback check failed
+${existsCheck.error || "Object not reachable"}`, "#b91c1c");
+                }
+            }
+
+            setCloudflareFolderStatus(`Verification finished for ${setId}.`, "#0f766e");
         }
 
         async function handleAudioUpload(event, partId = 1) {

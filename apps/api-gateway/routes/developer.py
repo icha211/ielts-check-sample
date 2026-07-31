@@ -10,7 +10,13 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 
 from config import build_r2_endpoint, settings
-from schemas import DeveloperUploadProxyResponse, DeveloperUploadUrlRequest, DeveloperUploadUrlResponse
+from schemas import (
+    DeveloperEnsureAudioFolderRequest,
+    DeveloperEnsureAudioFolderResponse,
+    DeveloperUploadProxyResponse,
+    DeveloperUploadUrlRequest,
+    DeveloperUploadUrlResponse,
+)
 
 
 router = APIRouter(prefix="/developer", tags=["developer"])
@@ -27,6 +33,13 @@ def _sanitize_filename(name: str) -> str:
 def _split_extension(name: str) -> tuple[str, str]:
     stem, ext = os.path.splitext(name)
     return stem, ext.lower()
+
+
+def _sanitize_set_id(value: str | None) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    return re.sub(r"[^A-Za-z0-9_-]+", "-", raw).strip("-")
 
 
 def _build_object_key(file_name: str) -> str:
@@ -74,6 +87,48 @@ def _build_object_url(object_key: str) -> str:
     endpoint = build_r2_endpoint(settings.r2_account_id).rstrip("/")
     bucket = settings.r2_bucket_name
     return f"{endpoint}/{bucket}/{quote(object_key)}"
+
+
+def _build_folder_url(set_id: str) -> str:
+    folder_path = f"audio/listening/sets/{set_id}/"
+    if settings.r2_public_base_url:
+        base = settings.r2_public_base_url.rstrip("/")
+        return f"{base}/{quote(folder_path)}"
+
+    endpoint = build_r2_endpoint(settings.r2_account_id).rstrip("/")
+    bucket = settings.r2_bucket_name
+    return f"{endpoint}/{bucket}/{quote(folder_path)}"
+
+
+@router.post("/ensure-audio-folder", response_model=DeveloperEnsureAudioFolderResponse)
+def ensure_audio_folder(payload: DeveloperEnsureAudioFolderRequest) -> DeveloperEnsureAudioFolderResponse:
+    set_id = _sanitize_set_id(payload.set_id)
+    if not set_id:
+        raise HTTPException(status_code=400, detail="setId is required")
+
+    folder_key = f"audio/listening/sets/{set_id}/"
+    marker_key = f"{folder_key}.folder"
+
+    try:
+        client = _get_r2_client()
+        client.put_object(
+            Bucket=settings.r2_bucket_name,
+            Key=marker_key,
+            Body=b"",
+            ContentType="text/plain",
+        )
+    except HTTPException:
+        raise
+    except (ClientError, BotoCoreError) as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to create audio folder marker: {exc}") from exc
+
+    return DeveloperEnsureAudioFolderResponse(
+        setId=set_id,
+        folderKey=folder_key,
+        folderUrl=_build_folder_url(set_id),
+        markerKey=marker_key,
+        createdAt=datetime.now(timezone.utc).isoformat(),
+    )
 
 
 @router.post("/upload-url", response_model=DeveloperUploadUrlResponse)
@@ -183,3 +238,33 @@ def get_audio_url(
         "audioUrl": signed_url,
         "expiresIn": int(settings.r2_read_expire_seconds),
     }
+
+
+@router.get("/audio-exists")
+def get_audio_exists(
+    object_key: str = Query(..., alias="objectKey", min_length=1),
+):
+    try:
+        client = _get_r2_client()
+        client.head_object(
+            Bucket=settings.r2_bucket_name,
+            Key=object_key,
+        )
+        return {
+            "objectKey": object_key,
+            "exists": True,
+            "error": "",
+        }
+    except HTTPException:
+        raise
+    except ClientError as exc:
+        code = str(exc.response.get("Error", {}).get("Code", ""))
+        if code in {"404", "NoSuchKey", "NotFound"}:
+            return {
+                "objectKey": object_key,
+                "exists": False,
+                "error": "",
+            }
+        raise HTTPException(status_code=500, detail=f"Failed to check audio object: {exc}") from exc
+    except BotoCoreError as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to check audio object: {exc}") from exc

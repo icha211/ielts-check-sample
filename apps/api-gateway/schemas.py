@@ -59,3 +59,16 @@ class DeveloperUploadProxyResponse(BaseModel):
     object_url: str = Field(alias="objectUrl")
     content_type: str = Field(alias="contentType")
     size: int
+
+
+class DeveloperEnsureAudioFolderRequest(BaseModel):
+    set_id: str = Field(min_length=1, alias="setId")
+    test_type: Optional[str] = Field(default=None, alias="testType")
+
+
+class DeveloperEnsureAudioFolderResponse(BaseModel):
+    set_id: str = Field(alias="setId")
+    folder_key: str = Field(alias="folderKey")
+    folder_url: str = Field(alias="folderUrl")
+    marker_key: str = Field(alias="markerKey")
+    created_at: str = Field(alias="createdAt")
