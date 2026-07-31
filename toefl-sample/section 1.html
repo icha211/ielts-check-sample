@@ -3078,6 +3078,10 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             }
 
             setCloudflareFolderStatus(`Verification finished for ${setId}.`, "#0f766e");
+            
+            // After verification completes, save complete listening data to RTDB
+            // This ensures Cloudflare URLs and content are synced globally
+            saveSectionDraft();
         }
 
         async function handleAudioUpload(event, partId = 1) {
@@ -3115,6 +3119,18 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     const sizeNote = uploadInfo.compressed
                         ? `Compressed to ${uploadedMB.toFixed(1)} MB before upload.`
                         : `Uploaded at ${uploadedMB.toFixed(1)} MB.`;
+                    
+                    // Update audio element with Cloudflare URL so it's captured when saving complete data
+                    const audioElement = document.getElementById(`audio-player-${partId}`);
+                    if (audioElement && uploadInfo.objectUrl) {
+                        audioElement.src = uploadInfo.objectUrl;
+                        console.log(`[AudioPlayback] Updated audio source for part ${partId} to Cloudflare URL:`, uploadInfo.objectUrl);
+                    }
+                    
+                    // After successful audio sync to Cloudflare, save complete listening data to RTDB
+                    // This ensures audio URLs and all content sync globally
+                    saveSectionDraft();
+                    
                     alert(`Audio saved and synced to cloud (${fileMB} MB original).\n${sizeNote}\nIt will work on other devices.`);
                 } else {
                     if (fileLabel) { fileLabel.innerText = `${file.name} (not synced)`; fileLabel.style.color = "#b91c1c"; }
