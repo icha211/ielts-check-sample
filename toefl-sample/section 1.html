@@ -319,6 +319,7 @@
         const TEXT_SIZE_KEY = "toefl_section1_text_size_v1";
         const ZOOM_KEY = "toefl_section1_zoom_v1";
         const FLAG_KEY = "toefl_section1_flagged_questions_v1";
+        const FIREBASE_RTDB_URL = "https://quickcheck-25590-default-rtdb.asia-southeast1.firebasedatabase.app";
         const AUDIO_DB_NAME = "toefl_listening_audio_db_v1";
         const AUDIO_STORE_NAME = "set_audio";
         const AUDIO_PART_TITLES = {
@@ -769,11 +770,73 @@
             }
         }
 
+        async function saveCloudflareAudioFolderUrlToFirebase(testType, setId, folderUrl) {
+            if (!testType || !setId || !folderUrl) return false;
+            try {
+                const path = `toefl_itp/cloudflare_audio_folders/${testType}/${setId}`;
+                const url = `${FIREBASE_RTDB_URL}/${path}.json`;
+                const response = await fetch(url, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        folderUrl: String(folderUrl),
+                        savedAt: new Date().toISOString()
+                    })
+                });
+                if (response.ok) {
+                    console.log("[CloudflareAudio] Saved folder URL to Firebase for", testType, setId);
+                    return true;
+                }
+            } catch (error) {
+                console.warn("[CloudflareAudio] Failed to save to Firebase:", error);
+            }
+            return false;
+        }
+
+        async function getCloudflareAudioFolderUrlFromFirebase(testType, setId) {
+            if (!testType || !setId) return null;
+            try {
+                const path = `toefl_itp/cloudflare_audio_folders/${testType}/${setId}`;
+                const url = `${FIREBASE_RTDB_URL}/${path}.json`;
+                const response = await fetch(url, { method: "GET" });
+                if (response.ok) {
+                    const data = await response.json();
+                    const folderUrl = data?.folderUrl;
+                    if (folderUrl) {
+                        console.log("[CloudflareAudio] Fetched folder URL from Firebase for", testType, setId);
+                        return String(folderUrl).trim();
+                    }
+                }
+            } catch (error) {
+                console.warn("[CloudflareAudio] Failed to fetch from Firebase:", error);
+            }
+            return null;
+        }
+
         async function getCloudAudioUrl(setId, partId = 1, timeoutMs = 3500) {
             if (!setId) return null;
 
-            // First, check for saved Cloudflare folder URL in localStorage
             const testType = currentTestType || "mocktest";
+
+            // First, try to fetch Cloudflare folder URL from Firebase RTDB
+            try {
+                const firebaseFolderUrl = await getCloudflareAudioFolderUrlFromFirebase(testType, setId);
+                if (firebaseFolderUrl) {
+                    const folderUrl = normalizeCloudAudioFolderUrl(firebaseFolderUrl);
+                    if (folderUrl) {
+                        const r2Url = `${folderUrl}/part_${partId}.mp3`;
+                        console.log("[AudioPlayback] Using Cloudflare folder URL from Firebase for part", partId, ":", r2Url);
+                        // Also save to localStorage for faster access next time
+                        const localKey = `toefl_section1_cloudflare_folder_url_${testType}_${String(setId || "default")}`;
+                        localStorage.setItem(localKey, firebaseFolderUrl);
+                        return r2Url;
+                    }
+                }
+            } catch (error) {
+                console.warn("[AudioPlayback] Firebase fetch failed, falling back to localStorage:", error);
+            }
+
+            // Fallback to localStorage if Firebase is unavailable
             const cloudflareKey = `toefl_section1_cloudflare_folder_url_${testType}_${String(setId || "default")}`;
             const savedFolderUrl = localStorage.getItem(cloudflareKey);
             
@@ -782,12 +845,12 @@
                 const folderUrl = normalizeCloudAudioFolderUrl(savedFolderUrl);
                 if (folderUrl) {
                     const r2Url = `${folderUrl}/part_${partId}.mp3`;
-                    console.log("[AudioPlayback] Using saved Cloudflare folder URL for part", partId, ":", r2Url);
+                    console.log("[AudioPlayback] Using saved Cloudflare folder URL (localStorage) for part", partId, ":", r2Url);
                     return r2Url;
                 }
             }
 
-            // Fallback to Firebase if no Cloudflare URL is saved
+            // Fallback to Firebase Storage if no Cloudflare URL is saved
             if (!window.toeflStorage) return null;
             const fetchAudioUrl = typeof window.toeflStorage.getPlayableAudioUrl === "function"
                 ? window.toeflStorage.getPlayableAudioUrl.bind(window.toeflStorage)
@@ -2632,6 +2695,24 @@
 
             let storedUrl = localStorage.getItem(getCloudflareFolderStorageKey(currentSetId)) || "";
             let autoLinked = false;
+
+            // If not in localStorage, try fetching from Firebase RTDB (works in incognito, other devices)
+            if (!storedUrl) {
+                const testType = currentTestType || "mocktest";
+                try {
+                    const firebaseUrl = await getCloudflareAudioFolderUrlFromFirebase(testType, currentSetId);
+                    if (firebaseUrl) {
+                        storedUrl = firebaseUrl;
+                        // Save to localStorage for future access
+                        localStorage.setItem(getCloudflareFolderStorageKey(currentSetId), storedUrl);
+                        console.log("[CloudflarePanel] Loaded folder URL from Firebase for", currentSetId);
+                    }
+                } catch (error) {
+                    console.warn("[CloudflarePanel] Firebase fetch failed:", error);
+                }
+            }
+
+            // Fallback: try to infer from existing audio records
             if (!storedUrl && window.toeflStorage && typeof window.toeflStorage.getAudioRecordFromCloudflare === "function") {
                 for (const partId of [1, 2, 3]) {
                     const record = await window.toeflStorage.getAudioRecordFromCloudflare(currentSetId, partId).catch(() => null);
@@ -2657,7 +2738,7 @@
             }
         }
 
-        function saveCloudflareFolderUrlForCurrentSetValue(folderUrl) {
+        async function saveCloudflareFolderUrlForCurrentSetValue(folderUrl) {
             if (!currentSetId) return;
             const normalized = toPublicR2Url(folderUrl);
             const key = getCloudflareFolderStorageKey(currentSetId);
@@ -2666,6 +2747,11 @@
                 return;
             }
             localStorage.setItem(key, normalized);
+            // Also save to Firebase RTDB so other users/devices can access it
+            const testType = currentTestType || "mocktest";
+            await saveCloudflareAudioFolderUrlToFirebase(testType, currentSetId, normalized).catch(err => {
+                console.warn("[CloudflareAudio] Background Firebase save failed:", err);
+            });
         }
 
         async function createCloudAudioFolderForCurrentSet() {
