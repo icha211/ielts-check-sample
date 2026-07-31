@@ -2484,11 +2484,15 @@
             const candidates = [];
 
             if (hostOverride) candidates.push(`${protocol}://${hostOverride}:${port}`);
+            
+            // Try gateway port first (8000), then fall back to current page origin (8001)
+            candidates.push(`${protocol}://127.0.0.1:${port}`);
+            candidates.push(`${protocol}://localhost:${port}`);
+            
             if (window.location && window.location.origin && window.location.protocol !== "file:") {
                 candidates.push(window.location.origin.replace(/\/+$/, ""));
             }
-            candidates.push(`${protocol}://127.0.0.1:${port}`);
-            candidates.push(`${protocol}://localhost:${port}`);
+            
             return Array.from(new Set(candidates.filter(Boolean)));
         }
 
@@ -2734,7 +2738,9 @@
                             folderContents = await response.json();
                             break;
                         }
-                    } catch {
+                        // Response not OK (e.g., 404), continue to next candidate
+                    } catch (err) {
+                        // Fetch failed (e.g., network error), continue to next candidate
                         continue;
                     }
                 }
