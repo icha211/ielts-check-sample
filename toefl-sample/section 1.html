@@ -773,8 +773,14 @@
         async function saveCloudflareAudioFolderUrlToFirebase(testType, setId, folderUrl) {
             if (!testType || !setId || !folderUrl) return false;
             try {
+                // Use TOEFL_FIREBASE_URL from toefl-storage-sync.js
+                const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
+                if (!firebaseUrl) {
+                    console.warn("[CloudflareAudio] Firebase URL not available");
+                    return false;
+                }
                 const path = `toefl_itp/cloudflare_audio_folders/${testType}/${setId}`;
-                const url = `${FIREBASE_RTDB_URL}/${path}.json`;
+                const url = `${firebaseUrl}/${path}.json`;
                 const response = await fetch(url, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
@@ -796,8 +802,14 @@
         async function getCloudflareAudioFolderUrlFromFirebase(testType, setId) {
             if (!testType || !setId) return null;
             try {
+                // Use TOEFL_FIREBASE_URL from toefl-storage-sync.js
+                const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
+                if (!firebaseUrl) {
+                    console.warn("[CloudflareAudio] Firebase URL not available");
+                    return null;
+                }
                 const path = `toefl_itp/cloudflare_audio_folders/${testType}/${setId}`;
-                const url = `${FIREBASE_RTDB_URL}/${path}.json`;
+                const url = `${firebaseUrl}/${path}.json`;
                 const response = await fetch(url, { method: "GET" });
                 if (response.ok) {
                     const data = await response.json();
@@ -806,6 +818,9 @@
                         console.log("[CloudflareAudio] Fetched folder URL from Firebase for", testType, setId);
                         return String(folderUrl).trim();
                     }
+                } else if (response.status === 404) {
+                    console.log("[CloudflareAudio] No folder URL found in Firebase for", testType, setId);
+                    return null;
                 }
             } catch (error) {
                 console.warn("[CloudflareAudio] Failed to fetch from Firebase:", error);
