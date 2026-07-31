@@ -770,7 +770,25 @@
         }
 
         async function getCloudAudioUrl(setId, partId = 1, timeoutMs = 3500) {
-            if (!window.toeflStorage || !setId) return null;
+            if (!setId) return null;
+
+            // First, check for saved Cloudflare folder URL in localStorage
+            const testType = currentTestType || "mocktest";
+            const cloudflareKey = `toefl_section1_cloudflare_folder_url_${testType}_${String(setId || "default")}`;
+            const savedFolderUrl = localStorage.getItem(cloudflareKey);
+            
+            if (savedFolderUrl) {
+                // Build R2 URL from saved folder URL
+                const folderUrl = normalizeCloudAudioFolderUrl(savedFolderUrl);
+                if (folderUrl) {
+                    const r2Url = `${folderUrl}/part_${partId}.mp3`;
+                    console.log("[AudioPlayback] Using saved Cloudflare folder URL for part", partId, ":", r2Url);
+                    return r2Url;
+                }
+            }
+
+            // Fallback to Firebase if no Cloudflare URL is saved
+            if (!window.toeflStorage) return null;
             const fetchAudioUrl = typeof window.toeflStorage.getPlayableAudioUrl === "function"
                 ? window.toeflStorage.getPlayableAudioUrl.bind(window.toeflStorage)
                 : (typeof window.toeflStorage.getPlayableAudioFromFirebase === "function"
