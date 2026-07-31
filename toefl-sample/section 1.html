@@ -2734,9 +2734,27 @@
         async function validateCloudAudioFolderPartsForCurrentSet() {
             const dateInput = document.getElementById("set-date");
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
-            const setId = ensureCurrentSetId(setDate);
             const input = getCloudflareFolderUrlInput();
-            const folderUrl = toPublicR2Url(input?.value || localStorage.getItem(getCloudflareFolderStorageKey(setId)) || "");
+            const folderUrlFromInput = toPublicR2Url(input?.value || "");
+            
+            // If there's a folder URL saved, extract its setId; otherwise use current setId
+            let setId = null;
+            let folderUrl = folderUrlFromInput;
+            
+            if (folderUrl) {
+                // Extract setId from the folder URL
+                const urlSetIdMatch = folderUrl.match(/\/sets\/([^\/]+)\//);
+                setId = urlSetIdMatch ? urlSetIdMatch[1] : null;
+            }
+            
+            // If no setId extracted from URL, fall back to current package
+            if (!setId) {
+                setId = ensureCurrentSetId(setDate);
+                // Try to get saved folder URL for this setId
+                folderUrl = localStorage.getItem(getCloudflareFolderStorageKey(setId)) || "";
+            }
+
+            folderUrl = toPublicR2Url(folderUrl);
 
             if (!folderUrl) {
                 setCloudflareFolderStatus("Save a Cloudflare folder URL first.", "#b91c1c");
