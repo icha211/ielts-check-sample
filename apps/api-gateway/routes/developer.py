@@ -208,26 +208,14 @@ async def upload_audio_proxy(
 def get_audio_url(
     object_key: str = Query(..., alias="objectKey", min_length=1),
 ):
-    try:
-        client = _get_r2_client()
-        signed_url = client.generate_presigned_url(
-            ClientMethod="get_object",
-            Params={
-                "Bucket": settings.r2_bucket_name,
-                "Key": object_key,
-            },
-            ExpiresIn=int(settings.r2_read_expire_seconds),
-            HttpMethod="GET",
-        )
-    except HTTPException:
-        raise
-    except (ClientError, BotoCoreError) as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to generate signed audio URL: {exc}") from exc
-
+    """Get public URL for an audio file in R2."""
+    # Return the public R2 URL directly - no need for presigned URLs for public files
+    public_url = _build_object_url(object_key)
+    
     return {
         "objectKey": object_key,
-        "audioUrl": signed_url,
-        "expiresIn": int(settings.r2_read_expire_seconds),
+        "audioUrl": public_url,
+        "expiresIn": 3600,  # For compatibility, but public URLs don't expire
     }
 
 
