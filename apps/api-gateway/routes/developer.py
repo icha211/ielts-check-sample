@@ -290,6 +290,11 @@ def get_audio_folder_contents(
                         "url": _build_object_url(key),
                     })
         
+        # Log for debugging
+        print(f"[Audio Folder Contents] setId={set_id}, prefix={folder_prefix}, found={len(files)} files")
+        if files:
+            print(f"  Files: {[f['name'] for f in files]}")
+        
         return {
             "setId": set_id,
             "folderPrefix": folder_prefix,
