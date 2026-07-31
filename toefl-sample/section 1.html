@@ -2735,26 +2735,22 @@
             const dateInput = document.getElementById("set-date");
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
             const input = getCloudflareFolderUrlInput();
-            const folderUrlFromInput = toPublicR2Url(input?.value || "");
+            const rawFolderUrl = input?.value || "";
             
-            // If there's a folder URL saved, extract its setId; otherwise use current setId
+            // Extract setId from the ORIGINAL input BEFORE any URL transformation
             let setId = null;
-            let folderUrl = folderUrlFromInput;
-            
-            if (folderUrl) {
-                // Extract setId from the folder URL
-                const urlSetIdMatch = folderUrl.match(/\/sets\/([^\/]+)\//);
-                setId = urlSetIdMatch ? urlSetIdMatch[1] : null;
+            const urlSetIdMatch = rawFolderUrl.match(/\/sets\/([^\/]+)\//);
+            if (urlSetIdMatch) {
+                setId = urlSetIdMatch[1];
             }
             
             // If no setId extracted from URL, fall back to current package
             if (!setId) {
                 setId = ensureCurrentSetId(setDate);
-                // Try to get saved folder URL for this setId
-                folderUrl = localStorage.getItem(getCloudflareFolderStorageKey(setId)) || "";
             }
-
-            folderUrl = toPublicR2Url(folderUrl);
+            
+            // Now normalize and transform the folder URL
+            const folderUrl = toPublicR2Url(rawFolderUrl || localStorage.getItem(getCloudflareFolderStorageKey(setId)) || "");
 
             if (!folderUrl) {
                 setCloudflareFolderStatus("Save a Cloudflare folder URL first.", "#b91c1c");
