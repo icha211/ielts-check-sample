@@ -831,6 +831,98 @@
             return null;
         }
 
+        // Save complete listening data to Firebase RTDB with parts structure
+        async function saveCompleteListeningDataToFirebase(setId, metadata, parts) {
+            if (!setId || !metadata) return false;
+            try {
+                const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
+                if (!firebaseUrl) {
+                    console.warn("[ListeningData] Firebase URL not available");
+                    return false;
+                }
+
+                // Build complete data structure with all parts
+                const completeData = {
+                    id: setId,
+                    setId: setId,
+                    setDate: metadata.setDate || "",
+                    module: "listening",
+                    label: "Listening",
+                    difficulty: metadata.difficulty || "intermediate",
+                    testType: metadata.testType || "mocktest",
+                    updatedAt: new Date().toISOString(),
+                    _updatedAt: new Date().toISOString(),
+                    cloudflare_folder: metadata.cloudflare_folder || "",
+                    parts: {}
+                };
+
+                // Add each part's complete data
+                if (parts && typeof parts === "object") {
+                    Object.entries(parts).forEach(([partId, partData]) => {
+                        completeData.parts[partId] = {
+                            audio_cloudflare: partData?.audio_cloudflare || "",
+                            audio_firebase: partData?.audio_firebase || "",
+                            answerKey: partData?.answerKey || "",
+                            explanation: partData?.explanation || "",
+                            questions: partData?.questions || "",
+                            transcripts: partData?.transcripts || ""
+                        };
+                    });
+                }
+
+                // Save to both sets_v2 (published) and drafts_v2 (working copy)
+                const paths = [
+                    `toefl_itp/sets_v2/${setId}`,
+                    `toefl_itp/drafts_v2/${setId}`
+                ];
+
+                for (const path of paths) {
+                    const url = `${firebaseUrl}/${path}.json`;
+                    const response = await fetch(url, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(completeData)
+                    });
+                    if (!response.ok) {
+                        console.warn("[ListeningData] Failed to save to", path);
+                        return false;
+                    }
+                }
+
+                console.log("[ListeningData] Successfully saved complete listening data to Firebase for setId", setId);
+                return true;
+            } catch (error) {
+                console.warn("[ListeningData] Failed to save to Firebase:", error);
+            }
+            return false;
+        }
+
+        // Fetch complete listening data from Firebase RTDB
+        async function getCompleteListeningDataFromFirebase(setId) {
+            if (!setId) return null;
+            try {
+                const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
+                if (!firebaseUrl) {
+                    console.warn("[ListeningData] Firebase URL not available");
+                    return null;
+                }
+                const path = `toefl_itp/sets_v2/${setId}`;
+                const url = `${firebaseUrl}/${path}.json`;
+                const response = await fetch(url, { method: "GET" });
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log("[ListeningData] Fetched complete listening data from Firebase for setId", setId);
+                    return data;
+                } else if (response.status === 404) {
+                    console.log("[ListeningData] No data found in Firebase for setId", setId);
+                    return null;
+                }
+            } catch (error) {
+                console.warn("[ListeningData] Failed to fetch from Firebase:", error);
+            }
+            return null;
+        }
+
         async function getCloudAudioUrl(setId, partId = 1, timeoutMs = 3500) {
             if (!setId) return null;
 
@@ -838,7 +930,7 @@
 
             // First, try to fetch Cloudflare folder URL from Firebase RTDB
             try {
-                const firebaseFolderUrl = await getCloudflareAudioFolderUrlFromFirebase(testType, setId);
+                const firebaseFolderUrl = await getCloudflareAudioFolderUrlFromFirebase(setId);
                 if (firebaseFolderUrl) {
                     const folderUrl = normalizeCloudAudioFolderUrl(firebaseFolderUrl);
                     if (folderUrl) {
@@ -2197,13 +2289,69 @@
             if (window.toeflStorage) {
                 const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
                 const setId = ensureCurrentSetId(setDate);
+                const difficulty = (document.getElementById("set-difficulty") || {}).value || "intermediate";
+                
                 toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType).catch((error) => console.warn("[ToeflSync] draft save failed:", error));
+                
+                // Also save complete listening data to Firebase RTDB with audio URLs and content
+                const cloudflareFolder = document.getElementById("cloudflare-folder-url")?.value || "";
+                const metadata = {
+                    setDate: setDate,
+                    difficulty: difficulty,
+                    testType: currentTestType,
+                    cloudflare_folder: cloudflareFolder
+                };
+                
+                // Gather parts data with audio URLs
+                const parts = {};
+                PARTS.forEach((part) => {
+                    const p = part.id;
+                    const audioElement = document.getElementById(`audio-player-${p}`);
+                    parts[p] = {
+                        audio_cloudflare: audioElement?.src || "",
+                        audio_firebase: draft.parts[p]?.audio_firebase || "",
+                        answerKey: draft.parts[p]?.answerKey || "",
+                        explanation: draft.parts[p]?.explanation || "",
+                        questions: draft.parts[p]?.questions || "",
+                        transcripts: draft.parts[p]?.transcript || ""
+                    };
+                });
+                
+                saveCompleteListeningDataToFirebase(setId, metadata, parts).catch((error) => console.warn("[ListeningData] Firebase save failed:", error));
             }
         }
 
         async function loadSectionDraft() {
             let draft = {};
-            if (currentSetId && window.toeflStorage) {
+            
+            // First, try to load complete listening data from Firebase RTDB
+            if (currentSetId && !draft.parts) {
+                try {
+                    const firebaseData = await getCompleteListeningDataFromFirebase(currentSetId);
+                    if (firebaseData && firebaseData.parts) {
+                        // Convert Firebase data structure back to draft format
+                        draft = {
+                            parts: {}
+                        };
+                        Object.entries(firebaseData.parts || {}).forEach(([partId, partData]) => {
+                            draft.parts[partId] = {
+                                questions: partData?.questions || "",
+                                answerKey: partData?.answerKey || "",
+                                explanation: partData?.explanation || "",
+                                transcript: partData?.transcripts || "",
+                                audio_cloudflare: partData?.audio_cloudflare || "",
+                                audio_firebase: partData?.audio_firebase || ""
+                            };
+                        });
+                        console.log("[ListeningData] Loaded complete listening data from Firebase for setId", currentSetId);
+                    }
+                } catch (error) {
+                    console.warn("[ListeningData] Failed to load from Firebase, falling back to local storage:", error);
+                }
+            }
+            
+            // Fallback to toeflStorage
+            if (!draft.parts && currentSetId && window.toeflStorage) {
                 try {
                     draft = await toeflStorage.getDraftBySetIdAndType(currentSetId, currentTestType);
                 } catch {
