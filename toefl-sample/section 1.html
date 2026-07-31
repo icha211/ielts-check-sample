@@ -771,7 +771,7 @@
         }
 
         async function saveCloudflareAudioFolderUrlToFirebase(testType, setId, folderUrl) {
-            if (!testType || !setId || !folderUrl) return false;
+            if (!setId || !folderUrl) return false;
             try {
                 // Use TOEFL_FIREBASE_URL from toefl-storage-sync.js
                 const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
@@ -779,18 +779,20 @@
                     console.warn("[CloudflareAudio] Firebase URL not available");
                     return false;
                 }
-                const path = `toefl_itp/cloudflare_audio_folders/${testType}/${setId}`;
+                // Save to testType-agnostic path so both dev and user modes can access it
+                const path = `toefl_itp/cloudflare_audio_folders/${setId}`;
                 const url = `${firebaseUrl}/${path}.json`;
                 const response = await fetch(url, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         folderUrl: String(folderUrl),
-                        savedAt: new Date().toISOString()
+                        savedAt: new Date().toISOString(),
+                        savedByMode: testType
                     })
                 });
                 if (response.ok) {
-                    console.log("[CloudflareAudio] Saved folder URL to Firebase for", testType, setId);
+                    console.log("[CloudflareAudio] Saved folder URL to Firebase for setId", setId);
                     return true;
                 }
             } catch (error) {
@@ -799,8 +801,8 @@
             return false;
         }
 
-        async function getCloudflareAudioFolderUrlFromFirebase(testType, setId) {
-            if (!testType || !setId) return null;
+        async function getCloudflareAudioFolderUrlFromFirebase(setId) {
+            if (!setId) return null;
             try {
                 // Use TOEFL_FIREBASE_URL from toefl-storage-sync.js
                 const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
@@ -808,18 +810,19 @@
                     console.warn("[CloudflareAudio] Firebase URL not available");
                     return null;
                 }
-                const path = `toefl_itp/cloudflare_audio_folders/${testType}/${setId}`;
+                // Fetch from testType-agnostic path (shared between dev and user modes)
+                const path = `toefl_itp/cloudflare_audio_folders/${setId}`;
                 const url = `${firebaseUrl}/${path}.json`;
                 const response = await fetch(url, { method: "GET" });
                 if (response.ok) {
                     const data = await response.json();
                     const folderUrl = data?.folderUrl;
                     if (folderUrl) {
-                        console.log("[CloudflareAudio] Fetched folder URL from Firebase for", testType, setId);
+                        console.log("[CloudflareAudio] Fetched folder URL from Firebase for setId", setId);
                         return String(folderUrl).trim();
                     }
                 } else if (response.status === 404) {
-                    console.log("[CloudflareAudio] No folder URL found in Firebase for", testType, setId);
+                    console.log("[CloudflareAudio] No folder URL found in Firebase for setId", setId);
                     return null;
                 }
             } catch (error) {
@@ -2713,9 +2716,8 @@
 
             // If not in localStorage, try fetching from Firebase RTDB (works in incognito, other devices)
             if (!storedUrl) {
-                const testType = currentTestType || "mocktest";
                 try {
-                    const firebaseUrl = await getCloudflareAudioFolderUrlFromFirebase(testType, currentSetId);
+                    const firebaseUrl = await getCloudflareAudioFolderUrlFromFirebase(currentSetId);
                     if (firebaseUrl) {
                         storedUrl = firebaseUrl;
                         // Save to localStorage for future access
@@ -2763,8 +2765,7 @@
             }
             localStorage.setItem(key, normalized);
             // Also save to Firebase RTDB so other users/devices can access it
-            const testType = currentTestType || "mocktest";
-            await saveCloudflareAudioFolderUrlToFirebase(testType, currentSetId, normalized).catch(err => {
+            await saveCloudflareAudioFolderUrlToFirebase(currentTestType || "mocktest", currentSetId, normalized).catch(err => {
                 console.warn("[CloudflareAudio] Background Firebase save failed:", err);
             });
         }
