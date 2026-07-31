@@ -22,6 +22,7 @@ from schemas import (
 router = APIRouter(prefix="/developer", tags=["developer"])
 
 _ALLOWED_EXTENSIONS = {".mp3", ".m4a"}
+DEFAULT_R2_PUBLIC_BASE_URL = "https://pub-1975cb14188340238a5d6d34750e4880.r2.dev"
 
 
 def _sanitize_filename(name: str) -> str:
@@ -80,24 +81,14 @@ def _get_r2_client():
 
 
 def _build_object_url(object_key: str) -> str:
-    if settings.r2_public_base_url:
-        base = settings.r2_public_base_url.rstrip("/")
-        return f"{base}/{quote(object_key)}"
-
-    endpoint = build_r2_endpoint(settings.r2_account_id).rstrip("/")
-    bucket = settings.r2_bucket_name
-    return f"{endpoint}/{bucket}/{quote(object_key)}"
+    base = (settings.r2_public_base_url or DEFAULT_R2_PUBLIC_BASE_URL).rstrip("/")
+    return f"{base}/{quote(object_key)}"
 
 
 def _build_folder_url(set_id: str) -> str:
     folder_path = f"audio/listening/sets/{set_id}/"
-    if settings.r2_public_base_url:
-        base = settings.r2_public_base_url.rstrip("/")
-        return f"{base}/{quote(folder_path)}"
-
-    endpoint = build_r2_endpoint(settings.r2_account_id).rstrip("/")
-    bucket = settings.r2_bucket_name
-    return f"{endpoint}/{bucket}/{quote(folder_path)}"
+    base = (settings.r2_public_base_url or DEFAULT_R2_PUBLIC_BASE_URL).rstrip("/")
+    return f"{base}/{quote(folder_path)}"
 
 
 @router.post("/ensure-audio-folder", response_model=DeveloperEnsureAudioFolderResponse)
@@ -268,3 +259,44 @@ def get_audio_exists(
         raise HTTPException(status_code=500, detail=f"Failed to check audio object: {exc}") from exc
     except BotoCoreError as exc:
         raise HTTPException(status_code=500, detail=f"Failed to check audio object: {exc}") from exc
+
+
+@router.get("/audio-folder-contents")
+def get_audio_folder_contents(
+    set_id: str = Query(..., alias="setId", min_length=1),
+):
+    """List actual files in an R2 audio folder (for validating manually uploaded files)."""
+    set_id = _sanitize_set_id(set_id)
+    folder_prefix = f"audio/listening/sets/{set_id}/"
+    
+    try:
+        client = _get_r2_client()
+        response = client.list_objects_v2(
+            Bucket=settings.r2_bucket_name,
+            Prefix=folder_prefix,
+        )
+        
+        files = []
+        if "Contents" in response:
+            for obj in response["Contents"]:
+                key = obj["Key"]
+                # Skip the .folder marker file
+                if not key.endswith(".folder"):
+                    files.append({
+                        "key": key,
+                        "name": os.path.basename(key),
+                        "size": obj.get("Size", 0),
+                        "lastModified": obj.get("LastModified", "").isoformat() if obj.get("LastModified") else "",
+                        "url": _build_object_url(key),
+                    })
+        
+        return {
+            "setId": set_id,
+            "folderPrefix": folder_prefix,
+            "fileCount": len(files),
+            "files": files,
+        }
+    except HTTPException:
+        raise
+    except (ClientError, BotoCoreError) as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to list folder contents: {exc}") from exc

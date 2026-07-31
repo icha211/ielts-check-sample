@@ -315,6 +315,7 @@
         const DRAFT_KEY = "toefl_section1_dev_draft_v1";
         const EDITOR_APPLY_SYNC_KEY = "toefl_section1_editor_apply_sync_v1";
         const DARK_MODE_KEY = "toefl_section1_dark_mode_v1";
+        const DEFAULT_R2_PUBLIC_BASE_URL = "https://pub-1975cb14188340238a5d6d34750e4880.r2.dev";
         const TEXT_SIZE_KEY = "toefl_section1_text_size_v1";
         const ZOOM_KEY = "toefl_section1_zoom_v1";
         const FLAG_KEY = "toefl_section1_flagged_questions_v1";
@@ -833,14 +834,30 @@
         }
 
         function ensureCurrentSetId(setDate) {
-            if (currentSetId) return currentSetId;
+            const normalizedSetDate = normalizeDateKey(setDate || "");
+            const currentSetDate = parseSetDateFromSetId(currentSetId);
+
+            if (currentSetId) {
+                if (!normalizedSetDate || currentSetDate === normalizedSetDate) {
+                    return currentSetId;
+                }
+                currentSetId = "";
+            }
+
             if (window.toeflStorage && typeof toeflStorage.createSetId === "function") {
-                currentSetId = toeflStorage.createSetId(MODULE_ID, setDate, currentTestType);
+                currentSetId = toeflStorage.createSetId(MODULE_ID, normalizedSetDate || setDate, currentTestType);
             } else {
                 currentSetId = `${MODULE_ID}_${Date.now()}`;
             }
             return currentSetId;
         }
+        function parseSetDateFromSetId(setId) {
+            const raw = String(setId || "").trim();
+            const parts = raw.split("_");
+            if (parts.length < 3) return "";
+            return normalizeDateKey(parts[2]);
+        }
+
 
         function normalizeDateKey(value) {
             const raw = String(value || "").trim();
@@ -2129,6 +2146,20 @@
             currentSetId = params.get("setId") || "";
             let stored = {};
 
+            if (requestedDate) {
+                const byDate = await resolveSetRecordByDate(normalizedRequestedDate || requestedDate);
+                const currentSetDate = parseSetDateFromSetId(currentSetId);
+                const requestedNormalizedDate = normalizedRequestedDate || normalizeDateKey(requestedDate);
+                const currentMatchesRequested = Boolean(currentSetId) && currentSetDate === requestedNormalizedDate;
+
+                if (byDate?.setId && (!currentSetId || !currentMatchesRequested)) {
+                    currentSetId = byDate.setId;
+                    stored = byDate;
+                } else if (!currentMatchesRequested) {
+                    currentSetId = "";
+                }
+            }
+
             if (!currentSetId && requestedDate) {
                 const byDate = await resolveSetRecordByDate(normalizedRequestedDate || requestedDate);
                 if (byDate?.setId) {
@@ -2469,6 +2500,24 @@
             return String(url || "").trim().replace(/\/+$/, "");
         }
 
+        function toPublicR2Url(url = "") {
+            const raw = normalizeCloudAudioFolderUrl(url);
+            if (!raw) return "";
+            if (raw.startsWith(DEFAULT_R2_PUBLIC_BASE_URL)) return raw;
+            if (!/^https?:\/\//i.test(raw)) return raw;
+
+            try {
+                const parsed = new URL(raw);
+                const path = String(parsed.pathname || "").replace(/^\/+/, "");
+                const bucketIndex = path.indexOf("/");
+                if (bucketIndex < 0) return raw;
+                const objectPath = path.slice(bucketIndex + 1);
+                return `${DEFAULT_R2_PUBLIC_BASE_URL}/${objectPath}`.replace(/\/+$/, "");
+            } catch {
+                return raw;
+            }
+        }
+
         function setCloudflareFolderStatus(message, color = "#1e3a5f") {
             const statusElement = document.getElementById("cloud-audio-folder-status");
             if (!statusElement) return;
@@ -2499,7 +2548,7 @@
                         const parsed = new URL(candidate);
                         const path = String(parsed.pathname || "").replace(/\/+$/, "");
                         const folderPath = path.replace(/\/[^/]+$/, "/");
-                        return `${parsed.origin}${folderPath}`;
+                        return toPublicR2Url(`${DEFAULT_R2_PUBLIC_BASE_URL}${folderPath}`);
                     } catch {
                         continue;
                     }
@@ -2508,7 +2557,7 @@
                 if (candidate.includes("/")) {
                     const folderPath = candidate.replace(/\/[^/]+$/, "/");
                     if (folderPath !== candidate) {
-                        return normalizeCloudAudioFolderUrl(folderPath);
+                        return toPublicR2Url(`${DEFAULT_R2_PUBLIC_BASE_URL}/${folderPath.replace(/^\/+/, "")}`);
                     }
                 }
             }
@@ -2564,7 +2613,7 @@
             if (!storedUrl && window.toeflStorage && typeof window.toeflStorage.getAudioRecordFromCloudflare === "function") {
                 for (const partId of [1, 2, 3]) {
                     const record = await window.toeflStorage.getAudioRecordFromCloudflare(currentSetId, partId).catch(() => null);
-                    const inferredUrl = deriveCloudflareFolderUrlFromRecord(record);
+                    const inferredUrl = toPublicR2Url(deriveCloudflareFolderUrlFromRecord(record));
                     if (inferredUrl) {
                         storedUrl = inferredUrl;
                         saveCloudflareFolderUrlForCurrentSetValue(storedUrl);
@@ -2575,7 +2624,7 @@
             }
 
             if (storedUrl) {
-                input.value = storedUrl;
+                input.value = toPublicR2Url(storedUrl);
                 setCloudflareFolderStatus(
                     autoLinked ? `Folder auto-linked from existing Cloudflare audio for ${currentSetId}.` : `Folder linked for ${currentSetId}.`,
                     "#0f766e"
@@ -2588,7 +2637,7 @@
 
         function saveCloudflareFolderUrlForCurrentSetValue(folderUrl) {
             if (!currentSetId) return;
-            const normalized = normalizeCloudAudioFolderUrl(folderUrl);
+            const normalized = toPublicR2Url(folderUrl);
             const key = getCloudflareFolderStorageKey(currentSetId);
             if (!normalized) {
                 localStorage.removeItem(key);
@@ -2606,7 +2655,7 @@
             const errors = [];
 
             await refreshCloudflareFolderPanelForCurrentSet();
-            if (input && normalizeCloudAudioFolderUrl(input.value || "")) {
+            if (input && toPublicR2Url(input.value || "")) {
                 setCloudflareFolderStatus(`Folder already linked for ${setId}.`, "#0f766e");
                 return;
             }
@@ -2626,7 +2675,7 @@
                         continue;
                     }
                     const payload = await response.json().catch(() => ({}));
-                    const folderUrl = normalizeCloudAudioFolderUrl(String(payload?.folderUrl || ""));
+                    const folderUrl = toPublicR2Url(String(payload?.folderUrl || ""));
                     if (!folderUrl) {
                         errors.push(`${apiBase} -> missing folderUrl in response`);
                         continue;
@@ -2648,7 +2697,7 @@
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
             const setId = ensureCurrentSetId(setDate);
             const input = getCloudflareFolderUrlInput();
-            const folderUrl = normalizeCloudAudioFolderUrl(input?.value || "");
+            const folderUrl = toPublicR2Url(input?.value || "");
 
             if (!folderUrl) {
                 setCloudflareFolderStatus("Paste a Cloudflare folder URL first.", "#b91c1c");
@@ -2664,7 +2713,7 @@
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
             const setId = ensureCurrentSetId(setDate);
             const input = getCloudflareFolderUrlInput();
-            const folderUrl = normalizeCloudAudioFolderUrl(input?.value || localStorage.getItem(getCloudflareFolderStorageKey(setId)) || "");
+            const folderUrl = toPublicR2Url(input?.value || localStorage.getItem(getCloudflareFolderStorageKey(setId)) || "");
 
             if (!folderUrl) {
                 setCloudflareFolderStatus("Save a Cloudflare folder URL first.", "#b91c1c");
@@ -2674,16 +2723,44 @@
             saveCloudflareFolderUrlForCurrentSetValue(folderUrl);
             setCloudflareFolderStatus(`Checking Cloudflare sync for ${setId}...`, "#1d4ed8");
 
+            // Try to get actual folder contents from gateway
+            let folderContents = null;
+            try {
+                const gatewayUrl = getCloudflareGatewayUrl();
+                const response = await fetch(`${gatewayUrl}/api/developer/audio-folder-contents?setId=${encodeURIComponent(setId)}`);
+                if (response.ok) {
+                    folderContents = await response.json();
+                }
+            } catch (err) {
+                console.warn("Failed to fetch folder contents:", err);
+            }
+
+            // Expected part file names (in order: part 1, part 2, part 3)
+            const partFileNames = ["part_1.mp3", "part_2.mp3", "part_3.mp3"];
+
             for (const partId of [1, 2, 3]) {
                 setCloudflarePartStatus(partId, "Checking...", "#1d4ed8");
+                const expectedFileName = partFileNames[partId - 1];
+
+                // Check actual folder contents first (for manually uploaded files)
+                if (folderContents && folderContents.files && folderContents.files.length > 0) {
+                    const matchingFile = folderContents.files.find(f => f.name === expectedFileName);
+                    if (matchingFile) {
+                        setCloudflarePartStatus(partId, `Synced in Cloudflare
+${matchingFile.url}`, "#0f766e");
+                        continue;
+                    }
+                }
+
+                // Fallback: check Firebase records (for programmatically uploaded files)
                 if (!window.toeflStorage || typeof window.toeflStorage.getAudioRecordFromCloudflare !== "function") {
-                    setCloudflarePartStatus(partId, "toeflStorage audio helpers are unavailable", "#b91c1c");
+                    setCloudflarePartStatus(partId, `No file found (${expectedFileName} not in folder)`, "#b91c1c");
                     continue;
                 }
 
                 const record = await window.toeflStorage.getAudioRecordFromCloudflare(setId, partId);
                 if (!record) {
-                    setCloudflarePartStatus(partId, "No Cloudflare record found", "#b91c1c");
+                    setCloudflarePartStatus(partId, `No file found (${expectedFileName} not in folder)`, "#b91c1c");
                     continue;
                 }
 
