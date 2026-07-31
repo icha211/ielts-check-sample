@@ -2287,10 +2287,9 @@
             });
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
             if (window.toeflStorage && typeof window.toeflStorage.saveDraftBySetIdAndType === "function") {
-                const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
-                // CRITICAL: Use currentSetId instead of generating new one to preserve the folder setId
-                const setId = currentSetId || ensureCurrentSetId(setDate);
-                const difficulty = (document.getElementById("set-difficulty") || {}).value || "intermediate";
+                    const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
+                    const setId = extractCloudflareSetId(currentSetId) || extractCloudflareSetId((document.getElementById("cloud-audio-folder-url") || {}).value || "") || ensureCurrentSetId(setDate);
+                    const difficulty = (document.getElementById("set-difficulty") || {}).value || "intermediate";
                 
                 toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType).catch((error) => console.warn("[ToeflSync] draft save failed:", error));
                 
@@ -2391,7 +2390,8 @@
             }
             const requestedDate = params.get("setDate");
             const normalizedRequestedDate = normalizeDateKey(requestedDate);
-            currentSetId = params.get("setId") || "";
+            const requestedSetId = String(params.get("setId") || "").trim();
+            currentSetId = requestedSetId && requestedSetId !== "sets" ? requestedSetId : "";
             let stored = {};
 
             if (requestedDate) {
@@ -2788,14 +2788,37 @@
         function extractCloudflareSetId(url = "") {
             const raw = String(url || "").trim();
             if (!raw) return "";
-            const match = raw.match(/\/audio\/listening\/(?:sets\/)?([^\/]+)\//);
-            return match ? String(match[1] || "").trim() : "";
+            if (raw === "sets") return "";
+
+            const extractFromPath = (path) => {
+                const parts = String(path || "").split("/").filter(Boolean);
+                const listeningIndex = parts.lastIndexOf("listening");
+                if (listeningIndex >= 0) {
+                    const tail = parts.slice(listeningIndex + 1).filter(Boolean);
+                    if (!tail.length) return "";
+                    if (tail[0] === "sets" && tail[1]) return String(tail[1]).trim();
+                    return String(tail[tail.length - 1]).trim();
+                }
+
+                const lastPart = parts[parts.length - 1] || "";
+                if (lastPart === "sets" && parts.length > 1) {
+                    return String(parts[parts.length - 2] || "").trim();
+                }
+                if (lastPart === "sets") return "";
+                return String(lastPart || "").trim();
+            };
+
+            try {
+                return extractFromPath(new URL(raw).pathname);
+            } catch {
+                return extractFromPath(raw.replace(/^https?:\/\/[^/]+/i, ""));
+            }
         }
 
         function buildCloudflareFolderUrl(setId = "") {
             const safeSetId = String(setId || "").trim();
             if (!safeSetId) return "";
-            return toPublicR2Url(`${DEFAULT_R2_PUBLIC_BASE_URL}/audio/listening/${safeSetId}/`);
+            return toPublicR2Url(`${DEFAULT_R2_PUBLIC_BASE_URL}/audio/listening/sets/${safeSetId}/`);
         }
 
         function normalizeCloudAudioFolderUrl(url = "") {
@@ -2957,7 +2980,7 @@
 
         async function saveCloudflareFolderUrlForCurrentSetValue(folderUrl) {
             if (!currentSetId) return;
-            const normalized = buildCloudflareFolderUrl(currentSetId) || toPublicR2Url(folderUrl);
+            const normalized = toPublicR2Url(folderUrl) || buildCloudflareFolderUrl(currentSetId);
             const key = getCloudflareFolderStorageKey(currentSetId);
             if (!normalized) {
                 localStorage.removeItem(key);
@@ -2973,8 +2996,10 @@
         async function createCloudAudioFolderForCurrentSet() {
             const dateInput = document.getElementById("set-date");
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
-            let setId = currentSetId || ensureCurrentSetId(setDate);
             const input = getCloudflareFolderUrlInput();
+            let setId = extractCloudflareSetId(currentSetId) || extractCloudflareSetId(input?.value || "") || "";
+            if (!setId) setId = ensureCurrentSetId(setDate);
+            currentSetId = setId;
             const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
             const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
             const errors = [];
@@ -3024,12 +3049,9 @@
                         errors.push(`${apiBase} -> missing folderUrl in response`);
                         continue;
                     }
-                    // CRITICAL: Extract setId from API response to ensure consistency
                     const responseSetId = extractCloudflareSetId(folderUrl);
-                    if (responseSetId) {
-                        setId = responseSetId;
-                        currentSetId = setId;  // Preserve for future calls
-                    }
+                    if (responseSetId) setId = responseSetId;
+                    currentSetId = setId;
                     saveCloudflareFolderUrlForCurrentSetValue(folderUrl);
                     if (input) input.value = folderUrl;
                     setCloudflareFolderStatus(`Folder created and linked for ${setId}. (setId: ${setId})`, "#0f766e");
@@ -3104,18 +3126,11 @@
             
             // Extract setId from folder URL FIRST (this is the source of truth)
             const urlSetId = extractCloudflareSetId(rawFolderUrl);
-            if (!urlSetId) {
-                // Try to get from currentSetId or localStorage as fallback
-                if (!currentSetId) {
-                    setCloudflareFolderStatus("No folder URL or setId available. Create a folder first.", "#b91c1c");
-                    return;
-                }
-            } else {
-                // CRITICAL: Update global currentSetId to match folder URL's setId
+            if (urlSetId) {
                 currentSetId = urlSetId;
             }
-            
-            const setId = currentSetId;
+
+            const setId = currentSetId || urlSetId;
             if (!setId) {
                 setCloudflareFolderStatus("No folder URL or setId available. Create a folder first.", "#b91c1c");
                 return;

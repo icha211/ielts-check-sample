@@ -193,3 +193,49 @@ python -m http.server 8001
 ```
 
 Then open `http://localhost:8001/section%201.html?mode=dev` and test upload! 🚀
+
+---
+
+## Public deployment setup
+
+If you want the app to work from a public URL instead of localhost:
+
+1. Deploy the frontend to **Vercel**
+2. Deploy the FastAPI gateway to a public host such as **Cloud Run**
+3. Set these gateway environment variables:
+   - `TOEFL_API_GATEWAY_URL` on Vercel
+   - `IELTS_API_CORS_ORIGINS` on the gateway, for example:
+     - `https://your-project.vercel.app`
+     - `https://your-custom-domain.com`
+4. The frontend will read `/api/runtime-config` on Vercel and use that public gateway URL automatically
+
+That keeps developer mode working locally while making the public site reachable from any browser.
+
+---
+
+## Cloud Run deploy command
+
+Run this from the repo root after logging in with `gcloud auth login` and selecting your project:
+
+```powershell
+gcloud run deploy ielts-api-gateway `
+  --source apps\api-gateway `
+  --region asia-southeast1 `
+  --allow-unauthenticated `
+  --set-env-vars IELTS_API_CORS_ORIGINS=https://icha211.github.io,R2_ACCOUNT_ID=YOUR_R2_ACCOUNT_ID,R2_BUCKET_NAME=YOUR_BUCKET,R2_ACCESS_KEY_ID=YOUR_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY=YOUR_SECRET_ACCESS_KEY,R2_PUBLIC_BASE_URL=https://YOUR-R2-PUBLIC-BASE
+```
+
+If you later use a custom domain, add that origin too in the Cloud Run env var.
+
+Then add the Cloud Run service URL to GitHub Pages localStorage:
+
+```js
+localStorage.setItem("toefl_api_gateway_url", "https://YOUR-SERVICE-URL.a.run.app")
+```
+
+If you want, you can also set these in Cloud Run:
+- `R2_ACCOUNT_ID`
+- `R2_BUCKET_NAME`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_PUBLIC_BASE_URL`

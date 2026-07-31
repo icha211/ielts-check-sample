@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
     debug: bool = True
+    cors_origins: str | None = Field(default=None, validation_alias="IELTS_API_CORS_ORIGINS")
 
     r2_account_id: str | None = Field(default=None, validation_alias="R2_ACCOUNT_ID")
     r2_bucket_name: str | None = Field(default=None, validation_alias="R2_BUCKET_NAME")
@@ -30,3 +31,15 @@ settings = Settings()
 
 def build_r2_endpoint(account_id: str) -> str:
     return f"https://{account_id}.r2.cloudflarestorage.com"
+
+
+def parse_cors_origins(raw: str | None) -> list[str]:
+    if not raw:
+        return []
+
+    origins = []
+    for value in raw.split(","):
+        origin = value.strip().rstrip("/")
+        if origin:
+            origins.append(origin)
+    return origins
