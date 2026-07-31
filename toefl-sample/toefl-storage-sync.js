@@ -3306,12 +3306,14 @@ class ToeflStorageSync {
 
     if (hostOverride) candidates.push(`${protocol}://${hostOverride}:${port}`);
 
+    // Try gateway port first (8000), then fall back to current page origin (8001)
+    candidates.push(`${protocol}://127.0.0.1:${port}`);
+    candidates.push(`${protocol}://localhost:${port}`);
+
     if (typeof window !== "undefined" && window.location && window.location.origin && window.location.protocol !== "file:") {
       candidates.push(window.location.origin.replace(/\/+$/, ""));
     }
 
-    candidates.push(`${protocol}://127.0.0.1:${port}`);
-    candidates.push(`${protocol}://localhost:${port}`);
     return Array.from(new Set(candidates.filter(Boolean)));
   }
 
