@@ -2708,6 +2708,25 @@
                 return;
             }
 
+            // Extract setId from the folder URL to check if it matches current package
+            const urlSetIdMatch = folderUrl.match(/\/sets\/([^\/]+)\//);
+            const urlSetId = urlSetIdMatch ? urlSetIdMatch[1] : null;
+
+            if (urlSetId && urlSetId !== setId) {
+                // Folder URL is for a different package
+                const navigate = confirm(
+                    `This folder URL is for package ${urlSetId}, but you're viewing ${setId}.\n\n` +
+                    `Navigate to that package and save there?`
+                );
+                if (navigate) {
+                    // Navigate to the correct package
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set("setId", urlSetId);
+                    window.location.href = newUrl.toString();
+                }
+                return;
+            }
+
             saveCloudflareFolderUrlForCurrentSetValue(folderUrl);
             setCloudflareFolderStatus(`Folder URL saved for ${setId}.`, "#0f766e");
         }
