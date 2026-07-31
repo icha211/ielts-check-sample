@@ -2699,35 +2699,23 @@
         async function saveCloudAudioFolderUrlForCurrentSet() {
             const dateInput = document.getElementById("set-date");
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
-            const setId = ensureCurrentSetId(setDate);
             const input = getCloudflareFolderUrlInput();
-            const folderUrl = toPublicR2Url(input?.value || "");
+            const rawFolderUrl = input?.value || "";
+            const normalizedUrl = toPublicR2Url(rawFolderUrl);
 
-            if (!folderUrl) {
+            if (!normalizedUrl) {
                 setCloudflareFolderStatus("Paste a Cloudflare folder URL first.", "#b91c1c");
                 return;
             }
 
-            // Extract setId from the folder URL to check if it matches current package
-            const urlSetIdMatch = folderUrl.match(/\/sets\/([^\/]+)\//);
+            // Extract setId from the ORIGINAL input BEFORE transformation
+            const urlSetIdMatch = rawFolderUrl.match(/\/sets\/([^\/]+)\//);
             const urlSetId = urlSetIdMatch ? urlSetIdMatch[1] : null;
 
-            if (urlSetId && urlSetId !== setId) {
-                // Folder URL is for a different package
-                const navigate = confirm(
-                    `This folder URL is for package ${urlSetId}, but you're viewing ${setId}.\n\n` +
-                    `Navigate to that package and save there?`
-                );
-                if (navigate) {
-                    // Navigate to the correct package
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set("setId", urlSetId);
-                    window.location.href = newUrl.toString();
-                }
-                return;
-            }
+            // Use extracted setId, or fall back to current package
+            let setId = urlSetId || ensureCurrentSetId(setDate);
 
-            saveCloudflareFolderUrlForCurrentSetValue(folderUrl);
+            saveCloudflareFolderUrlForCurrentSetValue(normalizedUrl);
             setCloudflareFolderStatus(`Folder URL saved for ${setId}.`, "#0f766e");
         }
 
