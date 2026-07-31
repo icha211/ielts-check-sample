@@ -2726,10 +2726,17 @@
             // Try to get actual folder contents from gateway
             let folderContents = null;
             try {
-                const gatewayUrl = getCloudflareGatewayUrl();
-                const response = await fetch(`${gatewayUrl}/api/developer/audio-folder-contents?setId=${encodeURIComponent(setId)}`);
-                if (response.ok) {
-                    folderContents = await response.json();
+                const apiBases = getApiGatewayBaseCandidates();
+                for (const apiBase of apiBases) {
+                    try {
+                        const response = await fetch(`${apiBase}/api/developer/audio-folder-contents?setId=${encodeURIComponent(setId)}`);
+                        if (response.ok) {
+                            folderContents = await response.json();
+                            break;
+                        }
+                    } catch {
+                        continue;
+                    }
                 }
             } catch (err) {
                 console.warn("Failed to fetch folder contents:", err);
