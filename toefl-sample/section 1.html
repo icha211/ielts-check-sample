@@ -1002,6 +1002,7 @@
             }
 
             // Try localStorage next (persists across page reloads)
+            // BUT: Only use if we can verify it works on this device/network
             const cloudflareKey = `toefl_section1_cloudflare_folder_url_${testType}_${String(setId || "default")}`;
             const savedFolderUrl = localStorage.getItem(cloudflareKey);
             
@@ -1012,6 +1013,8 @@
                     cloudflareUrlCache[cacheKey] = folderUrl;
                     const r2Url = `${folderUrl}/part_${partId}.mp3`;
                     console.log("[AudioPlayback] Using saved Cloudflare folder URL (localStorage) for part", partId, ":", r2Url);
+                    // Note: Don't return directly! We'll return at the end, but this URL will be validated on actual load.
+                    // If it fails with cert error, the audio error handler will invalidate it and fall back to Firebase.
                     return r2Url;
                 }
             } else if (savedFolderUrl) {
@@ -2182,7 +2185,43 @@
                     4: "source not supported"
                 }[code] || "unknown";
                 void (async () => {
-                    const recovered = await tryFallbackAudioSource();
+                    // First, try fallback URLs (Firebase Storage alternatives)
+                    let recovered = await tryFallbackAudioSource();
+                    
+                    // If fallback failed and current source is a Cloudflare URL, invalidate it and try Firebase directly
+                    if (!recovered) {
+                        const currentSrc = String(audio.currentSrc || audio.src || "");
+                        if (currentSrc && currentSrc.includes("r2.dev")) {
+                            console.warn("[AudioPlayback] Cloudflare URL failed (", codeText, "), invalidating cache and falling back to Firebase Storage:", currentSrc);
+                            
+                            // Invalidate all cached Cloudflare URLs for this set
+                            const testType = currentTestType || "mocktest";
+                            const cloudflareKey = `toefl_section1_cloudflare_folder_url_${testType}_${String(currentSetId || "default")}`;
+                            localStorage.removeItem(cloudflareKey);
+                            
+                            // Clear in-memory cache
+                            const cacheKey = `${testType}_${currentSetId}`;
+                            delete cloudflareUrlCache[cacheKey];
+                            
+                            // Now try Firebase Storage as last resort
+                            if (window.toeflStorage && typeof toeflStorage.getPlayableAudioUrl === "function") {
+                                const partId = activePartId || 1;
+                                const firebaseUrl = await toeflStorage.getPlayableAudioUrl(currentSetId, partId).catch(() => null);
+                                if (firebaseUrl) {
+                                    audio.src = firebaseUrl;
+                                    audio.currentTime = 0;
+                                    try {
+                                        await audio.play();
+                                        console.log("[AudioPlayback] Successfully switched to Firebase Storage fallback");
+                                        recovered = true;
+                                    } catch {
+                                        // Still failed
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
                     if (!recovered) {
                         alert(`Audio error (${codeText}). Please re-upload this part audio in Developer mode.`);
                     }
