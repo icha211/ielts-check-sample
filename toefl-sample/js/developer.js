@@ -136,7 +136,22 @@ async function loadSetsFromFirebase() {
     try {
         const records = await toeflStorage.getSetRecordsByTestType(currentTestType);
         updateSyncStatus(toeflStorage.online);
-        return normalizeSetsMapToList(records);
+        
+        // Get localStorage to check which items exist locally
+        // This allows local-only deletes to work properly
+        const typeSpecificKey = currentTestType === "practicetest" 
+            ? "toefl_developer_practicetest_sets_v2" 
+            : "toefl_developer_mocktest_sets_v2";
+        const localStorageData = safeParse(localStorage.getItem(typeSpecificKey), {});
+        const localSetIds = new Set(Object.keys(localStorageData).filter(key => key !== "_updatedAt"));
+        
+        // Filter Firebase records to only show items that exist in localStorage
+        // This respects local-only deletions
+        const filteredRecords = records.filter(record => {
+            return localSetIds.size === 0 || localSetIds.has(record.setId);
+        });
+        
+        return normalizeSetsMapToList(filteredRecords);
     } catch (e) {
         updateSyncStatus(false);
         return getStoredSets();
