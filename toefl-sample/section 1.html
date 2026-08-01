@@ -320,7 +320,6 @@
         const ZOOM_KEY = "toefl_section1_zoom_v1";
         const FLAG_KEY = "toefl_section1_flagged_questions_v1";
         const FIREBASE_RTDB_URL = "https://quickcheck-25590-default-rtdb.asia-southeast1.firebasedatabase.app";
-        const FIREBASE_RTDB_DISABLED_KEY = "toefl_firebase_rtdb_disabled_v1";
         const AUDIO_DB_NAME = "toefl_listening_audio_db_v1";
         const AUDIO_STORE_NAME = "set_audio";
         const AUDIO_PART_TITLES = {
@@ -379,19 +378,11 @@
         }
 
         function isFirebaseRtdbEnabled() {
-            try {
-                return localStorage.getItem(FIREBASE_RTDB_DISABLED_KEY) !== "1";
-            } catch {
-                return true;
-            }
+            return true;
         }
 
         function markFirebaseRtdbDisabled() {
-            try {
-                localStorage.setItem(FIREBASE_RTDB_DISABLED_KEY, "1");
-            } catch {
-                // Ignore storage failures; the page can still fall back in-memory.
-            }
+            // Keep Firebase connected; only mark this call as failed.
         }
 
         function updateZoomButtons() {
@@ -789,7 +780,6 @@
 
         async function saveCloudflareAudioFolderUrlToFirebase(testType, setId, folderUrl) {
             if (!setId || !folderUrl) return false;
-            if (!isFirebaseRtdbEnabled()) return false;
             try {
                 // Use TOEFL_FIREBASE_URL from toefl-storage-sync.js
                 const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
@@ -814,7 +804,6 @@
                     return true;
                 }
                 if (response.status === 401 || response.status === 403) {
-                    markFirebaseRtdbDisabled();
                     return false;
                 }
             } catch (error) {
@@ -825,7 +814,6 @@
 
         async function getCloudflareAudioFolderUrlFromFirebase(setId) {
             if (!setId) return null;
-            if (!isFirebaseRtdbEnabled()) return null;
             try {
                 // Use TOEFL_FIREBASE_URL from toefl-storage-sync.js
                 const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
@@ -848,7 +836,6 @@
                     console.log("[CloudflareAudio] No folder URL found in Firebase for setId", setId);
                     return null;
                 } else if (response.status === 401 || response.status === 403) {
-                    markFirebaseRtdbDisabled();
                     return null;
                 }
             } catch (error) {
@@ -860,7 +847,6 @@
         // Save complete listening data to Firebase RTDB with parts structure
         async function saveCompleteListeningDataToFirebase(setId, metadata, parts) {
             if (!setId || !metadata) return false;
-            if (!isFirebaseRtdbEnabled()) return false;
             try {
                 const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
                 if (!firebaseUrl) {
@@ -911,9 +897,6 @@
                         body: JSON.stringify(completeData)
                     });
                     if (!response.ok) {
-                        if (response.status === 401 || response.status === 403) {
-                            markFirebaseRtdbDisabled();
-                        }
                         console.warn("[ListeningData] Failed to save to", path);
                         return false;
                     }
@@ -930,7 +913,6 @@
         // Fetch complete listening data from Firebase RTDB
         async function getCompleteListeningDataFromFirebase(setId) {
             if (!setId) return null;
-            if (!isFirebaseRtdbEnabled()) return null;
             try {
                 const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
                 if (!firebaseUrl) {
@@ -948,7 +930,6 @@
                     console.log("[ListeningData] No data found in Firebase for setId", setId);
                     return null;
                 } else if (response.status === 401 || response.status === 403) {
-                    markFirebaseRtdbDisabled();
                     return null;
                 }
             } catch (error) {
@@ -964,9 +945,6 @@
 
             // First, try to fetch Cloudflare folder URL from Firebase RTDB
             try {
-                if (!isFirebaseRtdbEnabled()) {
-                    throw new Error("Firebase RTDB disabled");
-                }
                 const firebaseFolderUrl = await getCloudflareAudioFolderUrlFromFirebase(setId);
                 if (firebaseFolderUrl) {
                     const folderUrl = normalizeCloudAudioFolderUrl(firebaseFolderUrl);
