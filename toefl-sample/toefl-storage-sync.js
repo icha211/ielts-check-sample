@@ -1,12 +1,12 @@
-﻿/*
+/*
  * TOEFL ITP Shared Storage Sync
  * Uses Firebase Realtime Database so all developers on any device/network
  * can read, write, and edit the same section content and metadata.
  * Falls back gracefully to localStorage when offline.
  *
  * Firebase path layout:
- *   toefl_itp/sets_v2/{setId}   â†’ section metadata per created set
- *   toefl_itp/drafts_v2/{setId} â†’ full draft content per created set
+ *   toefl_itp/sets_v2/{setId}   → section metadata per created set
+ *   toefl_itp/drafts_v2/{setId} → full draft content per created set
  *
  * Legacy compatibility (older pages/data):
  *   toefl_itp/sets_v1
@@ -66,7 +66,7 @@ class ToeflStorageSync {
     };
   }
 
-  // â”€â”€â”€ DATA MIGRATION & RECOVERY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── DATA MIGRATION & RECOVERY ──────────────────────────────────────────
   // Migrate old /sets_v2 data to new /mocktest/sets_v2 on first load
   // This ensures no data is lost when new features are added
 
@@ -115,14 +115,14 @@ class ToeflStorageSync {
         mockTestSets._updatedAt = new Date().toISOString();
         mockTestSets._migratedAt = new Date().toISOString();
         await this._put(this._mockTestSetsPath, mockTestSets);
-        console.log(`[ToeflSync] âœ… Migrated ${Object.keys(mockTestSets).length - 2} sets to mocktest`);
+        console.log(`[ToeflSync] ✅ Migrated ${Object.keys(mockTestSets).length - 2} sets to mocktest`);
       }
 
       if (Object.keys(mockTestDrafts).length > 0) {
         mockTestDrafts._updatedAt = new Date().toISOString();
         mockTestDrafts._migratedAt = new Date().toISOString();
         await this._put(this._mockTestDraftsPath, mockTestDrafts);
-        console.log(`[ToeflSync] âœ… Migrated ${Object.keys(mockTestDrafts).length - 2} drafts to mocktest`);
+        console.log(`[ToeflSync] ✅ Migrated ${Object.keys(mockTestDrafts).length - 2} drafts to mocktest`);
       }
 
       // Update localStorage backup
@@ -137,7 +137,7 @@ class ToeflStorageSync {
         }
       });
 
-      console.log("[ToeflSync] âœ… Data migration completed successfully");
+      console.log("[ToeflSync] ✅ Data migration completed successfully");
       this.isRemoteAvailable = true;
     } catch (e) {
       console.warn("[ToeflSync] Migration failed (may be offline):", e.message);
@@ -159,7 +159,7 @@ class ToeflStorageSync {
       
       // Save to archive instead of deleting
       await this._put(`toefl_itp/archive/sets_v2/${setId}`, archivedSet);
-      console.log(`[ToeflSync] âœ… ${setId} moved to archive (safe to restore)`);
+      console.log(`[ToeflSync] ✅ ${setId} moved to archive (safe to restore)`);
       
       // Now remove from active list
       const paths = this._getPathsForTestType(setId.startsWith("practicetest_") ? "practicetest" : "mocktest");
@@ -283,7 +283,7 @@ class ToeflStorageSync {
       .filter(Boolean);
   }
 
-  // â”€â”€â”€ SETS V2 (multi set records) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── SETS V2 (multi set records) ───────────────────────────────────────────
 
   async getSetRecords() {
     try {
@@ -306,7 +306,7 @@ class ToeflStorageSync {
       return migrated;
     } catch (e) {
       this.isRemoteAvailable = false;
-      console.warn("[ToeflSync] Offline â€“ using localStorage for set records:", e.message);
+      console.warn("[ToeflSync] Offline – using localStorage for set records:", e.message);
     }
 
     const localV2 = this._safeParse(localStorage.getItem(this._setsV2LocalKey), {});
@@ -347,7 +347,7 @@ class ToeflStorageSync {
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
-      console.warn(`[ToeflSync] Offline â€“ ${normalized.setId} set saved locally only:`, e.message);
+      console.warn(`[ToeflSync] Offline – ${normalized.setId} set saved locally only:`, e.message);
     }
     const local = this._safeParse(localStorage.getItem(this._setsV2LocalKey), {});
     local[normalized.setId] = normalized;
@@ -366,7 +366,7 @@ class ToeflStorageSync {
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
-      console.warn("[ToeflSync] Offline â€“ set records saved locally only:", e.message);
+      console.warn("[ToeflSync] Offline – set records saved locally only:", e.message);
     }
     localStorage.setItem(this._setsV2LocalKey, JSON.stringify(map));
   }
@@ -400,7 +400,7 @@ class ToeflStorageSync {
         await this._put(`toefl_itp/archive/drafts_v2/${setId}`, archivedDraft);
       }
       
-      console.log(`[ToeflSync] âœ… ${setId} archived to backup (can be restored)`);
+      console.log(`[ToeflSync] ✅ ${setId} archived to backup (can be restored)`);
       
       // Now remove from active list
       const activeSets = await this._get(this._setsV2Path).catch(() => ({}));
@@ -433,7 +433,7 @@ class ToeflStorageSync {
     localStorage.setItem(this._draftsV2LocalKey, JSON.stringify(localDrafts));
   }
 
-  // â”€â”€â”€ SETS V2 WITH TEST TYPE SUPPORT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── SETS V2 WITH TEST TYPE SUPPORT ───────────────────────────────────────────
 
   async getSetRecordsByTestType(testType = "mocktest") {
     const paths = this._getPathsForTestType(testType);
@@ -453,7 +453,7 @@ class ToeflStorageSync {
       return [];
     } catch (e) {
       this.isRemoteAvailable = false;
-      console.warn(`[ToeflSync] Offline â€“ using localStorage for ${testType} set records:`, e.message);
+      console.warn(`[ToeflSync] Offline – using localStorage for ${testType} set records:`, e.message);
     }
 
     const localV2 = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
@@ -493,7 +493,7 @@ class ToeflStorageSync {
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
-      console.warn(`[ToeflSync] Offline â€“ ${normalized.setId} set saved locally only:`, e.message);
+      console.warn(`[ToeflSync] Offline – ${normalized.setId} set saved locally only:`, e.message);
     }
     const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
     local[normalized.setId] = normalized;
@@ -513,7 +513,7 @@ class ToeflStorageSync {
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
-      console.warn(`[ToeflSync] Offline â€“ ${testType} set records saved locally only:`, e.message);
+      console.warn(`[ToeflSync] Offline – ${testType} set records saved locally only:`, e.message);
     }
     localStorage.setItem(paths.setsLocalKey, JSON.stringify(map));
   }
@@ -549,7 +549,7 @@ class ToeflStorageSync {
         await this._put(`toefl_itp/archive/${testType}/drafts/${setId}`, archivedDraft);
       }
       
-      console.log(`[ToeflSync] âœ… ${setId} archived to backup (can be restored)`);
+      console.log(`[ToeflSync] ✅ ${setId} archived to backup (can be restored)`);
       
       // Now remove from active list
       const activeSets = await this._get(paths.setsPath).catch(() => ({}));
@@ -594,7 +594,7 @@ class ToeflStorageSync {
     if (!setId) return;
     const paths = this._getPathsForTestType(testType);
      
-    console.log(`[ToeflSync] ⚪ Hiding ${setId} from local library (Firebase data preserved)`);
+    console.log(`[ToeflSync] ? Hiding ${setId} from local library (Firebase data preserved)`);
      
     // Remove ONLY from local storage, do NOT touch Firebase
     const localSets = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
@@ -607,7 +607,7 @@ class ToeflStorageSync {
     localStorage.setItem(paths.draftsLocalKey, JSON.stringify(localDrafts));
      
     if (wasDeleted) {
-      console.log(`[ToeflSync] ✓ ${setId} hidden locally. Firebase data is safe. Reload page to restore from Firebase.`);
+      console.log(`[ToeflSync] ? ${setId} hidden locally. Firebase data is safe. Reload page to restore from Firebase.`);
     }
   }
 
@@ -621,7 +621,7 @@ class ToeflStorageSync {
     if (!setId) return false;
     const paths = this._getPathsForTestType(testType);
      
-    console.log(`[ToeflSync] ↩️ Restoring ${setId} from Firebase...`);
+    console.log(`[ToeflSync] ?? Restoring ${setId} from Firebase...`);
      
     try {
       // Fetch fresh from Firebase
@@ -632,7 +632,7 @@ class ToeflStorageSync {
         const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
         local[setId] = normalized;
         localStorage.setItem(paths.setsLocalKey, JSON.stringify(local));
-        console.log(`[ToeflSync] ✓ ${setId} restored from Firebase`);
+        console.log(`[ToeflSync] ? ${setId} restored from Firebase`);
         return true;
       }
     } catch (e) {
@@ -654,7 +654,7 @@ class ToeflStorageSync {
       return draft;
     } catch (e) {
       this.isRemoteAvailable = false;
-      console.warn(`[ToeflSync] Offline â€“ using localStorage for ${testType} set draft ${setId}:`, e.message);
+      console.warn(`[ToeflSync] Offline – using localStorage for ${testType} set draft ${setId}:`, e.message);
     }
     const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
     return local[setId] || {};
@@ -674,7 +674,7 @@ class ToeflStorageSync {
          this.isRemoteAvailable = true;
        } catch (e) {
          this.isRemoteAvailable = false;
-         console.warn(`[ToeflSync] Offline â€“ ${testType} set draft ${setId} saved locally only:`, e.message);
+         console.warn(`[ToeflSync] Offline – ${testType} set draft ${setId} saved locally only:`, e.message);
        }
        const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
        local[setId] = draft || {};
@@ -693,7 +693,7 @@ class ToeflStorageSync {
          return draft;
        } catch (e) {
          this.isRemoteAvailable = false;
-         console.warn(`[ToeflSync] Offline â€“ using localStorage for set draft ${setId}:`, e.message);
+         console.warn(`[ToeflSync] Offline – using localStorage for set draft ${setId}:`, e.message);
        }
        const local = this._safeParse(localStorage.getItem(this._draftsV2LocalKey), {});
        return local[setId] || {};
@@ -712,14 +712,14 @@ class ToeflStorageSync {
          this.isRemoteAvailable = true;
        } catch (e) {
          this.isRemoteAvailable = false;
-         console.warn(`[ToeflSync] Offline â€“ set draft ${setId} saved locally only:`, e.message);
+         console.warn(`[ToeflSync] Offline – set draft ${setId} saved locally only:`, e.message);
        }
        const local = this._safeParse(localStorage.getItem(this._draftsV2LocalKey), {});
        local[setId] = draft || {};
        localStorage.setItem(this._draftsV2LocalKey, JSON.stringify(local));
      }
 
-     // â”€â”€â”€ SETS (section metadata: date, difficulty) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     // ─── SETS (section metadata: date, difficulty) ────────────────────────────
 
      /** Fetch sets map from Firebase; falls back to localStorage. */
      async getSetsMap() {
@@ -731,7 +731,7 @@ class ToeflStorageSync {
          return map;
        } catch (e) {
          this.isRemoteAvailable = false;
-         console.warn("[ToeflSync] Offline â€“ using localStorage for sets:", e.message);
+         console.warn("[ToeflSync] Offline – using localStorage for sets:", e.message);
        }
        return this._safeParse(localStorage.getItem(this._setsLocalKey), {});
      }
@@ -748,7 +748,7 @@ class ToeflStorageSync {
          this.isRemoteAvailable = true;
        } catch (e) {
          this.isRemoteAvailable = false;
-         console.warn(`[ToeflSync] Offline â€“ ${module} set saved to localStorage only:`, e.message);
+         console.warn(`[ToeflSync] Offline – ${module} set saved to localStorage only:`, e.message);
        }
        // Merge into local cache without wiping other modules
        const local = this._safeParse(localStorage.getItem(this._setsLocalKey), {});
@@ -774,7 +774,7 @@ class ToeflStorageSync {
          this.isRemoteAvailable = true;
        } catch (e) {
          this.isRemoteAvailable = false;
-         console.warn(`[ToeflSync] Offline â€“ ${module} delete queued locally only:`, e.message);
+         console.warn(`[ToeflSync] Offline – ${module} delete queued locally only:`, e.message);
          throw e;
        }
        // Remove from local cache
@@ -792,12 +792,12 @@ class ToeflStorageSync {
          this.isRemoteAvailable = true;
        } catch (e) {
          this.isRemoteAvailable = false;
-         console.warn("[ToeflSync] Offline â€“ sets saved to localStorage only:", e.message);
+         console.warn("[ToeflSync] Offline – sets saved to localStorage only:", e.message);
        }
        localStorage.setItem(this._setsLocalKey, JSON.stringify(map || {}));
      }
 
-     // â”€â”€â”€ DRAFTS (full question/passage content) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     // ─── DRAFTS (full question/passage content) ────────────────────────────────
 
      _draftLocalKey(module) {
        const keyMap = {
@@ -818,7 +818,7 @@ class ToeflStorageSync {
          return draft;
        } catch (e) {
          this.isRemoteAvailable = false;
-         console.warn(`[ToeflSync] Offline â€“ using localStorage for ${module} draft:`, e.message);
+         console.warn(`[ToeflSync] Offline – using localStorage for ${module} draft:`, e.message);
        }
        return this._safeParse(localStorage.getItem(this._draftLocalKey(module)), {});
      }
@@ -831,12 +831,12 @@ class ToeflStorageSync {
          this.isRemoteAvailable = true;
        } catch (e) {
          this.isRemoteAvailable = false;
-         console.warn(`[ToeflSync] Offline â€“ ${module} draft saved to localStorage only:`, e.message);
+         console.warn(`[ToeflSync] Offline – ${module} draft saved to localStorage only:`, e.message);
        }
        localStorage.setItem(this._draftLocalKey(module), JSON.stringify(draft || {}));
      }
 
-     // â”€â”€â”€ AUDIO FILES (Firebase Storage + RTDB URL index) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     // ─── AUDIO FILES (Firebase Storage + RTDB URL index) ──────────────────────
 
      _getStorageBases() {
        const bases = [TOEFL_STORAGE_BASE];
@@ -1654,7 +1654,7 @@ class ToeflStorageSync {
        return deleted;
      }
 
-     // â”€â”€â”€ DATA RECOVERY & ARCHIVE MANAGEMENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+     // ─── DATA RECOVERY & ARCHIVE MANAGEMENT ─────────────────────────────────────
 
      async getArchivedItems(testType = "mocktest") {
        const archivePath = `toefl_itp/archive/${testType}/sets`;
@@ -1704,7 +1704,7 @@ class ToeflStorageSync {
          // Only restore if it's not already there (prevent overwriting)
          if (!activeRecord) {
            await this._put(`${paths.setsPath}/${setId}`, restoredData);
-           console.log(`[ToeflSync] âœ… ${setId} restored from archive`);
+           console.log(`[ToeflSync] ✅ ${setId} restored from archive`);
          }
 
          // Also restore draft if archived
@@ -1740,7 +1740,7 @@ class ToeflStorageSync {
            fetch(this._url(archiveDraftPath), { method: "DELETE" }).catch(() => ({ ok: false }))
          ]);
       
-         console.log(`[ToeflSync] âš ï¸ Permanently deleted ${setId} from archive (IRREVERSIBLE)`);
+         console.log(`[ToeflSync] ⚠️ Permanently deleted ${setId} from archive (IRREVERSIBLE)`);
          this.isRemoteAvailable = true;
          return true;
        } catch (e) {
@@ -1752,3 +1752,4 @@ class ToeflStorageSync {
    }
 
    window.toeflStorage = window.toeflStorage || new ToeflStorageSync();
+
