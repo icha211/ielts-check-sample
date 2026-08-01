@@ -341,7 +341,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="toefl-storage-sync.js?v=20260729e"></script>
+    <script src="toefl-storage-sync.js?v=20260801a"></script>
     <script>
         function escapeHtml(v) {
             return String(v || '').replace(/[&<>"]/g, function (c) {
@@ -1407,12 +1407,12 @@
                     continue;
                 }
 
-                var segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[—-]\s*(.+)$/);
+                var segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[ï¿½-]\s*(.+)$/);
                 if (!segmentMatch) {
                     segmentMatch = line.match(/(?:^\s*[-*]\s*)?\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(.+)$/);
                 }
                 if (!segmentMatch) {
-                    segmentMatch = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s*[—\-]\s*(.+)$/);
+                    segmentMatch = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?)\s*[ï¿½\-]\s*(.+)$/);
                 }
                 if (segmentMatch) {
                     var ts = String(segmentMatch[1] || '');
@@ -2633,7 +2633,7 @@
                 if (!line) continue;
                 // Normalize common markdown bullet patterns first.
                 // Example: '- ? **(A) is wrong:** reason'
-                line = line.replace(/^\s*[-*•]+\s*/u, '').trim();
+                line = line.replace(/^\s*[-*ï¿½]+\s*/u, '').trim();
                 line = line.replace(/^\s*[\u274c\u2716\u2715]+\s*/u, '').trim();
                 line = line.replace(/^\s*\*\*\s*/u, '').replace(/\s*\*\*\s*$/u, '').trim();
                 line = line.replace(/\*\*/g, '').trim();
@@ -2751,7 +2751,7 @@
                     continue;
                 }
 
-                var bulletLine = line.replace(/^[-*•]+\s*/, '').trim();
+                var bulletLine = line.replace(/^[-*ï¿½]+\s*/, '').trim();
                 if (!concept) {
                     var conceptMatch = bulletLine.match(/^\*\*"?([^"*]+)"?\*\*\s*(.+)?$/);
                     if (conceptMatch) {
@@ -3665,7 +3665,7 @@
             var btn = document.getElementById('aiGenExplanationBtn');
             var label = document.getElementById('aiGenBtnLabel');
             if (btn) { btn.disabled = true; btn.classList.add('loading'); }
-            if (label) label.textContent = 'Generating…';
+            if (label) label.textContent = 'Generatingï¿½';
 
             try {
                 var payload = await compileActiveExplanationPayload(reviewSetId, Number(question.number || 0), String(question.userAnswer || '').trim().toUpperCase());
@@ -3755,7 +3755,7 @@
 
             reviewAiTranslating = true;
             if (btn) { btn.disabled = true; btn.classList.add('loading'); }
-            if (label) label.textContent = 'Translating…';
+            if (label) label.textContent = 'Translatingï¿½';
 
             try {
                 var payload = {
@@ -3896,7 +3896,7 @@
                     } catch (_) { rawTranscript = ''; }
                 }
 
-                // Source 4: V1 local draft key (toefl_section1_dev_draft_v1) – always written by saveSectionDraft()
+                // Source 4: V1 local draft key (toefl_section1_dev_draft_v1) ï¿½ always written by saveSectionDraft()
                 if (!rawTranscript) {
                     try {
                         var v1Local = JSON.parse(localStorage.getItem('toefl_section1_dev_draft_v1') || '{}');

@@ -14,6 +14,7 @@
  */
 
 const TOEFL_FIREBASE_URL = "https://quickcheck-25590-default-rtdb.asia-southeast1.firebasedatabase.app";
+const TOEFL_FIREBASE_DISABLED_KEY = "toefl_firebase_rtdb_disabled_v1";
 const TOEFL_STORAGE_BUCKET = "quickcheck-25590.firebasestorage.app";
 const TOEFL_STORAGE_BASE = `https://firebasestorage.googleapis.com/v0/b/${TOEFL_STORAGE_BUCKET}/o`;
 const AUDIO_CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -186,19 +187,65 @@ class ToeflStorageSync {
     return `${this._base}/${path}.json`;
   }
 
+  _isFirebaseRtdbEnabled() {
+    try {
+      return localStorage.getItem(TOEFL_FIREBASE_DISABLED_KEY) !== "1";
+    } catch {
+      return true;
+    }
+  }
+
+  _markFirebaseRtdbDisabled(reason = "") {
+    try {
+      localStorage.setItem(TOEFL_FIREBASE_DISABLED_KEY, "1");
+    } catch {
+      // Ignore storage failures here; the in-memory flag still applies for this session.
+    }
+    this.isRemoteAvailable = false;
+    if (reason) {
+      this._lastStorageError = String(reason);
+    }
+  }
+
+  _markFirebaseRtdbEnabled() {
+    try {
+      localStorage.removeItem(TOEFL_FIREBASE_DISABLED_KEY);
+    } catch {
+      // Ignore storage failures here.
+    }
+  }
+
   async _get(path) {
+    if (!this._isFirebaseRtdbEnabled()) {
+      throw new Error("Firebase RTDB disabled");
+    }
     const r = await fetch(this._url(path), { method: "GET" });
-    if (!r.ok) throw new Error(`Firebase GET failed (${r.status})`);
+    if (!r.ok) {
+      if (r.status === 401 || r.status === 403) {
+        this._markFirebaseRtdbDisabled(`Firebase GET failed (${r.status})`);
+      }
+      throw new Error(`Firebase GET failed (${r.status})`);
+    }
+    this._markFirebaseRtdbEnabled();
     return r.json();
   }
 
   async _put(path, data) {
+    if (!this._isFirebaseRtdbEnabled()) {
+      throw new Error("Firebase RTDB disabled");
+    }
     const r = await fetch(this._url(path), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
     });
-    if (!r.ok) throw new Error(`Firebase PUT failed (${r.status})`);
+    if (!r.ok) {
+      if (r.status === 401 || r.status === 403) {
+        this._markFirebaseRtdbDisabled(`Firebase PUT failed (${r.status})`);
+      }
+      throw new Error(`Firebase PUT failed (${r.status})`);
+    }
+    this._markFirebaseRtdbEnabled();
     return r.json();
   }
 
@@ -411,6 +458,9 @@ class ToeflStorageSync {
   async getSetRecordsByTestType(testType = "mocktest") {
     const paths = this._getPathsForTestType(testType);
     try {
+      if (!this._isFirebaseRtdbEnabled()) {
+        throw new Error("Firebase RTDB disabled");
+      }
       const v2 = await this._get(paths.setsPath);
       const v2Map = (v2 && typeof v2 === "object" && !Array.isArray(v2)) ? v2 : {};
       const records = Object.entries(v2Map)
@@ -440,6 +490,9 @@ class ToeflStorageSync {
     if (!setId) return null;
     const paths = this._getPathsForTestType(testType);
     try {
+      if (!this._isFirebaseRtdbEnabled()) {
+        throw new Error("Firebase RTDB disabled");
+      }
       const data = await this._get(`${paths.setsPath}/${setId}`);
       const normalized = this._normalizeRecord({ ...data, setId }, setId);
       if (normalized) {
@@ -978,6 +1031,9 @@ class ToeflStorageSync {
 
      async getAudioIndexMap() {
        try {
+         if (!this._isFirebaseRtdbEnabled()) {
+           throw new Error("Firebase RTDB disabled");
+         }
          const data = await this._get("toefl_itp/audio_urls");
          this.isRemoteAvailable = true;
          return (data && typeof data === "object" && !Array.isArray(data)) ? data : {};
