@@ -252,11 +252,34 @@ function updateSyncStatus(online) {
 }
 
 async function deleteSet(setId, module) {
-    if (!confirm(`Delete this ${MODULE_CONFIG[module]?.label || module} set? This cannot be undone.`)) return;
+    const moduleLabel = MODULE_CONFIG[module]?.label || module;
+    
+    // Show choice dialog for delete type
+    const choice = confirm(
+        `Delete "${moduleLabel}" set?\n\n` +
+        `OK = Hide locally (Firebase data preserved)\n` +
+        `Cancel = Full delete (archive to Firebase)\n\n` +
+        `Choose carefully!`
+    );
+    
     try {
-        await toeflStorage.deleteSetRecordWithType(setId, currentTestType);
-        updateSyncStatus(toeflStorage.online);
-        toast(`${MODULE_CONFIG[module]?.label || module} set deleted`);
+        if (choice === true) {
+            // Local-only delete: hide from UI but keep Firebase data
+            await toeflStorage.deleteSetRecordLocalOnly(setId, currentTestType);
+            updateSyncStatus(toeflStorage.online);
+            toast(`${moduleLabel} hidden locally. Firebase data preserved. 📌`);
+        } else if (choice === false) {
+            // Full delete: archive to Firebase
+            const confirmFull = confirm(`⚠️ FULL DELETE: This will remove "${moduleLabel}" from active sets.\n\nData will be archived but still in Firebase.\n\nContinue?`);
+            if (!confirmFull) return;
+            
+            await toeflStorage.deleteSetRecordWithType(setId, currentTestType);
+            updateSyncStatus(toeflStorage.online);
+            toast(`${moduleLabel} archived to backup. ☁️`);
+        } else {
+            return; // Cancelled
+        }
+        
         await renderAll();
     } catch (error) {
         updateSyncStatus(false);

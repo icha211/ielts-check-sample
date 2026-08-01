@@ -582,6 +582,65 @@ class ToeflStorageSync {
     localStorage.setItem(paths.draftsLocalKey, JSON.stringify(localDrafts));
   }
 
+  /**
+   * Delete a set record from LOCAL STORAGE ONLY (does NOT touch Firebase)
+   * Useful for hiding items from your developer library without losing shared data.
+   * When you reload, the data will still be on Firebase and will re-sync locally.
+   * @param {string} setId
+   * @param {string} testType 
+   * @returns {Promise<void>}
+   */
+  async deleteSetRecordLocalOnly(setId, testType = "mocktest") {
+    if (!setId) return;
+    const paths = this._getPathsForTestType(testType);
+     
+    console.log(`[ToeflSync] ⚪ Hiding ${setId} from local library (Firebase data preserved)`);
+     
+    // Remove ONLY from local storage, do NOT touch Firebase
+    const localSets = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    const wasDeleted = Boolean(localSets[setId]);
+    delete localSets[setId];
+    localStorage.setItem(paths.setsLocalKey, JSON.stringify(localSets));
+     
+    const localDrafts = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+    delete localDrafts[setId];
+    localStorage.setItem(paths.draftsLocalKey, JSON.stringify(localDrafts));
+     
+    if (wasDeleted) {
+      console.log(`[ToeflSync] ✓ ${setId} hidden locally. Firebase data is safe. Reload page to restore from Firebase.`);
+    }
+  }
+
+  /**
+   * Restore a set record that was hidden locally by re-syncing from Firebase
+   * @param {string} setId
+   * @param {string} testType
+   * @returns {Promise<boolean>}
+   */
+  async restoreSetRecordFromFirebase(setId, testType = "mocktest") {
+    if (!setId) return false;
+    const paths = this._getPathsForTestType(testType);
+     
+    console.log(`[ToeflSync] ↩️ Restoring ${setId} from Firebase...`);
+     
+    try {
+      // Fetch fresh from Firebase
+      const data = await this._get(`${paths.setsPath}/${setId}`);
+      const normalized = this._normalizeRecord({ ...data, setId }, setId);
+      if (normalized) {
+        // Restore to local storage
+        const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+        local[setId] = normalized;
+        localStorage.setItem(paths.setsLocalKey, JSON.stringify(local));
+        console.log(`[ToeflSync] ✓ ${setId} restored from Firebase`);
+        return true;
+      }
+    } catch (e) {
+      console.warn(`[ToeflSync] Failed to restore ${setId} from Firebase:`, e.message);
+    }
+    return false;
+  }
+
   async getDraftBySetIdAndType(setId, testType = "mocktest") {
     if (!setId) return {};
     const paths = this._getPathsForTestType(testType);
