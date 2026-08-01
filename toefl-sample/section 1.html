@@ -3374,7 +3374,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             
             // After verification completes, save complete listening data to RTDB
             // This ensures Cloudflare URLs and content are synced globally
-            saveSectionDraft();
+            await saveSectionDraft();
         }
 
         async function handleAudioUpload(event, partId = 1) {
@@ -3430,7 +3430,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     
                     // After successful audio sync to Cloudflare, save complete listening data to RTDB
                     // This ensures audio URLs and all content sync globally
-                    saveSectionDraft();
+                    await saveSectionDraft();
                     
                     alert(`Audio saved and synced to cloud (${fileMB} MB original).\n${sizeNote}\nIt will work on other devices.`);
                 } else {
@@ -3461,7 +3461,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const setId = await ensureCurrentSetId(setDate);
 
             await saveSectionMeta();
-            saveSectionDraft();
+            await saveSectionDraft();
 
             if (window.toeflStorage && typeof window.toeflStorage.saveTranscriptTextToFirebase === "function") {
                 await window.toeflStorage.saveTranscriptTextToFirebase(setId, text, partId).catch(() => null);
@@ -3513,7 +3513,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 if (transcriptElement) transcriptElement.value = transcriptText;
 
                 await saveSectionMeta();
-                saveSectionDraft();
+                await saveSectionDraft();
 
                 if (window.toeflStorage && typeof window.toeflStorage.saveTranscriptTextToFirebase === "function") {
                     await window.toeflStorage.saveTranscriptTextToFirebase(setId, transcriptText, partId).catch(() => null);
@@ -4014,7 +4014,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         async function openExplanationFromDeveloper() {
             // Ensure the current package is persisted before opening the answered page.
             await saveSectionMeta();
-            saveSectionDraft();
+            await saveSectionDraft();
             updateUserView(false, { preferEditedPart: false });
             await persistPreviewSectionResultWithSchemas({ notifySync: false });
 
@@ -4094,8 +4094,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             }
 
             if (shouldSaveMeta) {
-                saveSectionMeta();
-                saveSectionDraft();
+                saveSectionMeta().catch(() => {});
+                saveSectionDraft().catch(() => {});
             }
 
             const scoreBoard = document.getElementById("global-score-board");
@@ -4477,7 +4477,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
         async function performAutoSave() {
             try {
-                saveSectionDraft();
+                await saveSectionDraft();
                 await saveSectionMeta();
                 lastAutoSaveTime = Date.now();
                 showAutoSaveStatus("? Auto-saved", true);
