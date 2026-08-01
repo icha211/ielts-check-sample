@@ -966,7 +966,7 @@
             return null;
         }
 
-        function isValidCloudflareFolder​Url(url = "") {
+        function isValidCloudflareFolderUrl(url = "") {
             const normalized = String(url || "").trim().toLowerCase();
             if (!normalized.includes("/audio/") || (!normalized.includes("/sets/") && !normalized.includes("/listening/"))) {
                 return false;
@@ -987,7 +987,7 @@
                 const firebaseFolderUrl = await getCloudflareAudioFolderUrlFromFirebase(setId);
                 if (firebaseFolderUrl) {
                     const folderUrl = normalizeCloudAudioFolderUrl(firebaseFolderUrl);
-                    if (folderUrl && isValidCloudflareFolder​Url(folderUrl)) {
+                    if (folderUrl && isValidCloudflareFolderUrl(folderUrl)) {
                         const r2Url = `${folderUrl}/part_${partId}.mp3`;
                         console.log("[AudioPlayback] Using Cloudflare folder URL from Firebase for part", partId, ":", r2Url);
                         // Also save to localStorage for faster access next time
@@ -1004,7 +1004,7 @@
             const cloudflareKey = `toefl_section1_cloudflare_folder_url_${testType}_${String(setId || "default")}`;
             const savedFolderUrl = localStorage.getItem(cloudflareKey);
             
-            if (savedFolderUrl && isValidCloudflareFolder​Url(savedFolderUrl)) {
+            if (savedFolderUrl && isValidCloudflareFolderUrl(savedFolderUrl)) {
                 // Build R2 URL from saved folder URL
                 const folderUrl = normalizeCloudAudioFolderUrl(savedFolderUrl);
                 if (folderUrl) {
