@@ -611,7 +611,34 @@
             audio.load();
             audio.currentTime = 0;
             audioIsLocked = false;
+            resetWebAudioAnalyzerIfSourceChanged();
             updateAudioShellStatus();
+        }
+
+        function resetWebAudioAnalyzerIfSourceChanged() {
+            if (!audioSourceNode || !audioContext) return;
+            try {
+                const audio = document.getElementById("cbt-audio-player");
+                if (!audio) return;
+                const currentSource = String(audio.currentSrc || audio.src || "");
+                const lastRecordedSource = audio.dataset?.webAudioLastSrc || "";
+                
+                if (currentSource && currentSource !== lastRecordedSource && currentSource !== "blob:") {
+                    console.log("[AudioAnalyzer] Resetting Web Audio state due to source change");
+                    audioSourceNode.disconnect();
+                    audioSourceNode = null;
+                    audioAnalyser = null;
+                    audioAnalyzerReady = false;
+                    if (audio.dataset) {
+                        audio.dataset.webAudioLastSrc = currentSource;
+                    }
+                }
+            } catch (error) {
+                console.warn("[AudioAnalyzer] Reset failed:", error);
+                audioSourceNode = null;
+                audioAnalyzer = null;
+                audioAnalyzerReady = false;
+            }
         }
 
         function setAudioSourceFromUrl(url, setId = currentSetId, partId = activePartId || 1) {
@@ -633,6 +660,7 @@
             audio.load();
             audio.currentTime = 0;
             audioIsLocked = false;
+            resetWebAudioAnalyzerIfSourceChanged();
             updateAudioShellStatus();
         }
 
@@ -938,6 +966,17 @@
             return null;
         }
 
+        function isValidCloudflareFolder​Url(url = "") {
+            const normalized = String(url || "").trim().toLowerCase();
+            if (!normalized.includes("/audio/") || (!normalized.includes("/sets/") && !normalized.includes("/listening/"))) {
+                return false;
+            }
+            if (normalized.endsWith(".mp3") || normalized.endsWith(".m4a") || normalized.endsWith(".wav")) {
+                return false;
+            }
+            return true;
+        }
+
         async function getCloudAudioUrl(setId, partId = 1, timeoutMs = 3500) {
             if (!setId) return null;
 
@@ -948,7 +987,7 @@
                 const firebaseFolderUrl = await getCloudflareAudioFolderUrlFromFirebase(setId);
                 if (firebaseFolderUrl) {
                     const folderUrl = normalizeCloudAudioFolderUrl(firebaseFolderUrl);
-                    if (folderUrl) {
+                    if (folderUrl && isValidCloudflareFolder​Url(folderUrl)) {
                         const r2Url = `${folderUrl}/part_${partId}.mp3`;
                         console.log("[AudioPlayback] Using Cloudflare folder URL from Firebase for part", partId, ":", r2Url);
                         // Also save to localStorage for faster access next time
@@ -961,11 +1000,11 @@
                 console.warn("[AudioPlayback] Firebase fetch failed, falling back to localStorage:", error);
             }
 
-            // Fallback to localStorage if Firebase is unavailable
+            // Fallback to localStorage if Firebase is unavailable, but only if URL is valid
             const cloudflareKey = `toefl_section1_cloudflare_folder_url_${testType}_${String(setId || "default")}`;
             const savedFolderUrl = localStorage.getItem(cloudflareKey);
             
-            if (savedFolderUrl) {
+            if (savedFolderUrl && isValidCloudflareFolder​Url(savedFolderUrl)) {
                 // Build R2 URL from saved folder URL
                 const folderUrl = normalizeCloudAudioFolderUrl(savedFolderUrl);
                 if (folderUrl) {
@@ -973,9 +1012,12 @@
                     console.log("[AudioPlayback] Using saved Cloudflare folder URL (localStorage) for part", partId, ":", r2Url);
                     return r2Url;
                 }
+            } else if (savedFolderUrl) {
+                console.warn("[AudioPlayback] Removing invalid cached folder URL:", savedFolderUrl);
+                localStorage.removeItem(cloudflareKey);
             }
 
-            // Fallback to Firebase Storage if no Cloudflare URL is saved
+            // Fallback to Firebase Storage if no valid Cloudflare URL is saved
             if (!window.toeflStorage) return null;
             const fetchAudioUrl = typeof window.toeflStorage.getPlayableAudioUrl === "function"
                 ? window.toeflStorage.getPlayableAudioUrl.bind(window.toeflStorage)
