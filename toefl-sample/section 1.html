@@ -356,6 +356,7 @@
         let currentAudioFallbackUrls = [];
         let audioAnalyzerReady = false;
         let audioUrlsByPart = {};
+        let audioFirebaseByPart = {};
         let waveformEnergyState = {
             bass: 0.06,
             lowMid: 0.06,
@@ -1297,6 +1298,8 @@
                 const answerValue = typeof row.answerKey === "string" ? row.answerKey : "";
                 const explanationValue = typeof row.explanation === "string" ? row.explanation : "";
                 const transcriptValue = typeof row.transcript === "string" ? row.transcript : "";
+                const audioCloudflareValue = typeof row.audio_cloudflare === "string" ? row.audio_cloudflare.trim() : "";
+                const audioFirebaseValue = typeof row.audio_firebase === "string" ? row.audio_firebase.trim() : "";
 
                 if (questionsElement && (questionValue.trim() || !String(questionsElement.value || "").trim())) {
                     questionsElement.value = questionValue;
@@ -1309,6 +1312,12 @@
                 }
                 if (transcriptElement && (transcriptValue.trim() || !String(transcriptElement.value || "").trim())) {
                     transcriptElement.value = transcriptValue;
+                }
+                if (audioCloudflareValue) {
+                    audioUrlsByPart[p] = audioCloudflareValue;
+                }
+                if (audioFirebaseValue) {
+                    audioFirebaseByPart[p] = audioFirebaseValue;
                 }
             });
         }
@@ -2413,7 +2422,9 @@
                     questions: (document.getElementById(`input-magic-questions-${p}`) || {}).value || "",
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
                     explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || "",
-                    transcript: (document.getElementById(`input-transcript-${p}`) || {}).value || ""
+                    transcript: (document.getElementById(`input-transcript-${p}`) || {}).value || "",
+                    audio_cloudflare: audioUrlsByPart[p] || "",
+                    audio_firebase: audioFirebaseByPart[p] || ""
                 };
             });
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -2464,6 +2475,8 @@
 
         async function loadSectionDraft() {
             let draft = {};
+            audioUrlsByPart = {};
+            audioFirebaseByPart = {};
             
             // First, try to load complete listening data from Firebase RTDB
             if (currentSetId && !draft.parts) {
