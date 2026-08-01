@@ -249,22 +249,35 @@
             window.history.replaceState({}, "", `${window.location.pathname}?${query}${hash}`);
         }
 
-        function ensureCurrentSetId(setDate) {
+        async function ensureCurrentSetId(setDate) {
             if (currentSetId) return currentSetId;
+            
+            // CRITICAL FIX: Check if a set ALREADY EXISTS for this date/testType/module
+            // Only create a new one if none exists (idempotency constraint per day per testType)
+            const existingSet = await resolveSetRecordByDate(setDate);
+            if (existingSet && existingSet.setId) {
+                console.log(`[SetIdempotency] Reusing existing set for date ${setDate}:`, existingSet.setId);
+                currentSetId = existingSet.setId;
+                return currentSetId;
+            }
+            
+            // Only create new ID if no existing set found for this date/testType
             if (window.toeflStorage && typeof toeflStorage.createSetId === "function") {
                 currentSetId = toeflStorage.createSetId(MODULE_ID, setDate, currentTestType);
             } else {
                 currentSetId = `${currentTestType}_${MODULE_ID}_${Date.now()}`;
             }
+            console.log(`[SetIdempotency] Created new set for date ${setDate}:`, currentSetId);
             return currentSetId;
         }
 
-        async function resolveSetRecordByDate(setDate) {
+        async function resolveSetRecordByDate(setDate, filterTestType = null) {
+            const testTypeToCheck = filterTestType || currentTestType;
             try {
                 if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
                     const records = await toeflStorage.getSetRecords();
                     const match = (records || [])
-                        .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
+                        .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate && item.testType === testTypeToCheck)
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
                     if (match) return match;
                 }
@@ -274,7 +287,7 @@
 
             const local = getStoredSetMap();
             return Object.values(local)
-                .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
+                .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate && item.testType === testTypeToCheck)
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 
@@ -356,7 +369,7 @@
             updateUserView();
         }
 
-        function saveSectionDraft() {
+        async function saveSectionDraft() {
             syncPartBRichEditorToTextarea();
             const draft = { parts: {} };
             PARTS.forEach((part) => {
@@ -371,7 +384,7 @@
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
             if (window.toeflStorage) {
                 const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
-                const setId = ensureCurrentSetId(setDate);
+                const setId = await ensureCurrentSetId(setDate);
                 toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType).catch((e) => console.warn("[ToeflSync] draft save failed:", e));
             }
         }
@@ -518,7 +531,7 @@
             const difficultyInput = document.getElementById("set-difficulty");
             const setDate = dateInput.value || new Date().toISOString().split("T")[0];
             updateHeaderPackageLabel(setDate);
-            const setId = ensureCurrentSetId(setDate);
+            const setId = await ensureCurrentSetId(setDate);
             const record = {
                 setId,
                 module: MODULE_ID,

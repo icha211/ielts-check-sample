@@ -1107,10 +1107,11 @@
             window.history.replaceState({}, "", `${window.location.pathname}?${query}${hash}`);
         }
 
-        function ensureCurrentSetId(setDate) {
+        async function ensureCurrentSetId(setDate) {
             const normalizedSetDate = normalizeDateKey(setDate || "");
             const currentSetDate = parseSetDateFromSetId(currentSetId);
 
+            // If current set exists and has the same date, reuse it
             if (currentSetId) {
                 if (!normalizedSetDate || currentSetDate === normalizedSetDate) {
                     return currentSetId;
@@ -1118,10 +1119,21 @@
                 currentSetId = "";
             }
 
+            // CRITICAL FIX: Check if a set ALREADY EXISTS for this date/testType/module
+            // Only create a new one if none exists (idempotency constraint per day per testType)
+            const existingSet = await resolveSetRecordByDate(normalizedSetDate || setDate);
+            if (existingSet && existingSet.setId) {
+                console.log(`[SetIdempotency] Reusing existing set for date ${normalizedSetDate}:`, existingSet.setId);
+                currentSetId = existingSet.setId;
+                return currentSetId;
+            }
+
+            // Only create new ID if no existing set found for this date/testType
             const stamp = Date.now();
             const rand = Math.random().toString(36).slice(2, 8);
             const datePart = normalizedSetDate || normalizeDateKey(setDate) || new Date().toISOString().split("T")[0];
             currentSetId = `${currentTestType}_${MODULE_ID}_${datePart}_${stamp}_${rand}`;
+            console.log(`[SetIdempotency] Created new set for date ${normalizedSetDate}:`, currentSetId);
             return currentSetId;
         }
         function parseSetDateFromSetId(setId) {
@@ -1180,13 +1192,14 @@
             return parsed.toISOString().slice(0, 10);
         }
 
-        async function resolveSetRecordByDate(setDate) {
+        async function resolveSetRecordByDate(setDate, filterTestType = null) {
             const normalizedTarget = normalizeDateKey(setDate);
+            const testTypeToCheck = filterTestType || currentTestType;
             try {
                 if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
                     const records = await toeflStorage.getSetRecords();
                     const match = (records || [])
-                        .filter((item) => item && item.module === MODULE_ID && normalizeDateKey(item.setDate) === normalizedTarget)
+                        .filter((item) => item && item.module === MODULE_ID && normalizeDateKey(item.setDate) === normalizedTarget && item.testType === testTypeToCheck)
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
                     if (match) return match;
                 }
@@ -1196,7 +1209,7 @@
 
             const local = getStoredSetMap();
             return Object.values(local)
-                .filter((item) => item && item.module === MODULE_ID && normalizeDateKey(item.setDate) === normalizedTarget)
+                .filter((item) => item && item.module === MODULE_ID && normalizeDateKey(item.setDate) === normalizedTarget && item.testType === testTypeToCheck)
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 
@@ -2616,7 +2629,7 @@
             const dateInput = document.getElementById("set-date");
             const difficultyInput = document.getElementById("set-difficulty");
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
-            const setId = ensureCurrentSetId(setDate);
+            const setId = await ensureCurrentSetId(setDate);
             const record = {
                 setId,
                 module: MODULE_ID,
@@ -3124,7 +3137,7 @@
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
             const input = getCloudflareFolderUrlInput();
             let setId = extractCloudflareSetId(currentSetId) || extractCloudflareSetId(input?.value || "") || "";
-            if (!setId) setId = ensureCurrentSetId(setDate);
+            if (!setId) setId = await ensureCurrentSetId(setDate);
             currentSetId = setId;
             const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
             const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
@@ -3370,7 +3383,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
             const dateInput = document.getElementById("set-date");
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
-            const setId = ensureCurrentSetId(setDate);
+            const setId = await ensureCurrentSetId(setDate);
 
             const fileMB = (file.size / 1024 / 1024).toFixed(1);
 
@@ -3445,7 +3458,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
             const dateInput = document.getElementById("set-date");
             const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
-            const setId = ensureCurrentSetId(setDate);
+            const setId = await ensureCurrentSetId(setDate);
 
             await saveSectionMeta();
             saveSectionDraft();
@@ -3471,7 +3484,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             try {
                 const dateInput = document.getElementById("set-date");
                 const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
-                const setId = ensureCurrentSetId(setDate);
+                const setId = await ensureCurrentSetId(setDate);
 
                 if (!window.toeflStorage || typeof window.toeflStorage.transcribeAudioBySetPart !== "function") {
                     throw new Error("Transcription API is not available.");
