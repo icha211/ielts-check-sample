@@ -531,7 +531,7 @@ class ToeflStorageSync {
       
       // Save to archive with metadata
       const archivedSet = {
-        ...setRecord,
+        ...(setRecord && typeof setRecord === 'object' ? setRecord : {}),
         _archived: true,
         _archivedAt: new Date().toISOString(),
         _archivedFrom: testType,
@@ -540,9 +540,9 @@ class ToeflStorageSync {
       
       await this._put(`toefl_itp/archive/${testType}/sets/${setId}`, archivedSet);
       
-      if (Object.keys(draftRecord).length > 0) {
+      if (draftRecord && Object.keys(draftRecord).length > 0) {
         const archivedDraft = {
-          ...draftRecord,
+          ...(draftRecord && typeof draftRecord === 'object' ? draftRecord : {}),
           _archived: true,
           _archivedAt: new Date().toISOString()
         };
@@ -1752,4 +1752,5 @@ class ToeflStorageSync {
    }
 
    window.toeflStorage = window.toeflStorage || new ToeflStorageSync();
+
 
