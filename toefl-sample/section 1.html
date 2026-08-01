@@ -2457,9 +2457,14 @@
                 const parts = {};
                 PARTS.forEach((part) => {
                     const p = part.id;
+                    const cloudflareUrl = audioUrlsByPart[p] || "";
+                    const firebaseUrl = draft.parts[p]?.audio_firebase || "";
+                    if (!cloudflareUrl) {
+                        console.warn(`[ListeningData] No Cloudflare URL for part ${p}. audioUrlsByPart:`, audioUrlsByPart);
+                    }
                     parts[p] = {
-                        audio_cloudflare: audioUrlsByPart[p] || "",
-                        audio_firebase: draft.parts[p]?.audio_firebase || "",
+                        audio_cloudflare: cloudflareUrl,
+                        audio_firebase: firebaseUrl,
                         answerKey: draft.parts[p]?.answerKey || "",
                         explanation: draft.parts[p]?.explanation || "",
                         questions: draft.parts[p]?.questions || "",
@@ -2475,14 +2480,20 @@
 
         async function loadSectionDraft() {
             let draft = {};
-            audioUrlsByPart = {};
-            audioFirebaseByPart = {};
+            // Only reset maps if we're actually going to load new data
+            // Preserve in-memory URLs during current editing session
+            let resetMaps = false;
             
             // First, try to load complete listening data from Firebase RTDB
             if (currentSetId && !draft.parts) {
                 try {
                     const firebaseData = await getCompleteListeningDataFromFirebase(currentSetId);
                     if (firebaseData && firebaseData.parts) {
+                        // We're loading fresh data from Firebase - OK to reset maps
+                        audioUrlsByPart = {};
+                        audioFirebaseByPart = {};
+                        resetMaps = true;
+                        
                         // Convert Firebase data structure back to draft format
                         draft = {
                             parts: {}
@@ -2508,6 +2519,11 @@
             if (!draft.parts && currentSetId && window.toeflStorage) {
                 try {
                     draft = await toeflStorage.getDraftBySetIdAndType(currentSetId, currentTestType);
+                    if (!resetMaps) {
+                        audioUrlsByPart = {};
+                        audioFirebaseByPart = {};
+                        resetMaps = true;
+                    }
                 } catch {
                     draft = {};
                 }
@@ -2516,12 +2532,22 @@
             // Fallback 1: local V1 draft cache used by the editor save flow.
             if (!hasListeningDraftContent(draft)) {
                 draft = safeParse(localStorage.getItem(DRAFT_KEY), {});
+                if (!resetMaps) {
+                    audioUrlsByPart = {};
+                    audioFirebaseByPart = {};
+                    resetMaps = true;
+                }
             }
 
             // Fallback 2: legacy module-scoped draft from Firebase/local cache.
             if (!hasListeningDraftContent(draft) && window.toeflStorage && typeof toeflStorage.getDraft === "function") {
                 try {
                     draft = await toeflStorage.getDraft("listening");
+                    if (!resetMaps) {
+                        audioUrlsByPart = {};
+                        audioFirebaseByPart = {};
+                        resetMaps = true;
+                    }
                 } catch {
                     draft = draft || {};
                 }
@@ -3336,6 +3362,7 @@
 
             // Expected part file names (in order: part 1, part 2, part 3)
             const partFileNames = ["part_1.mp3", "part_2.mp3", "part_3.mp3"];
+            const discoveredUrls = {}; // Store URLs for later Firebase save
 
             for (const partId of [1, 2, 3]) {
                 setCloudflarePartStatus(partId, "Checking...", "#1d4ed8");
@@ -3345,6 +3372,7 @@
                 if (folderContents && folderContents.files && folderContents.files.length > 0) {
                     const matchingFile = folderContents.files.find(f => f.name === expectedFileName);
                     if (matchingFile) {
+                        discoveredUrls[partId] = matchingFile.url;
                         setCloudflarePartStatus(partId, `Synced in Cloudflare
 ${matchingFile.url}`, "#0f766e");
                         continue;
@@ -3366,8 +3394,10 @@ ${matchingFile.url}`, "#0f766e");
                 const objectKey = String(record?.objectKey || record?.storagePath || "").trim();
                 const existsCheck = await checkAudioExistsViaGateway(objectKey);
                 if (existsCheck.exists) {
+                    const resolvedUrl = existsCheck.objectKey || objectKey;
+                    discoveredUrls[partId] = resolvedUrl;
                     setCloudflarePartStatus(partId, `Synced in Cloudflare
-${existsCheck.objectKey || objectKey}`, "#0f766e");
+${resolvedUrl}`, "#0f766e");
                 } else {
                     setCloudflarePartStatus(partId, `Found record but playback check failed
 ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
@@ -3376,16 +3406,24 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
             setCloudflareFolderStatus(`Verification finished for ${setId}.`, "#0f766e");
             
+            // Populate audioUrlsByPart with discovered Cloudflare URLs for Firebase save
+            Object.entries(discoveredUrls).forEach(([partId, url]) => {
+                audioUrlsByPart[partId] = url;
+                console.log(`[CloudflareSync] Populated audioUrlsByPart for part ${partId}:`, url);
+            });
+            console.log("[CloudflareSync] Discovered URLs to save:", discoveredUrls);
+            
             // After verification completes, save sync status to cache
             // Determine which parts are synced by checking current UI status display
             const syncStatus = [];
             for (const partId of [1, 2, 3]) {
-                const statusEl = document.getElementById(`cloudflare-part${partId}-status`);
+                const statusEl = document.getElementById(`cloud-audio-check-${partId}`);
                 const isSynced = statusEl && statusEl.textContent.includes("Synced");
                 syncStatus.push(isSynced);
             }
             saveCachedPartSyncStatus(setId, syncStatus);
             console.log("[CloudflareSync] Saved sync status for", setId, ":", syncStatus);
+            console.log("[CloudflareSync] Calling saveSectionDraft with populated URLs:", discoveredUrls);
             
             // After verification completes, save complete listening data to RTDB
             // This ensures Cloudflare URLs and content are synced globally
@@ -3432,6 +3470,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     if (uploadInfo.objectUrl) {
                         audioUrlsByPart[partId] = uploadInfo.objectUrl;
                         console.log(`[AudioPlayback] Stored Cloudflare URL for part ${partId}:`, uploadInfo.objectUrl);
+                    } else {
+                        console.warn(`[AudioUpload] No objectUrl returned! uploadInfo:`, uploadInfo);
                     }
                     
                     // Update audio player if this is the active part
@@ -3445,7 +3485,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     
                     // After successful audio sync to Cloudflare, save complete listening data to RTDB
                     // This ensures audio URLs and all content sync globally
+                    console.log(`[AudioUpload] Calling saveSectionDraft with audioUrlsByPart for part ${partId}:`, audioUrlsByPart[partId]);
                     await saveSectionDraft();
+                    console.log(`[AudioUpload] saveSectionDraft completed for part ${partId}`);
                     
                     alert(`Audio saved and synced to cloud (${fileMB} MB original).\n${sizeNote}\nIt will work on other devices.`);
                 } else {
