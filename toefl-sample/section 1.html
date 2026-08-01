@@ -646,12 +646,19 @@
             if (!audio || !url) return;
             revokeCurrentAudioUrl();
             currentAudioObjectUrl = null;
-            if (window.toeflStorage && typeof toeflStorage.getAudioUrlCandidates === "function" && setId) {
-                const candidates = toeflStorage.getAudioUrlCandidates(setId, partId, url);
-                currentAudioFallbackUrls = (candidates || []).filter((item) => item && item !== url);
-            } else {
-                currentAudioFallbackUrls = [];
+            
+            // Clear old fallback URLs before loading new ones
+            currentAudioFallbackUrls = [];
+            
+            // Only get fallback candidates if url is a Cloudflare URL (not Firebase Storage)
+            // This prevents mixing old Firebase fallbacks with new Cloudflare sources
+            if (url && url.includes("r2.dev")) {
+                if (window.toeflStorage && typeof toeflStorage.getAudioUrlCandidates === "function" && setId) {
+                    const candidates = toeflStorage.getAudioUrlCandidates(setId, partId, url);
+                    currentAudioFallbackUrls = (candidates || []).filter((item) => item && item !== url);
+                }
             }
+            
             audio.removeAttribute("crossorigin");
             audio.muted = false;
             audio.volume = 1;
@@ -977,37 +984,32 @@
             return true;
         }
 
+        // In-memory cache for Cloudflare folder URLs to avoid re-fetching for every part
+        const cloudflareUrlCache = {};
+
         async function getCloudAudioUrl(setId, partId = 1, timeoutMs = 3500) {
             if (!setId) return null;
 
             const testType = currentTestType || "mocktest";
+            const cacheKey = `${testType}_${setId}`;
 
-            // First, try to fetch Cloudflare folder URL from Firebase RTDB
-            try {
-                const firebaseFolderUrl = await getCloudflareAudioFolderUrlFromFirebase(setId);
-                if (firebaseFolderUrl) {
-                    const folderUrl = normalizeCloudAudioFolderUrl(firebaseFolderUrl);
-                    if (folderUrl && isValidCloudflareFolderUrl(folderUrl)) {
-                        const r2Url = `${folderUrl}/part_${partId}.mp3`;
-                        console.log("[AudioPlayback] Using Cloudflare folder URL from Firebase for part", partId, ":", r2Url);
-                        // Also save to localStorage for faster access next time
-                        const localKey = `toefl_section1_cloudflare_folder_url_${testType}_${String(setId || "default")}`;
-                        localStorage.setItem(localKey, firebaseFolderUrl);
-                        return r2Url;
-                    }
-                }
-            } catch (error) {
-                console.warn("[AudioPlayback] Firebase fetch failed, falling back to localStorage:", error);
+            // Check in-memory cache first (same setId for all parts)
+            if (cloudflareUrlCache[cacheKey]) {
+                const cachedFolderUrl = cloudflareUrlCache[cacheKey];
+                const r2Url = `${cachedFolderUrl}/part_${partId}.mp3`;
+                console.log("[AudioPlayback] Using cached Cloudflare folder URL for part", partId, ":", r2Url);
+                return r2Url;
             }
 
-            // Fallback to localStorage if Firebase is unavailable, but only if URL is valid
+            // Try localStorage next (persists across page reloads)
             const cloudflareKey = `toefl_section1_cloudflare_folder_url_${testType}_${String(setId || "default")}`;
             const savedFolderUrl = localStorage.getItem(cloudflareKey);
             
             if (savedFolderUrl && isValidCloudflareFolderUrl(savedFolderUrl)) {
-                // Build R2 URL from saved folder URL
                 const folderUrl = normalizeCloudAudioFolderUrl(savedFolderUrl);
                 if (folderUrl) {
+                    // Cache it in memory so we don't re-fetch for other parts
+                    cloudflareUrlCache[cacheKey] = folderUrl;
                     const r2Url = `${folderUrl}/part_${partId}.mp3`;
                     console.log("[AudioPlayback] Using saved Cloudflare folder URL (localStorage) for part", partId, ":", r2Url);
                     return r2Url;
@@ -1017,7 +1019,27 @@
                 localStorage.removeItem(cloudflareKey);
             }
 
-            // Fallback to Firebase Storage if no valid Cloudflare URL is saved
+            // Fetch from Firebase RTDB (with timeout to avoid blocking on part 2+)
+            try {
+                const firebaseFolderUrl = await getCloudflareAudioFolderUrlFromFirebase(setId);
+                if (firebaseFolderUrl) {
+                    const folderUrl = normalizeCloudAudioFolderUrl(firebaseFolderUrl);
+                    if (folderUrl && isValidCloudflareFolderUrl(folderUrl)) {
+                        // Cache it in memory for next part
+                        cloudflareUrlCache[cacheKey] = folderUrl;
+                        // Also save to localStorage for faster access next reload
+                        localStorage.setItem(cloudflareKey, firebaseFolderUrl);
+                        const r2Url = `${folderUrl}/part_${partId}.mp3`;
+                        console.log("[AudioPlayback] Using Cloudflare folder URL from Firebase for part", partId, ":", r2Url);
+                        return r2Url;
+                    }
+                }
+            } catch (error) {
+                console.warn("[AudioPlayback] Firebase fetch failed, will try fallback:", error);
+            }
+
+            // ONLY fall back to Firebase Storage if Cloudflare is completely unavailable
+            console.warn("[AudioPlayback] No valid Cloudflare URL found for setId", setId, "- using Firebase Storage fallback");
             if (!window.toeflStorage) return null;
             const fetchAudioUrl = typeof window.toeflStorage.getPlayableAudioUrl === "function"
                 ? window.toeflStorage.getPlayableAudioUrl.bind(window.toeflStorage)
