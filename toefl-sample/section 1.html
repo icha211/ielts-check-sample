@@ -299,7 +299,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="toefl-storage-sync.js?v=20260801a"></script>
+    <script src="toefl-storage-sync.js?v=20260801b"></script>
     <script>
         const PARTS = [
             { id: 1, name: "Part A: Short Dialogues", range: "Questions 1-30", start: 1, end: 30, instr: "<strong>Directions:</strong> In Part A, you will hear short conversations between two people. After each conversation, you will hear a question about the conversation. The conversations and questions will not be repeated. After you hear a question, choose the best answer." },
@@ -355,6 +355,7 @@
         let currentAudioObjectUrl = "";
         let currentAudioFallbackUrls = [];
         let audioAnalyzerReady = false;
+        let audioUrlsByPart = {};
         let waveformEnergyState = {
             bass: 0.06,
             lowMid: 0.06,
@@ -2432,9 +2433,8 @@
                 const parts = {};
                 PARTS.forEach((part) => {
                     const p = part.id;
-                    const audioElement = document.getElementById(`audio-player-${p}`);
                     parts[p] = {
-                        audio_cloudflare: audioElement?.src || "",
+                        audio_cloudflare: audioUrlsByPart[p] || "",
                         audio_firebase: draft.parts[p]?.audio_firebase || "",
                         answerKey: draft.parts[p]?.answerKey || "",
                         explanation: draft.parts[p]?.explanation || "",
@@ -3400,11 +3400,19 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                         ? `Compressed to ${uploadedMB.toFixed(1)} MB before upload.`
                         : `Uploaded at ${uploadedMB.toFixed(1)} MB.`;
                     
-                    // Update audio element with Cloudflare URL so it's captured when saving complete data
-                    const audioElement = document.getElementById(`audio-player-${partId}`);
-                    if (audioElement && uploadInfo.objectUrl) {
-                        audioElement.src = uploadInfo.objectUrl;
-                        console.log(`[AudioPlayback] Updated audio source for part ${partId} to Cloudflare URL:`, uploadInfo.objectUrl);
+                    // Store audio URL by part for saveSectionDraft to read
+                    if (uploadInfo.objectUrl) {
+                        audioUrlsByPart[partId] = uploadInfo.objectUrl;
+                        console.log(`[AudioPlayback] Stored Cloudflare URL for part ${partId}:`, uploadInfo.objectUrl);
+                    }
+                    
+                    // Update audio player if this is the active part
+                    if (isPartActive(partId)) {
+                        const audioElement = document.getElementById("cbt-audio-player");
+                        if (audioElement && uploadInfo.objectUrl) {
+                            audioElement.src = uploadInfo.objectUrl;
+                            console.log(`[AudioPlayback] Playing part ${partId} from Cloudflare URL:`, uploadInfo.objectUrl);
+                        }
                     }
                     
                     // After successful audio sync to Cloudflare, save complete listening data to RTDB
