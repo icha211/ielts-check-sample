@@ -4552,9 +4552,12 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             }
 
             const fileType = file.type || 'audio/mpeg';
+            const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
+            const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
+            let apiBase = apiBases[0] || '';
             
             // Step 1: Get signed upload URL from backend
-            const uploadUrlResponse = await fetch('/api/developer/upload-url', {
+            const uploadUrlResponse = await fetch(`${apiBase}/api/developer/upload-url`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -4593,7 +4596,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 formData.append('setId', currentSetId);
                 formData.append('partNumber', partNumber);
 
-                return await fetch('/api/developer/upload-proxy', {
+                return await fetch(`${apiBase}/api/developer/upload-proxy`, {
                     method: 'POST',
                     body: formData
                 });
@@ -4717,8 +4720,12 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             }
 
             try {
+                const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
+                const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
+                let apiBase = apiBases[0] || '';
+                
                 // Ensure folder exists in Cloudflare
-                const folderResponse = await fetch('/api/developer/ensure-audio-folder', {
+                const folderResponse = await fetch(`${apiBase}/api/developer/ensure-audio-folder`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ setId: currentSetId })
