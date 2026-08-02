@@ -45,6 +45,8 @@ class EvaluationResponse(BaseModel):
 class DeveloperUploadUrlRequest(BaseModel):
     file_name: str = Field(min_length=1, alias="fileName")
     file_type: str = Field(min_length=1, alias="fileType")
+    set_id: Optional[str] = Field(default=None, alias="setId")
+    part_number: Optional[int] = Field(default=None, alias="partNumber")
 
 
 class DeveloperUploadUrlResponse(BaseModel):

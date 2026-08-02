@@ -43,6 +43,22 @@ def _sanitize_set_id(value: str | None) -> str:
     return re.sub(r"[^A-Za-z0-9_-]+", "-", raw).strip("-")
 
 
+def _build_folder_object_key(set_id: str, part_number: int, file_name: str) -> str:
+    """Build object key for a folder-based audio upload.
+    
+    Format: audio/listening/sets/{setId}/part_{partNumber}.mp3
+    """
+    if not set_id or part_number < 1 or part_number > 3:
+        raise ValueError("setId and partNumber (1-3) are required for folder uploads")
+    
+    safe_name = _sanitize_filename(file_name)
+    _, ext = _split_extension(safe_name)
+    if ext not in _ALLOWED_EXTENSIONS:
+        ext = ".mp3"
+    
+    return f"audio/listening/sets/{set_id}/part_{part_number}{ext}"
+
+
 def _build_object_key(file_name: str) -> str:
     safe_name = _sanitize_filename(file_name)
     stem, ext = _split_extension(safe_name)
@@ -133,7 +149,15 @@ def create_upload_url(payload: DeveloperUploadUrlRequest) -> DeveloperUploadUrlR
     if ext and ext not in _ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Only .mp3 and .m4a files are supported")
 
-    object_key = _build_object_key(safe_name)
+    # If setId and partNumber are provided, use folder-based naming
+    if payload.set_id and payload.part_number is not None:
+        try:
+            object_key = _build_folder_object_key(payload.set_id, payload.part_number, safe_name)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    else:
+        # Fall back to timestamped naming for backward compatibility
+        object_key = _build_object_key(safe_name)
 
     try:
         client = _get_r2_client()
@@ -165,6 +189,8 @@ async def upload_audio_proxy(
     file: UploadFile = File(...),
     file_name: str | None = Form(default=None, alias="fileName"),
     file_type: str | None = Form(default=None, alias="fileType"),
+    set_id: str | None = Form(default=None, alias="setId"),
+    part_number: int | None = Form(default=None, alias="partNumber"),
 ) -> DeveloperUploadProxyResponse:
     incoming_name = str(file_name or file.filename or "audio-file")
     incoming_type = str(file_type or file.content_type or "audio/mpeg").strip().lower()
@@ -177,7 +203,15 @@ async def upload_audio_proxy(
     if ext and ext not in _ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Only .mp3 and .m4a files are supported")
 
-    object_key = _build_object_key(safe_name)
+    # If setId and partNumber are provided, use folder-based naming
+    if set_id and part_number is not None:
+        try:
+            object_key = _build_folder_object_key(set_id, part_number, safe_name)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+    else:
+        # Fall back to timestamped naming for backward compatibility
+        object_key = _build_object_key(safe_name)
 
     data = await file.read()
     if not data:

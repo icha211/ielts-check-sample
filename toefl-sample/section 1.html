@@ -3440,81 +3440,6 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             await saveSectionDraft();
         }
 
-        async function handleAudioUpload(event, partId = 1) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const dateInput = document.getElementById("set-date");
-            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
-            const setId = await ensureCurrentSetId(setDate);
-
-            const fileMB = (file.size / 1024 / 1024).toFixed(1);
-
-            // Keep audio strictly mapped per part: only preview in player if uploading for active part.
-            if (isPartActive(partId)) {
-                setAudioSourceFromBlob(file);
-            }
-            setAudioLabelReady(file.name, partId);
-
-            const fileLabel = document.getElementById(getAudioFileLabelId(partId));
-            if (fileLabel) { fileLabel.innerText = `${file.name} — uploading…`; fileLabel.style.color = "#b45309"; }
-
-            try {
-                // Save metadata, but do not block cloud upload when local persistence is unavailable.
-                await saveSectionMeta();
-
-                // Cloudflare-only path: upload through FastAPI presigned URL to R2.
-                let uploadInfo = false;
-                if (window.toeflStorage && typeof window.toeflStorage.saveAudioViaGateway === "function") {
-                    uploadInfo = await window.toeflStorage.saveAudioViaGateway(setId, file, partId);
-                }
-
-                if (uploadInfo && uploadInfo.success !== false) {
-                    if (fileLabel) { fileLabel.innerText = `${file.name} (synced)`; fileLabel.style.color = "green"; }
-                    const uploadedMB = Number(uploadInfo.uploadedSize || file.size) / 1024 / 1024;
-                    const sizeNote = uploadInfo.compressed
-                        ? `Compressed to ${uploadedMB.toFixed(1)} MB before upload.`
-                        : `Uploaded at ${uploadedMB.toFixed(1)} MB.`;
-                    
-                    // Store audio URL by part for saveSectionDraft to read
-                    if (uploadInfo.objectUrl) {
-                        audioUrlsByPart[partId] = uploadInfo.objectUrl;
-                        console.log(`[AudioPlayback] Stored Cloudflare URL for part ${partId}:`, uploadInfo.objectUrl);
-                    } else {
-                        console.warn(`[AudioUpload] No objectUrl returned! uploadInfo:`, uploadInfo);
-                    }
-                    
-                    // Update audio player if this is the active part
-                    if (isPartActive(partId)) {
-                        const audioElement = document.getElementById("cbt-audio-player");
-                        if (audioElement && uploadInfo.objectUrl) {
-                            audioElement.src = uploadInfo.objectUrl;
-                            console.log(`[AudioPlayback] Playing part ${partId} from Cloudflare URL:`, uploadInfo.objectUrl);
-                        }
-                    }
-                    
-                    // After successful audio sync to Cloudflare, save complete listening data to RTDB
-                    // This ensures audio URLs and all content sync globally
-                    console.log(`[AudioUpload] Calling saveSectionDraft with audioUrlsByPart for part ${partId}:`, audioUrlsByPart[partId]);
-                    await saveSectionDraft();
-                    console.log(`[AudioUpload] saveSectionDraft completed for part ${partId}`);
-                    
-                    alert(`Audio saved and synced to cloud (${fileMB} MB original).\n${sizeNote}\nIt will work on other devices.`);
-                } else {
-                    if (fileLabel) { fileLabel.innerText = `${file.name} (not synced)`; fileLabel.style.color = "#b91c1c"; }
-                    const detail = window.toeflStorage && typeof window.toeflStorage.getLastStorageError === "function"
-                        ? window.toeflStorage.getLastStorageError()
-                        : "";
-                    const detailText = detail ? `\n\nDetails: ${detail}` : "";
-                    alert(`Cloud sync failed.\n\nAudio was loaded for preview, but not uploaded to Cloudflare R2.\nOther devices cannot access it until upload succeeds.${detailText}`);
-                }
-            } catch (error) {
-                console.warn("[AudioPersistence] save failed:", error);
-                if (fileLabel) { fileLabel.innerText = `${file.name} (upload error)`; fileLabel.style.color = "#b91c1c"; }
-                alert("Upload failed. Please check API gateway (port 8000), Cloudflare R2 credentials, and internet connection.");
-            }
-        }
-
         async function handleTranscriptUpload(event, partId = 1) {
             const file = event.target.files && event.target.files[0];
             if (!file) return;
@@ -4634,7 +4559,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     fileName: file.name,
-                    fileType: fileType
+                    fileType: fileType,
+                    setId: currentSetId,
+                    partNumber: partNumber
                 })
             });
 
@@ -4663,6 +4590,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 formData.append('file', file);
                 formData.append('fileName', file.name);
                 formData.append('fileType', fileType);
+                formData.append('setId', currentSetId);
+                formData.append('partNumber', partNumber);
 
                 return await fetch('/api/developer/upload-proxy', {
                     method: 'POST',
