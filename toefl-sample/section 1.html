@@ -4739,7 +4739,19 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             let allValid = true;
 
             for (let i = 1; i <= 3; i++) {
-                const audioUrl = draft.parts?.[i]?.audio_cloudflare;
+                // Check both draft and Firebase for URLs
+                let audioUrl = draft.parts?.[i]?.audio_cloudflare;
+                
+                // Also check Firebase audio_urls if draft doesn't have it
+                if (!audioUrl && window.toeflStorage && typeof toeflStorage.getAudioRecordFromFirebase === 'function') {
+                    try {
+                        const fbRecord = await toeflStorage.getAudioRecordFromFirebase(currentSetId, i);
+                        audioUrl = fbRecord?.url;
+                    } catch (err) {
+                        console.warn(`[Validation] Failed to check Firebase for part ${i}:`, err.message);
+                    }
+                }
+
                 const statusEl = statusEls[i - 1];
                 
                 if (!statusEl) continue;
