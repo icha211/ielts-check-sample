@@ -1081,6 +1081,11 @@ class ToeflStorageSync {
          return baseOverride.replace(/\/+$/, "");
        }
 
+       const runtimeOverride = String((typeof window !== "undefined" && window.__TOEFL_API_GATEWAY_URL__) || "").trim();
+       if (runtimeOverride) {
+         return runtimeOverride.replace(/\/+$/, "");
+       }
+
        const runtimeHost = (typeof window !== "undefined" && window.location && window.location.hostname)
          ? window.location.hostname
          : "";
@@ -1151,6 +1156,8 @@ class ToeflStorageSync {
        const prepared = await this._prepareAudioUpload(audioBlob);
        const fileName = String(prepared.originalName || `part_${partId}.mp3`);
        const fileType = String(prepared.contentType || "audio/mpeg");
+       const fileExt = this._guessAudioExtension(fileName, fileType);
+       const objectKey = `audio/listening/sets/${setId}/part_${partId}.${fileExt}`;
        const apiBase = this._getApiGatewayBase();
 
        try {
@@ -1160,7 +1167,13 @@ class ToeflStorageSync {
              fetch(`${apiBase}/api/developer/upload-url`, {
                method: "POST",
                headers: { "Content-Type": "application/json" },
-               body: JSON.stringify({ fileName, fileType })
+               body: JSON.stringify({
+                 fileName,
+                 fileType,
+                 objectKey,
+                 setId,
+                 partNumber: partId
+               })
              }),
              new Promise((_, reject) => setTimeout(() => reject(new Error("API gateway request timeout after 10s")), 10000))
            ]);
@@ -1179,7 +1192,7 @@ class ToeflStorageSync {
 
          const payload = await presignRes.json();
          const uploadUrl = String(payload?.uploadUrl || "").trim();
-         let objectKey = String(payload?.objectKey || "").trim();
+         let responseObjectKey = String(payload?.objectKey || "").trim();
          let objectUrl = String(payload?.objectUrl || "").trim();
 
          if (!uploadUrl || !objectUrl) {
@@ -1205,6 +1218,9 @@ class ToeflStorageSync {
            form.append("file", prepared.blob, fileName);
            form.append("fileName", fileName);
            form.append("fileType", fileType);
+           form.append("objectKey", objectKey);
+           form.append("setId", setId);
+           form.append("partNumber", String(partId));
 
            const proxyRes = await fetch(`${apiBase}/api/developer/upload-proxy`, {
              method: "POST",
@@ -1218,7 +1234,7 @@ class ToeflStorageSync {
            }
 
            const proxyPayload = await proxyRes.json();
-           objectKey = String(proxyPayload?.objectKey || objectKey).trim();
+           responseObjectKey = String(proxyPayload?.objectKey || responseObjectKey).trim();
            objectUrl = String(proxyPayload?.objectUrl || objectUrl).trim();
            if (!objectUrl) {
              throw new Error("proxy upload response missing objectUrl");
@@ -1228,7 +1244,7 @@ class ToeflStorageSync {
 
          await this._put(`toefl_itp/audio_urls/${setId}/part_${partId}`, {
            url: objectUrl,
-           objectKey,
+           objectKey: responseObjectKey || objectKey,
            storageProvider: "r2",
            candidateUrls: [objectUrl],
            compressed: Boolean(prepared.compressed),
@@ -1250,7 +1266,7 @@ class ToeflStorageSync {
            partId,
            storageProvider: "r2",
            uploadPath: uploadedVia,
-           objectKey,
+           objectKey: responseObjectKey || objectKey,
            objectUrl,
            compressed: Boolean(prepared.compressed),
            originalSize: prepared.originalSize,
@@ -1753,4 +1769,3 @@ class ToeflStorageSync {
    }
 
    window.toeflStorage = window.toeflStorage || new ToeflStorageSync();
-
