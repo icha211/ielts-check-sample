@@ -256,6 +256,7 @@ class ToeflStorageSync {
       module: moduleId,
       label: String(item.label || ""),
       setDate,
+      cloudflare_folder: String(item.cloudflare_folder || item.cloudflareFolder || ""),
       difficulty: String(item.difficulty || "intermediate"),
       updatedAt: String(item.updatedAt || item._updatedAt || "")
     };
@@ -1752,5 +1753,4 @@ class ToeflStorageSync {
    }
 
    window.toeflStorage = window.toeflStorage || new ToeflStorageSync();
-
 
