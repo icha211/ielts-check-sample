@@ -4712,6 +4712,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             // Save to local storage immediately
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
 
+            // Step 5: Also update the global audioUrlsByPart so saveSectionDraft() picks it up
+            audioUrlsByPart[partNumber] = objectUrl;
+
             // Save draft to Firebase asynchronously (non-blocking)
             if (window.toeflStorage && typeof toeflStorage.saveDraftBySetId === 'function') {
                 toeflStorage.saveDraftBySetId(currentSetId, currentTestType, draft).catch((err) => {
