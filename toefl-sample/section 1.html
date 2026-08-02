@@ -4553,6 +4553,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             }
 
             const fileType = file.type || 'audio/mpeg';
+            const fileExt = String(file.name || '').toLowerCase().endsWith('.m4a') ? '.m4a' : '.mp3';
+            const objectKey = `audio/listening/sets/${currentSetId}/part_${partNumber}${fileExt}`;
             const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
             const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
             let apiBase = apiBases[0] || '';
@@ -4564,6 +4566,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 body: JSON.stringify({
                     fileName: file.name,
                     fileType: fileType,
+                    objectKey: objectKey,
                     setId: currentSetId,
                     partNumber: partNumber
                 })
@@ -4574,7 +4577,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status} ${errorText}`);
             }
 
-            const { uploadUrl, objectKey, objectUrl } = await uploadUrlResponse.json();
+            const { uploadUrl, objectKey: responseObjectKey, objectUrl } = await uploadUrlResponse.json();
             
             if (!uploadUrl || !objectUrl) {
                 throw new Error('Backend returned invalid upload URL or object URL');
@@ -4594,6 +4597,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 formData.append('file', file);
                 formData.append('fileName', file.name);
                 formData.append('fileType', fileType);
+                formData.append('objectKey', objectKey);
                 formData.append('setId', currentSetId);
                 formData.append('partNumber', partNumber);
 
