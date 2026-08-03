@@ -131,7 +131,13 @@ def _validate_allowed_audio_object_key(object_key: str) -> str:
 
 
 def _build_proxy_audio_url(request: Request, object_key: str) -> str:
-    base = str(request.base_url).rstrip("/")
+    forwarded_proto = str(request.headers.get("x-forwarded-proto") or "").strip().split(",")[0].strip()
+    forwarded_host = str(request.headers.get("x-forwarded-host") or request.headers.get("host") or "").strip().split(",")[0].strip()
+    if forwarded_host:
+        scheme = forwarded_proto or request.url.scheme or "https"
+        base = f"{scheme}://{forwarded_host}".rstrip("/")
+    else:
+        base = str(request.base_url).rstrip("/")
     return f"{base}{settings.api_prefix}/developer/audio-proxy?objectKey={quote(object_key)}"
 
 
