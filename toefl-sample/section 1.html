@@ -355,6 +355,8 @@
         let audioToggleLockUntil = 0;
         let currentAudioObjectUrl = "";
         let currentAudioFallbackUrls = [];
+        let audioFallbackAttempted = false;
+        let currentAudioPlaybackSource = "unknown";
         let audioAnalyzerReady = false;
         let audioUrlsByPart = {};
         let audioFirebaseByPart = {};
@@ -613,9 +615,63 @@
             audio.preload = "auto";
             audio.load();
             audio.currentTime = 0;
+            audioFallbackAttempted = false;
+            currentAudioPlaybackSource = "local_blob";
             audioIsLocked = false;
             resetWebAudioAnalyzerIfSourceChanged();
             updateAudioShellStatus();
+        }
+
+        function inferPlaybackSource(url = "") {
+            const normalized = String(url || "").toLowerCase();
+            if (normalized.includes("/audio-proxy?")) return "proxy";
+            if (normalized.includes("r2.dev") || normalized.includes("cloudflare") || normalized.includes("audio/listening/")) return "direct";
+            if (normalized.includes("firebasestorage")) return "firebase";
+            if (normalized.startsWith("blob:")) return "local_blob";
+            return "unknown";
+        }
+
+        function getActivePartKey(partId = activePartId || 1) {
+            const normalized = Number(partId || 1);
+            if (!AUDIO_PART_IDS.includes(normalized)) return "part_1";
+            return `part_${normalized}`;
+        }
+
+        async function sendAudioPlaybackTelemetry(eventName, payload = {}) {
+            const allowedEvents = ["loadeddata", "fallback_activated", "audio_error"];
+            if (!allowedEvents.includes(String(eventName))) return;
+
+            const partId = Number(payload.partId || activePartId || 1);
+            if (!AUDIO_PART_IDS.includes(partId)) return;
+
+            const attemptedUrl = String(payload.url || "").trim();
+            if (!attemptedUrl) return;
+
+            const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
+            const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
+            const body = {
+                event: eventName,
+                setId: String(payload.setId || currentSetId || ""),
+                partKey: getActivePartKey(partId),
+                source: String(payload.source || inferPlaybackSource(attemptedUrl) || "unknown"),
+                attemptedUrl,
+                timestamp: new Date().toISOString(),
+                userAgent: navigator.userAgent || ""
+            };
+
+            for (const apiBase of apiBases) {
+                try {
+                    await fetch(`${apiBase}/api/developer/audio-playback-event`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(body),
+                        keepalive: true,
+                    });
+                    return;
+                } catch {
+                    // Try next candidate.
+                }
+            }
         }
 
         function resetWebAudioAnalyzerIfSourceChanged() {
@@ -644,7 +700,7 @@
             }
         }
 
-        function setAudioSourceFromUrl(url, setId = currentSetId, partId = activePartId || 1) {
+        function setAudioSourceFromUrl(url, setId = currentSetId, partId = activePartId || 1, fallbackUrls = []) {
             const audio = document.getElementById("cbt-audio-player");
             if (!audio || !url) return;
             revokeCurrentAudioUrl();
@@ -652,10 +708,19 @@
             
             // Clear old fallback URLs before loading new ones
             currentAudioFallbackUrls = [];
+            audioFallbackAttempted = false;
+            currentAudioPlaybackSource = inferPlaybackSource(url);
+
+            const normalizedFallbacks = Array.isArray(fallbackUrls)
+                ? fallbackUrls.filter((item) => item && item !== url)
+                : [];
+            if (normalizedFallbacks.length > 0) {
+                currentAudioFallbackUrls = normalizedFallbacks;
+            }
             
             // Only get fallback candidates if url is a Cloudflare URL (not Firebase Storage)
             // This prevents mixing old Firebase fallbacks with new Cloudflare sources
-            if (url && url.includes("r2.dev")) {
+            if (currentAudioFallbackUrls.length === 0 && url && url.includes("r2.dev")) {
                 if (window.toeflStorage && typeof toeflStorage.getAudioUrlCandidates === "function" && setId) {
                     const candidates = toeflStorage.getAudioUrlCandidates(setId, partId, url);
                     currentAudioFallbackUrls = (candidates || []).filter((item) => item && item !== url);
@@ -698,6 +763,13 @@
                 audio.currentTime = 0;
                 try {
                     await audio.play();
+                    currentAudioPlaybackSource = inferPlaybackSource(nextUrl);
+                    await sendAudioPlaybackTelemetry("fallback_activated", {
+                        partId: activePartId || 1,
+                        setId: currentSetId,
+                        source: currentAudioPlaybackSource,
+                        url: nextUrl,
+                    });
                     updateAudioShellStatus();
                     return true;
                 } catch {
@@ -709,6 +781,10 @@
         }
 
         async function restoreAudioForCurrentSet(partId = activePartId || 1) {
+            if (!AUDIO_PART_IDS.includes(Number(partId || 1))) {
+                return false;
+            }
+
             if (!currentSetId) {
                 AUDIO_PART_IDS.forEach((id) => setAudioLabelEmpty(id));
                 if (isPartActive(partId)) clearAudioSource();
@@ -716,11 +792,43 @@
             }
 
             try {
-                // Try Cloudflare R2 first (cross-machine sync)
                 const storageUrl = await getCloudAudioUrl(currentSetId, partId);
+                let fallbackUrls = [];
+                if (window.toeflStorage && typeof toeflStorage.getAudioRecordFromFirebase === "function") {
+                    const record = await toeflStorage.getAudioRecordFromFirebase(currentSetId, partId).catch(() => null);
+                    const objectKey = String(record?.objectKey || "").trim();
+                    const directUrl = String(record?.url || "").trim();
+
+                    if (objectKey) {
+                        const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
+                        const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
+                        for (const apiBase of apiBases) {
+                            try {
+                                const response = await fetch(`${apiBase}/api/developer/audio-url?objectKey=${encodeURIComponent(objectKey)}`, { method: "GET" });
+                                if (!response.ok) continue;
+                                const payload = await response.json().catch(() => ({}));
+                                const proxyUrl = String(payload?.audioUrl || "").trim();
+                                const fallbackUrl = String(payload?.fallbackUrl || "").trim();
+                                if (proxyUrl) {
+                                    fallbackUrls = [fallbackUrl, directUrl, storageUrl].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i);
+                                    if (isPartActive(partId)) {
+                                        setAudioSourceFromUrl(proxyUrl, currentSetId, partId, fallbackUrls);
+                                    }
+                                    setAudioLabelReady(`cloud audio`, partId);
+                                    return true;
+                                }
+                            } catch {
+                                // Try next candidate.
+                            }
+                        }
+                    }
+
+                    fallbackUrls = [directUrl].filter(Boolean);
+                }
+
                 if (storageUrl) {
                     if (isPartActive(partId)) {
-                        setAudioSourceFromUrl(storageUrl, currentSetId, partId);
+                        setAudioSourceFromUrl(storageUrl, currentSetId, partId, fallbackUrls);
                     }
                     setAudioLabelReady(`cloud audio`, partId);
                     return true;
@@ -774,8 +882,7 @@
 
             await Promise.all(AUDIO_PART_IDS.map(async (partId) => {
                 try {
-                    // Try Cloudflare R2 first
-                    const storageUrl = await window.toeflStorage.getPlayableAudioUrl(currentSetId, partId).catch(() => null);
+                    const storageUrl = await getCloudAudioUrl(currentSetId, partId);
                     if (storageUrl) {
                         setAudioLabelReady(`cloud saved`, partId);
                         return;
@@ -2191,6 +2298,12 @@
                 startWaveformRenderer();
                 updateAudioVisualPlayingState();
                 updateAudioShellStatus();
+                void sendAudioPlaybackTelemetry("loadeddata", {
+                    partId: activePartId || 1,
+                    setId: currentSetId,
+                    source: currentAudioPlaybackSource,
+                    url: String(audio.currentSrc || audio.src || ""),
+                });
             });
             audio.addEventListener("ended", () => {
                 audioIsLocked = false;
@@ -2209,12 +2322,26 @@
                     4: "source not supported"
                 }[code] || "unknown";
                 void (async () => {
+                    const currentSrc = String(audio.currentSrc || audio.src || "");
+                    await sendAudioPlaybackTelemetry("audio_error", {
+                        partId: activePartId || 1,
+                        setId: currentSetId,
+                        source: currentAudioPlaybackSource,
+                        url: currentSrc || "about:blank",
+                    });
+
+                    if (audioFallbackAttempted) {
+                        alert(`Audio error (${codeText}). Please re-upload this part audio in Developer mode.`);
+                        updateAudioShellStatus();
+                        return;
+                    }
+
+                    audioFallbackAttempted = true;
                     // First, try fallback URLs (Firebase Storage alternatives)
                     let recovered = await tryFallbackAudioSource();
                     
                     // If fallback failed and current source is a Cloudflare URL, invalidate it and try Firebase directly
                     if (!recovered) {
-                        const currentSrc = String(audio.currentSrc || audio.src || "");
                         if (currentSrc && currentSrc.includes("r2.dev")) {
                             console.warn("[AudioPlayback] Cloudflare URL failed (", codeText, "), invalidating cache and falling back to Firebase Storage:", currentSrc);
                             
@@ -2228,14 +2355,24 @@
                             delete cloudflareUrlCache[cacheKey];
                             
                             // Now try Firebase Storage as last resort
-                            if (window.toeflStorage && typeof toeflStorage.getPlayableAudioUrl === "function") {
+                            if (window.toeflStorage && (typeof toeflStorage.getPlayableAudioFromFirebase === "function" || typeof toeflStorage.getAudioFromFirebase === "function")) {
                                 const partId = activePartId || 1;
-                                const firebaseUrl = await toeflStorage.getPlayableAudioUrl(currentSetId, partId).catch(() => null);
+                                const fetchFn = typeof toeflStorage.getPlayableAudioFromFirebase === "function"
+                                    ? toeflStorage.getPlayableAudioFromFirebase.bind(toeflStorage)
+                                    : toeflStorage.getAudioFromFirebase.bind(toeflStorage);
+                                const firebaseUrl = await fetchFn(currentSetId, partId).catch(() => null);
                                 if (firebaseUrl) {
                                     audio.src = firebaseUrl;
+                                    currentAudioPlaybackSource = inferPlaybackSource(firebaseUrl);
                                     audio.currentTime = 0;
                                     try {
                                         await audio.play();
+                                        await sendAudioPlaybackTelemetry("fallback_activated", {
+                                            partId,
+                                            setId: currentSetId,
+                                            source: currentAudioPlaybackSource,
+                                            url: firebaseUrl,
+                                        });
                                         console.log("[AudioPlayback] Successfully switched to Firebase Storage fallback");
                                         recovered = true;
                                     } catch {

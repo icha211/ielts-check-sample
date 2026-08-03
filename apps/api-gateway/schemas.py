@@ -74,3 +74,13 @@ class DeveloperEnsureAudioFolderResponse(BaseModel):
     folder_url: str = Field(alias="folderUrl")
     marker_key: str = Field(alias="markerKey")
     created_at: str = Field(alias="createdAt")
+
+
+class PlaybackTelemetryEvent(BaseModel):
+    event: Literal["loadeddata", "fallback_activated", "audio_error"]
+    set_id: str = Field(min_length=1, alias="setId")
+    part_key: str = Field(min_length=1, alias="partKey")
+    source: str = Field(min_length=1)
+    attempted_url: str = Field(min_length=1, alias="attemptedUrl")
+    timestamp: str = Field(min_length=1)
+    user_agent: str = Field(default="", alias="userAgent")

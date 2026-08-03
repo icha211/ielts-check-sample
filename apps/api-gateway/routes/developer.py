@@ -7,7 +7,8 @@ from urllib.parse import quote
 import boto3
 from botocore.client import Config
 from botocore.exceptions import BotoCoreError, ClientError
-from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, Query, Request, UploadFile
+from fastapi.responses import StreamingResponse
 
 from config import build_r2_endpoint, settings
 from schemas import (
@@ -16,12 +17,18 @@ from schemas import (
     DeveloperUploadProxyResponse,
     DeveloperUploadUrlRequest,
     DeveloperUploadUrlResponse,
+    PlaybackTelemetryEvent,
 )
 
 
 router = APIRouter(prefix="/developer", tags=["developer"])
 
 _ALLOWED_EXTENSIONS = {".mp3", ".m4a"}
+_ALLOWED_AUDIO_PARTS = {1, 2, 3}
+_ALLOWED_AUDIO_OBJECT_KEY_RE = re.compile(
+    r"^audio/listening/sets/[A-Za-z0-9_-]+/part_([0-9]+)\.(mp3|m4a)$",
+    re.IGNORECASE,
+)
 DEFAULT_R2_PUBLIC_BASE_URL = "https://pub-1975cb14188340238a5d6d34750e4880.r2.dev"
 
 
@@ -48,7 +55,7 @@ def _build_folder_object_key(set_id: str, part_number: int, file_name: str) -> s
     
     Format: audio/listening/sets/{setId}/part_{partNumber}.mp3
     """
-    if not set_id or part_number < 1 or part_number > 3:
+    if not set_id or part_number not in _ALLOWED_AUDIO_PARTS:
         raise ValueError("setId and partNumber (1-3) are required for folder uploads")
     
     safe_name = _sanitize_filename(file_name)
@@ -105,6 +112,27 @@ def _build_folder_url(set_id: str) -> str:
     folder_path = f"audio/listening/sets/{set_id}/"
     base = (settings.r2_public_base_url or DEFAULT_R2_PUBLIC_BASE_URL).rstrip("/")
     return f"{base}/{quote(folder_path)}"
+
+
+def _validate_allowed_audio_object_key(object_key: str) -> str:
+    key = str(object_key or "").strip()
+    if not key:
+        raise HTTPException(status_code=400, detail="objectKey is required")
+
+    match = _ALLOWED_AUDIO_OBJECT_KEY_RE.match(key)
+    if not match:
+        raise HTTPException(status_code=400, detail="objectKey must match audio/listening/sets/{setId}/part_{1-3}.(mp3|m4a)")
+
+    part_no = int(match.group(1))
+    if part_no not in _ALLOWED_AUDIO_PARTS:
+        raise HTTPException(status_code=400, detail="Only part_1..part_3 are playable")
+
+    return key
+
+
+def _build_proxy_audio_url(request: Request, object_key: str) -> str:
+    base = str(request.base_url).rstrip("/")
+    return f"{base}{settings.api_prefix}/developer/audio-proxy?objectKey={quote(object_key)}"
 
 
 @router.post("/ensure-audio-folder", response_model=DeveloperEnsureAudioFolderResponse)
@@ -240,31 +268,82 @@ async def upload_audio_proxy(
 
 @router.get("/audio-url")
 def get_audio_url(
+    request: Request,
     object_key: str = Query(..., alias="objectKey", min_length=1),
 ):
-    """Get public URL for an audio file in R2."""
-    # Return the public R2 URL directly - no need for presigned URLs for public files
-    public_url = _build_object_url(object_key)
+    """Get preferred proxy URL and direct fallback URL for a playable audio part."""
+    key = _validate_allowed_audio_object_key(object_key)
+    public_url = _build_object_url(key)
+    proxy_url = _build_proxy_audio_url(request, key)
     
     return {
-        "objectKey": object_key,
-        "audioUrl": public_url,
+        "objectKey": key,
+        "audioUrl": proxy_url,
+        "fallbackUrl": public_url,
+        "source": "proxy-first",
         "expiresIn": 3600,  # For compatibility, but public URLs don't expire
     }
+
+
+@router.get("/audio-proxy")
+def stream_audio_proxy(
+    object_key: str = Query(..., alias="objectKey", min_length=1),
+    range_header: str | None = Header(default=None, alias="Range"),
+):
+    """Proxy audio bytes from R2 and preserve byte-range seeking support."""
+    key = _validate_allowed_audio_object_key(object_key)
+
+    get_params = {
+        "Bucket": settings.r2_bucket_name,
+        "Key": key,
+    }
+    if range_header:
+        get_params["Range"] = range_header
+
+    try:
+        client = _get_r2_client()
+        response = client.get_object(**get_params)
+    except HTTPException:
+        raise
+    except ClientError as exc:
+        code = str(exc.response.get("Error", {}).get("Code", ""))
+        if code in {"NoSuchKey", "404", "NotFound"}:
+            raise HTTPException(status_code=404, detail="Audio object not found") from exc
+        if code in {"InvalidRange", "416"}:
+            raise HTTPException(status_code=416, detail="Invalid Range") from exc
+        raise HTTPException(status_code=500, detail=f"Failed to fetch audio object: {exc}") from exc
+    except BotoCoreError as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch audio object: {exc}") from exc
+
+    status_code = 206 if range_header and response.get("ContentRange") else 200
+    content_type = str(response.get("ContentType") or "audio/mpeg")
+    headers = {
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "public, max-age=300",
+        "Content-Type": content_type,
+    }
+    if response.get("ContentLength") is not None:
+        headers["Content-Length"] = str(response["ContentLength"])
+    if response.get("ContentRange"):
+        headers["Content-Range"] = str(response["ContentRange"])
+
+    stream = response["Body"].iter_chunks(chunk_size=64 * 1024)
+    return StreamingResponse(stream, status_code=status_code, headers=headers, media_type=content_type)
 
 
 @router.get("/audio-exists")
 def get_audio_exists(
     object_key: str = Query(..., alias="objectKey", min_length=1),
 ):
+    key = _validate_allowed_audio_object_key(object_key)
     try:
         client = _get_r2_client()
         client.head_object(
             Bucket=settings.r2_bucket_name,
-            Key=object_key,
+            Key=key,
         )
         return {
-            "objectKey": object_key,
+            "objectKey": key,
             "exists": True,
             "error": "",
         }
@@ -274,13 +353,23 @@ def get_audio_exists(
         code = str(exc.response.get("Error", {}).get("Code", ""))
         if code in {"404", "NoSuchKey", "NotFound"}:
             return {
-                "objectKey": object_key,
+                "objectKey": key,
                 "exists": False,
                 "error": "",
             }
         raise HTTPException(status_code=500, detail=f"Failed to check audio object: {exc}") from exc
     except BotoCoreError as exc:
         raise HTTPException(status_code=500, detail=f"Failed to check audio object: {exc}") from exc
+
+
+@router.post("/audio-playback-event")
+def record_audio_playback_event(payload: PlaybackTelemetryEvent):
+    data = payload.model_dump(by_alias=True)
+    print("[AudioTelemetry]", data)
+    return {
+        "ok": True,
+        "received": data["event"],
+    }
 
 
 @router.get("/audio-folder-contents")
