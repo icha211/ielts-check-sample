@@ -1156,51 +1156,76 @@ class ToeflStorageSync {
        const prepared = await this._prepareAudioUpload(audioBlob);
        const fileName = String(prepared.originalName || `part_${partId}.mp3`);
        const fileType = String(prepared.contentType || "audio/mpeg");
-       const fileExt = this._guessAudioExtension(fileName, fileType);
-       const objectKey = `audio/listening/sets/${setId}/part_${partId}.${fileExt}`;
+       const objectKey = `audio/listening/sets/${setId}/part_${partId}.mp3`;
+       const canonicalObjectUrl = `https://pub-1975cb14188340238a5d6d34750e4880.r2.dev/${objectKey}`;
        const apiBase = this._getApiGatewayBase();
 
        try {
-         let presignRes;
+         let responseObjectKey = objectKey;
+         let objectUrl = canonicalObjectUrl;
+         let uploadedVia = "proxy-upload";
+
+         // Proxy-first path for strict server-side key preservation.
          try {
-           presignRes = await Promise.race([
-             fetch(`${apiBase}/api/developer/upload-url`, {
+           const form = new FormData();
+           form.append("file", prepared.blob, fileName);
+           form.append("fileName", fileName);
+           form.append("fileType", fileType);
+           form.append("objectKey", objectKey);
+           form.append("setId", setId);
+           form.append("partNumber", String(partId));
+
+           const proxyRes = await Promise.race([
+             fetch(`${apiBase}/api/developer/upload-proxy`, {
                method: "POST",
-               headers: { "Content-Type": "application/json" },
-               body: JSON.stringify({
-                 fileName,
-                 fileType,
-                 objectKey,
-                 setId,
-                 partNumber: partId
-               })
+               body: form
              }),
              new Promise((_, reject) => setTimeout(() => reject(new Error("API gateway request timeout after 10s")), 10000))
            ]);
+
+           if (!proxyRes.ok) {
+             const detail = await proxyRes.text().catch(() => "");
+             throw new Error(detail || `upload-proxy request failed (${proxyRes.status})`);
+           }
+
+           const proxyPayload = await proxyRes.json();
+           responseObjectKey = String(proxyPayload?.objectKey || objectKey).trim();
+           objectUrl = String(proxyPayload?.objectUrl || canonicalObjectUrl).trim() || canonicalObjectUrl;
+           if (responseObjectKey !== objectKey) {
+             throw new Error(`Endpoint rewrote objectKey: expected ${objectKey}, got ${responseObjectKey}`);
+           }
          } catch (fetchError) {
            const msg = String(fetchError?.message || fetchError || "");
            if (msg.includes("timeout")) {
              throw new Error(`API gateway not responding at ${apiBase}. Ensure gateway is running (python -m uvicorn apps.api-gateway.main:app --port 8000 --reload)`);
            }
-           throw new Error(`Failed to reach API gateway at ${apiBase}: ${msg}`);
-         }
+           // Fallback path: signed URL upload while preserving canonical key.
+           uploadedVia = "presigned-put";
 
-         if (!presignRes.ok) {
-           const detail = await presignRes.text().catch(() => "");
-           throw new Error(detail || `upload-url request failed (${presignRes.status})`);
-         }
+           const presignRes = await fetch(`${apiBase}/api/developer/upload-url`, {
+             method: "POST",
+             headers: { "Content-Type": "application/json" },
+             body: JSON.stringify({
+               objectKey,
+               fileName,
+               fileType
+             })
+           });
+           if (!presignRes.ok) {
+             const detail = await presignRes.text().catch(() => "");
+             throw new Error(`Failed to reach API gateway at ${apiBase}: ${detail || msg}`);
+           }
 
-         const payload = await presignRes.json();
-         const uploadUrl = String(payload?.uploadUrl || "").trim();
-         let responseObjectKey = String(payload?.objectKey || "").trim();
-         let objectUrl = String(payload?.objectUrl || "").trim();
+           const payload = await presignRes.json();
+           const uploadUrl = String(payload?.uploadUrl || "").trim();
+           responseObjectKey = String(payload?.objectKey || objectKey).trim();
+           if (!uploadUrl) {
+             throw new Error("upload-url response missing uploadUrl");
+           }
+           if (responseObjectKey !== objectKey) {
+             throw new Error(`Endpoint rewrote objectKey: expected ${objectKey}, got ${responseObjectKey}`);
+           }
 
-         if (!uploadUrl || !objectUrl) {
-           throw new Error("upload-url response missing uploadUrl/objectUrl");
-         }
-
-         let uploadedVia = "presigned-put";
-         try {
            const putRes = await fetch(uploadUrl, {
              method: "PUT",
              headers: {
@@ -1212,41 +1237,15 @@ class ToeflStorageSync {
            if (!putRes.ok) {
              throw new Error(`R2 upload failed (${putRes.status})`);
            }
-         } catch (putError) {
-           // Fallback path for browsers that block direct PUT because of CORS/policy.
-           const form = new FormData();
-           form.append("file", prepared.blob, fileName);
-           form.append("fileName", fileName);
-           form.append("fileType", fileType);
-           form.append("objectKey", objectKey);
-           form.append("setId", setId);
-           form.append("partNumber", String(partId));
 
-           const proxyRes = await fetch(`${apiBase}/api/developer/upload-proxy`, {
-             method: "POST",
-             body: form
-           });
-
-           if (!proxyRes.ok) {
-             const proxyDetail = await proxyRes.text().catch(() => "");
-             const basePutError = String(putError?.message || putError || "Direct upload failed");
-             throw new Error(`${basePutError}; proxy upload failed (${proxyRes.status}) ${proxyDetail}`.trim());
-           }
-
-           const proxyPayload = await proxyRes.json();
-           responseObjectKey = String(proxyPayload?.objectKey || responseObjectKey).trim();
-           objectUrl = String(proxyPayload?.objectUrl || objectUrl).trim();
-           if (!objectUrl) {
-             throw new Error("proxy upload response missing objectUrl");
-           }
-           uploadedVia = "proxy-upload";
+           objectUrl = canonicalObjectUrl;
          }
 
          await this._put(`toefl_itp/audio_urls/${setId}/part_${partId}`, {
-           url: objectUrl,
+           url: canonicalObjectUrl,
            objectKey: responseObjectKey || objectKey,
            storageProvider: "r2",
-           candidateUrls: [objectUrl],
+           candidateUrls: [canonicalObjectUrl],
            compressed: Boolean(prepared.compressed),
            originalName: prepared.originalName,
            originalSize: prepared.originalSize,
@@ -1267,7 +1266,7 @@ class ToeflStorageSync {
            storageProvider: "r2",
            uploadPath: uploadedVia,
            objectKey: responseObjectKey || objectKey,
-           objectUrl,
+           objectUrl: canonicalObjectUrl,
            compressed: Boolean(prepared.compressed),
            originalSize: prepared.originalSize,
            uploadedSize: prepared.uploadedSize,

@@ -43,8 +43,10 @@ class EvaluationResponse(BaseModel):
 
 
 class DeveloperUploadUrlRequest(BaseModel):
+    object_key: str = Field(min_length=1, alias="objectKey")
     file_name: str = Field(min_length=1, alias="fileName")
     file_type: str = Field(min_length=1, alias="fileType")
+    # Backward-compatible optional fields (ignored by strict canonical flow).
     set_id: Optional[str] = Field(default=None, alias="setId")
     part_number: Optional[int] = Field(default=None, alias="partNumber")
 

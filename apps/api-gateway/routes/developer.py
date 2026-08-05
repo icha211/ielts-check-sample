@@ -23,10 +23,10 @@ from schemas import (
 
 router = APIRouter(prefix="/developer", tags=["developer"])
 
-_ALLOWED_EXTENSIONS = {".mp3", ".m4a"}
+_ALLOWED_EXTENSIONS = {".mp3"}
 _ALLOWED_AUDIO_PARTS = {1, 2, 3}
 _ALLOWED_AUDIO_OBJECT_KEY_RE = re.compile(
-    r"^audio/listening/sets/[A-Za-z0-9_-]+/part_([0-9]+)\.(mp3|m4a)$",
+    r"^audio/listening/sets/[A-Za-z0-9_-]+/part_([0-9]+)\.mp3$",
     re.IGNORECASE,
 )
 DEFAULT_R2_PUBLIC_BASE_URL = "https://pub-1975cb14188340238a5d6d34750e4880.r2.dev"
@@ -121,7 +121,7 @@ def _validate_allowed_audio_object_key(object_key: str) -> str:
 
     match = _ALLOWED_AUDIO_OBJECT_KEY_RE.match(key)
     if not match:
-        raise HTTPException(status_code=400, detail="objectKey must match audio/listening/sets/{setId}/part_{1-3}.(mp3|m4a)")
+        raise HTTPException(status_code=400, detail="objectKey must match audio/listening/sets/{setId}/part_{1-3}.mp3")
 
     part_no = int(match.group(1))
     if part_no not in _ALLOWED_AUDIO_PARTS:
@@ -178,20 +178,8 @@ def create_upload_url(payload: DeveloperUploadUrlRequest) -> DeveloperUploadUrlR
     if not file_type.startswith("audio/"):
         raise HTTPException(status_code=400, detail="fileType must be an audio MIME type")
 
-    safe_name = _sanitize_filename(payload.file_name)
-    _, ext = _split_extension(safe_name)
-    if ext and ext not in _ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail="Only .mp3 and .m4a files are supported")
-
-    # If setId and partNumber are provided, use folder-based naming
-    if payload.set_id and payload.part_number is not None:
-        try:
-            object_key = _build_folder_object_key(payload.set_id, payload.part_number, safe_name)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-    else:
-        # Fall back to timestamped naming for backward compatibility
-        object_key = _build_object_key(safe_name)
+    # Canonical contract: caller must provide exact playable objectKey.
+    object_key = _validate_allowed_audio_object_key(payload.object_key)
 
     try:
         client = _get_r2_client()
@@ -221,6 +209,7 @@ def create_upload_url(payload: DeveloperUploadUrlRequest) -> DeveloperUploadUrlR
 @router.post("/upload-proxy", response_model=DeveloperUploadProxyResponse)
 async def upload_audio_proxy(
     file: UploadFile = File(...),
+    object_key: str = Form(..., alias="objectKey"),
     file_name: str | None = Form(default=None, alias="fileName"),
     file_type: str | None = Form(default=None, alias="fileType"),
     set_id: str | None = Form(default=None, alias="setId"),
@@ -232,20 +221,8 @@ async def upload_audio_proxy(
     if not incoming_type.startswith("audio/"):
         raise HTTPException(status_code=400, detail="fileType must be an audio MIME type")
 
-    safe_name = _sanitize_filename(incoming_name)
-    _, ext = _split_extension(safe_name)
-    if ext and ext not in _ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail="Only .mp3 and .m4a files are supported")
-
-    # If setId and partNumber are provided, use folder-based naming
-    if set_id and part_number is not None:
-        try:
-            object_key = _build_folder_object_key(set_id, part_number, safe_name)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-    else:
-        # Fall back to timestamped naming for backward compatibility
-        object_key = _build_object_key(safe_name)
+    # Canonical contract: objectKey comes from frontend mapping (set + part), never rewritten.
+    canonical_object_key = _validate_allowed_audio_object_key(object_key)
 
     data = await file.read()
     if not data:
@@ -255,7 +232,7 @@ async def upload_audio_proxy(
         client = _get_r2_client()
         client.put_object(
             Bucket=settings.r2_bucket_name,
-            Key=object_key,
+            Key=canonical_object_key,
             Body=data,
             ContentType=incoming_type,
         )
@@ -265,8 +242,8 @@ async def upload_audio_proxy(
         raise HTTPException(status_code=500, detail=f"Failed to upload file to R2: {exc}") from exc
 
     return DeveloperUploadProxyResponse(
-        objectKey=object_key,
-        objectUrl=_build_object_url(object_key),
+        objectKey=canonical_object_key,
+        objectUrl=_build_object_url(canonical_object_key),
         contentType=incoming_type,
         size=len(data),
     )

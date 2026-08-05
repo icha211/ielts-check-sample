@@ -4689,63 +4689,88 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 throw new Error('setId is required');
             }
 
+            if (!AUDIO_PART_IDS.includes(Number(partNumber || 0))) {
+                throw new Error(`Unsupported part number: ${partNumber}`);
+            }
+
             const fileType = file.type || 'audio/mpeg';
-            const fileExt = String(file.name || '').toLowerCase().endsWith('.m4a') ? '.m4a' : '.mp3';
-            const objectKey = `audio/listening/sets/${currentSetId}/part_${partNumber}${fileExt}`;
+            const objectKey = `audio/listening/sets/${currentSetId}/part_${partNumber}.mp3`;
+            const canonicalObjectUrl = `${DEFAULT_R2_PUBLIC_BASE_URL}/${objectKey}`;
             const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
             const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
             let apiBase = apiBases[0] || '';
-            
-            // Step 1: Get signed upload URL from backend
-            const uploadUrlResponse = await fetch(`${apiBase}/api/developer/upload-url`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    fileName: file.name,
-                    fileType: fileType,
-                    objectKey: objectKey,
-                    setId: currentSetId,
-                    partNumber: partNumber
-                })
-            });
 
-            if (!uploadUrlResponse.ok) {
-                const errorText = await uploadUrlResponse.text();
-                throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status} ${errorText}`);
-            }
+            let objectUrl = canonicalObjectUrl;
+            let uploadMode = 'proxy';
 
-            const { uploadUrl, objectKey: responseObjectKey, objectUrl } = await uploadUrlResponse.json();
-            
-            if (!uploadUrl || !objectUrl) {
-                throw new Error('Backend returned invalid upload URL or object URL');
-            }
+            // Step 1: proxy-first upload to enforce exact server-side key write.
+            const proxyFormData = new FormData();
+            proxyFormData.append('file', file);
+            proxyFormData.append('fileName', file.name);
+            proxyFormData.append('fileType', fileType);
+            proxyFormData.append('objectKey', objectKey);
+            proxyFormData.append('setId', currentSetId);
+            proxyFormData.append('partNumber', partNumber);
 
-            // Step 2: Upload file bytes directly to Cloudflare R2 via signed URL
-            const putResponse = await fetch(uploadUrl, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': fileType
-                },
-                body: file
-            }).catch(async (putError) => {
-                // Fallback: Use proxy endpoint if direct PUT fails (CORS/policy issues)
-                console.warn('[Audio Upload] Direct PUT failed, trying proxy:', putError.message);
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('fileName', file.name);
-                formData.append('fileType', fileType);
-                formData.append('objectKey', objectKey);
-                formData.append('setId', currentSetId);
-                formData.append('partNumber', partNumber);
-
-                return await fetch(`${apiBase}/api/developer/upload-proxy`, {
+            try {
+                const proxyResponse = await fetch(`${apiBase}/api/developer/upload-proxy`, {
                     method: 'POST',
-                    body: formData
+                    body: proxyFormData
                 });
-            });
+                if (!proxyResponse.ok) {
+                    const proxyDetail = await proxyResponse.text().catch(() => '');
+                    throw new Error(`Proxy upload failed: ${proxyResponse.status} ${proxyDetail}`.trim());
+                }
 
-            if (!putResponse.ok) {
-                throw new Error(`Upload to Cloudflare failed: ${putResponse.status}`);
+                const proxyPayload = await proxyResponse.json().catch(() => ({}));
+                const responseObjectKey = String(proxyPayload?.objectKey || '').trim();
+                if (responseObjectKey && responseObjectKey !== objectKey) {
+                    throw new Error(`Endpoint rewrote objectKey: expected ${objectKey}, got ${responseObjectKey}`);
+                }
+                objectUrl = String(proxyPayload?.objectUrl || canonicalObjectUrl).trim() || canonicalObjectUrl;
+            } catch (proxyError) {
+                console.warn('[Audio Upload] Proxy upload path failed, trying signed URL fallback:', proxyError?.message || proxyError);
+                uploadMode = 'signed-url';
+
+                // Step 2 fallback: signed URL flow, still enforcing canonical objectKey contract.
+                const uploadUrlResponse = await fetch(`${apiBase}/api/developer/upload-url`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        objectKey,
+                        fileName: file.name,
+                        fileType
+                    })
+                });
+
+                if (!uploadUrlResponse.ok) {
+                    const errorText = await uploadUrlResponse.text();
+                    throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status} ${errorText}`);
+                }
+
+                const signedPayload = await uploadUrlResponse.json().catch(() => ({}));
+                const uploadUrl = String(signedPayload?.uploadUrl || '').trim();
+                const responseObjectKey = String(signedPayload?.objectKey || '').trim();
+                if (!uploadUrl) {
+                    throw new Error('Backend returned invalid upload URL');
+                }
+                if (responseObjectKey && responseObjectKey !== objectKey) {
+                    throw new Error(`Endpoint rewrote objectKey: expected ${objectKey}, got ${responseObjectKey}`);
+                }
+
+                const putResponse = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': fileType
+                    },
+                    body: file
+                });
+
+                if (!putResponse.ok) {
+                    throw new Error(`Upload to Cloudflare failed: ${putResponse.status}`);
+                }
+
+                objectUrl = canonicalObjectUrl;
             }
 
             // Step 3: Save the returned objectUrl to Firebase at toefl_itp/audio_urls/{setId}/part_{n}
@@ -4753,17 +4778,18 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             if (window.toeflStorage && typeof toeflStorage._put === 'function') {
                 try {
                     await toeflStorage._put(`toefl_itp/audio_urls/${currentSetId}/part_${partNumber}`, {
-                        url: objectUrl,
+                        url: canonicalObjectUrl,
                         objectKey: objectKey,
                         storageProvider: 'cloudflare-r2',
-                        candidateUrls: [objectUrl],
+                        candidateUrls: [canonicalObjectUrl],
                         contentType: fileType,
                         fileName: file.name,
                         size: file.size,
                         type: fileType,
+                        uploadMode,
                         uploadedAt: new Date().toISOString()
                     });
-                    console.log(`[Audio Upload] Part ${partNumber} saved to Firebase audio_urls: ${objectUrl}`);
+                    console.log(`[Audio Upload] Part ${partNumber} saved to Firebase audio_urls: ${canonicalObjectUrl}`);
                 } catch (fbError) {
                     console.warn('[Audio Upload] Firebase audio_urls save failed:', fbError.message);
                     // Continue anyway - local draft will still be updated below
@@ -4780,14 +4806,14 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 draft.parts[partNumber] = {};
             }
 
-            draft.parts[partNumber].audio_cloudflare = objectUrl;
+            draft.parts[partNumber].audio_cloudflare = canonicalObjectUrl;
             draft.parts[partNumber].audio_cloudflare_uploaded_at = new Date().toISOString();
 
             // Save to local storage immediately
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
 
             // Step 5: Also update the global audioUrlsByPart so saveSectionDraft() picks it up
-            audioUrlsByPart[partNumber] = objectUrl;
+            audioUrlsByPart[partNumber] = canonicalObjectUrl;
 
             // Save draft to Firebase asynchronously (non-blocking)
             if (window.toeflStorage && typeof toeflStorage.saveDraftBySetId === 'function') {
@@ -4796,8 +4822,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 });
             }
 
-            console.log(`[Audio Upload] Part ${partNumber} saved: ${objectUrl}`);
-            return { objectKey, objectUrl };
+            console.log(`[Audio Upload] Part ${partNumber} saved (${uploadMode}): ${canonicalObjectUrl}`);
+            return { objectKey, objectUrl: canonicalObjectUrl, uploadMode };
         }
 
         async function validateUploadedAudio() {
@@ -4818,6 +4844,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             for (let i = 1; i <= 3; i++) {
                 // Check both draft and Firebase for URLs
                 let audioUrl = draft.parts?.[i]?.audio_cloudflare;
+                const expectedUrl = `${DEFAULT_R2_PUBLIC_BASE_URL}/audio/listening/sets/${currentSetId}/part_${i}.mp3`;
                 
                 // Also check Firebase audio_urls if draft doesn't have it
                 if (!audioUrl && window.toeflStorage && typeof toeflStorage.getAudioRecordFromFirebase === 'function') {
@@ -4841,7 +4868,16 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     continue;
                 }
 
-                statusEl.textContent = `Part ${i}: ✓ URL saved`;
+                const normalizedAudioUrl = String(audioUrl || '').trim();
+                if (normalizedAudioUrl !== expectedUrl) {
+                    statusEl.textContent = `Part ${i}: ✗ Non-canonical URL`;
+                    statusEl.style.color = '#dc2626';
+                    statusEl.style.borderColor = '#fca5a5';
+                    allValid = false;
+                    continue;
+                }
+
+                statusEl.textContent = `Part ${i}: ✓ Canonical URL saved`;
                 statusEl.style.color = '#16a34a';
                 statusEl.style.borderColor = '#bbf7d0';
             }
