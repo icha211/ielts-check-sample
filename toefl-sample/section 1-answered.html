@@ -2825,8 +2825,8 @@
 
                 if ((block.number === 1) || /key\s*phrase|idiom|find|identify|spot|locate/i.test(title)) {
                     var quoteText = extractQuoteFromBody(body) || getFirstTranscriptQuote(question);
-                    // Handle ?? **Test Tip:** prefix variants
-                    var tipMatch = body.match(/(?:??\s*)?(?:\*{1,2})?Test\s*Tip\s*:(?:\*{1,2})?\s*([\s\S]*)$/i);
+                    // Handle optional symbol/markdown prefix before "Test Tip:"
+                    var tipMatch = body.match(/(?:[^\w\n]*\s*)?(?:\*{1,2})?Test\s*Tip\s*:(?:\*{1,2})?\s*([\s\S]*)$/i);
                     var introText = body;
                     // Remove the quote bubble text from intro
                     if (quoteText) {
@@ -2835,7 +2835,7 @@
                     }
                     if (tipMatch && tipMatch[0]) introText = introText.replace(tipMatch[0], '').trim();
                     // Clean leftover emoji and markdown
-                    introText = introText.replace(/??/g, '').replace(/\*\*/g, '').replace(/^\s*\*\s*/gm, '').replace(/\s+/g, ' ').trim();
+                    introText = introText.replace(/\?\?/g, '').replace(/\*\*/g, '').replace(/^\s*\*\s*/gm, '').replace(/\s+/g, ' ').trim();
 
                     steps.push({
                         title: title,
