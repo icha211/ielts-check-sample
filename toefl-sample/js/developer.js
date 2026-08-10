@@ -322,10 +322,12 @@ function toggleCreateOptions(force) {
     menu.classList.toggle("show");
 }
 
-function buildEditorUrl(moduleId, setDate, setId, testType = "mocktest") {
+function buildEditorUrl(moduleId, setDate, setId, testType = "mocktest", options = {}) {
+    const startBlank = Boolean(options && options.startBlank);
     const params = new URLSearchParams();
     if (setDate) params.set("setDate", setDate);
     if (setId) params.set("setId", setId);
+    if (startBlank) params.set("new", "1");
     params.set("mode", "dev");
     params.set("testType", testType);
     const query = params.toString();
@@ -684,7 +686,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 modal.style.display = "none";
             }
             
-            const url = buildEditorUrl(module, undefined, undefined, currentTestType);
+            const url = buildEditorUrl(module, undefined, undefined, currentTestType, { startBlank: true });
             console.log("Navigating to:", url);
             window.location.href = url;
         });

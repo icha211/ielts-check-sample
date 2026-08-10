@@ -758,6 +758,12 @@
         }
 
         async function loadSectionDraft() {
+            const forceBlankNew = isExplicitNewPackageRequest();
+            if (forceBlankNew && !currentSetId) {
+                clearSectionDraftInputs();
+                return;
+            }
+
             let draft = {};
             if (currentSetId && window.toeflStorage) {
                 try {
@@ -806,6 +812,7 @@
             const dateContainer = dateInput?.parentElement?.parentElement;
             const difficultyInput = document.getElementById("set-difficulty");
             const params = new URLSearchParams(window.location.search);
+            const forceBlankNew = isExplicitNewPackageRequest();
             currentTestType = params.get("testType") || "mocktest";
             
             if (dateContainer) {
@@ -821,7 +828,7 @@
                     stored = byDate;
                 }
             }
-            if (!currentSetId && !requestedDate) {
+            if (!currentSetId && !requestedDate && !forceBlankNew) {
                 const latest = await resolveLatestSetRecord();
                 if (latest?.setId) {
                     currentSetId = latest.setId;
@@ -1311,6 +1318,11 @@
         function isDeveloperMode() {
             const params = new URLSearchParams(window.location.search);
             return window.location.hash === "#dev-view" || params.get("mode") === "dev";
+        }
+
+        function isExplicitNewPackageRequest() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("new") === "1";
         }
 
         function applyViewMode() {

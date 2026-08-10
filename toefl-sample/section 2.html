@@ -391,6 +391,12 @@
         }
 
         async function loadSectionDraft() {
+            const forceBlankNew = isExplicitNewPackageRequest();
+            if (forceBlankNew && !currentSetId) {
+                clearSectionDraftInputs();
+                return;
+            }
+
             const params = new URLSearchParams(window.location.search);
             const requestedDate = params.get("setDate");
             const requestedSetId = params.get("setId");
@@ -483,6 +489,7 @@
             const dateContainer = dateInput?.parentElement?.parentElement;
             const difficultyInput = document.getElementById("set-difficulty");
             const params = new URLSearchParams(window.location.search);
+            const forceBlankNew = isExplicitNewPackageRequest();
             currentTestType = params.get("testType") || "mocktest";
             
             if (dateContainer) {
@@ -498,7 +505,7 @@
                     stored = byDate;
                 }
             }
-            if (!currentSetId && !requestedDate) {
+            if (!currentSetId && !requestedDate && !forceBlankNew) {
                 const latest = await resolveLatestSetRecord();
                 if (latest?.setId) {
                     currentSetId = latest.setId;
@@ -1079,6 +1086,11 @@
             const params = new URLSearchParams(window.location.search);
             const devViewActive = Boolean(document.getElementById("dev-view")?.classList.contains("active"));
             return window.location.hash === "#dev-view" || params.get("mode") === "dev" || devViewActive;
+        }
+
+        function isExplicitNewPackageRequest() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("new") === "1";
         }
 
         function applyViewMode() {

@@ -1439,6 +1439,21 @@
             });
         }
 
+        function clearListeningEditorInputs() {
+            PARTS.forEach((part) => {
+                const p = part.id;
+                const questionsElement = document.getElementById(`input-magic-questions-${p}`);
+                const answerElement = document.getElementById(`input-answer-key-${p}`);
+                const explanationElement = document.getElementById(`input-explanation-${p}`);
+                const transcriptElement = document.getElementById(`input-transcript-${p}`);
+
+                if (questionsElement) questionsElement.value = "";
+                if (answerElement) answerElement.value = "";
+                if (explanationElement) explanationElement.value = "";
+                if (transcriptElement) transcriptElement.value = "";
+            });
+        }
+
         function hydrateEditorInputsFromLocalDraftIfEmpty() {
             if (hasEditorQuestionOrAnswerContent()) return;
 
@@ -2617,6 +2632,12 @@
         }
 
         async function loadSectionDraft() {
+            const forceBlankNew = isExplicitNewPackageRequest();
+            if (forceBlankNew && !currentSetId) {
+                clearListeningEditorInputs();
+                return;
+            }
+
             let draft = {};
             // Only reset maps if we're actually going to load new data
             // Preserve in-memory URLs during current editing session
@@ -2701,6 +2722,7 @@
             const dateContainer = dateInput?.parentElement?.parentElement;
             const difficultyInput = document.getElementById("set-difficulty");
             const params = new URLSearchParams(window.location.search);
+            const forceBlankNew = isExplicitNewPackageRequest();
             currentTestType = params.get("testType") || "mocktest";
             
             if (dateContainer) {
@@ -2734,7 +2756,7 @@
                 }
             }
 
-            if (!currentSetId && !requestedDate) {
+            if (!currentSetId && !requestedDate && !forceBlankNew) {
                 const latest = await resolveLatestUserSetRecord();
                 if (latest?.setId) {
                     currentSetId = latest.setId;
@@ -2742,7 +2764,7 @@
                 }
             }
 
-            if (!currentSetId && !requestedDate) {
+            if (!currentSetId && !requestedDate && !forceBlankNew) {
                 const latestAudioSetId = await resolveLatestSetIdFromAudioIndex();
                 if (latestAudioSetId) {
                     currentSetId = latestAudioSetId;
@@ -2754,7 +2776,7 @@
             }
 
             // Minimal fallback: if setId is still unknown, use latest set from Developer draft map.
-            if (!currentSetId) {
+            if (!currentSetId && !forceBlankNew) {
                 const draftEntry = resolveLatestLocalDraftV2ForModule(MODULE_ID);
                 if (draftEntry?.setId) {
                     currentSetId = String(draftEntry.setId);
@@ -3810,6 +3832,11 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         function isDeveloperMode() {
             const params = new URLSearchParams(window.location.search);
             return window.location.hash === "#dev-view" || params.get("mode") === "dev";
+        }
+
+        function isExplicitNewPackageRequest() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("new") === "1";
         }
 
         function isDeveloperPreviewMode() {
@@ -4974,6 +5001,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         // ===== END AUDIO UPLOAD FUNCTIONALITY =====
 
         window.onload = async () => {
+            const forceBlankNew = isExplicitNewPackageRequest();
             initAutoSave();
             initStructure();
             applyViewMode();
@@ -4988,7 +5016,11 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             // Fast first paint: render questions from locally stored draft data
             // before the slower remote meta/audio restore runs, so the exam view
             // is never blank while awaiting network calls that may fail/time out.
-            hydrateEditorInputsFromLocalDraftIfEmpty();
+            if (forceBlankNew) {
+                clearListeningEditorInputs();
+            } else {
+                hydrateEditorInputsFromLocalDraftIfEmpty();
+            }
             updateUserView(false);
             try {
                 await loadSectionMeta();
