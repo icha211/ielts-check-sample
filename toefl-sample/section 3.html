@@ -764,6 +764,14 @@
                 return;
             }
 
+            const params = new URLSearchParams(window.location.search);
+            const requestedDate = params.get("setDate");
+            const requestedSetId = String(params.get("setId") || "").trim();
+            if (requestedDate && !currentSetId && !requestedSetId) {
+                clearSectionDraftInputs();
+                return;
+            }
+
             let draft = {};
             if (currentSetId && window.toeflStorage) {
                 try {

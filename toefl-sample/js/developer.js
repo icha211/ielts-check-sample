@@ -505,7 +505,7 @@ function renderMonthDetail(year, monthIndex) {
                     </a>
                 `).join("")}
                 ${missingModules.map((moduleId) => `
-                    <a class="month-action create" href="${buildEditorUrl(moduleId, key, undefined, currentTestType)}">
+                    <a class="month-action create" href="${buildEditorUrl(moduleId, key, undefined, currentTestType, { startBlank: true })}">
                         <span>＋ ${MODULE_CONFIG[moduleId].label}</span>
                         <span>Create</span>
                     </a>
@@ -513,7 +513,7 @@ function renderMonthDetail(year, monthIndex) {
             `
             : `
                 ${MODULES.map((moduleId) => `
-                    <a class="month-action create" href="${buildEditorUrl(moduleId, key, undefined, currentTestType)}">
+                    <a class="month-action create" href="${buildEditorUrl(moduleId, key, undefined, currentTestType, { startBlank: true })}">
                         <span>＋ ${MODULE_CONFIG[moduleId].label}</span>
                         <span>Create</span>
                     </a>

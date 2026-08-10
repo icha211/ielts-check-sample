@@ -2638,6 +2638,15 @@
                 return;
             }
 
+            const params = new URLSearchParams(window.location.search);
+            const requestedDate = normalizeDateKey(params.get("setDate") || "");
+            const requestedSetId = String(params.get("setId") || "").trim();
+            const isDateTargetWithoutSetId = Boolean(requestedDate) && !currentSetId && !requestedSetId;
+            if (isDateTargetWithoutSetId) {
+                clearListeningEditorInputs();
+                return;
+            }
+
             let draft = {};
             // Only reset maps if we're actually going to load new data
             // Preserve in-memory URLs during current editing session
