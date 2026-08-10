@@ -1452,6 +1452,24 @@
                 if (explanationElement) explanationElement.value = "";
                 if (transcriptElement) transcriptElement.value = "";
             });
+
+            // Reset in-memory audio URL maps so a new package never inherits
+            // Cloudflare/Firebase URLs from a previously opened set.
+            audioUrlsByPart = {};
+            audioFirebaseByPart = {};
+        }
+
+        function isDateTargetWithoutSetIdRequest() {
+            const params = new URLSearchParams(window.location.search);
+            const requestedDate = normalizeDateKey(params.get("setDate") || "");
+            const requestedSetId = String(params.get("setId") || "").trim();
+            return Boolean(requestedDate) && !currentSetId && !requestedSetId;
+        }
+
+        function shouldHydrateEditorFromFallbackDraft() {
+            if (isExplicitNewPackageRequest() && !currentSetId) return false;
+            if (isDateTargetWithoutSetIdRequest()) return false;
+            return true;
         }
 
         function hydrateEditorInputsFromLocalDraftIfEmpty() {
@@ -2638,11 +2656,7 @@
                 return;
             }
 
-            const params = new URLSearchParams(window.location.search);
-            const requestedDate = normalizeDateKey(params.get("setDate") || "");
-            const requestedSetId = String(params.get("setId") || "").trim();
-            const isDateTargetWithoutSetId = Boolean(requestedDate) && !currentSetId && !requestedSetId;
-            if (isDateTargetWithoutSetId) {
+            if (isDateTargetWithoutSetIdRequest()) {
                 clearListeningEditorInputs();
                 return;
             }
@@ -4247,7 +4261,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
         function updateUserView(shouldSaveMeta = false, options = {}) {
             const { preferEditedPart = true } = options || {};
-            hydrateEditorInputsFromLocalDraftIfEmpty();
+            if (shouldHydrateEditorFromFallbackDraft()) {
+                hydrateEditorInputsFromLocalDraftIfEmpty();
+            }
             examSessionStarted = false;
             clearInterval(timerInterval);
             const timerElement = document.getElementById("time");
