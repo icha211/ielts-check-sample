@@ -6,7 +6,8 @@
     <title>TOEFL ITP | IELTS Check</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cal+Sans&family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cal+Sans&family=Inter:wght@600&family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
     <style>
         :root {
             --blue-950: #06223d;
@@ -49,73 +50,291 @@
         }
 
         .shell {
-            width: min(1180px, calc(100% - 24px));
-            margin: 22px auto 36px;
-            padding-bottom: max(32px, env(safe-area-inset-bottom));
+            width: 100%;
+            max-width: none;
+            min-height: 100dvh;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            grid-template-columns: 250px minmax(0, 1fr);
+            gap: 0;
+            align-items: stretch;
         }
 
         .top-nav {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            height: 100dvh;
+            min-height: 100vh;
+            padding: 18px 16px 14px;
+            border-radius: 0;
+            background: #eaf5ff;
+            border-right: 1px solid rgba(87, 119, 152, 0.14);
             display: flex;
+            flex-direction: column;
             justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-            padding: 14px 18px;
-            border-radius: 18px;
-            background: rgba(6, 34, 61, 0.9);
-            border: 1px solid rgba(198, 225, 255, 0.28);
-            backdrop-filter: blur(10px);
-            box-shadow: 0 10px 20px rgba(6, 34, 61, 0.22);
+            overflow: hidden;
+            box-shadow: none;
         }
 
-        .brand {
+        .nav-top, .nav-main, .nav-bottom, .nav-list { display: grid; gap: 8px; }
+        .nav-top { gap: 24px; }
+        .brand-row {
+            position: relative;
             display: flex;
             align-items: center;
-            gap: 10px;
-            color: #f4f9ff;
-            font-weight: 700;
-            letter-spacing: 0.02em;
+            justify-content: center;
+            width: 100%;
+            min-height: 52px;
         }
 
-        .brand-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #92cbff, #2e86d1);
-            box-shadow: 0 0 0 6px rgba(46, 134, 209, 0.22);
+        .brand { display: flex; align-items: center; justify-content: center; }
+        .brand img { width: 96px; height: 44px; object-fit: contain; object-position: center; }
+
+        .brand-toggle {
+            border: 0;
+            padding: 0;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            z-index: 1;
         }
 
-        .nav-links {
-            display: flex;
+        .nav-icon-button, .nav-profile-action {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 32px; height: 32px; border: 0; padding: 0; border-radius: 8px;
+            color: #59708a; background: transparent; cursor: pointer;
+        }
+
+        .nav-icon-button,
+        .sidebar-expand-button {
+            position: absolute;
+            right: 6px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 3;
+            width: 30px;
+            height: 30px;
+            border: 0;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 3px 10px rgba(10, 31, 56, 0.08);
+            display: grid;
+            place-items: center;
+            color: #005faa;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+
+        .sidebar-expand-button {
+            display: none;
+        }
+
+        .nav-icon-button:hover, .nav-profile-action:hover { color: #005faa; background: rgba(255, 255, 255, 0.78); }
+
+        .nav-search {
+            display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 11px;
+            border: 1px solid #c9dced; border-radius: 8px; color: #8a9bac;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .nav-search input {
+            width: 100%; min-width: 0; border: 0; outline: 0; color: #10243a;
+            font: inherit; font-size: 14px; background: transparent;
+        }
+
+        .nav-search input::placeholder { color: #8a9bac; }
+
+        .nav-item {
+            min-height: 42px; padding: 10px 12px; border-radius: 8px; display: flex;
+            align-items: center; gap: 10px; color: #202a35; text-decoration: none;
+            font-size: 15px; line-height: 20px;
+            transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .nav-item:hover { color: #005faa; background: rgba(255, 255, 255, 0.62); }
+        .nav-item.active { color: #005faa; background: #ffffff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
+
+        .nav-item svg, .nav-icon-button svg, .nav-profile-action svg, .nav-search svg {
+            width: 20px; height: 20px; flex: 0 0 auto; stroke-width: 1.5;
+        }
+
+        .nav-tabler-icon,
+        .nav-phosphor-icon,
+        .nav-collapse-icon {
+            width: 20px;
+            height: 20px;
+            flex: 0 0 auto;
+            opacity: 0.82;
+        }
+
+        .nav-item.active .nav-tabler-icon,
+        .nav-item.active .nav-phosphor-icon {
+            filter: invert(30%) sepia(71%) saturate(1266%) hue-rotate(169deg) brightness(88%) contrast(101%);
+            opacity: 1;
+        }
+
+        .nav-calendar-icon { width: 13.3px; height: 15px; flex: 0 0 auto; stroke-width: 1.5; }
+        .nav-calendar-day { font: 700 6px "Space Grotesk", sans-serif; }
+
+        .sidebar-collapsed [data-tooltip] { position: relative; }
+
+        .sidebar-collapsed [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 14px);
+            top: 50%;
+            z-index: 100;
+            min-width: max-content;
+            height: 40px;
+            padding: 0 18px;
+            display: grid;
+            place-items: center;
+            border-radius: 20px;
+            color: #ffffff;
+            background: #000000;
+            font-family: "Inter", sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.4;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-50%) translateX(-4px);
+            transition: opacity 0.14s ease, transform 0.14s ease;
+        }
+
+        .sidebar-collapsed [data-tooltip]:hover::after,
+        .sidebar-collapsed [data-tooltip]:focus-visible::after {
+            opacity: 1;
+            transform: translateY(-50%) translateX(0);
+        }
+
+        .sidebar-expand-button img { width: 20px; height: 20px; }
+
+        .nav-heading { margin: 10px 0 2px; color: #465e77; font-size: 12px; font-weight: 700; line-height: 20px; }
+        .nav-bottom { gap: 18px; }
+        .nav-utility { display: grid; gap: 4px; }
+
+        .nav-profile {
+            padding: 16px 0 0; border-top: 1px solid rgba(255, 255, 255, 0.8);
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        }
+
+        .nav-profile-info { display: flex; min-width: 0; align-items: center; gap: 10px; }
+        .nav-avatar {
+            width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+            flex: 0 0 auto; color: #ffffff; background: #005faa; font-size: 14px; font-weight: 700;
+        }
+
+        .nav-profile-name, .nav-profile-plan { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .nav-profile-name { color: #202a35; font-size: 14px; }
+        .nav-profile-plan { margin-top: 2px; color: #8a9bac; font-size: 12px; }
+        .page-content { min-width: 0; padding-bottom: max(32px, env(safe-area-inset-bottom)); }
+
+        .shell.sidebar-collapsed {
+            grid-template-columns: 80px minmax(0, 1fr);
+        }
+
+        .sidebar-collapsed .top-nav {
+            padding: 18px 12px 14px;
+            overflow: visible;
+        }
+        .sidebar-collapsed .nav-top { align-items: center; }
+        .sidebar-collapsed .brand-row {
+            position: relative;
+            width: 100%;
+            height: 40px;
+            margin: 0 auto;
+            justify-content: center;
+        }
+
+        .sidebar-collapsed .brand img {
+            width: 36px;
+            height: 32px;
+            object-fit: contain;
+        }
+
+        .sidebar-collapsed .nav-icon-button {
+            display: none;
+        }
+
+        .sidebar-collapsed .sidebar-expand-button {
+            display: grid;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sidebar-collapsed .nav-icon-button,
+        .sidebar-collapsed .nav-search input,
+        .sidebar-collapsed .nav-item span,
+        .sidebar-collapsed .nav-profile-name,
+        .sidebar-collapsed .nav-profile-plan,
+        .sidebar-collapsed .nav-profile-action {
+            display: none;
+        }
+
+        .sidebar-collapsed .nav-search,
+        .sidebar-collapsed .nav-item {
+            width: 40px;
+            min-height: 40px;
+            height: 40px;
+            padding: 10px;
+            justify-content: center;
+        }
+
+        .sidebar-collapsed .nav-icon-button {
+            width: 40px;
+            height: 40px;
+            padding: 10px;
+            justify-content: center;
+        }
+
+        .sidebar-collapsed .nav-main,
+        .sidebar-collapsed .nav-list,
+        .sidebar-collapsed .nav-bottom,
+        .sidebar-collapsed .nav-utility {
+            width: 100%;
+            justify-items: center;
             align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
         }
 
-        .nav-links a {
-            color: #d8eaff;
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 14px;
-            padding: 8px 12px;
-            border-radius: 999px;
-            border: 1px solid transparent;
-            transition: all 0.2s ease;
+        .sidebar-collapsed .nav-heading { margin: 10px 0 2px; }
+
+        .sidebar-collapsed .nav-profile {
+            width: 100%;
+            justify-content: center;
+            padding-top: 16px;
         }
 
-        .nav-links a:hover {
-            border-color: rgba(154, 210, 255, 0.55);
-            color: #ffffff;
-            background: rgba(46, 134, 209, 0.22);
+        .sidebar-collapsed .nav-profile-info { min-width: 40px; }
+
+        .sidebar-collapsed .nav-avatar {
+            width: 40px;
+            height: 40px;
+            background: #ffffff url("../asset/figma/sidebar-avatar.jpeg") center / cover no-repeat;
+            font-size: 0;
         }
 
-        .nav-links a.active {
-            color: #ffffff;
-            background: linear-gradient(135deg, #1670be, #135a98);
-            border-color: rgba(184, 225, 255, 0.6);
+        .sidebar-collapsed .brand-row:hover .sidebar-expand-button,
+        .sidebar-collapsed .brand-row:focus-within .sidebar-expand-button,
+        .sidebar-collapsed .brand-row:active .sidebar-expand-button,
+        .sidebar-collapsed .brand-toggle:hover + .sidebar-expand-button,
+        .sidebar-collapsed .brand-toggle:focus-visible + .sidebar-expand-button,
+        .sidebar-collapsed .brand-toggle:active + .sidebar-expand-button {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(-50%) scale(1.02);
         }
 
         .hero {
-            margin-top: 20px;
+            margin-top: 2px;
             background: linear-gradient(140deg, var(--blue-900), var(--blue-700));
             color: #eef7ff;
             border-radius: 28px;
@@ -739,6 +958,39 @@
         }
 
         @media (max-width: 980px) {
+            .shell {
+                width: 100%;
+                max-width: none;
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+
+            .top-nav {
+                position: static;
+                height: auto;
+                min-height: 0;
+                border-right: none;
+                border-bottom: 1px solid rgba(87, 119, 152, 0.14);
+            }
+            .shell.sidebar-collapsed { grid-template-columns: 1fr; }
+            .shell.sidebar-collapsed .top-nav { padding: 18px 16px; }
+            .shell.sidebar-collapsed .nav-top { align-items: stretch; }
+            .shell.sidebar-collapsed .brand-row { width: auto; justify-content: space-between; }
+            .shell.sidebar-collapsed .brand img { width: 96px; height: 44px; }
+            .shell.sidebar-collapsed .nav-icon-button { display: inline-flex; }
+            .shell.sidebar-collapsed .sidebar-expand-button { display: none; }
+            .shell.sidebar-collapsed .nav-search { width: auto; justify-content: flex-start; }
+            .shell.sidebar-collapsed .nav-search input { display: block; }
+            .shell.sidebar-collapsed .nav-main,
+            .shell.sidebar-collapsed .nav-list { justify-items: stretch; align-items: stretch; }
+            .shell.sidebar-collapsed .nav-item { width: auto; justify-content: flex-start; }
+            .shell.sidebar-collapsed .nav-item span { display: inline; }
+            .shell.sidebar-collapsed .nav-heading { display: none; }
+            .nav-bottom { display: none; }
+            .nav-main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .nav-list { display: contents; }
+            .nav-heading { display: none; }
+
             .hero-inner,
             .score-grid,
             .month-grid {
@@ -768,15 +1020,19 @@
         @media (max-width: 640px) {
             .shell {
                 width: calc(100% - 14px);
-                margin: 10px auto 20px;
+                padding-top: 10px;
             }
 
             .top-nav {
                 border-radius: 14px;
                 padding: 12px;
-                align-items: start;
-                flex-direction: column;
             }
+
+            .nav-top { gap: 14px; }
+            .nav-main { display: flex; overflow-x: auto; gap: 4px; padding-bottom: 2px; }
+            .nav-item { min-height: 38px; padding: 9px 10px; flex: 0 0 auto; font-size: 13px; }
+            .shell.sidebar-collapsed .nav-main { display: flex; }
+            .shell.sidebar-collapsed .nav-item { min-height: 38px; height: auto; flex: 0 0 auto; }
 
             .hero {
                 border-radius: 20px;
@@ -815,150 +1071,310 @@
                 border-radius: 16px;
             }
         }
+
+        /* Dashboard overview treatment */
+        .shell {
+            grid-template-columns: 60px minmax(0, 1fr);
+            background: #ffffff;
+        }
+
+        .top-nav {
+            width: 60px;
+            padding: 12px 10px;
+            background: #edf7ff;
+            border-right: 1px solid #e1edf7;
+        }
+
+        .nav-top { gap: 18px; }
+        .brand-row { min-height: 42px; }
+        .brand img { width: 38px; height: 32px; }
+        .nav-icon-button { display: none; }
+        .nav-search { width: 40px; height: 40px; min-height: 40px; padding: 10px; justify-content: center; border: 0; background: transparent; }
+        .nav-search input, .nav-item span, .nav-heading, .nav-profile-name, .nav-profile-plan, .nav-profile-action { display: none; }
+        .nav-main, .nav-list, .nav-bottom, .nav-utility { width: 100%; justify-items: center; }
+        .nav-item { width: 40px; min-height: 40px; height: 40px; padding: 10px; justify-content: center; }
+        .nav-bottom { gap: 12px; }
+        .nav-profile { width: 40px; justify-content: center; padding-top: 12px; }
+        .nav-profile-info { min-width: 40px; }
+        .nav-avatar { width: 34px; height: 34px; background: #ffffff url("../asset/figma/sidebar-avatar.jpeg") center / cover no-repeat; font-size: 0; }
+
+        .page-content { padding: 26px 74px 42px; background: #ffffff; }
+        .hero { margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+        .hero-inner { display: block; padding: 0; }
+        .dashboard-summary {
+            display: grid;
+            grid-template-columns: minmax(230px, 1.08fr) minmax(230px, .95fr) minmax(300px, 1.25fr);
+            gap: 10px;
+            align-items: stretch;
+        }
+        .stacked-cards { display: grid; gap: 10px; }
+        .summary-card, .promo-banner {
+            min-height: 100px;
+            border: 1px solid #d6e5f3;
+            border-radius: 9px;
+            background: #ffffff;
+            box-shadow: 0 4px 12px rgba(35, 77, 116, 0.08);
+        }
+        .summary-card { padding: 13px 16px; color: #40536a; }
+        .summary-card-heading { display: grid; gap: 2px; }
+        .summary-card h1, .summary-card h2 { margin: 0; color: #40536a; font-size: 16px; line-height: 1.1; letter-spacing: 0; }
+        .summary-card-heading span, .summary-card small { color: #9aafc4; font-size: 10px; }
+        .score-pair { display: grid; grid-template-columns: 1fr 1fr; margin-top: 10px; border: 1px solid #d6e5f3; border-radius: 8px; overflow: hidden; }
+        .score-pair div { padding: 8px 9px; display: grid; gap: 5px; }
+        .score-pair div + div { border-left: 1px solid #d6e5f3; }
+        .score-pair span, .taken-row > span { color: #526b84; font-size: 10px; }
+        .score-pair strong { color: #11aeda; font-size: 23px; font-weight: 500; line-height: 1; }
+        .score-pair div + div strong { color: #9aaec1; font-size: 20px; text-align: center; }
+        .taken-row { margin-top: 10px; display: grid; grid-template-columns: 1fr repeat(4, auto); gap: 7px; align-items: center; font-size: 9px; }
+        .taken-row b { display: grid; gap: 4px; color: #95a9bd; font-size: 9px; font-weight: 400; text-align: center; }
+        .taken-row em { color: #1e2f41; font-size: 17px; font-style: normal; }
+        .inline-heading { display: flex; justify-content: space-between; align-items: center; }
+        .inline-heading span { display: inline-flex; align-items: center; gap: 4px; color: #333333; font-size: 12px; }
+        .inline-heading .ti-books { font-size: 13px; stroke-width: 1; }
+        .goal-card { container-type: inline-size; }
+        .goal-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: calc(5cqw * 0.208); margin-top: 12px; }
+        .goal-tile { min-height: clamp(38px, 19.58cqw, 52px); display: grid; place-content: end center; gap: 2px; padding: calc(6cqw * 0.25) 2px; border-radius: 8px; background: #f4f7fb; }
+        .goal-tile.completed { background: #f0faf0; }
+        .goal-tile.missed { background: #fee2e2; }
+        .goal-tile.today { border: 1px solid #005faa; background: #f4f7fb; }
+        .goal-tile-icon { justify-self: center; }
+        .goal-tile-icon.ti-circle-check-filled { font-size: clamp(13px, 7.5cqw, 18px); color: #00bd00; }
+        .goal-tile-icon.ti-exclamation-circle { font-size: clamp(13px, 7.5cqw, 18px); color: #dc2626; }
+        .goal-rings { position: relative; width: clamp(16px, 8.33cqw, 20px); height: clamp(16px, 8.33cqw, 20px); justify-self: center; }
+        .goal-rings .ring { position: absolute; border-radius: 50%; }
+        .goal-rings .ring-outer { inset: 0; background: conic-gradient(#0ea5e9 calc(var(--p-listening, 1) * 1%), #d1dce8 0); }
+        .goal-rings .ring-middle { inset: 15%; background: conic-gradient(#00a86b calc(var(--p-structure, 1) * 1%), #d1dce8 0); }
+        .goal-rings .ring-inner { inset: 30%; background: conic-gradient(#8a4fff calc(var(--p-reading, 1) * 1%), #d1dce8 0); }
+        .goal-tile small { color: #3a4a5c; font-size: clamp(8px, 4.17cqw, 10px); font-weight: 400; }
+        .level-card h2 { margin-bottom: 24px; }
+        .level-card > div { display: flex; align-items: baseline; gap: 5px; }
+        .level-card strong { color: #109d91; font-size: 40px; line-height: .9; }
+        .level-card div span { color: #8299b0; font-size: 24px; }
+        .level-card small { display: block; margin-top: 7px; }
+        .promo-banner { display: grid; place-items: center; color: #ffffff; background: #073f68; border: 0; font-size: 29px; font-weight: 600; transform: rotate(0deg); letter-spacing: -.04em; }
+
+        main { margin-top: 26px; gap: 18px; }
+        .month-panel { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+        .month-panel > .section-head { display: none; }
+        .planner-layout { margin-top: 0; display: block; }
+        .month-selector-block { display: none; }
+
+        .daily-calendar-block {
+            container-type: inline-size;
+            --cell-w: calc((100cqw - 50px) / 7);
+            --icon-size: calc(var(--cell-w) * 0.2472);
+            --label-w: calc(var(--cell-w) * 0.4244);
+            padding: 0;
+            border: 0;
+            border-radius: 9px;
+            background: #ffffff;
+            box-shadow: 0 4px 14px rgba(35, 77, 116, 0.06);
+            overflow: hidden;
+        }
+        .daily-calendar-block::before { display: none; }
+
+        .calendar-head { padding: 20px; display: grid; gap: 16px; }
+        .calendar-brand {
+            margin: 0;
+            background: linear-gradient(90deg, #0ea5e9, #0d9488);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            font-family: "Plus Jakarta Sans", sans-serif;
+            font-size: 30px;
+            font-weight: 700;
+        }
+        .calendar-date-row { display: flex; align-items: center; gap: 16px; }
+        .calendar-date-picker { position: relative; flex: 0 0 auto; }
+        .calendar-date-badge { flex: 0 0 auto; width: 64px; height: 65px; display: flex; flex-direction: column; border: 1px solid #d1dce8; border-radius: 8px; overflow: hidden; padding: 0; cursor: pointer; background: #ffffff; }
+        .calendar-date-badge-month { display: grid; place-items: center; height: 30px; background: #f4f7fb; color: #7a8fa6; font-family: "Outfit", sans-serif; font-size: 13px; font-weight: 600; }
+        .calendar-date-badge-day { flex: 1; display: grid; place-items: center; color: #000000; font-family: "Outfit", sans-serif; font-size: 18px; font-weight: 600; }
+        .calendar-date-badge:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.18); }
+        .month-picker-popover { position: absolute; top: calc(100% + 12px); left: 0; z-index: 20; width: min(474px, calc(100vw - 32px)); padding: 20px 25px; display: none; gap: 12px; border-radius: 8px; background: #ffffff; box-shadow: 0 0 2px rgba(0, 0, 0, 0.15); }
+        .month-picker-popover.is-open { display: grid; }
+        .month-picker-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+        .month-picker-year { margin: 0; color: #0ea5e9; font-family: "Plus Jakarta Sans", "Space Grotesk", sans-serif; font-size: 64px; font-weight: 700; line-height: 1; }
+        .month-picker-year-nav { display: flex; align-items: center; }
+        .month-picker-year-nav button { width: 32px; height: 32px; padding: 0; border: 0; background: transparent; color: #cbd8e6; cursor: pointer; display: grid; place-items: center; }
+        .month-picker-year-nav button:hover { color: #0ea5e9; }
+        .month-picker-year-nav .ti { display: inline-flex; align-items: center; justify-content: center; color: #cbd8e6; font-family: "tabler-icons" !important; font-size: 26px; font-weight: 400; line-height: 1; }
+        .month-picker-year-nav button:hover .ti { color: #0ea5e9; }
+        .month-picker-label { margin: 0; color: #3a4a5c; font-family: "Space Grotesk", sans-serif; font-size: 18px; line-height: 1.2; }
+        .month-picker-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        .month-picker-option { min-width: 0; min-height: 44px; padding: 10px 8px 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid #d1dce8; border-radius: 8px; background: #ffffff; color: #000000; font-family: "Space Grotesk", sans-serif; font-size: 18px; cursor: pointer; transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease; }
+        .month-picker-option .ti-chevron-right { display: inline-flex; flex: 0 0 auto; color: #000000; font-family: "tabler-icons" !important; font-size: 21px; font-weight: 400; line-height: 1; }
+        .month-picker-option:hover { border-color: #8cc9ed; transform: translateY(-1px); }
+        .month-picker-option.active { background: linear-gradient(105deg, rgba(14, 165, 233, 0.2), rgba(255, 255, 255, 0.2)); }
+        .calendar-date-copy { display: grid; gap: 6px; }
+        .calendar-title { font-family: "Outfit", sans-serif; font-size: 18px; font-weight: 600; color: #000000; }
+        .calendar-range { font-family: "Plus Jakarta Sans", sans-serif; font-size: 13px; font-weight: 600; color: #3a4a5c; }
+        .calendar-nav { width: 32px; height: 32px; border-radius: 8px; font-size: 16px; box-shadow: none; }
+        .calendar-date-row .calendar-nav:last-child { margin-left: auto; }
+
+        .calendar-weekdays { grid-template-columns: repeat(7, var(--cell-w)); gap: 5px; margin: 0; padding: 0 10px; }
+        .calendar-weekdays span { font-family: "Outfit", sans-serif; font-size: 14px; font-weight: 600; color: #3a4a5c; }
+
+        .dashboard-calendar-grid { margin-top: 6px; gap: 5px; grid-template-columns: repeat(7, var(--cell-w)); padding: 10px; }
+        .dashboard-day {
+            width: var(--cell-w);
+            height: calc(var(--cell-w) * 0.6425);
+            padding: 10px;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: #ffffff;
+            box-shadow: none;
+            display: block;
+            overflow: hidden;
+            transition: opacity 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+        }
+        .dashboard-day.muted { opacity: 0.4; cursor: default; }
+        .dashboard-day.selected { background: #ffffff; border-color: #0ea5e9; box-shadow: 0 0 2px rgba(14, 165, 233, 0.25); }
+        .dashboard-day-number { top: 10px; right: 10px; font-size: clamp(10px, calc(var(--cell-w) * 0.0664), 20px); font-weight: 400; }
+
+        .dashboard-day-label { position: absolute; top: calc(var(--cell-w) * 0.1624); left: 10px; display: flex; align-items: center; gap: calc(var(--cell-w) * 0.022); font-family: "Plus Jakarta Sans", sans-serif; font-size: clamp(9px, calc(var(--cell-w) * 0.0517), 16px); font-weight: 600; white-space: nowrap; }
+        .dashboard-day-label.label-mock { background: linear-gradient(90deg, #005faa, #0d9488); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .dashboard-day-label.label-recommended { background: linear-gradient(90deg, #00aaff, #9000ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .dashboard-day-label .label-sparkle { flex: 0 0 auto; width: clamp(10px, calc(var(--cell-w) * 0.059), 18px); height: clamp(10px, calc(var(--cell-w) * 0.059), 18px); color: #00aaff; }
+
+        .task-queue { position: absolute; top: calc(var(--cell-w) * 0.2362); left: 10px; display: grid; grid-template-columns: var(--icon-size) var(--label-w) var(--icon-size); width: calc(var(--icon-size) * 2 + var(--label-w)); justify-content: center; gap: 1px; align-items: start; margin: 0; padding: 0; }
+        .task-token { width: var(--icon-size); height: var(--icon-size); max-width: 100%; justify-self: center; border: 4px solid #e1f2fc; border-radius: 50%; font-size: 0; background: #f8fbfe; box-shadow: none; position: relative; }
+        .task-token::after { content: attr(data-label); position: absolute; top: calc(100% + 8px); left: 50%; width: max-content; max-width: var(--label-w); white-space: nowrap; color: #000000; font-family: "Plus Jakarta Sans", sans-serif; font-size: clamp(7px, calc(var(--cell-w) * 0.0443), 13px); font-weight: 400; transform: translateX(-50%); }
+        .task-token img:not(.task-status-badge) { width: calc(var(--icon-size) * 0.522); height: calc(var(--icon-size) * 0.522); object-fit: contain; }
+        .task-status-badge { position: absolute; top: calc(var(--icon-size) * 0.1642); left: calc(var(--icon-size) * 0.8358); width: calc(var(--icon-size) * 0.1493); height: calc(var(--icon-size) * 0.1493); transform: translate(-50%, -50%); border-radius: 50%; background: #ffffff; }
+        .task-token.done { border-color: #b9ecd9; background: #f3fffa; }
+        .task-token.done img { filter: saturate(1.1); }
+
+        .daily-drilldown { margin: 10px; padding: 12px; border-radius: 7px; box-shadow: none; }
+        .score-panel { display: none; }
+
+        @media (max-width: 980px) {
+            .shell { grid-template-columns: 1fr; }
+            .top-nav { width: 100%; height: auto; min-height: 0; padding: 12px 16px; border-right: 0; border-bottom: 1px solid #e1edf7; }
+            .nav-top { gap: 12px; }
+            .brand-row { justify-content: space-between; }
+            .nav-search { width: 100%; justify-content: flex-start; padding: 0 11px; border: 1px solid #c9dced; }
+            .nav-search input, .nav-item span { display: block; }
+            .nav-main { display: flex; overflow-x: auto; justify-items: stretch; }
+            .nav-list { display: flex; width: max-content; }
+            .nav-item { width: auto; height: auto; justify-content: flex-start; }
+            .page-content { padding: 18px 16px 32px; }
+            .dashboard-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .promo-banner { min-height: 150px; }
+            .calendar-head { padding: 16px; }
+            .calendar-brand { font-size: 22px; }
+        }
+
+        @media (max-width: 560px) {
+            .dashboard-summary { grid-template-columns: 1fr; }
+            .summary-card, .promo-banner { min-height: 150px; }
+            .promo-banner { transform: none; }
+            .calendar-brand { font-size: 18px; }
+            .calendar-date-badge { width: 48px; height: 50px; }
+            .calendar-date-badge-day { font-size: 18px; }
+        }
     </style>
+    <link rel="stylesheet" href="toefl-navigation.css">
 </head>
 <body>
     <div class="shell">
         <nav class="top-nav" aria-label="TOEFL quick navigation">
-            <div class="brand"><span class="brand-dot" aria-hidden="true"></span>TOEFL ITP Workspace</div>
-            <div class="nav-links">
-                <a href="../index.html">Dashboard</a>
-                <a href="study-plan.html">Schedule</a>
-                <a href="developer.html">Developer</a>
-                <a class="active" href="index.html">TOEFL ITP</a>
+            <div class="nav-top">
+                <div class="brand-row">
+                    <button class="brand brand-toggle" id="sidebarToggle" type="button" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation" data-tooltip="Close Sidebar"><img src="../asset/figma/sidebar-profile.png" alt="Quick Check"></button>
+                    <button class="nav-icon-button" id="sidebarToggleButton" type="button" aria-label="Collapse navigation" title="Collapse navigation" data-tooltip="Close Sidebar"><img class="nav-collapse-icon" src="../asset/figma/nav-sidebar-collapse.svg" alt=""></button>
+                    <button class="sidebar-expand-button" id="sidebarExpandButton" type="button" aria-label="Expand navigation" title="Expand navigation" data-tooltip="Open Sidebar"><img src="../asset/figma/nav-sidebar-expand.svg" alt=""></button>
+                </div>
+                <label class="nav-search" for="navSearch"><i data-lucide="search" aria-hidden="true"></i><input id="navSearch" type="search" placeholder="Search"></label>
+                <div class="nav-main">
+                    <div class="nav-list">
+                        <a class="nav-item active" href="index.html" data-nav-label="Dashboard" data-tooltip="Dashboard"><i data-lucide="house" aria-hidden="true"></i><span>Dashboard</span></a>
+                        <a class="nav-item" href="study-plan.html" data-nav-label="Today schedule" data-tooltip="Today"><svg class="nav-calendar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><text class="nav-calendar-day" id="todayCalendarNumber" x="12" y="18" text-anchor="middle" stroke="none" fill="currentColor">1</text></svg><span id="todayNavLabel">Today</span></a>
+                        <a class="nav-item" href="study-plan.html" data-nav-label="Mock Test" data-tooltip="Mock Test"><img class="nav-tabler-icon" src="../asset/figma/nav-books.svg" alt=""><span>Mock Test</span></a>
+                        <a class="nav-item" href="section%201.html" data-nav-label="Practice Test" data-tooltip="Practice Test"><img class="nav-tabler-icon" src="../asset/figma/nav-book.svg" alt=""><span>Practice Test</span></a>
+                        <a class="nav-item" href="tests/dist/index.html" data-nav-label="My Progress" data-tooltip="My Progress"><img class="nav-tabler-icon" src="../asset/figma/nav-chart-bar.svg" alt=""><span>My Progress</span></a>
+                        <p class="nav-heading">ADMIN</p>
+                        <a class="nav-item" href="developer.html" data-nav-label="Developer" data-tooltip="Developer"><img class="nav-phosphor-icon" src="../asset/figma/nav-user-circle-gear.svg" alt=""><span>Developer</span></a>
+                        <a class="nav-item" href="../index.html" data-nav-label="Back to IELTS" data-tooltip="Back IELTS"><img class="nav-tabler-icon" src="../asset/figma/nav-arrow-back-up.svg" alt=""><span>Back IELTS</span></a>
+                    </div>
+                </div>
+            </div>
+            <div class="nav-bottom">
+                <div class="nav-utility">
+                    <a class="nav-item" href="../index.html#settings" data-nav-label="Settings" data-tooltip="Setting"><img class="nav-tabler-icon" src="../asset/figma/nav-settings.svg" alt=""><span>Settings</span></a>
+                    <a class="nav-item" href="../index.html#notifications" data-nav-label="Notifications" data-tooltip="Notification"><i data-lucide="bell-dot" aria-hidden="true"></i><span>Notifications</span></a>
+                </div>
+                <div class="nav-profile">
+                    <div class="nav-profile-info"><div class="nav-avatar" aria-hidden="true">QC</div><div><p class="nav-profile-name">Quick Check</p><p class="nav-profile-plan">TOEFL workspace</p></div></div>
+                    <button class="nav-profile-action" type="button" aria-label="Sign out" title="Sign out"><i data-lucide="log-out" aria-hidden="true"></i></button>
+                </div>
             </div>
         </nav>
 
+        <div class="page-content">
         <header class="hero">
             <div class="hero-inner">
-                <div>
-                    <p class="eyebrow">TOEFL Planner</p>
-                    <h1>Plan TOEFL practice one month at a time.</h1>
-                    <p class="hero-copy">Choose a month to open its study schedule. Each month leads into a cleaner daily planner with date tiles, a mock-test overview, and section cards for Listening, Structure, and Reading.</p>
-                </div>
-                <aside class="hero-note" aria-label="TOEFL details">
-                    <strong>What opens after you click a month</strong>
-                    <div class="hero-note-list">
-                        <div class="hero-note-item">A selected-date schedule with soft cards and left/right date navigation.</div>
-                        <div class="hero-note-item">A daily mock-test panel that tracks how many of the 3 tests are completed.</div>
-                        <div class="hero-note-item">Section cards with difficulty, total time, and question counts for the day.</div>
-                        <div class="hero-note-item">A developer builder page for creating and organizing TOEFL question sets.</div>
+                <section class="dashboard-summary" aria-label="Study progress overview">
+                    <article class="summary-card progress-card">
+                        <div class="summary-card-heading">
+                            <h1>Study Progress</h1>
+                            <span>Start the test to load your study progress</span>
+                        </div>
+                        <div class="score-pair">
+                            <div><span>Estimated Score</span><strong>000</strong></div>
+                            <div><span>Target Score</span><strong>--</strong></div>
+                        </div>
+                        <div class="taken-row">
+                            <span>Test Taken</span>
+                            <b>Listening <em>0</em></b><b>Structure <em>0</em></b><b>Writing <em>0</em></b><b>Reading <em>0</em></b>
+                        </div>
+                    </article>
+                    <div class="stacked-cards">
+                        <article class="summary-card goal-card">
+                            <div class="summary-card-heading inline-heading"><h2>Daily Goal</h2><span><i class="ti ti-books"></i>1/3</span></div>
+                            <div class="goal-days" id="goalDaysStrip"></div>
+                        </article>
+                        <article class="summary-card level-card">
+                            <h2>Score/CEFR Level</h2>
+                            <div><strong>583</strong><span>/ B2</span></div>
+                            <small>Tested on Mock Test 01 Oct 2026</small>
+                        </article>
                     </div>
-                </aside>
+                    <article class="promo-banner" aria-label="Study promotion">BANNER PROMOSI</article>
+                </section>
             </div>
         </header>
 
         <main>
             <section class="month-panel" aria-labelledby="monthPlannerHeading">
-                <div class="section-head">
-                    <div>
-                        <h2 id="monthPlannerHeading">2026 Study Calendar</h2>
-                        <p>The section boxes are replaced by a month-first planner. Pick any month from January through December to jump into its TOEFL schedule view.</p>
-                    </div>
-                    <div class="planner-chip">12 Month Planner</div>
-                </div>
-
                 <div class="planner-layout">
-                    <div class="month-selector-block" aria-label="Month selector">
-                        <div class="block-head">
-                            <h3 class="block-title">Select a month first</h3>
-                        </div>
-                        <div class="month-grid" id="monthGrid">
-                            <button class="month-card" type="button" data-month="0">
-                                <div>
-                                    <div class="month-name">JANUARI</div>
-                                    <div class="month-meta">Open monthly schedule</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                            <button class="month-card" type="button" data-month="1">
-                                <div>
-                                    <div class="month-name">FEBRUARI</div>
-                                    <div class="month-meta">Open monthly schedule</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                            <button class="month-card" type="button" data-month="2">
-                                <div>
-                                    <div class="month-name">MARET</div>
-                                    <div class="month-meta">Open monthly schedule</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                            <button class="month-card" type="button" data-month="3">
-                                <div>
-                                    <div class="month-name">APRIL</div>
-                                    <div class="month-meta">Open monthly schedule</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                            <button class="month-card active" type="button" data-month="4">
-                                <div>
-                                    <div class="month-name">MEI</div>
-                                    <div class="month-meta">Current focus month</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                            <button class="month-card" type="button" data-month="5">
-                                <div>
-                                    <div class="month-name">JUNI</div>
-                                    <div class="month-meta">Open monthly schedule</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                            <button class="month-card" type="button" data-month="6">
-                                <div>
-                                    <div class="month-name">JULI</div>
-                                    <div class="month-meta">Open monthly schedule</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                            <button class="month-card" type="button" data-month="7">
-                                <div>
-                                    <div class="month-name">AGUSTUS</div>
-                                    <div class="month-meta">Open monthly schedule</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                            <button class="month-card" type="button" data-month="8">
-                                <div>
-                                    <div class="month-name">SEPTEMBER</div>
-                                    <div class="month-meta">Open monthly schedule</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                            <button class="month-card" type="button" data-month="9">
-                                <div>
-                                    <div class="month-name">OKTOBER</div>
-                                    <div class="month-meta">Open monthly schedule</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                            <button class="month-card" type="button" data-month="10">
-                                <div>
-                                    <div class="month-name">NOVEMBER</div>
-                                    <div class="month-meta">Open monthly schedule</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                            <button class="month-card" type="button" data-month="11">
-                                <div>
-                                    <div class="month-name">DESEMBER</div>
-                                    <div class="month-meta">Open monthly schedule</div>
-                                </div>
-                                <div class="month-arrow">›</div>
-                            </button>
-                        </div>
-                    </div>
-
                     <div class="daily-calendar-block" aria-label="Daily calendar">
-                        <div class="block-head">
-                            <h3 class="block-title">Daily schedule calendar</h3>
-                        </div>
-                        <div class="calendar-toolbar">
-                            <button class="calendar-nav" type="button" id="prevDashboardMonth" aria-label="Previous month">‹</button>
-                            <h3 class="calendar-title" id="dashboardMonthTitle">Month</h3>
-                            <button class="calendar-nav" type="button" id="nextDashboardMonth" aria-label="Next month">›</button>
+                        <div class="calendar-head">
+                            <h2 class="calendar-brand" id="monthPlannerHeading">Daily Schedule</h2>
+                            <div class="calendar-date-row">
+                                <button class="calendar-nav" type="button" id="prevDashboardMonth" aria-label="Previous month">‹</button>
+                                <div class="calendar-date-picker">
+                                    <button class="calendar-date-badge" type="button" id="calendarDateBadge" aria-label="Choose month and year" aria-expanded="false" aria-controls="monthPickerPopover">
+                                        <span class="calendar-date-badge-month" id="dashboardBadgeMonth">AUG</span>
+                                        <span class="calendar-date-badge-day" id="dashboardBadgeDay">1</span>
+                                    </button>
+                                    <div class="month-picker-popover" id="monthPickerPopover" role="dialog" aria-label="Choose month and year">
+                                        <div class="month-picker-header">
+                                            <h3 class="month-picker-year" id="monthPickerYear">2026</h3>
+                                            <div class="month-picker-year-nav">
+                                                <button type="button" id="previousPickerYear" aria-label="Previous year"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
+                                                <button type="button" id="nextPickerYear" aria-label="Next year"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+                                            </div>
+                                        </div>
+                                        <p class="month-picker-label">Month</p>
+                                        <div class="month-picker-grid" id="monthPickerGrid"></div>
+                                    </div>
+                                </div>
+                                <div class="calendar-date-copy">
+                                    <div class="calendar-title" id="dashboardMonthTitle">Month</div>
+                                    <div class="calendar-range" id="dashboardMonthRange">Range</div>
+                                </div>
+                                <button class="calendar-nav" type="button" id="nextDashboardMonth" aria-label="Next month">›</button>
+                            </div>
                         </div>
                         <div class="calendar-weekdays">
                             <span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span>
@@ -998,17 +1414,29 @@
         </main>
 
         <div class="foot">TOEFL ITP module integrated into IELTS Check workspace.</div>
+        </div>
     </div>
 
     <script src="../study-plan-firestore-sync.js?v=20260508"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="toefl-navigation.js"></script>
     <script>
+        lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
         const MONTH_PICKER_YEAR = 2026;
         const STORAGE_KEY = "toefl_schedule_v3";
         const MONTH_LABELS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
-        const monthCards = Array.from(document.querySelectorAll(".month-card"));
+        const MONTH_LABELS_SHORT = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DES"];
         const dashboardGrid = document.getElementById("dashboardCalendarGrid");
         const dashboardMonthTitle = document.getElementById("dashboardMonthTitle");
+        const dashboardMonthRange = document.getElementById("dashboardMonthRange");
+        const dashboardBadgeMonth = document.getElementById("dashboardBadgeMonth");
+        const dashboardBadgeDay = document.getElementById("dashboardBadgeDay");
+        const calendarDateBadge = document.getElementById("calendarDateBadge");
+        const monthPickerPopover = document.getElementById("monthPickerPopover");
+        const monthPickerYearLabel = document.getElementById("monthPickerYear");
+        const monthPickerGrid = document.getElementById("monthPickerGrid");
         const dailyDrilldown = document.getElementById("dailyDrilldown");
+        const MONTH_PICKER_LABELS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MEI", "JUNE", "JULI", "AUGUSTUS", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
         const dashboardSync = typeof StudyPlanFirestoreSync === "function"
             ? new StudyPlanFirestoreSync({ projectId: "quickcheck-25590" })
             : null;
@@ -1016,26 +1444,12 @@
         let dashboardYear = MONTH_PICKER_YEAR;
         let dashboardMonth = new Date().getMonth();
         let selectedDashboardDay = new Date().getDate();
+        let monthPickerYear = dashboardYear;
 
-        function setMonthCardActive(monthIndex) {
-            monthCards.forEach((card) => {
-                const cardMonth = Number(card.dataset.month || -1);
-                card.classList.toggle("active", cardMonth === monthIndex);
-                const meta = card.querySelector(".month-meta");
-                if (meta) {
-                    meta.textContent = cardMonth === monthIndex ? "Active calendar month" : "Open monthly schedule";
-                }
-            });
-        }
-
-        monthCards.forEach((card) => {
-            card.addEventListener("click", () => {
-                const month = Number(card.dataset.month || 0);
-                dashboardYear = MONTH_PICKER_YEAR;
-                dashboardMonth = month;
-                selectedDashboardDay = 1;
-                setMonthCardActive(month);
-                renderDashboardCalendar();
+        document.getElementById("navSearch").addEventListener("input", (event) => {
+            const query = event.target.value.trim().toLowerCase();
+            document.querySelectorAll("[data-nav-label]").forEach((item) => {
+                item.hidden = Boolean(query) && !item.dataset.navLabel.toLowerCase().includes(query);
             });
         });
 
@@ -1074,6 +1488,36 @@
             return fallback && fallback.sections ? fallback : createDefaultDayData(day);
         }
 
+        function renderMonthPicker() {
+            monthPickerYearLabel.textContent = String(monthPickerYear);
+            monthPickerGrid.innerHTML = MONTH_PICKER_LABELS.map((label, monthIndex) => `
+                <button class="month-picker-option${monthPickerYear === dashboardYear && monthIndex === dashboardMonth ? " active" : ""}" type="button" data-month-index="${monthIndex}">
+                    <span>${label}</span><i class="ti ti-chevron-right" aria-hidden="true"></i>
+                </button>
+            `).join("");
+            monthPickerGrid.querySelectorAll(".month-picker-option").forEach((monthButton) => {
+                monthButton.addEventListener("click", () => {
+                    dashboardYear = monthPickerYear;
+                    dashboardMonth = Number(monthButton.dataset.monthIndex);
+                    selectedDashboardDay = Math.min(selectedDashboardDay, new Date(dashboardYear, dashboardMonth + 1, 0).getDate());
+                    closeMonthPicker();
+                    renderDashboardCalendar();
+                });
+            });
+        }
+
+        function openMonthPicker() {
+            monthPickerYear = dashboardYear;
+            renderMonthPicker();
+            monthPickerPopover.classList.add("is-open");
+            calendarDateBadge.setAttribute("aria-expanded", "true");
+        }
+
+        function closeMonthPicker() {
+            monthPickerPopover.classList.remove("is-open");
+            calendarDateBadge.setAttribute("aria-expanded", "false");
+        }
+
         function renderDailyDrilldown() {
             const dayData = getDayData(dashboardYear, dashboardMonth, selectedDashboardDay);
             const dateKey = formatDateKey(dashboardYear, dashboardMonth, selectedDashboardDay);
@@ -1098,40 +1542,164 @@
             });
         }
 
+        function getStoredSectionProgress(sectionId, setDate, isCompleted) {
+            if (isCompleted) return 100;
+            const resultKey = `toefl_section${sectionId === "listening" ? "1" : sectionId === "structure" ? "2" : "3"}_result`;
+            try {
+                const result = JSON.parse(localStorage.getItem(resultKey) || "null");
+                const resultDate = String(result?.setDate || result?.submittedAt || "").slice(0, 10);
+                const questions = Array.isArray(result?.questions) ? result.questions : [];
+                if (resultDate !== setDate || questions.length === 0) return 0;
+                const answered = questions.filter((question) => String(question?.userAnswer || "").trim()).length;
+                return Math.round((answered / questions.length) * 100);
+            } catch (_error) {
+                return 0;
+            }
+        }
+
+        function getSectionStatus(sectionId, setDate, isRealDate, data) {
+            if (!isRealDate) return "unattempted";
+            const completed = Boolean(data.sections[sectionId] && data.sections[sectionId].completed);
+            const progress = getStoredSectionProgress(sectionId, setDate, completed);
+            return progress >= 100 ? "completed" : progress > 0 ? "ongoing" : "unattempted";
+        }
+
+        function renderDailyGoalStrip() {
+            const stripHost = document.getElementById("goalDaysStrip");
+            if (!stripHost) return;
+            const dayLabels = ["Mon", "Tue", "Wed", "Thr", "Fri", "Sat", "Sun"];
+            const today = new Date();
+            const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const mondayOffset = (startOfToday.getDay() + 6) % 7;
+            const monday = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), startOfToday.getDate() - mondayOffset);
+
+            stripHost.innerHTML = dayLabels.map((label, index) => {
+                const cellDate = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index);
+                const setDate = formatDateKey(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+                const data = getDayData(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+                const isPast = cellDate < startOfToday;
+                const isToday = cellDate.getTime() === startOfToday.getTime();
+                const sectionIds = ["listening", "structure", "reading"];
+                const progressBySection = {};
+                sectionIds.forEach((sectionId) => {
+                    const completed = Boolean(data.sections[sectionId] && data.sections[sectionId].completed);
+                    progressBySection[sectionId] = getStoredSectionProgress(sectionId, setDate, completed);
+                });
+                const allCompleted = sectionIds.every((sectionId) => progressBySection[sectionId] >= 100);
+
+                if (allCompleted) {
+                    return `<div class="goal-tile completed"><i class="ti ti-circle-check-filled goal-tile-icon"></i><small>${label}</small></div>`;
+                }
+                if (isPast) {
+                    return `<div class="goal-tile missed"><i class="ti ti-exclamation-circle goal-tile-icon"></i><small>${label}</small></div>`;
+                }
+                const minFloor = isToday ? 1 : 0;
+                const pListening = Math.max(minFloor, progressBySection.listening);
+                const pStructure = Math.max(minFloor, progressBySection.structure);
+                const pReading = Math.max(minFloor, progressBySection.reading);
+                return `
+                    <div class="goal-tile${isToday ? " today" : ""}">
+                        <div class="goal-rings" style="--p-listening: ${pListening}; --p-structure: ${pStructure}; --p-reading: ${pReading};">
+                            <span class="ring ring-outer"></span>
+                            <span class="ring ring-middle"></span>
+                            <span class="ring ring-inner"></span>
+                        </div>
+                        <small>${label}</small>
+                    </div>
+                `;
+            }).join("");
+        }
+
+        function renderTaskQueue(data, setDate, isRealDate) {
+            const sections = [
+                { id: "listening", label: "Listening", icon: "mock-listening.png" },
+                { id: "structure", label: "Structure & Writing", icon: "mock-structure.png" },
+                { id: "reading", label: "Reading", icon: "mock-reading.png" }
+            ];
+            const tokens = sections.map((section) => {
+                const status = getSectionStatus(section.id, setDate, isRealDate, data);
+                return `
+                    <span class="task-token ${status === "completed" ? "done" : ""}" data-label="${section.label}">
+                        <img src="../asset/figma/${section.icon}" alt="${section.label}">
+                        <img class="task-status-badge" src="../asst/icon/${status}.svg" alt="${status}">
+                    </span>
+                `;
+            }).join("");
+            return `<span class="task-queue">${tokens}</span>`;
+        }
+
+        function renderDayLabel(dayOfMonth) {
+            const isMockTest = (dayOfMonth - 1) % 4 === 0;
+            if (isMockTest) {
+                return `<span class="dashboard-day-label label-mock"><span>Mock Test</span></span>`;
+            }
+            return `<span class="dashboard-day-label label-recommended"><i data-lucide="sparkles" class="label-sparkle" aria-hidden="true"></i><span>Recomended Study Plan</span></span>`;
+        }
+
         function renderDashboardCalendar() {
             const daysInMonth = new Date(dashboardYear, dashboardMonth + 1, 0).getDate();
             const firstWeekday = new Date(dashboardYear, dashboardMonth, 1).getDay();
-            const today = new Date();
-            const isCurrentMonth = today.getFullYear() === dashboardYear && today.getMonth() === dashboardMonth;
+            const prevMonthDate = new Date(dashboardYear, dashboardMonth, 0);
+            const daysInPrevMonth = prevMonthDate.getDate();
             if (selectedDashboardDay > daysInMonth) selectedDashboardDay = daysInMonth;
+
             dashboardMonthTitle.textContent = `${MONTH_LABELS[dashboardMonth]} ${dashboardYear}`;
+            dashboardMonthRange.textContent = `1 ${MONTH_LABELS[dashboardMonth]} ${dashboardYear} - ${daysInMonth} ${MONTH_LABELS[dashboardMonth]} ${dashboardYear}`;
+            dashboardBadgeMonth.textContent = MONTH_LABELS_SHORT[dashboardMonth];
+            dashboardBadgeDay.textContent = String(selectedDashboardDay);
             dashboardGrid.innerHTML = "";
 
-            for (let i = 0; i < firstWeekday; i += 1) {
-                const gap = document.createElement("div");
-                gap.className = "dashboard-day placeholder";
-                dashboardGrid.appendChild(gap);
+            for (let i = firstWeekday - 1; i >= 0; i -= 1) {
+                const adjDay = daysInPrevMonth - i;
+                const adjMonth = dashboardMonth === 0 ? 11 : dashboardMonth - 1;
+                const adjYear = dashboardMonth === 0 ? dashboardYear - 1 : dashboardYear;
+                const data = getDayData(adjYear, adjMonth, adjDay);
+                const cell = document.createElement("div");
+                cell.className = "dashboard-day placeholder muted";
+                cell.innerHTML = `
+                    <span class="dashboard-day-number">${adjDay}</span>
+                    ${renderDayLabel(adjDay)}
+                    ${renderTaskQueue(data, formatDateKey(adjYear, adjMonth, adjDay), false)}
+                `;
+                dashboardGrid.appendChild(cell);
             }
 
             for (let day = 1; day <= daysInMonth; day += 1) {
                 const data = getDayData(dashboardYear, dashboardMonth, day);
                 const tile = document.createElement("button");
                 tile.type = "button";
-                const isToday = isCurrentMonth && day === today.getDate();
-                tile.className = `dashboard-day${day === selectedDashboardDay ? " selected" : ""}${isToday ? " today" : ""}`;
+                tile.className = `dashboard-day${day === selectedDashboardDay ? " selected" : ""}`;
                 tile.innerHTML = `
                     <span class="dashboard-day-number">${day}</span>
-                    <span class="task-queue">
-                        <span class="task-token ${data.sections.listening && data.sections.listening.completed ? "done" : ""}">${data.sections.listening && data.sections.listening.completed ? "✓" : "🎧"}</span>
-                        <span class="task-token ${data.sections.structure && data.sections.structure.completed ? "done" : ""}">${data.sections.structure && data.sections.structure.completed ? "✓" : "✍️"}</span>
-                        <span class="task-token ${data.sections.reading && data.sections.reading.completed ? "done" : ""}">${data.sections.reading && data.sections.reading.completed ? "✓" : "📖"}</span>
-                    </span>
+                    ${renderDayLabel(day)}
+                    ${renderTaskQueue(data, formatDateKey(dashboardYear, dashboardMonth, day), true)}
                 `;
                 tile.addEventListener("click", () => {
+                    selectedDashboardDay = day;
                     const dateKey = formatDateKey(dashboardYear, dashboardMonth, day);
                     window.location.href = `study-plan.html?date=${encodeURIComponent(dateKey)}`;
                 });
                 dashboardGrid.appendChild(tile);
+            }
+
+            const totalCells = firstWeekday + daysInMonth;
+            const trailingCells = (7 - (totalCells % 7)) % 7;
+            for (let day = 1; day <= trailingCells; day += 1) {
+                const adjMonth = dashboardMonth === 11 ? 0 : dashboardMonth + 1;
+                const adjYear = dashboardMonth === 11 ? dashboardYear + 1 : dashboardYear;
+                const data = getDayData(adjYear, adjMonth, day);
+                const cell = document.createElement("div");
+                cell.className = "dashboard-day placeholder muted";
+                cell.innerHTML = `
+                    <span class="dashboard-day-number">${day}</span>
+                    ${renderDayLabel(day)}
+                    ${renderTaskQueue(data, formatDateKey(adjYear, adjMonth, day), false)}
+                `;
+                dashboardGrid.appendChild(cell);
+            }
+
+            if (typeof lucide !== "undefined") {
+                lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
             }
             renderDailyDrilldown();
         }
@@ -1142,7 +1710,6 @@
                 dashboardMonth = 11;
                 dashboardYear -= 1;
             }
-            setMonthCardActive(dashboardMonth);
             renderDashboardCalendar();
         });
 
@@ -1152,19 +1719,47 @@
                 dashboardMonth = 0;
                 dashboardYear += 1;
             }
-            setMonthCardActive(dashboardMonth);
             renderDashboardCalendar();
+        });
+
+        calendarDateBadge.addEventListener("click", () => {
+            if (monthPickerPopover.classList.contains("is-open")) closeMonthPicker();
+            else openMonthPicker();
+        });
+
+        document.getElementById("previousPickerYear").addEventListener("click", () => {
+            monthPickerYear -= 1;
+            renderMonthPicker();
+        });
+
+        document.getElementById("nextPickerYear").addEventListener("click", () => {
+            monthPickerYear += 1;
+            renderMonthPicker();
+        });
+
+        document.addEventListener("click", (event) => {
+            if (monthPickerPopover.classList.contains("is-open") && !event.target.closest(".calendar-date-picker")) {
+                closeMonthPicker();
+            }
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && monthPickerPopover.classList.contains("is-open")) {
+                closeMonthPicker();
+                calendarDateBadge.focus();
+            }
         });
 
         if (dashboardSync) {
             dashboardSync.subscribe((snapshot) => {
                 dashboardSnapshot = snapshot || { dailyTasks: {} };
                 renderDashboardCalendar();
+                renderDailyGoalStrip();
             });
             dashboardSync.start();
         }
-        setMonthCardActive(dashboardMonth);
         renderDashboardCalendar();
+        renderDailyGoalStrip();
 
         function calculateFinalScore() {
             const s1 = parseInt(document.getElementById("score1").value, 10);
