@@ -1,449 +1,288 @@
-import React, { useState, useMemo } from "react";
-import {
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ReferenceLine, Legend
-} from "recharts";
-import {
-  Headphones, PenLine, BookOpen, Target, Calendar, TrendingUp,
-  TrendingDown, Sparkles, ChevronRight, ChevronLeft, Clock, CheckCircle2,
-  Circle, ListChecks, History as HistoryIcon, FileText, Dumbbell
-} from "lucide-react";
- 
-// ---------- Design tokens ----------
-const tokens = {
-  ink: "#14213D",
-  paper: "#F5F6F8",
-  card: "#FFFFFF",
-  line: "#E4E7EC",
-  muted: "#6B7280",
-  ai: "#6D5DFC",
-  aiSoft: "#EFECFF",
-  listening: "#2A9D8F",
-  listeningSoft: "#E3F4F1",
-  structure: "#E76F51",
-  structureSoft: "#FCEAE4",
-  writing: "#F4A261",
-  writingSoft: "#FDF1E4",
-  reading: "#457B9D",
-  readingSoft: "#E7EFF4",
-  good: "#2A9D8F",
-  warn: "#E9A23B",
-  bad: "#D64545",
-};
- 
-// ---------- Mock data (swap for Firestore data) ----------
-const profile = {
-  currentScore: 517,
-  projectedScore: 543,
-  goalScore: 550,
-  scoreRange: [310, 677],
-  examDate: "2026-11-15",
-};
- 
-// Official 3 composite sections (what the mock test + radar + accuracy list use)
-const skills = [
-  { key: "listening", label: "Listening", icon: Headphones, color: tokens.listening, soft: tokens.listeningSoft, current: 49, goal: 55, max: 68, accuracy: 74, deltaWeek: +4 },
-  { key: "structure", label: "Structure & Writing", icon: PenLine, color: tokens.structure, soft: tokens.structureSoft, current: 42, goal: 52, max: 68, accuracy: 58, deltaWeek: +2 },
-  { key: "reading", label: "Reading", icon: BookOpen, color: tokens.reading, soft: tokens.readingSoft, current: 51, goal: 55, max: 68, accuracy: 81, deltaWeek: -1 },
-];
- 
-// Granular 4 skills used ONLY for practice sessions (AI targets these independently)
-const practiceSkillMeta = {
-  listening: { label: "Listening", icon: Headphones, color: tokens.listening, soft: tokens.listeningSoft },
-  structure: { label: "Structure", icon: PenLine, color: tokens.structure, soft: tokens.structureSoft },
-  writing: { label: "Writing", icon: PenLine, color: tokens.writing, soft: tokens.writingSoft },
-  reading: { label: "Reading", icon: BookOpen, color: tokens.reading, soft: tokens.readingSoft },
-};
- 
-const radarData = skills.map(s => ({ skill: s.label, current: s.current, goal: s.goal, fullMark: s.max }));
- 
-// Recent mock tests, most recent last
-const mockHistory = [
-  { date: "Oct 1, 2026", label: "Mock #1", composite: 493, sections: { listening: 45, structure: 38, reading: 49 } },
-  { date: "Oct 8, 2026", label: "Mock #2", composite: 505, sections: { listening: 47, structure: 40, reading: 50 } },
-  { date: "Oct 15, 2026", label: "Mock #3", composite: 517, sections: { listening: 49, structure: 42, reading: 51 } },
-];
- 
-// Recent practice sessions, most recent last — each targets a subset of the 4 granular skills
-const practiceHistory = [
-  { date: "Oct 2, 2026", minutes: 35, scores: { listening: 78, structure: 62 } },
-  { date: "Oct 3, 2026", minutes: 40, scores: { structure: 65, writing: 55 } },
-  { date: "Oct 4, 2026", minutes: 30, scores: { reading: 80, listening: 81 } },
-];
- 
-// Unified timeline for the History section (drives graph + full list)
-const historyTimeline = [
-  { date: "Oct 1", label: "Mock #1", type: "mock", composite: 493, listening: 45, structure: 38, reading: 49 },
-  { date: "Oct 2", label: "Practice", type: "practice", composite: null, listening: 47, structure: 39, reading: null },
-  { date: "Oct 3", label: "Practice", type: "practice", composite: null, listening: null, structure: 41, reading: 50 },
-  { date: "Oct 4", label: "Practice", type: "practice", composite: null, listening: 48, structure: 40, reading: null },
-  { date: "Oct 8", label: "Mock #2", type: "mock", composite: 505, listening: 47, structure: 40, reading: 50 },
-  { date: "Oct 15", label: "Mock #3", type: "mock", composite: 517, listening: 49, structure: 42, reading: 51 },
-];
- 
-const aiPlan = [
-  { id: 1, skill: "structure", title: "Subject–verb agreement drills", reason: "Your Structure score (42) is the widest gap from goal (52) — 24% of missed items were agreement errors.", minutes: 25, status: "pending" },
-  { id: 2, skill: "listening", title: "Lecture note-taking: signal words", reason: "You lose points converting spoken detail into notes, not in raw comprehension — targeted drill on transitions.", minutes: 20, status: "pending" },
-  { id: 3, skill: "reading", title: "Timed passage review (light touch)", reason: "Reading is closest to goal. Light maintenance only, so most of today's time goes to Structure.", minutes: 15, status: "completed" },
-];
- 
-function daysUntil(dateStr) {
-  const d = new Date(dateStr + "T00:00:00");
-  return Math.max(0, Math.ceil((d - new Date()) / 86400000));
-}
- 
-// ---------- Small building blocks ----------
-function SectionLabel({ icon: Icon, children }) {
-  return (
-    <div className="flex items-center gap-2 mb-4">
-      {Icon && <Icon size={16} style={{ color: tokens.muted }} />}
-      <h2 className="text-sm font-semibold tracking-wide uppercase" style={{ color: tokens.muted, letterSpacing: "0.06em" }}>
-        {children}
-      </h2>
-    </div>
-  );
-}
- 
-function Card({ children, className = "", id }) {
-  return (
-    <div id={id} className={`rounded-2xl p-6 ${className}`} style={{ background: tokens.card, border: `1px solid ${tokens.line}` }}>
-      {children}
-    </div>
-  );
-}
- 
-function CarouselArrows({ index, total, onPrev, onNext }) {
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={onPrev}
-        disabled={index === 0}
-        className="w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-30"
-        style={{ background: tokens.paper }}
-        aria-label="Previous"
-      >
-        <ChevronLeft size={13} style={{ color: tokens.ink }} />
-      </button>
-      <div className="flex items-center gap-1">
-        {Array.from({ length: total }).map((_, i) => (
-          <span
-            key={i}
-            className="rounded-full"
-            style={{ width: 5, height: 5, background: i === index ? tokens.ai : tokens.line }}
-          />
-        ))}
-      </div>
-      <button
-        onClick={onNext}
-        disabled={index === total - 1}
-        className="w-6 h-6 rounded-full flex items-center justify-center disabled:opacity-30"
-        style={{ background: tokens.paper }}
-        aria-label="Next"
-      >
-        <ChevronRight size={13} style={{ color: tokens.ink }} />
-      </button>
-    </div>
-  );
-}
- 
-// ---------- Main page ----------
-export default function MyProgress() {
-  const [historyView, setHistoryView] = useState("composite");
-  const [resultsTab, setResultsTab] = useState("mock"); // mock | practice
-  const [mockIdx, setMockIdx] = useState(mockHistory.length - 1);
-  const [practiceIdx, setPracticeIdx] = useState(practiceHistory.length - 1);
- 
-  const days = daysUntil(profile.examDate);
-  const progressPct = Math.min(100, Math.round(((profile.currentScore - profile.scoreRange[0]) / (profile.goalScore - profile.scoreRange[0])) * 100));
-  const gapToGoal = profile.goalScore - profile.currentScore;
- 
-  const activeMock = mockHistory[mockIdx];
-  const activePractice = practiceHistory[practiceIdx];
-  const isLatestMock = mockIdx === mockHistory.length - 1;
-  const isLatestPractice = practiceIdx === practiceHistory.length - 1;
- 
-  const scrollToHistory = () => {
-    document.getElementById("history-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
- 
-  return (
-    <div className="min-h-screen w-full" style={{ background: tokens.paper, fontFamily: "'Inter', sans-serif" }}>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
- 
-        {/* HERO — Overall Progress */}
-        <Card className="!p-0 overflow-hidden">
-          <div className="p-6 sm:p-8" style={{ background: `linear-gradient(135deg, ${tokens.ink} 0%, #1F2E52 100%)` }}>
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Target size={16} color="#B9C2E0" />
-                  <span className="text-xs font-medium tracking-wide uppercase" style={{ color: "#B9C2E0", letterSpacing: "0.06em" }}>Overall Progress</span>
-                </div>
-                <div className="flex items-baseline gap-3 flex-wrap">
-                  <span className="text-5xl font-bold tabular-nums text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{profile.currentScore}</span>
-                  <span className="text-sm" style={{ color: "#B9C2E0" }}>current composite</span>
-                </div>
-                <div className="mt-1 text-sm" style={{ color: "#B9C2E0" }}>
-                  Goal <strong className="text-white font-semibold">{profile.goalScore}</strong> · {gapToGoal} points to go
-                </div>
-              </div>
-              <div className="flex gap-8">
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: "#CFC8FF" }}>
-                    <Sparkles size={13} /><span className="uppercase tracking-wide font-medium" style={{ letterSpacing: "0.05em" }}>AI projected</span>
-                  </div>
-                  <div className="text-2xl font-bold tabular-nums text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{profile.projectedScore}</div>
-                  <div className="text-xs mt-0.5" style={{ color: "#B9C2E0" }}>by exam day, at current pace</div>
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5 text-xs mb-1" style={{ color: "#B9C2E0" }}>
-                    <Calendar size={13} /><span className="uppercase tracking-wide font-medium" style={{ letterSpacing: "0.05em" }}>Exam day</span>
-                  </div>
-                  <div className="text-2xl font-bold tabular-nums text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{days}d</div>
-                  <div className="text-xs mt-0.5" style={{ color: "#B9C2E0" }}>Nov 15, 2026</div>
-                </div>
-              </div>
-            </div>
-            <div className="mt-6">
-              <div className="h-2 rounded-full w-full overflow-hidden" style={{ background: "rgba(255,255,255,0.15)" }}>
-                <div className="h-full rounded-full" style={{ width: `${progressPct}%`, background: `linear-gradient(90deg, ${tokens.ai}, #A79BFF)` }} />
-              </div>
-              <div className="flex justify-between mt-1.5 text-[11px]" style={{ color: "#8E9AC2" }}>
-                <span>{profile.scoreRange[0]}</span>
-                <span>{profile.currentScore} pts · {progressPct}% of the way to goal</span>
-                <span>{profile.goalScore}</span>
-              </div>
-            </div>
-          </div>
-        </Card>
- 
-        {/* ROW: Radar + Recent Results (tabs: Mock / Practice, each with carousel) */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Radar */}
-          <Card className="lg:col-span-3">
-            <SectionLabel icon={Target}>Skill Standing vs. Goal</SectionLabel>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radarData} outerRadius="72%">
-                  <PolarGrid stroke={tokens.line} />
-                  <PolarAngleAxis dataKey="skill" tick={{ fill: tokens.ink, fontSize: 12, fontWeight: 500 }} />
-                  <PolarRadiusAxis angle={30} domain={[30, 68]} tick={{ fill: tokens.muted, fontSize: 10 }} tickCount={4} />
-                  <Radar name="Goal" dataKey="goal" stroke={tokens.muted} strokeDasharray="4 4" fill={tokens.muted} fillOpacity={0.05} />
-                  <Radar name="Current" dataKey="current" stroke={tokens.ai} fill={tokens.ai} fillOpacity={0.28} strokeWidth={2} />
-                  <Legend verticalAlign="bottom" height={28} iconType="plainline" wrapperStyle={{ fontSize: 12, color: tokens.muted }} />
-                  <Tooltip contentStyle={{ borderRadius: 10, border: `1px solid ${tokens.line}`, fontSize: 12 }} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-            <p className="text-xs mt-2" style={{ color: tokens.muted }}>
-              "Current" is your last mock test's section scores — see how it's built in the card on the right.
-            </p>
-          </Card>
- 
-          {/* Recent Results — unified card, tabs + carousel, links out to full history */}
-          <Card className="lg:col-span-2 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: tokens.line }}>
-                {[
-                  { key: "mock", label: "Mock Test", icon: FileText },
-                  { key: "practice", label: "Practice", icon: Dumbbell },
-                ].map(t => (
-                  <button
-                    key={t.key}
-                    onClick={() => setResultsTab(t.key)}
-                    className="px-3 py-1.5 text-xs font-medium flex items-center gap-1.5"
-                    style={{ background: resultsTab === t.key ? tokens.ink : "transparent", color: resultsTab === t.key ? "#fff" : tokens.muted }}
-                  >
-                    <t.icon size={12} /> {t.label}
-                  </button>
-                ))}
-              </div>
-              {resultsTab === "mock" ? (
-                <CarouselArrows index={mockIdx} total={mockHistory.length} onPrev={() => setMockIdx(i => Math.max(0, i - 1))} onNext={() => setMockIdx(i => Math.min(mockHistory.length - 1, i + 1))} />
-              ) : (
-                <CarouselArrows index={practiceIdx} total={practiceHistory.length} onPrev={() => setPracticeIdx(i => Math.max(0, i - 1))} onNext={() => setPracticeIdx(i => Math.min(practiceHistory.length - 1, i + 1))} />
-              )}
-            </div>
- 
-            {resultsTab === "mock" ? (
-              <>
-                <div className="text-xs mb-3 flex items-center gap-1.5" style={{ color: tokens.muted }}>
-                  {activeMock.date} · {activeMock.label}
-                  {isLatestMock && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: tokens.aiSoft, color: tokens.ai }}>Latest</span>}
-                </div>
-                <div className="text-4xl font-bold tabular-nums mb-4" style={{ color: tokens.ink, fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {activeMock.composite}
-                </div>
-                <div className="space-y-3 flex-1">
-                  {skills.map(s => {
-                    const Icon = s.icon;
-                    const val = activeMock.sections[s.key];
-                    const pct = Math.round((val / s.max) * 100);
-                    return (
-                      <div key={s.key}>
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="flex items-center gap-1.5 font-medium" style={{ color: tokens.ink }}><Icon size={13} style={{ color: s.color }} /> {s.label}</span>
-                          <span className="tabular-nums font-semibold" style={{ color: s.color }}>{val}</span>
-                        </div>
-                        <div className="h-1.5 rounded-full w-full" style={{ background: s.soft }}>
-                          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: s.color }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-xs mb-3 flex items-center gap-1.5" style={{ color: tokens.muted }}>
-                  {activePractice.date} · {activePractice.minutes} min session
-                  {isLatestPractice && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style={{ background: tokens.aiSoft, color: tokens.ai }}>Latest</span>}
-                </div>
-                <div className="text-xs mb-4" style={{ color: tokens.muted }}>Practice targets specific skills, not a full section — only what was drilled shows a score.</div>
-                <div className="space-y-3 flex-1">
-                  {Object.entries(practiceSkillMeta).map(([key, meta]) => {
-                    const Icon = meta.icon;
-                    const val = activePractice.scores[key];
-                    const practiced = val !== undefined;
-                    return (
-                      <div key={key} style={{ opacity: practiced ? 1 : 0.4 }}>
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="flex items-center gap-1.5 font-medium" style={{ color: tokens.ink }}><Icon size={13} style={{ color: meta.color }} /> {meta.label}</span>
-                          <span className="tabular-nums font-semibold" style={{ color: practiced ? meta.color : tokens.muted }}>{practiced ? `${val}%` : "not drilled"}</span>
-                        </div>
-                        <div className="h-1.5 rounded-full w-full" style={{ background: meta.soft }}>
-                          {practiced && <div className="h-full rounded-full" style={{ width: `${val}%`, background: meta.color }} />}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
- 
-            <button onClick={scrollToHistory} className="mt-4 text-xs font-medium flex items-center gap-1 self-start" style={{ color: tokens.ai }}>
-              View full history <ChevronRight size={13} />
-            </button>
-          </Card>
-        </div>
- 
-        {/* AI Recommended Plan */}
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} style={{ color: tokens.ai }} />
-              <h2 className="text-sm font-semibold tracking-wide uppercase" style={{ color: tokens.ai, letterSpacing: "0.06em" }}>AI Study Plan · Today</h2>
-            </div>
-            <button className="text-xs font-medium flex items-center gap-1" style={{ color: tokens.muted }}>View full 4-week roadmap <ChevronRight size={13} /></button>
-          </div>
-          <div className="space-y-2">
-            {aiPlan.map(task => {
-              const skill = skills.find(s => s.key === task.skill);
-              const Icon = skill.icon;
-              const done = task.status === "completed";
-              return (
-                <div key={task.id} className="flex items-start gap-3 p-3 rounded-xl" style={{ background: done ? tokens.paper : skill.soft, opacity: done ? 0.65 : 1 }}>
-                  <div className="mt-0.5">{done ? <CheckCircle2 size={18} style={{ color: tokens.good }} /> : <Circle size={18} style={{ color: skill.color }} />}</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Icon size={14} style={{ color: skill.color }} />
-                      <span className={`text-sm font-semibold ${done ? "line-through" : ""}`} style={{ color: tokens.ink }}>{task.title}</span>
-                      <span className="text-[11px] flex items-center gap-1" style={{ color: tokens.muted }}><Clock size={11} /> {task.minutes} min</span>
-                    </div>
-                    <p className="text-xs mt-1" style={{ color: tokens.muted }}>{task.reason}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
- 
-        {/* Mock Test & Practice History — the ONE canonical full-history view */}
-        <Card id="history-section">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <SectionLabel icon={TrendingUp}><span className="normal-case tracking-normal text-sm font-semibold" style={{ color: tokens.ink }}>Score Trajectory</span></SectionLabel>
-            <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: tokens.line }}>
-              {["composite", "bySkill"].map(v => (
-                <button key={v} onClick={() => setHistoryView(v)} className="px-3 py-1.5 text-xs font-medium" style={{ background: historyView === v ? tokens.ink : "transparent", color: historyView === v ? "#fff" : tokens.muted }}>
-                  {v === "composite" ? "Composite" : "By Section"}
-                </button>
-              ))}
-            </div>
-          </div>
- 
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={historyTimeline} margin={{ top: 8, right: 12, left: -12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={tokens.line} vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 11, fill: tokens.muted }} axisLine={{ stroke: tokens.line }} tickLine={false} />
-                <YAxis domain={historyView === "composite" ? [470, 560] : [30, 60]} tick={{ fontSize: 11, fill: tokens.muted }} axisLine={false} tickLine={false} width={34} />
-                <Tooltip contentStyle={{ borderRadius: 10, border: `1px solid ${tokens.line}`, fontSize: 12 }} />
-                {historyView === "composite" ? (
-                  <>
-                    <ReferenceLine y={profile.goalScore} stroke={tokens.warn} strokeDasharray="4 4" label={{ value: "Goal", fontSize: 10, fill: tokens.warn, position: "right" }} />
-                    <Line type="monotone" dataKey="composite" name="Mock composite" stroke={tokens.ai} strokeWidth={2.5} dot={{ r: 4, fill: tokens.ai }} connectNulls />
-                  </>
-                ) : (
-                  <>
-                    <Line type="monotone" dataKey="listening" name="Listening" stroke={tokens.listening} strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                    <Line type="monotone" dataKey="structure" name="Structure & Writing" stroke={tokens.structure} strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                    <Line type="monotone" dataKey="reading" name="Reading" stroke={tokens.reading} strokeWidth={2} dot={{ r: 3 }} connectNulls />
-                    <Legend verticalAlign="top" height={24} iconType="plainline" wrapperStyle={{ fontSize: 11, color: tokens.muted }} />
-                  </>
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
- 
-          <div className="mt-5 divide-y" style={{ borderColor: tokens.line }}>
-            {[...historyTimeline].reverse().map((h, i) => (
-              <div key={i} className="flex items-center justify-between py-2.5" style={{ borderTop: i === 0 ? "none" : `1px solid ${tokens.line}` }}>
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wide" style={{ background: h.type === "mock" ? tokens.aiSoft : tokens.paper, color: h.type === "mock" ? tokens.ai : tokens.muted }}>{h.type}</span>
-                  <span className="text-sm font-medium" style={{ color: tokens.ink }}>{h.label}</span>
-                  <span className="text-xs" style={{ color: tokens.muted }}>{h.date}</span>
-                </div>
-                <span className="text-sm font-semibold tabular-nums" style={{ color: tokens.ink }}>{h.composite ? h.composite : "—"}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
- 
-        {/* Skill Accuracy by Module */}
-        <Card>
-          <SectionLabel icon={ListChecks}>Skill Accuracy by Module</SectionLabel>
-          <div className="space-y-4">
-            {skills.map(s => {
-              const Icon = s.icon;
-              const up = s.deltaWeek >= 0;
-              return (
-                <div key={s.key} className="flex items-center gap-4">
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: s.soft }}>
-                    <Icon size={16} style={{ color: s.color }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-semibold" style={{ color: tokens.ink }}>{s.label}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold tabular-nums" style={{ color: tokens.ink }}>{s.accuracy}%</span>
-                        <span className="flex items-center gap-0.5 text-xs font-medium" style={{ color: up ? tokens.good : tokens.bad }}>
-                          {up ? <TrendingUp size={12} /> : <TrendingDown size={12} />}{Math.abs(s.deltaWeek)}%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-2 rounded-full w-full" style={{ background: s.soft }}>
-                      <div className="h-full rounded-full" style={{ width: `${s.accuracy}%`, background: s.color }} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
- 
-      </div>
-    </div>
-  );
-}
- 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>My Progress | TOEFL ITP</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
+	<style>
+		:root { --ink: #182544; --text: #18212f; --muted: #7a8fa6; --line: #d1dce8; --blue: #0ea5e9; --teal: #0d9488; --lavender: #eee5ff; --mint: #d9f4ea; --sky: #dff3ff; }
+		* { box-sizing: border-box; }
+		body { margin: 0; min-width: 320px; background: #ffffff; color: var(--text); font-family: "Outfit", sans-serif; }
+		button { font: inherit; }
+		.app { min-height: 100vh; display: grid; grid-template-columns: 138px minmax(0, 1fr); }
+		.sidebar { position: sticky; top: 0; height: 100vh; padding: 12px 9px; display: flex; flex-direction: column; background: #edf7ff; border-right: 1px solid #deebf5; }
+		.brand { display: grid; place-items: center; height: 38px; margin-bottom: 12px; }
+		.brand img { width: 78px; height: 36px; object-fit: contain; }
+		.search { height: 23px; display: flex; align-items: center; gap: 4px; padding: 0 7px; border: 1px solid #d3e2ed; border-radius: 5px; color: #9bb0c1; }
+		.search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--text); font-size: 9px; }
+		.nav { display: grid; gap: 4px; margin-top: 12px; }
+		.nav-label { margin: 8px 8px 0; color: #596f86; font-size: 9px; font-weight: 700; }
+		.nav a { min-height: 25px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 5px; color: #273544; text-decoration: none; font-size: 9px; }
+		.nav a:hover, .nav a.active { color: #005faa; background: #ffffff; }
+		.nav .ti { font-size: 13px; }
+		.sidebar-bottom { display: grid; gap: 4px; margin-top: auto; }
+		.profile { display: flex; align-items: center; gap: 6px; padding: 10px 5px 0; border-top: 1px solid #dceaf4; }
+		.profile img { width: 27px; height: 27px; border-radius: 50%; object-fit: cover; }
+		.profile p { margin: 0; color: #273544; font-size: 8px; line-height: 1.2; }
+		.profile small { color: var(--muted); font-size: 7px; }
+		main { width: min(100%, 860px); margin: 0 auto; padding: 18px 0 48px; }
+		.panel { border: 1px solid var(--line); border-radius: 5px; background: #ffffff; }
+		.progress-banner { position: relative; min-height: 91px; padding: 11px 12px 27px; border: 0; border-radius: 5px; color: #ffffff; background: var(--ink); overflow: hidden; }
+		.banner-grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 18px; }
+		.eyebrow { margin: 0 0 2px; color: #d1dce8; font-size: 8px; font-weight: 600; letter-spacing: .04em; }
+		.banner-score { margin: 0; font-size: 25px; line-height: .9; }
+		.banner-copy { margin: 3px 0 0; max-width: 130px; color: #a8b6c7; font-size: 5px; line-height: 1.2; }
+		.goal-row { display: flex; align-items: baseline; gap: 6px; margin-top: 3px; font-size: 7px; }
+		.goal-row strong { font-size: 12px; }
+		.banner-stat { display: flex; gap: 5px; align-items: start; }
+		.banner-stat .ti { margin-top: 1px; color: #00aaff; font-size: 11px; }
+		.banner-stat strong { display: block; margin-top: 3px; font-size: 20px; line-height: .9; }
+		.banner-stat small { color: #a8b6c7; font-size: 5px; }
+		.progress-track { position: absolute; left: 12px; right: 12px; bottom: 14px; height: 6px; border-radius: 8px; background: #d9f0fb; }
+		.progress-track span { display: block; width: 65%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #09b9de, #0d9488); }
+		.progress-meta { position: absolute; left: 12px; right: 12px; bottom: 4px; display: flex; justify-content: space-between; color: #ffffff; font-size: 5px; }
+		.standings { margin-top: 15px; padding: 11px 12px 10px; }
+		.panel-title { margin: 0; color: #54708c; font-size: 8px; font-weight: 700; letter-spacing: .04em; }
+		.radar-wrap { display: grid; place-items: center; min-height: 155px; }
+		.radar { position: relative; width: 190px; height: 150px; }
+		.radar svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+		.radar-label { position: absolute; white-space: nowrap; font-size: 7px; }
+		.radar-label strong { color: #ff8a82; font-weight: 500; }
+		.radar-label.listening { top: 5px; left: 51px; color: #ef4444; }
+		.radar-label.structure { top: 58px; right: -8px; }
+		.radar-label.reading { top: 58px; left: -18px; }
+		.radar-label.writing { bottom: 5px; left: 57px; }
+		.standings-foot { display: grid; gap: 7px; }
+		.legend { display: flex; justify-content: center; gap: 15px; color: #33485e; font-size: 7px; }
+		.legend span::before { content: ""; display: inline-block; width: 21px; margin-right: 4px; vertical-align: middle; border-top: 1px solid #f0a34a; }
+		.legend span:last-child::before { border-top: 1px solid #0b83de; }
+		.standings-note { margin: 0; color: #e14b61; text-align: center; font-size: 7px; }
+		.standings-note span { color: #536b83; }
+		.divider { height: 1px; background: #e6edf4; }
+		.gaps { display: grid; gap: 5px; }
+		.gaps-title { margin: 0; color: #9aafc4; font-size: 7px; }
+		.gap-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+		.gap-tags span { padding: 4px 8px; border-radius: 8px; color: #f08b5a; background: #fff0e4; font-size: 7px; }
+		.result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; }
+		.result-card { min-width: 0; padding: 11px 12px 14px; }
+		.card-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+		.type-pill { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; color: #ffffff; background: var(--ink); font-size: 7px; }
+		.type-pill.outline { color: #4a7196; background: #ffffff; border: 1px solid #b9d0e4; }
+		.dots { color: #b6c7d6; letter-spacing: 2px; font-size: 10px; }
+		.date-box { display: grid; gap: 3px; margin: 7px 0 12px; justify-content: end; text-align: center; }
+		.date-box span { padding: 4px 5px; color: #7a8fa6; background: #f2f7fc; font-size: 6px; }
+		.date-box strong { padding: 4px 5px; border: 1px solid #e5edf4; font-size: 7px; }
+		.score-label { margin: 0; color: #52718f; font-size: 7px; }
+		.score { margin: 2px 0 13px; font-size: 23px; line-height: 1; }
+		.metric-list { display: grid; gap: 9px; }
+		.metric { display: grid; grid-template-columns: 29px minmax(0, 1fr); gap: 7px; align-items: center; }
+		.metric-icon { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 50%; background: var(--sky); }
+		.metric-icon.green { background: var(--mint); }
+		.metric-icon.purple { background: var(--lavender); }
+		.metric-icon img { width: 16px; height: 16px; object-fit: contain; }
+		.metric-copy { min-width: 0; }
+		.metric-copy header { display: flex; justify-content: space-between; gap: 4px; color: #18212f; font-size: 6px; font-weight: 600; }
+		.metric-copy header span { color: #0ea5e9; font-weight: 500; }
+		.metric-bar { height: 5px; margin-top: 4px; overflow: hidden; border-radius: 5px; background: #dff1fb; }
+		.metric-bar span { display: block; width: 72%; height: 100%; border-radius: inherit; background: #0ea5e9; }
+		.metric-bar.green span { width: 58%; background: #00a86b; }
+		.metric-bar.purple span { width: 58%; background: #914cff; }
+		.recommendations { margin-top: 15px; padding: 11px 12px 13px; }
+		.recommendation-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; color: #8a4fff; font-size: 8px; }
+		.recommendation-head a { color: #7a8fa6; font-size: 6px; text-decoration: none; }
+		.recommendation-list { display: grid; gap: 5px; margin-top: 9px; }
+		.recommendation { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 7px; align-items: center; min-height: 37px; padding: 5px 7px; border-radius: 6px; background: var(--mint); }
+		.recommendation:nth-child(2) { background: #e8f7fc; }
+		.recommendation:nth-child(3) { background: #eff1ff; }
+		.recommendation .metric-icon { width: 28px; height: 28px; }
+		.recommendation h3 { margin: 0; font-size: 8px; }
+		.recommendation p { margin: 2px 0 0; color: #617991; font-size: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.recommendation small { color: #7a8fa6; font-size: 5px; }
+		.start-button { padding: 6px 8px; border: 0; border-radius: 5px; color: #31435a; background: #fff5c9; font-size: 7px; cursor: pointer; }
+		.chart-panel, .skills-panel { margin-top: 15px; padding: 11px 12px; }
+		.chart-head, .skills-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+		.chart-title { margin: 0; font-size: 8px; }
+		.toggle { display: inline-flex; overflow: hidden; border: 1px solid #d8e2ec; border-radius: 3px; }
+		.toggle button { padding: 4px 7px; border: 0; color: #687e94; background: #ffffff; font-size: 6px; cursor: pointer; }
+		.toggle button.active { color: #ffffff; background: var(--ink); }
+		.chart { height: 150px; margin-top: 8px; padding: 0 4px; border-bottom: 1px solid #dfe7ef; background: repeating-linear-gradient(to bottom, transparent 0, transparent 35px, #e9eef3 36px); }
+		.chart svg { width: 100%; height: 100%; }
+		.history { display: grid; gap: 0; margin-top: 5px; }
+		.history-row { display: grid; grid-template-columns: 35px 1fr 35px; gap: 4px; padding: 4px 0; border-top: 1px solid #edf1f5; color: #31435a; font-size: 6px; }
+		.history-row b { color: #566e87; font-weight: 500; }
+		.history-row strong { text-align: right; }
+		.skills-head small { color: #7a8fa6; font-size: 6px; }
+		.skills-tabs { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 11px; overflow: hidden; border-radius: 5px; background: #f2f6fa; }
+		.skills-tabs button { padding: 5px; border: 0; color: #667b90; background: transparent; font-size: 6px; cursor: pointer; }
+		.skills-tabs button.active { color: #1d354e; background: #ffffff; }
+		.skill-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 12px; }
+		.skill-column h3 { margin: 0 0 6px; color: #5f7890; font-size: 6px; text-transform: uppercase; }
+		.skill-column h3 .ti { width: 22px; height: 22px; display: inline-grid; place-items: center; margin-right: 5px; border-radius: 50%; color: #ffffff; background: #8299b0; font-size: 11px; vertical-align: middle; }
+		.skill-item { display: grid; gap: 3px; padding: 5px; margin-bottom: 5px; border: 1px solid #e0eaf2; border-radius: 4px; }
+		.skill-item header { display: flex; justify-content: space-between; gap: 3px; color: #334b63; font-size: 6px; }
+		.skill-item header > span:first-child { display: inline-flex; align-items: center; min-width: 0; color: #334b63; }
+		.skill-item header > span:first-child .ti { width: 14px; height: 14px; display: inline-grid; place-items: center; flex: 0 0 auto; margin-right: 4px; border-radius: 3px; color: #007cc2; background: #dff1fb; font-size: 8px; }
+		.skill-item header span { color: #7a8fa6; }
+		.skill-bar { height: 4px; border-radius: 4px; background: #e5f3fb; }
+		.skill-bar span { display: block; width: 64%; height: 100%; border-radius: inherit; background: #0ea5e9; }
+		.skill-item small { width: max-content; padding: 2px 4px; border-radius: 3px; color: #7a8fa6; background: #eaf2f8; font-size: 5px; }
+		@media (max-width: 900px) { main { width: auto; margin: 0 18px; } }
+		@media (max-width: 700px) { .app { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; padding: 8px 12px; } .brand { justify-content: start; } .nav { display: flex; overflow-x: auto; } .nav-label, .sidebar-bottom { display: none; } .nav a { flex: 0 0 auto; padding: 7px 8px; } main { margin: 0; padding: 12px; } .skill-grid { grid-template-columns: repeat(2, 1fr); } .standings, .recommendations, .chart-panel, .skills-panel { overflow: hidden; } }
+		@media (max-width: 500px) { .banner-grid { gap: 8px; grid-template-columns: 1.4fr 1fr 1fr; } .result-grid { grid-template-columns: 1fr; } .skill-grid { grid-template-columns: 1fr; } .banner-stat small { display: none; } .radar-wrap { min-height: 142px; transform: scale(.92); } .recommendation { grid-template-columns: 28px minmax(0, 1fr); } .recommendation .start-button, .recommendation > small { grid-column: 2; justify-self: start; } }
+	</style>
+</head>
+<body>
+	<div class="app">
+		<aside class="sidebar">
+			<a class="brand" href="index.html"><img src="../asset/figma/sidebar-profile.png" alt="Quick Check"></a>
+			<label class="search"><i class="ti ti-search"></i><input type="search" placeholder="Search"></label>
+			<nav class="nav" aria-label="TOEFL navigation">
+				<a href="index.html"><i class="ti ti-home"></i>Dashboard</a>
+				<a href="study-plan.html"><i class="ti ti-calendar"></i>Today</a>
+				<a href="study-plan.html"><i class="ti ti-books"></i>Mock Test</a>
+				<a href="section%201.html"><i class="ti ti-book"></i>Practice Test</a>
+				<a class="active" href="MyProgress.html"><i class="ti ti-chart-bar"></i>My Progress</a>
+				<span class="nav-label">ADMIN</span>
+				<a href="developer.html"><i class="ti ti-user-cog"></i>Developer</a>
+				<a href="../index.html"><i class="ti ti-arrow-back-up"></i>Back IELTS</a>
+			</nav>
+			<div class="sidebar-bottom">
+				<a class="nav" href="../index.html#settings"><span class="nav a"><i class="ti ti-settings"></i>Settings</span></a>
+				<a class="nav" href="../index.html#notifications"><span class="nav a"><i class="ti ti-bell"></i>Notifications</span></a>
+				<div class="profile"><img src="../asset/figma/sidebar-avatar.jpeg" alt=""><div><p>Culaccino...</p><small>Trial</small></div><i class="ti ti-logout"></i></div>
+			</div>
+		</aside>
+		<main>
+			<section class="progress-banner panel" aria-label="Overall progress">
+				<div class="banner-grid">
+					<div><p class="eyebrow">OVERALL PROGRESS</p><p class="banner-score" id="overallScore">0</p><p class="banner-copy">accumulation score from Mock Test &amp; Practice Test</p><div class="goal-row"><span>GOAL</span><strong id="goalScore">550</strong><span id="pointsToGo">↗ 550 points to go</span></div></div>
+					<div class="banner-stat"><i class="ti ti-sparkles"></i><div><p class="eyebrow">AI PROJECTED</p><strong id="projectedScore">0</strong><small>by exam date, at current pace</small></div></div>
+					<div class="banner-stat"><i class="ti ti-calendar-week"></i><div><p class="eyebrow">TO EXAM DAY</p><strong id="examDays">--</strong></div></div>
+				</div>
+				<div class="progress-track"><span id="overallProgressBar"></span></div><div class="progress-meta"><span id="progressStart">0</span><span id="progressPercent">0% way to go to your goals</span><span id="progressGoal">550</span></div>
+			</section>
+			<section class="standings panel">
+				<p class="panel-title">WHERE YOU STAND</p>
+				<div class="radar-wrap"><div class="radar"><svg viewBox="0 0 190 150" aria-hidden="true"><polygon points="95,12 161,75 95,138 29,75" fill="none" stroke="#d9e3ec"/><polygon points="95,28 144,75 95,122 46,75" fill="none" stroke="#d9e3ec"/><polygon points="95,44 127,75 95,106 63,75" fill="none" stroke="#d9e3ec"/><line x1="95" y1="12" x2="95" y2="138" stroke="#e5ebf1"/><line x1="29" y1="75" x2="161" y2="75" stroke="#e5ebf1"/><polygon points="95,28 144,75 95,122 46,75" fill="none" stroke="#f0a34a" stroke-dasharray="3 3"/><polygon id="currentRadar" points="95,75 95,75 95,75 95,75" fill="#0b83de" fill-opacity=".22" stroke="#0b83de" stroke-width="2"/></svg><span class="radar-label listening">⚠ <strong id="listeningRadar">Listening (0%)</strong></span><span class="radar-label structure">Structure <strong id="structureRadar">(0%)</strong></span><span class="radar-label reading">Reading <strong id="readingRadar">(0%)</strong></span><span class="radar-label writing">Writing <strong id="writingRadar">(0%)</strong></span></div></div>
+				<div class="standings-foot"><div class="legend"><span>Goal</span><span>Current</span></div><p class="standings-note">-18% <span>behind baseline (dashed line), the largest gap in your result test so it's first area need to be improved.</span></p><div class="divider"></div><div class="gaps"><p class="gaps-title">WHERE THOSE POINT WENT</p><div class="gap-tags"><span>Idiomatic Expressions</span><span>Restatement Items</span><span>Pacing</span></div></div></div>
+			</section>
+			<div class="result-grid">
+				<article class="result-card panel"><div class="card-head"><span class="type-pill"><i class="ti ti-file-text"></i>Mock Test</span><span class="dots">‹ · · · ›</span></div><div class="date-box"><span id="mockDate">No completed test</span><strong id="mockName">Mock Test</strong></div><p class="score-label">SCORE</p><p class="score" id="mockScore">--</p><div class="metric-list"><div class="metric"><span class="metric-icon"><img src="../asset/figma/mock-listening.png" alt=""></span><div class="metric-copy"><header>LISTENING COMPREHENSION <span id="mockListening">--</span></header><div class="metric-bar"><span id="mockListeningBar"></span></div></div></div><div class="metric"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div class="metric-copy"><header>STRUCTURE &amp; WRITING <span id="mockStructure">--</span></header><div class="metric-bar green"><span id="mockStructureBar"></span></div></div></div><div class="metric"><span class="metric-icon purple"><img src="../asset/figma/mock-reading.png" alt=""></span><div class="metric-copy"><header>READING COMPREHENSION <span id="mockReading">--</span></header><div class="metric-bar purple"><span id="mockReadingBar"></span></div></div></div></div></article>
+				<article class="result-card panel"><div class="card-head"><span class="type-pill outline"><i class="ti ti-dumbbell"></i>Practice Test</span><span class="dots">‹ · · · ›</span></div><div class="date-box"><span>2 OCT 2026</span><strong>Mock Test-1</strong></div><div class="metric-list"><div class="metric"><span class="metric-icon"><img src="../asset/figma/mock-listening.png" alt=""></span><div class="metric-copy"><header>LISTENING COMPREHENSION <span>49</span></header><div class="metric-bar"><span></span></div></div></div><div class="metric"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div class="metric-copy"><header>STRUCTURE <span>not drilled</span></header><div class="metric-bar green"><span style="width:0"></span></div></div></div><div class="metric"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div class="metric-copy"><header>WRITING <span>not drilled</span></header><div class="metric-bar green"><span style="width:0"></span></div></div></div><div class="metric"><span class="metric-icon purple"><img src="../asset/figma/mock-reading.png" alt=""></span><div class="metric-copy"><header>READING COMPREHENSION <span>42</span></header><div class="metric-bar purple"><span></span></div></div></div></div></article>
+			</div>
+			<section class="recommendations panel"><div class="recommendation-head"><span><i class="ti ti-sparkles"></i> Recommended Study Plan for Today</span><a href="study-plan.html">View full 4-week roadmap　›</a></div><div class="recommendation-list"><div class="recommendation"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div><h3>Subject–verb agreement drills</h3><p>Your Structure score (42) is the widest gap from goal (52) — 24% of missed items were agreement errors.</p></div><button class="start-button" type="button">Start Now</button></div><div class="recommendation"><span class="metric-icon"><img src="../asset/figma/mock-listening.png" alt=""></span><div><h3>Lecture note-taking: signal words</h3><p>Build listening accuracy with a focused 20-minute practice session.</p></div><button class="start-button" type="button">Start Now</button></div><div class="recommendation"><span class="metric-icon purple"><img src="../asset/figma/mock-reading.png" alt=""></span><div><h3>Reading</h3><p>Reading is closest to goal. Light maintenance only, so most of today's time goes to Structure.</p></div><small>49/100</small></div></div></section>
+			<section class="chart-panel panel"><div class="chart-head"><h2 class="chart-title">⌁ Score Trajectory</h2><div class="toggle"><button class="active" type="button">Composite</button><button type="button">By Section</button></div></div><div class="chart"><svg viewBox="0 0 820 150" preserveAspectRatio="none" aria-label="Score trajectory chart"><polyline points="10,134 160,112 310,122 460,92 610,65 805,35" fill="none" stroke="#0ea5e9" stroke-width="2"/></svg></div><div class="history"><div class="history-row"><b>MOCK</b><span>Mock #3　Oct 15</span><strong>517</strong></div><div class="history-row"><b>MOCK</b><span>Mock #2　Oct 8</span><strong>505</strong></div><div class="history-row"><b>PRACTICE</b><span>Practice　Oct 4</span><strong>—</strong></div><div class="history-row"><b>PRACTICE</b><span>Practice　Oct 3</span><strong>—</strong></div><div class="history-row"><b>PRACTICE</b><span>Practice　Oct 2</span><strong>—</strong></div><div class="history-row"><b>MOCK</b><span>Mock #1　Oct 1</span><strong>493</strong></div></div></section>
+			<section class="skills-panel panel"><div class="skills-head"><h2 class="chart-title">Skill Accuracy</h2><small>Practice-based skill accuracy from your latest attempts</small><strong>86%</strong></div><div class="skills-tabs"><button class="active" type="button">Listening</button><button type="button">Structure &amp; Writing</button><button type="button">Reading</button></div><div class="skill-grid"><div class="skill-column"><h3>Module 1: Listening Foundation</h3><div class="skill-item"><header>1.1 Main idea <span>72%</span></header><div class="skill-bar"><span></span></div></div><div class="skill-item"><header>1.2 Detail questions <span>68%</span></header><div class="skill-bar"><span style="width:68%"></span></div></div><div class="skill-item"><header>1.3 Inference <span>54%</span></header><div class="skill-bar"><span style="width:54%"></span></div></div><div class="skill-item"><header>1.4 Speaker purpose <span>61%</span></header><div class="skill-bar"><span style="width:61%"></span></div></div></div><div class="skill-column"><h3>Module 2: Structure Connectors</h3><div class="skill-item"><header>2.1 Agreement <span>48%</span></header><div class="skill-bar"><span style="width:48%"></span></div></div><div class="skill-item"><header>2.2 Word forms <span>63%</span></header><div class="skill-bar"><span style="width:63%"></span></div></div><div class="skill-item"><header>2.3 Connectors <span>57%</span></header><div class="skill-bar"><span style="width:57%"></span></div></div><div class="skill-item"><header>2.4 Parallelism <span>51%</span></header><div class="skill-bar"><span style="width:51%"></span></div></div></div><div class="skill-column"><h3>Module 3: Advanced Comprehension</h3><div class="skill-item"><header>3.1 Vocabulary <span>74%</span></header><div class="skill-bar"><span style="width:74%"></span></div></div><div class="skill-item"><header>3.2 Restatement <span>46%</span></header><div class="skill-bar"><span style="width:46%"></span></div></div><div class="skill-item"><header>3.3 Organization <span>69%</span></header><div class="skill-bar"><span style="width:69%"></span></div></div><div class="skill-item"><header>3.4 Author purpose <span>62%</span></header><div class="skill-bar"><span style="width:62%"></span></div></div></div><div class="skill-column"><h3>Module 4: Mixed Drills</h3><div class="skill-item"><header>4.1 Tone and attitude <span>58%</span></header><div class="skill-bar"><span style="width:58%"></span></div></div><div class="skill-item"><header>4.2 Context clues <span>66%</span></header><div class="skill-bar"><span style="width:66%"></span></div></div><div class="skill-item"><header>4.3 Sentence meaning <span>71%</span></header><div class="skill-bar"><span style="width:71%"></span></div></div></div></div></section>
+		</main>
+	</div>
+	<script src="../study-plan-firestore-sync.js?v=20260508"></script>
+	<script>
+		const RESULT_KEYS = { listening: "toefl_section1_result", structure: "toefl_section2_result", reading: "toefl_section3_result" };
+		const sectionDefaults = { listening: 50, structure: 40, reading: 50 };
+		const progressState = { results: {}, sync: null };
+
+		function readResult(section) {
+			try {
+				const parsed = JSON.parse(localStorage.getItem(RESULT_KEYS[section]) || "null");
+				if (!parsed || typeof parsed !== "object") return null;
+				const total = Number(parsed.totalQuestions) || sectionDefaults[section];
+				const raw = Number(parsed.rawScore) || 0;
+				const scaled = Number(parsed.scaledScore) || Math.round(31 + (raw / Math.max(1, total)) * (section === "reading" ? 36 : 37));
+				return { ...parsed, total, raw, scaled, percent: Math.round((raw / Math.max(1, total)) * 100) };
+			} catch (_) { return null; }
+		}
+
+		function formatResultDate(result) {
+			const value = result && (result.setDate || result.submittedAt);
+			if (!value) return "No completed test";
+			const date = new Date(value);
+			return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+		}
+
+		function setText(id, value) { const node = document.getElementById(id); if (node) node.textContent = String(value); }
+		function setBar(id, value) { const node = document.getElementById(id); if (node) node.style.width = `${Math.max(0, Math.min(100, value))}%`; }
+
+		function renderProgress() {
+			const results = Object.fromEntries(Object.keys(RESULT_KEYS).map((section) => [section, readResult(section)]));
+			progressState.results = results;
+			const available = Object.values(results).filter(Boolean);
+			const overall = available.length ? Math.round(available.reduce((sum, result) => sum + result.scaled, 0) / available.length) : 0;
+			const goal = 550;
+			const percent = Math.round((overall / goal) * 100);
+			const pointsToGo = Math.max(0, goal - overall);
+			setText("overallScore", overall);
+			setText("pointsToGo", `↗ ${pointsToGo} points to go`);
+			setText("progressStart", overall);
+			setText("progressPercent", `${percent}% way to go to your goals`);
+			setBar("overallProgressBar", percent);
+			setText("projectedScore", available.length ? Math.min(goal, overall + Math.round(pointsToGo * .45)) : 0);
+			const examDate = progressState.sync && progressState.sync.plan && (progressState.sync.plan.examDate || progressState.sync.plan.examinationDate);
+			if (examDate) setText("examDays", Math.max(0, Math.ceil((new Date(examDate) - new Date()) / 86400000)));
+			Object.entries(results).forEach(([section, result]) => {
+				const percentValue = result ? result.percent : 0;
+				setText(`${section}Radar`, section === "listening" ? `Listening (${percentValue}%)` : `(${percentValue}%)`);
+			});
+			const listening = results.listening ? results.listening.percent : 0;
+			const structure = results.structure ? results.structure.percent : 0;
+			const reading = results.reading ? results.reading.percent : 0;
+			const writing = results.structure ? results.structure.percent : 0;
+			setText("writingRadar", `Writing (${writing}%)`);
+			const chartCenterX = 95;
+			const chartCenterY = 75;
+			const chartRadiusY = 63;
+			const chartRadiusX = 66;
+			const points = [
+				`${chartCenterX},${chartCenterY - (listening / 100) * chartRadiusY}`,
+				`${chartCenterX + (structure / 100) * chartRadiusX},${chartCenterY}`,
+				`${chartCenterX},${chartCenterY + (writing / 100) * chartRadiusY}`,
+				`${chartCenterX - (reading / 100) * chartRadiusX},${chartCenterY}`
+			];
+			const radar = document.getElementById("currentRadar");
+			if (radar) radar.setAttribute("points", points.join(" "));
+			const latest = available.slice().sort((left, right) => String(right.submittedAt || "").localeCompare(String(left.submittedAt || "")))[0];
+			setText("mockDate", formatResultDate(latest));
+			setText("mockName", latest ? (latest.setId || "Completed test") : "No completed test");
+			setText("mockScore", overall || "--");
+			["listening", "structure", "reading"].forEach((section) => { const value = results[section] ? results[section].scaled : null; setText(`mock${section[0].toUpperCase()}${section.slice(1)}`, value === null ? "--" : value); setBar(`mock${section[0].toUpperCase()}${section.slice(1)}Bar`, value ? Math.round((value / 68) * 100) : 0); });
+		}
+
+		function renderStructureDefaultSkills() {
+			const skillGrid = document.querySelector(".skill-grid");
+			const skillAccuracy = document.querySelector(".skills-head > strong");
+			if (!skillGrid) return;
+			if (skillAccuracy) skillAccuracy.textContent = "0%";
+			const modules = [
+				["Module 1: Sentence Foundation", "blocks", [["user-question", "1.1 Missing Subjects & Verbs"], ["brackets", "1.2 Appositives (Noun Phrase Distractors)"], ["arrows-left-right", "1.3 Present Participles (-ing) vs. Past Participles (-ed)"], ["scale", "Subject-Verb Agreement"], ["alert-triangle", "Tricky Singular Subjects"]]],
+				["Module 2: Clauses & Connectors", "git-branch", [["arrows-join", "2.1 Coordinate Connectors"], ["corner-down-right", "2.2 Adverb Clauses"], ["gift", "2.3 Noun Clauses"], ["tag", "2.4 Adjective/Relative Clauses"], ["minimize", "2.5 Reduced Clauses"]]],
+				["Module 3: Advanced Verb Mechanics", "settings-2", [["users", "3.1 Causative Verbs"], ["arrows-right-left", "3.2 Active vs. Passive Voice"], ["adjustments-horizontal", "3.3 Modals + Base Verbs"], ["arrows-left-right", "3.4 Infinitives vs. Gerunds"], ["history", "3.5 Time Markers & Tenses"]]],
+				["Module 4: Word Order & Inversion", "arrows-up-down", [["flip-vertical", "4.1 Inversion with Negatives"], ["map-pin", "4.2 Inversion with Place Expressions"], ["route", "4.3 Inversion in Conditionals"]]],
+				["Module 5: Parallelism & Comparisons", "columns", [["align-justified", "5.1 Parallel Structure"], ["link", "5.2 Paired Conjunctions"], ["stairs-up", "5.3 Comparatives & Superlatives"], ["alert-triangle", "5.4 Logical Comparisons"]]],
+				["Module 6: Word Forms and Part of Speech", "typography", [["arrows-left-right", "6.1 Adjectives vs. Adverbs"], ["letter-case", "6.2 Noun Endings"], ["copy", "6.3 Singular/Plural Countability"], ["user-check", "6.4 Pronoun Agreement"]]],
+				["Module 7: Tricky Vocabulary and Idioms", "language", [["plug-connected", "7.1 Dependent Prepositions"], ["arrows-left-right", "7.2 Make vs. Do"], ["yin-yang", "7.3 Like, Alike, and Unlike"], ["replace", "7.4 Another, Other, Others"]]]
+			];
+			skillGrid.innerHTML = modules.map(([title, moduleIcon, items]) => `
+				<div class="skill-column"><h3><i class="ti ti-${moduleIcon}"></i>${title}</h3>${items.map(([icon, item]) => `
+					<div class="skill-item"><header><span><i class="ti ti-${icon}"></i>${item}</span><span>75%</span></header><div class="skill-bar"><span style="width: 0"></span></div><small>Not attempted</small></div>
+				`).join("")}</div>
+			`).join("");
+		}
+
+		document.querySelectorAll(".toggle button, .skills-tabs button").forEach((button) => button.addEventListener("click", () => { button.parentElement.querySelectorAll("button").forEach((item) => item.classList.remove("active")); button.classList.add("active"); }));
+		renderStructureDefaultSkills();
+		document.querySelectorAll(".skills-tabs button")[1]?.classList.add("active");
+		document.querySelectorAll(".skills-tabs button")[0]?.classList.remove("active");
+		document.querySelectorAll(".start-button").forEach((button) => button.addEventListener("click", () => { button.textContent = "Opened"; button.disabled = true; }));
+		window.addEventListener("storage", renderProgress);
+		if (typeof StudyPlanFirestoreSync === "function") {
+			progressState.sync = new StudyPlanFirestoreSync({ projectId: "quickcheck-25590" });
+			progressState.sync.subscribe((snapshot) => { progressState.syncSnapshot = snapshot; renderProgress(); });
+			progressState.sync.start();
+		}
+		renderProgress();
+	</script>
+</body>
+</html>
