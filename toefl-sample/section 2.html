@@ -554,10 +554,16 @@
             const effectiveDate = requestedDate || stored.setDate || today;
             currentPackageDate = effectiveDate;
             if (dateInput) dateInput.value = effectiveDate;
-            if (difficultyInput) difficultyInput.value = stored.difficulty || "intermediate";
+            const requestedDifficulty = params.get("difficulty");
+            if (difficultyInput) difficultyInput.value = (forceBlankNew && requestedDifficulty) || stored.difficulty || "intermediate";
             lastValidSetDate = effectiveDate;
             updateHeaderPackageLabel(effectiveDate);
             updateExplanationLink();
+            const requestedFocus = params.get("focus");
+            if (forceBlankNew && requestedFocus === "partB") {
+                const partBTabButton = document.querySelector(".dev-sub-btn:nth-child(2)");
+                if (partBTabButton) partBTabButton.click();
+            }
         }
 
         async function saveSectionMeta() {

@@ -28,6 +28,23 @@ const MONTH_LABELS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "J
 const MODULES = ["listening", "structure", "reading"];
 let sectionSets = [];
 
+// Create-modal options shown for Mock Test: one blank set per module, difficulty chosen inside the editor.
+const MOCK_MODULE_OPTIONS = [
+    { module: "listening", label: "Listening", icon: "headset.png" },
+    { module: "structure", label: "Structure", icon: "paper-pencil.png" },
+    { module: "reading", label: "Reading", icon: "blue-book.png" }
+];
+
+// Create-modal options shown for Practice Test: fixed 20-question presets per module/difficulty.
+const PRACTICE_MODULE_OPTIONS = [
+    { module: "listening", label: "Listening (Section 1 only \u00b7 20 Qs)", icon: "headset.png" },
+    { module: "structure", difficulty: "beginner", focus: "partA", label: "Structure - Beginner (20 Qs)", icon: "paper-pencil.png" },
+    { module: "structure", difficulty: "advanced", focus: "partA", label: "Structure - Advanced (20 Qs)", icon: "paper-pencil.png" },
+    { module: "structure", difficulty: "beginner", focus: "partB", label: "Writing - Beginner (20 Qs)", icon: "paper-pencil.png" },
+    { module: "structure", difficulty: "advanced", focus: "partB", label: "Writing - Advanced (20 Qs)", icon: "paper-pencil.png" },
+    { module: "reading", label: "Reading (2 parts \u00b7 10 Qs each)", icon: "blue-book.png" }
+];
+
 const DIFFICULTY_LABELS = {
     beginner: "Beginner",
     intermediate: "Intermediate",
@@ -290,12 +307,26 @@ function toggleCreateOptions(force) {
     menu.classList.toggle("show");
 }
 
+function renderModuleSelectionOptions(testType) {
+    const container = document.getElementById("moduleOptionsContainer");
+    if (!container) return;
+    const options = testType === "practicetest" ? PRACTICE_MODULE_OPTIONS : MOCK_MODULE_OPTIONS;
+    container.innerHTML = options.map((opt) => `
+        <a href="#" class="module-option" data-module="${opt.module}"${opt.difficulty ? ` data-difficulty="${opt.difficulty}"` : ""}${opt.focus ? ` data-focus="${opt.focus}"` : ""}>
+            <img src="../asset/icon/${opt.icon}" alt="${escapeHtml(opt.label)}" />
+            <span>${escapeHtml(opt.label)}</span>
+        </a>
+    `).join("");
+}
+
 function buildEditorUrl(moduleId, setDate, setId, testType = "mocktest", options = {}) {
     const startBlank = Boolean(options && options.startBlank);
     const params = new URLSearchParams();
     if (setDate) params.set("setDate", setDate);
     if (setId) params.set("setId", setId);
     if (startBlank) params.set("new", "1");
+    if (options && options.difficulty) params.set("difficulty", options.difficulty);
+    if (options && options.focus) params.set("focus", options.focus);
     params.set("mode", "dev");
     params.set("testType", testType);
     const query = params.toString();
@@ -657,6 +688,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 // Show module selection modal
                 const modal = document.getElementById("moduleSelectionModal");
                 if (modal) {
+                    renderModuleSelectionOptions(testType);
                     modal.style.display = "flex";
                     console.log("Module selection modal shown");
                 } else {
@@ -670,22 +702,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // Module selection in modal
-    document.querySelectorAll(".module-option").forEach((option) => {
-        option.addEventListener("click", (e) => {
+    // Module selection in modal (options are rendered dynamically per test type, so use delegation)
+    const moduleOptionsContainer = document.getElementById("moduleOptionsContainer");
+    if (moduleOptionsContainer) {
+        moduleOptionsContainer.addEventListener("click", (e) => {
+            const option = e.target.closest(".module-option");
+            if (!option) return;
             e.preventDefault();
-            const module = e.currentTarget.dataset.module;
-            console.log("Selected module:", module, "for test type:", currentTestType);
+            const module = option.dataset.module;
+            const difficulty = option.dataset.difficulty || "";
+            const focus = option.dataset.focus || "";
+            console.log("Selected module:", module, "difficulty:", difficulty, "focus:", focus, "for test type:", currentTestType);
             const modal = document.getElementById("moduleSelectionModal");
             if (modal) {
                 modal.style.display = "none";
             }
-            
-            const url = buildEditorUrl(module, undefined, undefined, currentTestType, { startBlank: true });
+
+            const url = buildEditorUrl(module, undefined, undefined, currentTestType, { startBlank: true, difficulty, focus });
             console.log("Navigating to:", url);
             window.location.href = url;
         });
-    });
+    }
 
     // Close modal button
     const closeModuleModal = document.getElementById("closeModuleModal");
