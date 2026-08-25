@@ -134,24 +134,10 @@ function getStoredSets() {
 
 async function loadSetsFromFirebase() {
     try {
+        // Firebase is the source of truth: deletes remove records from both local storage and Firebase
         const records = await toeflStorage.getSetRecordsByTestType(currentTestType);
         updateSyncStatus(toeflStorage.online);
-        
-        // Get localStorage to check which items exist locally
-        // This allows local-only deletes to work properly
-        const typeSpecificKey = currentTestType === "practicetest" 
-            ? "toefl_developer_practicetest_sets_v2" 
-            : "toefl_developer_mocktest_sets_v2";
-        const localStorageData = safeParse(localStorage.getItem(typeSpecificKey), {});
-        const localSetIds = new Set(Object.keys(localStorageData).filter(key => key !== "_updatedAt"));
-        
-        // Filter Firebase records to only show items that exist in localStorage
-        // This respects local-only deletions
-        const filteredRecords = records.filter(record => {
-            return localSetIds.size === 0 || localSetIds.has(record.setId);
-        });
-        
-        return normalizeSetsMapToList(filteredRecords);
+        return normalizeSetsMapToList(records);
     } catch (e) {
         updateSyncStatus(false);
         return getStoredSets();
@@ -268,33 +254,15 @@ function updateSyncStatus(online) {
 
 async function deleteSet(setId, module) {
     const moduleLabel = MODULE_CONFIG[module]?.label || module;
-    
-    // Show choice dialog for delete type
-    const choice = confirm(
-        `Delete "${moduleLabel}" set?\n\n` +
-        `OK = Hide locally (Firebase data preserved)\n` +
-        `Cancel = Full delete (archive to Firebase)\n\n` +
-        `Choose carefully!`
-    );
-    
+
+    const confirmed = confirm(`Delete "${moduleLabel}" set?\n\nThis removes it from the website and from Firebase.`);
+    if (!confirmed) return;
+
     try {
-        if (choice === true) {
-            // Local-only delete: hide from UI but keep Firebase data
-            await toeflStorage.deleteSetRecordLocalOnly(setId, currentTestType);
-            updateSyncStatus(toeflStorage.online);
-            toast(`${moduleLabel} hidden locally. Firebase data preserved. 📌`);
-        } else if (choice === false) {
-            // Full delete: archive to Firebase
-            const confirmFull = confirm(`⚠️ FULL DELETE: This will remove "${moduleLabel}" from active sets.\n\nData will be archived but still in Firebase.\n\nContinue?`);
-            if (!confirmFull) return;
-            
-            await toeflStorage.deleteSetRecordWithType(setId, currentTestType);
-            updateSyncStatus(toeflStorage.online);
-            toast(`${moduleLabel} archived to backup. ☁️`);
-        } else {
-            return; // Cancelled
-        }
-        
+        // Always fully delete: removes from active Firebase data and local storage/UI
+        await toeflStorage.deleteSetRecordWithType(setId, currentTestType);
+        updateSyncStatus(toeflStorage.online);
+        toast(`${moduleLabel} deleted. 🗑️`);
         await renderAll();
     } catch (error) {
         updateSyncStatus(false);
