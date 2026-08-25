@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cal+Sans&family=Inter:wght@600&family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
             --blue-950: #06223d;
@@ -1104,7 +1105,7 @@
         }
         .hero { margin: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
         .hero-inner { display: block; padding: 0; }
-        .dashboard-summary { display: grid; grid-template-columns: 194px 242px minmax(280px, 280px) minmax(264px, 1fr); gap: 16px; align-items: start; }
+        .dashboard-summary { display: grid; grid-template-columns: 194px 242px minmax(280px, 280px) minmax(340px, 1fr); grid-template-rows: auto auto; gap: 16px; align-items: stretch; }
         .stacked-cards { display: grid; grid-template-rows: 86px 114px; gap: 12px; }
         .summary-card, .promo-banner {
             min-height: 96px;
@@ -1153,18 +1154,47 @@
         .level-card strong { color: #109d91; font-size: 40px; line-height: .9; }
         .level-card div span { color: #8299b0; font-size: 24px; }
         .level-card small { display: block; margin-top: 7px; }
-        .promo-banner { grid-column: 1 / -1; order: -1; min-height: 160px; display: grid; place-items: center; color: #ffffff; background: #003560; border: 0; border-radius: 20px; font: 500 48px "Outfit", sans-serif; letter-spacing: 0; }
-        .profile-card { height: 209px; display: grid; align-content: start; justify-items: center; gap: 12px; padding: 20px; }
+        .promo-banner { grid-column: 1 / 4; grid-row: 1; min-height: 160px; display: grid; place-items: center; color: #ffffff; background: #003560; border: 0; border-radius: 20px; font: 500 48px "Outfit", sans-serif; letter-spacing: 0; }
+        .profile-card { grid-column: 1; grid-row: 2; height: 209px; display: grid; align-content: start; justify-items: center; gap: 12px; padding: 20px; }
         .profile-card h2 { justify-self: start; margin: 0; color: #000000; font: 700 20px "Plus Jakarta Sans", sans-serif; }
         .profile-card img { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; }
         .profile-card p { justify-self: start; margin: 0; color: #1c1c1c; font: 400 16px Inter, sans-serif; }
         .profile-card small { justify-self: start; margin-top: -12px; color: #9f9f9f; font: 400 12px Inter, sans-serif; }
-        .progress-card { height: 209px; padding: 16px 24px; }
-        .goal-progress-card { height: 209px; display: grid; align-content: center; gap: 8px; padding: 20px; }
-        .goal-progress-card h2 { margin: 0; color: #1c1c1c; font: 600 16px "Outfit", sans-serif; }
-        .goal-progress-line { height: 10px; overflow: hidden; border-radius: 32px; background: #e0f2fe; }
-        .goal-progress-line span { display: block; width: 57%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0ea5e9, #0d9488); }
-        .goal-progress-card small { display: flex; justify-content: space-between; color: #7a8fa6; font: 400 10px "Plus Jakarta Sans", sans-serif; }
+        .stacked-cards { grid-column: 2; grid-row: 2; }
+        .progress-card { grid-column: 3; grid-row: 2; height: 209px; padding: 16px 24px; }
+        .partner-card {
+            grid-column: 4;
+            grid-row: 1 / 3;
+            height: auto;
+            position: relative;
+            overflow: hidden;
+            padding: 20px 18px 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 0;
+        }
+        .partner-card h2 { position: relative; z-index: 1; margin: 12px 0 0; color: #1c1c1c; font: 700 20px "Plus Jakarta Sans", sans-serif; }
+        .partner-status { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 0; color: #0d9488; font: 600 10px "Outfit", sans-serif; }
+        .partner-status .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #0d9488; }
+        .partner-card::before { content: ""; position: absolute; inset: 50px 6px 68px; z-index: 0; background: url("../asst/icon/Global.svg") center / contain no-repeat; pointer-events: none; }
+        .partner-carousel { position: relative; z-index: 1; margin: auto 0 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .partner-nav { border: 0; background: transparent; color: #7A8FA6; cursor: pointer; display: grid; place-items: center; padding: 0; }
+        .partner-nav .ti { font-size: 20px; }
+        .partner-avatars { display: flex; align-items: center; gap: 20px; }
+        .partner-avatar { position: relative; width: 56px; height: 56px; border-radius: 50%; border: 2px solid #1c1c1c; background: #ffffff; display: grid; place-items: center; overflow: visible; }
+        .partner-avatar::after { content: ""; position: absolute; right: -2px; bottom: -2px; width: 18px; height: 18px; border-radius: 50%; background: #ff5a5a; border: 2px solid #ffffff; z-index: 2; }
+        .partner-avatar .ti { position: relative; z-index: 1; font-size: 28px; color: #1c1c1c; }
+        .partner-avatar.active { width: 72px; height: 72px; border: 3px solid #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.16); }
+        .partner-avatar.active::after { width: 22px; height: 22px; }
+        .partner-avatar.active .ti { font-size: 34px; }
+        .partner-popover { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 2; padding: 3px 8px; border-radius: 6px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.12); color: #40536a; font: 600 8px "Plus Jakarta Sans", sans-serif; text-align: center; white-space: nowrap; }
+        .partner-popover small { display: block; color: #9aafc4; font-size: 7px; font-weight: 400; }
+        .partner-match { position: relative; z-index: 1; margin-top: 56px; color: #0d9488; font: 700 13px "Plus Jakarta Sans", sans-serif; }
+        .partner-search { position: relative; z-index: 1; width: 100%; max-width: 225px; margin-top: 4px; margin-bottom: auto; display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1.5px solid #0d9488; border-radius: 20px; color: #7a8fa6; }
+        .partner-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 400 10px "Plus Jakarta Sans", sans-serif; color: #40536a; }
+        .partner-search .ti-arrow-right { color: #0d9488; }
 
         main { margin-top: 26px; gap: 18px; }
         .month-panel { padding: 20px; border: 1px solid #d1dce8; border-radius: 8px; background: #ffffff; box-shadow: 0 0 2px rgba(0, 0, 0, 0.1); }
@@ -1299,8 +1329,10 @@
             .nav-list { display: flex; width: max-content; }
             .nav-item { width: auto; height: auto; justify-content: flex-start; }
             .page-content { padding: 18px 16px 32px; }
-            .dashboard-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .promo-banner { min-height: 150px; }
+            .dashboard-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; }
+            .promo-banner, .profile-card, .stacked-cards, .progress-card, .partner-card { grid-column: auto; grid-row: auto; }
+            .promo-banner { grid-column: 1 / -1; min-height: 150px; }
+            .partner-card { height: auto; }
             .calendar-head { padding: 16px; }
             .calendar-brand { font-size: 22px; }
             .calendar-main-layout { grid-template-columns: 1fr; }
@@ -1312,6 +1344,7 @@
 
         @media (max-width: 560px) {
             .dashboard-summary { grid-template-columns: 1fr; }
+            .promo-banner, .profile-card, .stacked-cards, .progress-card, .partner-card { grid-column: 1; grid-row: auto; }
             .summary-card, .promo-banner { min-height: 150px; }
             .promo-banner { transform: none; }
             .calendar-brand { font-size: 18px; }
@@ -1387,7 +1420,23 @@
                             <b>Listening <em>0</em></b><b>Structure <em>0</em></b><b>Writing <em>0</em></b><b>Reading <em>0</em></b>
                         </div>
                     </article>
-                    <article class="summary-card goal-progress-card"><h2>Goal Progression</h2><strong>517</strong><div class="goal-progress-line"><span></span></div><small><span>310</span><span>550</span></small></article>
+                    <article class="summary-card partner-card" aria-label="Find your English partner">
+                        <h2>Find You English Partner</h2>
+                        <p class="partner-status"><span class="status-dot"></span>User Online &amp; Matching</p>
+                        <div class="partner-carousel">
+                            <button class="partner-nav" type="button" aria-label="Previous partner"><i class="ti ti-chevron-left"></i></button>
+                            <div class="partner-avatars">
+                                <span class="partner-avatar"><i class="ti ti-user"></i></span>
+                                <span class="partner-avatar"><i class="ti ti-user"></i></span>
+                                <span class="partner-avatar active"><i class="ti ti-user"></i><span class="partner-popover">@user1<small>Level: B1</small></span></span>
+                                <span class="partner-avatar"><i class="ti ti-user"></i></span>
+                                <span class="partner-avatar"><i class="ti ti-user"></i></span>
+                            </div>
+                            <button class="partner-nav" type="button" aria-label="Next partner"><i class="ti ti-chevron-right"></i></button>
+                        </div>
+                        <div class="partner-match">Match Now</div>
+                        <label class="partner-search"><i class="ti ti-search"></i><input type="search" placeholder="Search Now"><i class="ti ti-arrow-right"></i></label>
+                    </article>
                 </section>
             </div>
         </header>
@@ -1843,6 +1892,306 @@
             `;
             resultDiv.style.display = "block";
         }
+    </script>
+
+    <style>
+        #chat-widget, #chat-widget * { box-sizing: border-box; font-family: "Poppins", "Space Grotesk", sans-serif; }
+        #chat-widget { position: fixed; bottom: 30px; right: 30px; z-index: 9999; display: flex; flex-direction: column; align-items: flex-end; }
+        #chat-widget .chat-tooltip { background-color: #ffffff; color: #333; padding: 10px 15px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 15px; font-size: 13px; font-weight: 500; position: relative; transition: opacity 0.3s; }
+        #chat-widget .chat-tooltip::after { content: ""; position: absolute; bottom: -6px; right: 25px; width: 12px; height: 12px; background-color: #ffffff; transform: rotate(45deg); }
+        #chat-widget #chat-btn { background: linear-gradient(135deg, #25D366, #128C7E); color: #ffffff; border: none; border-radius: 50%; width: 65px; height: 65px; font-size: 28px; cursor: pointer; box-shadow: 0 6px 15px rgba(37, 211, 102, 0.4); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; align-items: center; justify-content: center; position: relative; z-index: 10000; }
+        #chat-widget .cw-icon { width: 28px; height: 28px; flex: 0 0 auto; }
+        #chat-widget #chat-btn .cw-icon-close { display: none; }
+        #chat-widget #chat-btn.is-open .cw-icon-whatsapp { display: none; }
+        #chat-widget #chat-btn.is-open .cw-icon-close { display: block; }
+        #chat-widget .icon-btn .cw-icon { width: 14px; height: 14px; }
+        #chat-widget .panel-header span .cw-icon { width: 18px; height: 18px; }
+        #chat-widget #action-btn .cw-icon { width: 18px; height: 18px; }
+        #chat-widget .vn-play-btn.cw-icon { width: 20px; height: 20px; }
+        #chat-widget #chat-btn:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 8px 20px rgba(37, 211, 102, 0.6); }
+        #chat-widget .badge { position: absolute; top: -2px; right: -2px; background-color: #ff3b30; color: #ffffff; font-size: 11px; font-weight: bold; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff; }
+        #chat-widget .panel { position: absolute; bottom: 85px; right: 0; background-color: #ffffff; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); overflow: hidden; opacity: 0; visibility: hidden; transform: translateY(20px) scale(0.95); transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); z-index: 9998; transform-origin: bottom right; }
+        #chat-widget .panel.active { opacity: 1; visibility: visible; transform: translateY(0) scale(1); }
+        #chat-widget .panel-header { background: linear-gradient(135deg, #128C7E, #075E54); color: #ffffff; padding: 15px 20px; font-weight: 500; display: flex; justify-content: space-between; align-items: center; height: 40px; }
+        #chat-widget .icon-btn { background: rgba(255,255,255,0.2); border: none; color: #ffffff; font-size: 14px; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; justify-content: center; }
+        #chat-widget .icon-btn:hover { background: rgba(255,255,255,0.4); }
+        #chat-widget #contact-list-panel { width: 340px; display: flex; flex-direction: column; height: 520px; }
+        #chat-widget .contacts-container { overflow-y: auto; flex-grow: 1; padding: 5px 0; }
+        #chat-widget .contact-item { padding: 12px 20px; cursor: pointer; display: flex; align-items: center; transition: background-color 0.2s; }
+        #chat-widget .contact-item:hover { background-color: #f5f7f9; }
+        #chat-widget .avatar-wrapper { position: relative; margin-right: 15px; }
+        #chat-widget .avatar-img { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #ffffff; }
+        #chat-widget .status-dot { position: absolute; bottom: 2px; right: 2px; width: 10px; height: 10px; background-color: #25D366; border-radius: 50%; border: 2px solid #ffffff; }
+        #chat-widget .contact-info { display: flex; flex-direction: column; flex-grow: 1; min-width: 0; }
+        #chat-widget .contact-name { font-weight: 600; font-size: 14px; color: #111111; display: flex; justify-content: space-between; }
+        #chat-widget .contact-time { font-size: 11px; color: #888888; font-weight: 400; }
+        #chat-widget .contact-preview { font-size: 12px; color: #666666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px; margin-top: 2px; }
+        #chat-widget #chat-window-panel { width: 350px; height: 520px; display: flex; flex-direction: column; background-color: #efeae2; background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png"); background-size: cover; background-blend-mode: overlay; }
+        #chat-widget .chat-header-info { display: flex; align-items: center; gap: 12px; width: 100%; }
+        #chat-widget .chat-header-avatar { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.5); }
+        #chat-widget .chat-header-text { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+        #chat-widget #chat-person-name { font-size: 15px; font-weight: 600; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+        #chat-widget #chat-person-status { font-size: 11px; font-weight: 300; opacity: 0.8; margin-top: 2px; }
+        #chat-widget .chat-area { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+        #chat-widget .message { max-width: 75%; padding: 8px 12px; border-radius: 10px; font-size: 13px; line-height: 1.4; position: relative; box-shadow: 0 1px 2px rgba(0,0,0,0.1); word-wrap: break-word; }
+        #chat-widget .message .time { font-size: 10px; color: rgba(0,0,0,0.45); display: inline-block; float: right; margin-left: 10px; margin-top: 5px; }
+        #chat-widget .message::before { content: ""; position: absolute; top: 0; width: 15px; height: 15px; }
+        #chat-widget .message.received { background-color: #ffffff; align-self: flex-start; border-top-left-radius: 0; margin-left: 5px; }
+        #chat-widget .message.received::before { left: -8px; background: linear-gradient(to bottom right, #ffffff 0%, #ffffff 50%, transparent 50%, transparent); }
+        #chat-widget .message.sent { background-color: #dcf8c6; align-self: flex-end; border-top-right-radius: 0; margin-right: 5px; }
+        #chat-widget .message.sent::before { right: -8px; background: linear-gradient(to bottom left, #dcf8c6 0%, #dcf8c6 50%, transparent 50%, transparent); }
+        #chat-widget .voice-note { display: flex; align-items: center; gap: 10px; min-width: 160px; padding: 5px 0; }
+        #chat-widget .vn-play-btn { color: #a0a0a0; font-size: 24px; cursor: pointer; }
+        #chat-widget .message.sent .vn-play-btn { color: #5eb578; }
+        #chat-widget .vn-waveform { display: flex; align-items: center; gap: 2px; height: 20px; flex-grow: 1; }
+        #chat-widget .vn-bar { width: 3px; background-color: #a0a0a0; border-radius: 2px; }
+        #chat-widget .message.sent .vn-bar { background-color: #5eb578; }
+        #chat-widget .vn-bar:nth-child(1) { height: 10px; } #chat-widget .vn-bar:nth-child(2) { height: 18px; } #chat-widget .vn-bar:nth-child(3) { height: 8px; } #chat-widget .vn-bar:nth-child(4) { height: 15px; } #chat-widget .vn-bar:nth-child(5) { height: 20px; } #chat-widget .vn-bar:nth-child(6) { height: 12px; } #chat-widget .vn-bar:nth-child(7) { height: 6px; }
+        #chat-widget .vn-duration { font-size: 11px; font-weight: 500; }
+        #chat-widget .typing-indicator { display: flex; gap: 4px; padding: 5px; align-items: center; }
+        #chat-widget .typing-indicator span { width: 6px; height: 6px; background-color: #999999; border-radius: 50%; animation: chatWidgetBounce 1.3s linear infinite; }
+        #chat-widget .typing-indicator span:nth-child(2) { animation-delay: -1.1s; }
+        #chat-widget .typing-indicator span:nth-child(3) { animation-delay: -0.9s; }
+        @keyframes chatWidgetBounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+        #chat-widget .chat-input-area { display: flex; padding: 10px 15px; background-color: #f0f2f5; align-items: center; gap: 8px; }
+        #chat-widget .chat-input-area input { flex-grow: 1; padding: 12px 18px; border: none; border-radius: 25px; outline: none; font-family: "Poppins", sans-serif; font-size: 13px; background-color: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        #chat-widget .chat-input-area button { background-color: #128C7E; color: #ffffff; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #chat-widget .chat-input-area button:hover { transform: scale(1.05); background-color: #075E54; }
+        @media (max-width: 480px) {
+            #chat-widget { bottom: 16px; right: 16px; }
+            #chat-widget #contact-list-panel, #chat-widget #chat-window-panel { width: min(88vw, 340px); }
+        }
+    </style>
+
+    <div id="chat-widget">
+        <div id="chat-tooltip" class="chat-tooltip">Ada 10 kontak tersedia! 👋</div>
+
+        <div id="contact-list-panel" class="panel">
+            <div class="panel-header">
+                <span><svg class="cw-icon" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px; width: 18px; height: 18px;"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.48 1.32 5L2 22l5.24-1.38a9.9 9.9 0 0 0 4.8 1.23h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2Zm5.79 14.06c-.24.68-1.4 1.32-1.93 1.35-.5.03-1 .23-3.36-.7-2.83-1.12-4.63-4-4.77-4.19-.14-.19-1.14-1.51-1.14-2.89s.72-2.05.98-2.34c.24-.27.53-.34.71-.34h.5c.16 0 .38-.03.58.44.24.57.81 1.96.88 2.1.07.14.11.31.02.5-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.14-.28.28-.12.55.16.27.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.23 1.38.27.14.43.12.59-.07.16-.19.68-.79.86-1.06.18-.27.36-.22.6-.13.24.09 1.53.72 1.79.85.27.13.44.19.51.3.06.12.06.7-.18 1.38Z"/></svg> English Partner</span>
+                <button class="icon-btn" type="button" onclick="toggleChatWidget()"><svg class="cw-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            </div>
+            <div class="contacts-container" id="chatContactsContainer"></div>
+        </div>
+
+        <div id="chat-window-panel" class="panel">
+            <div class="panel-header">
+                <div class="chat-header-info">
+                    <button class="icon-btn" type="button" onclick="backToChatContacts()"><svg class="cw-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+                    <img id="active-chat-avatar" src="" class="chat-header-avatar" alt="Avatar">
+                    <div class="chat-header-text">
+                        <div id="chat-person-name">Nama Teman</div>
+                        <div id="chat-person-status">Online</div>
+                    </div>
+                </div>
+                <button class="icon-btn" type="button" onclick="closeChatWidget()"><svg class="cw-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            </div>
+            <div class="chat-area" id="chat-messages"></div>
+            <div class="chat-input-area">
+                <input type="text" placeholder="Ketik pesan..." id="message-input" autocomplete="off" oninput="checkChatInput()">
+                <button id="action-btn" type="button" onclick="handleChatAction()">
+                    <svg id="send-btn-icon" class="cw-icon" data-mode="mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <button id="chat-btn" type="button" onclick="toggleChatWidget()">
+            <svg class="cw-icon cw-icon-whatsapp" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.48 1.32 5L2 22l5.24-1.38a9.9 9.9 0 0 0 4.8 1.23h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2Zm5.79 14.06c-.24.68-1.4 1.32-1.93 1.35-.5.03-1 .23-3.36-.7-2.83-1.12-4.63-4-4.77-4.19-.14-.19-1.14-1.51-1.14-2.89s.72-2.05.98-2.34c.24-.27.53-.34.71-.34h.5c.16 0 .38-.03.58.44.24.57.81 1.96.88 2.1.07.14.11.31.02.5-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.14-.28.28-.12.55.16.27.72 1.19 1.55 1.93 1.06.95 1.96 1.24 2.23 1.38.27.14.43.12.59-.07.16-.19.68-.79.86-1.06.18-.27.36-.22.6-.13.24.09 1.53.72 1.79.85.27.13.44.19.51.3.06.12.06.7-.18 1.38Z"/></svg>
+            <svg class="cw-icon cw-icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+            <span class="badge" id="chat-badge">3</span>
+        </button>
+    </div>
+
+    <script>
+        (function initChatWidget() {
+            const chatTooltip = document.getElementById("chat-tooltip");
+            const chatBadge = document.getElementById("chat-badge");
+            const contactList = document.getElementById("contact-list-panel");
+            const chatWindow = document.getElementById("chat-window-panel");
+            const chatBtn = document.getElementById("chat-btn");
+            const chatPersonName = document.getElementById("chat-person-name");
+            const chatPersonStatus = document.getElementById("chat-person-status");
+            const activeChatAvatar = document.getElementById("active-chat-avatar");
+            const chatMessages = document.getElementById("chat-messages");
+            const messageInput = document.getElementById("message-input");
+            const actionBtnIcon = document.getElementById("send-btn-icon");
+            const contactsContainer = document.getElementById("chatContactsContainer");
+
+            const friends = [
+                { name: "Sofina", msg: "Ada project yang bisa...", time: "09:30", bg: "F44336" },
+                { name: "Jessica", msg: "Terima kasih atas ban...", time: "Kemarin", bg: "9C27B0" },
+                { name: "Budi Setiawan", msg: "Besok meeting jam ber...", time: "Kemarin", bg: "2196F3" },
+                { name: "Andi Wijaya", msg: "File sudah saya kirim ya", time: "Senin", bg: "4CAF50" },
+                { name: "Citra Kirana", msg: "Oke, ditunggu kabarnya", time: "Senin", bg: "E91E63" },
+                { name: "Rizky Firmansyah", msg: "Bisa telpon sekarang?", time: "Minggu", bg: "FF9800" },
+                { name: "Dina Mariana", msg: "Siapp bos 🫡", time: "Minggu", bg: "795548" },
+                { name: "Reza Rahadian", msg: "Tolong cek email terbaru", time: "14/08", bg: "607D8B" },
+                { name: "Siti Aminah", msg: "Invoice sudah dibayar", time: "13/08", bg: "009688" },
+                { name: "Tono Haryono", msg: "Dimana posisinya?", time: "12/08", bg: "3F51B5" }
+            ];
+
+            friends.forEach((friend) => {
+                const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(friend.name.replace(" ", "+"))}&background=${friend.bg}&color=fff`;
+                const dotColor = friend.time === "09:30" ? "#25D366" : "#cccccc";
+                const item = document.createElement("div");
+                item.className = "contact-item";
+                item.innerHTML = `
+                    <div class="avatar-wrapper">
+                        <img src="${avatarUrl}" class="avatar-img" alt="${friend.name}">
+                        <span class="status-dot" style="background-color: ${dotColor}"></span>
+                    </div>
+                    <div class="contact-info">
+                        <div class="contact-name">${friend.name} <span class="contact-time">${friend.time}</span></div>
+                        <div class="contact-preview">${friend.msg}</div>
+                    </div>
+                `;
+                item.addEventListener("click", () => openChatContact(friend.name, avatarUrl));
+                contactsContainer.appendChild(item);
+            });
+
+            let isWidgetOpen = false;
+            let isTyping = false;
+
+            function getCurrentTime() {
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, "0");
+                const minutes = String(now.getMinutes()).padStart(2, "0");
+                return `${hours}:${minutes}`;
+            }
+
+            window.toggleChatWidget = function toggleChatWidget() {
+                isWidgetOpen = !isWidgetOpen;
+                chatTooltip.style.opacity = "0";
+                setTimeout(() => { chatTooltip.style.display = "none"; }, 300);
+                chatBadge.style.display = "none";
+
+                if (isWidgetOpen) {
+                    chatBtn.classList.add("is-open");
+                    contactList.classList.add("active");
+                    chatWindow.classList.remove("active");
+                } else {
+                    closeChatWidget();
+                }
+            };
+
+            function openChatContact(name, avatarUrl) {
+                chatPersonName.innerText = name;
+                activeChatAvatar.src = avatarUrl;
+                chatPersonStatus.innerText = "Online";
+                contactList.classList.remove("active");
+                setTimeout(() => { chatWindow.classList.add("active"); }, 150);
+                chatMessages.innerHTML = `
+                    <div class="message received">
+                        Halo, ini ${name}! Ada yang bisa dibantu?
+                        <span class="time">${getCurrentTime()}</span>
+                    </div>
+                `;
+                messageInput.value = "";
+                checkChatInput();
+            }
+
+            window.backToChatContacts = function backToChatContacts() {
+                chatWindow.classList.remove("active");
+                setTimeout(() => { contactList.classList.add("active"); }, 150);
+            };
+
+            window.closeChatWidget = function closeChatWidget() {
+                isWidgetOpen = false;
+                contactList.classList.remove("active");
+                chatWindow.classList.remove("active");
+                chatBtn.classList.remove("is-open");
+            };
+
+            window.checkChatInput = function checkChatInput() {
+                if (messageInput.value.trim() !== "") {
+                    actionBtnIcon.setAttribute("data-mode", "send");
+                    actionBtnIcon.innerHTML = '<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/>';
+                } else {
+                    actionBtnIcon.setAttribute("data-mode", "mic");
+                    actionBtnIcon.innerHTML = '<path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/>';
+                }
+            };
+
+            function appendSentMessage(text, time) {
+                chatMessages.innerHTML += `
+                    <div class="message sent">
+                        ${text}
+                        <span class="time">${time}</span>
+                    </div>
+                `;
+            }
+
+            function sendVoiceNote(time) {
+                const sec = Math.floor(Math.random() * 30) + 2;
+                const durationStr = `0:${sec < 10 ? "0" + sec : sec}`;
+                chatMessages.innerHTML += `
+                    <div class="message sent">
+                        <div class="voice-note">
+                            <svg class="cw-icon vn-play-btn" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7Z"/></svg>
+                            <div class="vn-waveform">
+                                <div class="vn-bar"></div><div class="vn-bar"></div>
+                                <div class="vn-bar"></div><div class="vn-bar"></div>
+                                <div class="vn-bar"></div><div class="vn-bar"></div>
+                                <div class="vn-bar"></div>
+                            </div>
+                            <span class="vn-duration">${durationStr}</span>
+                        </div>
+                        <span class="time" style="margin-top:0;">${time}</span>
+                    </div>
+                `;
+            }
+
+            function triggerBotReply() {
+                isTyping = true;
+                chatPersonStatus.innerText = "mengetik...";
+                setTimeout(() => {
+                    const typingId = `typing-${Date.now()}`;
+                    chatMessages.innerHTML += `
+                        <div class="message received" id="${typingId}">
+                            <div class="typing-indicator"><span></span><span></span><span></span></div>
+                        </div>
+                    `;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    setTimeout(() => {
+                        const typingNode = document.getElementById(typingId);
+                        if (typingNode) typingNode.remove();
+                        chatPersonStatus.innerText = "Online";
+                        chatMessages.innerHTML += `
+                            <div class="message received">
+                                Oke, noted! Nanti saya kabari lagi ya.
+                                <span class="time">${getCurrentTime()}</span>
+                            </div>
+                        `;
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        isTyping = false;
+                    }, 2000);
+                }, 600);
+            }
+
+            window.handleChatAction = function handleChatAction() {
+                if (isTyping) return;
+                const text = messageInput.value.trim();
+                const time = getCurrentTime();
+                if (text !== "") {
+                    appendSentMessage(text, time);
+                } else {
+                    sendVoiceNote(time);
+                }
+                messageInput.value = "";
+                checkChatInput();
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                triggerBotReply();
+            };
+
+            messageInput.addEventListener("keypress", (event) => {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    if (messageInput.value.trim() !== "") {
+                        handleChatAction();
+                    }
+                }
+            });
+        })();
     </script>
 </body>
 </html>
