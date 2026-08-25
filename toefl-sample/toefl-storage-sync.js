@@ -72,8 +72,16 @@ class ToeflStorageSync {
 
   async runDataMigration() {
     console.log("[ToeflSync] Starting data migration check...");
-    
+
     try {
+      // Skip if mocktest already has data from a previous migration —
+      // otherwise this would overwrite live deletes with stale legacy data on every load.
+      const existingMockTestSets = await this._get(this._mockTestSetsPath).catch(() => null);
+      if (existingMockTestSets && existingMockTestSets._migratedAt) {
+        console.log("[ToeflSync] Migration already completed previously, skipping");
+        return;
+      }
+
       // Check if old data exists
       const oldSets = await this._get(this._setsV2Path);
       const oldDrafts = await this._get(this._draftsV2Path);
@@ -566,7 +574,9 @@ class ToeflStorageSync {
         activeDrafts._updatedAt = new Date().toISOString();
         await this._put(paths.draftsPath, activeDrafts);
       }
-      
+
+      console.log(`[ToeflSync] ✅ ${setId} removed from active ${testType} sets (website copy deleted)`);
+
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
