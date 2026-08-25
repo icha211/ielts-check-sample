@@ -307,6 +307,16 @@ function dateKey(year, monthIndex, day) {
     return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+// Mock Test owns day 1, 5, 9, 13... (every 4th day); Practice Test owns the days in between (e.g. 2-4, 6-8).
+function isMockTestDayNumber(day) {
+    return ((day - 1) % 4) === 0;
+}
+
+function isDayOpenForTestType(day, testType) {
+    const isMockSlot = isMockTestDayNumber(day);
+    return testType === "practicetest" ? !isMockSlot : isMockSlot;
+}
+
 function buildScheduleMap() {
     const scheduleMap = {};
     sectionSets.forEach((item) => {
@@ -463,6 +473,23 @@ function renderMonthDetail(year, monthIndex) {
         const dayComplete = isDayComplete(key, scheduleMap);
         const hasAny = Boolean(entry && entry.items.length);
         const items = entry ? entry.items : [];
+
+        if (!isDayOpenForTestType(day, currentTestType)) {
+            const ownerLabel = isMockTestDayNumber(day) ? "Mock Test" : "Practice Test";
+            dayCards.push(`
+                <article class="month-detail-day locked">
+                    <div class="day-no">${day}</div>
+                    <div class="month-actions">
+                        <div class="month-action locked-note">
+                            <span>🔒 ${ownerLabel} day</span>
+                        </div>
+                    </div>
+                    <div class="detail-note">Reserved for ${ownerLabel} only</div>
+                </article>
+            `);
+            continue;
+        }
+
         const missingModules = MODULES.filter((moduleId) => !items.some((item) => item.module === moduleId));
         const moduleActions = hasAny
             ? `

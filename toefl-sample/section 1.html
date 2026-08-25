@@ -2831,6 +2831,7 @@
             const effectiveDate = normalizedRequestedDate || requestedDate || stored.setDate || today;
             if (dateInput) dateInput.value = effectiveDate;
             if (difficultyInput) difficultyInput.value = stored.difficulty || "intermediate";
+            lastValidSetDate = effectiveDate;
             updatePackageLabel(effectiveDate);
             try {
                 await restoreAudioForCurrentSet(activePartId || 1);
@@ -2888,10 +2889,30 @@
             }
         }
 
+        // Mock Test owns day 1, 5, 9, 13... (every 4th day); Practice Test owns the days in between (e.g. 2-4, 6-8).
+        let lastValidSetDate = "";
+        function isMockTestDayNumber(day) {
+            return ((day - 1) % 4) === 0;
+        }
+        function isDateAllowedForTestType(dateString, testType) {
+            const parsed = new Date(`${dateString}T00:00:00`);
+            if (Number.isNaN(parsed.getTime())) return true;
+            const isMockSlot = isMockTestDayNumber(parsed.getDate());
+            return testType === "practicetest" ? !isMockSlot : isMockSlot;
+        }
+
         async function handleSetDateChange() {
             const dateInput = document.getElementById("set-date");
             const selectedDate = dateInput?.value;
             if (!selectedDate) return;
+
+            if (!isDateAllowedForTestType(selectedDate, currentTestType)) {
+                const ownerLabel = currentTestType === "practicetest" ? "Mock Test" : "Practice Test";
+                alert(`This date is reserved for ${ownerLabel} only. Please pick a different date.`);
+                dateInput.value = lastValidSetDate || selectedDate;
+                return;
+            }
+            lastValidSetDate = selectedDate;
 
             const existing = await resolveSetRecordByDate(selectedDate).catch(() => null);
             if (existing?.setId) {
