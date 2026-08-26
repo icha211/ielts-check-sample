@@ -37,12 +37,14 @@ const MOCK_MODULE_OPTIONS = [
 
 // Create-modal options shown for Practice Test: fixed 20-question presets per module/difficulty.
 const PRACTICE_MODULE_OPTIONS = [
-    { module: "listening", label: "Listening (Section 1 only \u00b7 20 Qs)", icon: "headset.png" },
-    { module: "structure", difficulty: "beginner", focus: "partA", label: "Structure - Beginner (20 Qs)", icon: "paper-pencil.png" },
-    { module: "structure", difficulty: "advanced", focus: "partA", label: "Structure - Advanced (20 Qs)", icon: "paper-pencil.png" },
-    { module: "structure", difficulty: "beginner", focus: "partB", label: "Writing - Beginner (20 Qs)", icon: "paper-pencil.png" },
-    { module: "structure", difficulty: "advanced", focus: "partB", label: "Writing - Advanced (20 Qs)", icon: "paper-pencil.png" },
-    { module: "reading", label: "Reading (2 parts \u00b7 10 Qs each)", icon: "blue-book.png" }
+    { module: "listening", focus: "part1", label: "Listening - Part 1 (20 Qs)", icon: "headset.png" },
+    { module: "listening", focus: "part2", label: "Listening - Part 2 (20 Qs)", icon: "headset.png" },
+    { module: "listening", focus: "part3", label: "Listening - Part 3 (20 Qs)", icon: "headset.png" },
+    { module: "structure", difficulty: "beginner", focus: "partA", label: "Structure - Beginner (Part A \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { module: "structure", difficulty: "advanced", focus: "partA", label: "Structure - Advanced (Part A \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { module: "structure", difficulty: "beginner", focus: "partB", label: "Writing - Beginner (Part B \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { module: "structure", difficulty: "advanced", focus: "partB", label: "Writing - Advanced (Part B \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { module: "reading", focus: "part1-2", label: "Reading - Part 1 & Part 2 (20 Qs each)", icon: "blue-book.png" }
 ];
 
 const DIFFICULTY_LABELS = {

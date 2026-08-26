@@ -209,6 +209,18 @@
         let currentTestType = "mocktest";
         let currentPackageDate = "";
         let lastValidSetDate = "";
+        let forcedPracticeFocusPart = null;
+
+        function getStructurePracticeFocusPart() {
+            const params = new URLSearchParams(window.location.search);
+            const testType = String(params.get("testType") || "mocktest").toLowerCase();
+            if (testType !== "practicetest") return null;
+
+            const focus = String(params.get("focus") || "").toLowerCase();
+            if (focus === "parta") return 1;
+            if (focus === "partb") return 2;
+            return null;
+        }
 
         // Mock Test owns day 1, 5, 9, 13... (every 4th day); Practice Test owns the days in between (e.g. 2-4, 6-8).
         function isMockTestDayNumber(day) {
@@ -560,9 +572,10 @@
             updateHeaderPackageLabel(effectiveDate);
             updateExplanationLink();
             const requestedFocus = params.get("focus");
-            if (forceBlankNew && requestedFocus === "partB") {
-                const partBTabButton = document.querySelector(".dev-sub-btn:nth-child(2)");
-                if (partBTabButton) partBTabButton.click();
+            if (forceBlankNew && (requestedFocus === "partA" || requestedFocus === "partB")) {
+                const targetPartId = requestedFocus === "partB" ? 2 : 1;
+                const targetButton = document.querySelector(`.dev-sub-btn[data-part-id="${targetPartId}"]`);
+                if (targetButton) targetButton.click();
             }
         }
 
@@ -750,6 +763,7 @@
             const userNavContainer = document.getElementById('user-sub-nav-container');
             const devContainer = document.getElementById('dev-panels-container');
             const devNavContainer = document.getElementById('dev-sub-nav-container');
+            forcedPracticeFocusPart = getStructurePracticeFocusPart();
 
             PARTS.forEach((part) => {
                 const p = part.id;
@@ -784,6 +798,7 @@
                 // DEV VIEW BUILDER
                 const devBtn = document.createElement('button');
                 devBtn.className = `dev-sub-btn ${p === 1 ? 'active' : ''}`;
+                devBtn.dataset.partId = String(p);
                 devBtn.onclick = (e) => openSubTab(e, `dev-part-${p}`, 'dev-sub-btn');
                 devBtn.innerText = `✏️ Edit ${part.name}`;
                 devNavContainer.appendChild(devBtn);
@@ -841,6 +856,25 @@
             guideBtn.onclick = (e) => openSubTab(e, 'dev-guide', 'dev-sub-btn');
             guideBtn.innerText = '📖 Panduan Syntax';
             devNavContainer.appendChild(guideBtn);
+
+            if (forcedPracticeFocusPart) {
+                PARTS.forEach((part) => {
+                    const shouldShow = part.id === forcedPracticeFocusPart;
+                    const userTabBtn = userNavContainer.querySelector(`#btn-nav-${part.id}`);
+                    const userPanel = userContainer.querySelector(`#user-part-${part.id}`);
+                    const devTabBtn = devNavContainer.querySelector(`.dev-sub-btn[data-part-id="${part.id}"]`);
+                    const devPanel = devContainer.querySelector(`#dev-part-${part.id}`);
+                    if (userTabBtn) userTabBtn.style.display = shouldShow ? "inline-flex" : "none";
+                    if (userPanel) userPanel.style.display = shouldShow ? "block" : "none";
+                    if (devTabBtn) devTabBtn.style.display = shouldShow ? "inline-flex" : "none";
+                    if (devPanel) devPanel.style.display = shouldShow ? "block" : "none";
+                });
+
+                const focusBtn = devNavContainer.querySelector(`.dev-sub-btn[data-part-id="${forcedPracticeFocusPart}"]`);
+                if (focusBtn) {
+                    focusBtn.click();
+                }
+            }
 
             devContainer.innerHTML += `
             <div id="dev-guide" class="sub-content">

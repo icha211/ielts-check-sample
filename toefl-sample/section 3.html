@@ -579,6 +579,7 @@
     <script src="toefl-storage-sync.js?v=20260801a"></script>
     <script>
         const TOTAL_PASSAGES = 5; 
+        const PRACTICE_READING_TOTAL_PASSAGES = 2;
         const SETS_KEY = "toefl_developer_sets_v1";
         const SETS_KEY_V2 = "toefl_developer_sets_v2";
         const MODULE_ID = "reading";
@@ -587,6 +588,17 @@
         let currentSetId = "";
         let currentTestType = "mocktest";
         let lastValidSetDate = "";
+        let forcedReadingPartsCount = TOTAL_PASSAGES;
+
+        function getReadingPracticePartsCount() {
+            const params = new URLSearchParams(window.location.search);
+            const testType = String(params.get("testType") || "mocktest").toLowerCase();
+            if (testType !== "practicetest") return TOTAL_PASSAGES;
+
+            const focus = String(params.get("focus") || "").toLowerCase();
+            if (focus === "part1-2") return PRACTICE_READING_TOTAL_PASSAGES;
+            return TOTAL_PASSAGES;
+        }
 
         // Mock Test owns day 1, 5, 9, 13... (every 4th day); Practice Test owns the days in between (e.g. 2-4, 6-8).
         function isMockTestDayNumber(day) {
@@ -702,7 +714,8 @@
         }
 
         function clearSectionDraftInputs() {
-            for (let p = 1; p <= TOTAL_PASSAGES; p++) {
+            const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
+            for (let p = 1; p <= maxPassages; p++) {
                 const titleEl = document.getElementById(`input-title-${p}`);
                 const passageEl = document.getElementById(`input-passage-${p}`);
                 const qEl = document.getElementById(`input-magic-questions-${p}`);
@@ -757,7 +770,8 @@
 
         async function saveSectionDraft() {
             const draft = { passages: {} };
-            for (let p = 1; p <= TOTAL_PASSAGES; p++) {
+            const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
+            for (let p = 1; p <= maxPassages; p++) {
                 draft.passages[p] = {
                     title: (document.getElementById(`input-title-${p}`) || {}).value || "",
                     passage: (document.getElementById(`input-passage-${p}`) || {}).value || "",
@@ -809,7 +823,8 @@
 
             if (!draft || typeof draft !== "object" || !draft.passages) return;
 
-            for (let p = 1; p <= TOTAL_PASSAGES; p++) {
+            const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
+            for (let p = 1; p <= maxPassages; p++) {
                 const row = draft.passages[p] || {};
                 const titleEl = document.getElementById(`input-title-${p}`);
                 const passageEl = document.getElementById(`input-passage-${p}`);
@@ -933,7 +948,8 @@
         }
 
         function openUserPassage(passageNumber) {
-            const target = Math.min(Math.max(Number(passageNumber || 1), 1), TOTAL_PASSAGES);
+            const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
+            const target = Math.min(Math.max(Number(passageNumber || 1), 1), maxPassages);
             document.querySelectorAll('#user-passages-container .sub-content').forEach((content) => {
                 content.classList.remove('active');
             });
@@ -976,7 +992,8 @@
             const activePassage = getActivePassageNumber();
             let html = '';
 
-            for (let passageNumber = 1; passageNumber <= TOTAL_PASSAGES; passageNumber++) {
+            const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
+            for (let passageNumber = 1; passageNumber <= maxPassages; passageNumber++) {
                 const questionUIDs = getPassageQuestionUIDs(passageNumber);
                 const total = questionUIDs.length;
                 const answered = questionUIDs.reduce((count, uid) => {
@@ -1100,8 +1117,10 @@
             const userContainer = document.getElementById('user-passages-container');
             const devContainer = document.getElementById('dev-panels-container');
             const devNavContainer = document.getElementById('dev-sub-nav-container');
+            forcedReadingPartsCount = getReadingPracticePartsCount();
+            const visiblePassageCount = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount));
 
-            for (let p = 1; p <= TOTAL_PASSAGES; p++) {
+            for (let p = 1; p <= visiblePassageCount; p++) {
                 userContainer.innerHTML += `
                 <div id="user-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
                     <div class="user-main">
@@ -1122,7 +1141,7 @@
                         </div>
                         <div class="question-section">
                             <div id="display-questions-${p}"></div>
-                            ${p === TOTAL_PASSAGES ? `<button class="btn-submit-all" onclick="submitAnswers()">Submit Section 3 (Finish Test)</button>` : `<button class="btn-submit-all" style="background:#7f8c8d" onclick="openUserPassage(${p + 1})">Next Passage</button>`}
+                            ${p === visiblePassageCount ? `<button class="btn-submit-all" onclick="submitAnswers()">Submit Section 3 (Finish Test)</button>` : `<button class="btn-submit-all" style="background:#7f8c8d" onclick="openUserPassage(${p + 1})">Next Passage</button>`}
                         </div>
                     </div>
                 </div>`;
@@ -1304,7 +1323,8 @@
         }
 
         function renumberAllPassageMarkers() {
-            for (let p = 1; p <= TOTAL_PASSAGES; p++) {
+            const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
+            for (let p = 1; p <= maxPassages; p++) {
                 renumberPassageLineMarkers(p);
             }
         }
@@ -1423,7 +1443,8 @@
             globalQuestions = {};
             globalPassages = {};
 
-            for(let p=1; p<=TOTAL_PASSAGES; p++) {
+            const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
+            for(let p=1; p<=maxPassages; p++) {
                 document.getElementById(`display-title-${p}`).innerText = document.getElementById(`input-title-${p}`).value || `Questions ${p}`;
                 let passageText = document.getElementById(`input-passage-${p}`).value;
                 
