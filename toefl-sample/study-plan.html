@@ -1189,6 +1189,18 @@
             return byModule;
         }
 
+        function getSetTestType(record) {
+            const explicitType = String(record?.testType || "").toLowerCase();
+            if (explicitType === "mocktest" || explicitType === "practicetest") {
+                return explicitType;
+            }
+
+            const setId = String(record?.setId || "").toLowerCase();
+            if (setId.startsWith("practicetest_")) return "practicetest";
+            if (setId.startsWith("mocktest_")) return "mocktest";
+            return "mocktest";
+        }
+
         async function resolveSetIdForDate(sectionId, dateValue) {
             try {
                 if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
@@ -1401,7 +1413,7 @@
             document.getElementById("dateHelper").textContent = cloudStatusLabel;
         }
 
-        function getSectionDetailMarkup(sectionId, section, setDate) {
+        function getSectionDetailMarkup(sectionId, section, setDate, setRecord) {
             const listeningRows = [
                 ["30 Question", "Part 1: Short Conversation"],
                 ["8 Question", "Part 2: Long Conversation"],
@@ -1420,6 +1432,8 @@
                 ["10 Question", "Part 2"],
                 ["10 Question", "Part 3"]
             ];
+            const testType = getSetTestType(setRecord);
+            const testLabel = testType === "practicetest" ? "Practice Test" : "Mock Test";
 
             const getAlignedRow = (left, right) => `
                 <div class="question-part-1-short-conve-parent">
@@ -1439,7 +1453,7 @@
             const renderReading = () => `
                 <div class="frame-parent">
                     <div class="listening-mock-test-wrapper">
-                        <div class="listening-mock-test">Reading Mock Test</div>
+                        <div class="listening-mock-test">Reading ${testLabel}</div>
                     </div>
                     <div class="frame-group reading-grid">
                         <div class="reading-left">${getReadingColumn(readingRowsLeft)}</div>
@@ -1458,8 +1472,8 @@
 
             const rows = sectionId === "listening" ? listeningRows : structureRows;
             const title = sectionId === "listening"
-                ? "Listening Mock Test"
-                : "Structure & Writing Mock Test";
+                ? `Listening ${testLabel}`
+                : `Structure & Writing ${testLabel}`;
             const minutes = sectionId === "listening" ? 35 : 25;
 
             return `
@@ -1527,6 +1541,7 @@
 
             availableSectionIds.forEach((sectionId) => {
                 const section = getSectionState(dayData, sectionId, day);
+                const setRecord = availableByModule[sectionId] || null;
                 const progress = getStoredSectionProgress(sectionId, setDate, section.completed);
                 const status = progress >= 100 ? "completed" : progress > 0 ? "ongoing" : "unattempted";
                 const card = document.createElement("article");
@@ -1539,7 +1554,7 @@
                         </div>
                     </div>
                     <div class="detail-row">
-                        ${getSectionDetailMarkup(sectionId, section, setDate)}
+                        ${getSectionDetailMarkup(sectionId, section, setDate, setRecord)}
                     </div>
                     <div class="card-footer">
                         <span class="status-badge ${section.completed ? "status-done" : "status-pending"}">${section.completed ? "Completed" : "Pending"}</span>
@@ -1566,9 +1581,12 @@
                     if (lifecycle.locked) return;
                     const sectionId = button.getAttribute("data-open-section");
                     const file = questionBlueprint[sectionId].file;
-                    const setId = String(availableByModule?.[sectionId]?.setId || "");
+                    const targetRecord = availableByModule?.[sectionId] || null;
+                    const setId = String(targetRecord?.setId || "");
+                    const testType = getSetTestType(targetRecord);
                     const params = new URLSearchParams({ setDate });
                     if (setId) params.set("setId", setId);
+                    if (testType) params.set("testType", testType);
                     window.location.href = `${file}?${params.toString()}`;
                 });
             });
