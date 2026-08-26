@@ -1058,6 +1058,8 @@
         lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
         const STORAGE_KEY = "toefl_schedule_v3";
         const TOEFL_SETS_V2_KEY = "toefl_developer_sets_v2";
+        const TOEFL_MOCK_SETS_V2_KEY = "toefl_developer_mocktest_sets_v2";
+        const TOEFL_PRACTICE_SETS_V2_KEY = "toefl_developer_practicetest_sets_v2";
         const STUDY_PLAN_PROJECT_ID = "quickcheck-25590";
         const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
         const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -1144,15 +1146,57 @@
         }
 
         function getLocalSetRecords() {
-            const parsed = JSON.parse(localStorage.getItem(TOEFL_SETS_V2_KEY) || "{}");
-            return Object.entries(parsed || {})
+            const parseMap = (keyName) => {
+                try {
+                    return JSON.parse(localStorage.getItem(keyName) || "{}") || {};
+                } catch {
+                    return {};
+                }
+            };
+
+            const legacy = parseMap(TOEFL_SETS_V2_KEY);
+            const mock = parseMap(TOEFL_MOCK_SETS_V2_KEY);
+            const practice = parseMap(TOEFL_PRACTICE_SETS_V2_KEY);
+
+            const toRows = (source, fallbackType = "") => Object.entries(source || {})
                 .filter(([key]) => key !== "_updatedAt")
-                .map(([setId, value]) => ({ ...value, setId: value?.setId || setId }))
+                .map(([setId, value]) => {
+                    const resolvedId = value?.setId || setId;
+                    const inferredType = String(value?.testType || "").toLowerCase()
+                        || (String(resolvedId || "").startsWith("practicetest_") ? "practicetest" : String(resolvedId || "").startsWith("mocktest_") ? "mocktest" : fallbackType || "mocktest");
+                    return { ...value, setId: resolvedId, testType: inferredType };
+                })
                 .filter((item) => item && item.module && item.setDate);
+
+            const merged = [...toRows(legacy), ...toRows(mock, "mocktest"), ...toRows(practice, "practicetest")];
+            const byId = {};
+            merged.forEach((item) => {
+                if (!item?.setId) return;
+                byId[item.setId] = item;
+            });
+            return Object.values(byId);
         }
 
         async function refreshSetRecordCache() {
             try {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
+                    const [mockRecords, practiceRecords] = await Promise.all([
+                        toeflStorage.getSetRecordsByTestType("mocktest").catch(() => []),
+                        toeflStorage.getSetRecordsByTestType("practicetest").catch(() => [])
+                    ]);
+                    const merged = [
+                        ...(Array.isArray(mockRecords) ? mockRecords.map((item) => ({ ...item, testType: "mocktest" })) : []),
+                        ...(Array.isArray(practiceRecords) ? practiceRecords.map((item) => ({ ...item, testType: "practicetest" })) : [])
+                    ];
+                    const byId = {};
+                    merged.forEach((item) => {
+                        if (!item?.setId) return;
+                        byId[item.setId] = item;
+                    });
+                    cachedSetRecords = Object.values(byId).filter((item) => item && item.module && item.setDate);
+                    return;
+                }
+
                 if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
                     const records = await toeflStorage.getSetRecords();
                     cachedSetRecords = (records || []).filter((item) => item && item.module && item.setDate);
@@ -1203,7 +1247,20 @@
 
         async function resolveSetIdForDate(sectionId, dateValue) {
             try {
-                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
+                    const [mockRecords, practiceRecords] = await Promise.all([
+                        toeflStorage.getSetRecordsByTestType("mocktest").catch(() => []),
+                        toeflStorage.getSetRecordsByTestType("practicetest").catch(() => [])
+                    ]);
+                    const records = [
+                        ...(Array.isArray(mockRecords) ? mockRecords : []),
+                        ...(Array.isArray(practiceRecords) ? practiceRecords : [])
+                    ];
+                    const match = (records || [])
+                        .filter((item) => item && item.module === sectionId && item.setDate === dateValue)
+                        .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
+                    if (match?.setId) return match.setId;
+                } else if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
                     const records = await toeflStorage.getSetRecords();
                     const match = (records || [])
                         .filter((item) => item && item.module === sectionId && item.setDate === dateValue)

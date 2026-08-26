@@ -242,11 +242,14 @@ class ToeflStorageSync {
   }
 
   createSetId(module, setDate, testType = "mocktest") {
+    const stamp = Date.now();
+    const rand = Math.random().toString(36).slice(2, 8);
+    if (testType === "practicetest") {
+      return `${testType}_${module}_${stamp}_${rand}`;
+    }
     const normalizedDate = /^\d{4}-\d{2}-\d{2}$/.test(String(setDate || ""))
       ? String(setDate)
       : new Date().toISOString().split("T")[0];
-    const stamp = Date.now();
-    const rand = Math.random().toString(36).slice(2, 8);
     return `${testType}_${module}_${normalizedDate}_${stamp}_${rand}`;
   }
 

@@ -563,7 +563,7 @@
                 }
             }
             const today = new Date().toISOString().split("T")[0];
-            const effectiveDate = requestedDate || stored.setDate || today;
+            const effectiveDate = requestedDate || stored.setDate || (currentTestType === "practicetest" ? "" : today);
             currentPackageDate = effectiveDate;
             if (dateInput) dateInput.value = effectiveDate;
             const requestedDifficulty = params.get("difficulty");
@@ -582,7 +582,11 @@
         async function saveSectionMeta() {
             const dateInput = document.getElementById("set-date");
             const difficultyInput = document.getElementById("set-difficulty");
-            const setDate = dateInput.value || new Date().toISOString().split("T")[0];
+            const rawSetDate = String(dateInput.value || "").trim();
+            const normalizedSetDate = /^\d{4}-\d{2}-\d{2}$/.test(rawSetDate) ? rawSetDate : "";
+            const setDate = currentTestType === "practicetest"
+                ? (normalizedSetDate || "")
+                : (normalizedSetDate || new Date().toISOString().split("T")[0]);
             updateHeaderPackageLabel(setDate);
             const setId = await ensureCurrentSetId(setDate);
             const record = {

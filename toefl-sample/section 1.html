@@ -2624,7 +2624,11 @@
                 const folderInput = document.getElementById("cloud-audio-folder-url");
                 const folderUrl = String((folderInput && folderInput.value) || "").trim();
                 let setId = extractCloudflareSetId(currentSetId) || extractCloudflareSetId(folderUrl);
-                const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
+                const rawSetDate = String((document.getElementById("set-date") || {}).value || "").trim();
+                const normalizedSetDate = normalizeDateKey(rawSetDate);
+                const setDate = currentTestType === "practicetest"
+                    ? (normalizedSetDate || "")
+                    : (normalizedSetDate || new Date().toISOString().split("T")[0]);
                 const difficulty = (document.getElementById("set-difficulty") || {}).value || "intermediate";
 
                 if (!setId) {
@@ -2849,7 +2853,7 @@
             }
 
             const today = new Date().toISOString().split("T")[0];
-            const effectiveDate = normalizedRequestedDate || requestedDate || stored.setDate || today;
+            const effectiveDate = normalizedRequestedDate || requestedDate || stored.setDate || (currentTestType === "practicetest" ? "" : today);
             if (dateInput) dateInput.value = effectiveDate;
             if (difficultyInput) difficultyInput.value = stored.difficulty || "intermediate";
             if (forcedPracticePartId) {
@@ -2877,7 +2881,11 @@
         async function saveSectionMeta() {
             const dateInput = document.getElementById("set-date");
             const difficultyInput = document.getElementById("set-difficulty");
-            const setDate = dateInput?.value || new Date().toISOString().split("T")[0];
+            const rawSetDate = String(dateInput?.value || "").trim();
+            const normalizedSetDate = normalizeDateKey(rawSetDate);
+            const setDate = currentTestType === "practicetest"
+                ? (normalizedSetDate || "")
+                : (normalizedSetDate || new Date().toISOString().split("T")[0]);
             const setId = await ensureCurrentSetId(setDate);
             let folderUrl = "";
             try {
