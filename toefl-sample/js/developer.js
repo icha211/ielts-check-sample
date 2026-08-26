@@ -61,6 +61,21 @@ function safeParse(raw, fallback) {
     }
 }
 
+function normalizeDateKey(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return "";
+    const year = parsed.getFullYear();
+    const month = String(parsed.getMonth() + 1).padStart(2, "0");
+    const day = String(parsed.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
+
 function escapeHtml(value) {
     return String(value || "")
         .replaceAll("&", "&amp;")
@@ -75,6 +90,15 @@ function toast(message) {
     el.textContent = message;
     el.style.display = "block";
     setTimeout(() => { el.style.display = "none"; }, 2200);
+}
+
+function formatCompactSetDate(dateString) {
+    const normalized = normalizeDateKey(dateString || "");
+    if (!normalized) return "-";
+    const parsed = new Date(`${normalized}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return "-";
+    const monthShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${String(parsed.getDate()).padStart(2, "0")} ${monthShort[parsed.getMonth()]} ${parsed.getFullYear()}`;
 }
 
 function normalizeSet(item, fallbackModule) {
@@ -430,24 +454,65 @@ function renderLibrary() {
         return;
     }
 
-    host.innerHTML = sectionSets.map((item) => `
+    host.innerHTML = sectionSets.map((item) => {
+        const normalizedDate = normalizeDateKey(item.setDate || "");
+        const metadataSetDateLabel = item.setDate ? item.displayDate : "-";
+        const compactSetDateLabel = formatCompactSetDate(item.setDate);
+        return `
         <article class="card">
             <div class="card-body">
                 <h3>${item.icon} ${escapeHtml(item.label)} Set</h3>
                 <div class="meta">
-                    <span><img src="../asset/icon/pin.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"> Set Date: ${escapeHtml(item.displayDate)}</span>
+                    <span><img src="../asset/icon/pin.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"> Set Date: ${escapeHtml(metadataSetDateLabel)}</span>
                     <span>Difficulty: ${escapeHtml(item.difficultyLabel)}</span>
                     <span>ID: ${escapeHtml(item.setId || "-")}</span>
                     <span>Updated: ${escapeHtml(item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "Not saved")}</span>
                 </div>
                 <div class="actions">
                     <a class="btn-mini edit" href="${buildEditorUrl(item.module, item.setDate, item.setId, currentTestType)}">Open Editor</a>
+                    <label class="btn-mini date date-picker-trigger" aria-label="Set date for ${escapeHtml(item.label)} set">
+                        <span>Set Date: ${escapeHtml(compactSetDateLabel)}</span>
+                        <input type="date" value="${escapeHtml(normalizedDate)}" onchange="handleLibrarySetDateChange('${escapeHtml(item.setId)}', '${escapeHtml(item.module)}', this.value)">
+                    </label>
                     <a class="btn-mini open" href="study-plan.html?year=${item.year ?? new Date().getFullYear()}&month=${item.monthIndex ?? new Date().getMonth()}">Schedule</a>
                     <button class="btn-mini" style="background:#d64545;color:#fff;border:none;cursor:pointer;" onclick="deleteSet('${item.setId}', '${item.module}')">Delete</button>
                 </div>
             </div>
         </article>
-    `).join("");
+    `;
+    }).join("");
+}
+
+async function handleLibrarySetDateChange(setId, moduleId, nextDate) {
+    const selectedDate = normalizeDateKey(nextDate || "");
+
+    if (selectedDate) {
+        const parsedDate = new Date(`${selectedDate}T00:00:00`);
+        if (!Number.isNaN(parsedDate.getTime()) && !isDayOpenForTestType(parsedDate.getDate(), currentTestType)) {
+            const ownerLabel = currentTestType === "practicetest" ? "Mock Test" : "Practice Test";
+            toast(`This date is reserved for ${ownerLabel}.`);
+            await renderAll();
+            return;
+        }
+    }
+
+    const targetIndex = sectionSets.findIndex((item) => item && String(item.setId) === String(setId));
+    if (targetIndex === -1) return;
+
+    const target = sectionSets[targetIndex];
+    const normalized = normalizeSet({
+        ...target,
+        module: moduleId || target.module,
+        setDate: selectedDate,
+        updatedAt: new Date().toISOString()
+    }, moduleId || target.module);
+
+    if (!normalized) return;
+    sectionSets[targetIndex] = normalized;
+
+    persistSets(sectionSets);
+    await renderAll();
+    toast(selectedDate ? `Set date updated: ${normalized.displayDate}` : "Set date cleared");
 }
 
 function renderMonthCalendar() {
