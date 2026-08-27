@@ -43,6 +43,12 @@ def _score(left: str, right: str) -> float:
 
 
 def _align_rows_to_words(rows: list[dict[str, Any]], word_segments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Map each supplied transcript line to a monotonic word span.
+
+    WhisperX supplies the word timestamps from the audio. The supplied text is
+    treated as the source of truth for line boundaries; ASR text is only used
+    to locate each line in chronological order.
+    """
     output = []
     cursor = 0
     for row in rows:
@@ -51,7 +57,7 @@ def _align_rows_to_words(rows: list[dict[str, Any]], word_segments: list[dict[st
         best = None
         best_score = 0.0
         for start_index in range(cursor, len(word_segments)):
-            for length in range(max(1, target_count - 5), target_count + 7):
+            for length in range(max(1, target_count - 8), target_count + 13):
                 end_index = start_index + length
                 window = word_segments[start_index:end_index]
                 if not window:
@@ -61,6 +67,10 @@ def _align_rows_to_words(rows: list[dict[str, Any]], word_segments: list[dict[st
                 if score > best_score:
                     best_score = score
                     best = (start_index, window)
+                if best_score >= 0.985:
+                    break
+            if best_score >= 0.985:
+                break
         if not best:
             continue
         start_index, window = best
@@ -74,6 +84,21 @@ def _align_rows_to_words(rows: list[dict[str, Any]], word_segments: list[dict[st
             "confidence": round(best_score, 3),
         })
     return output
+
+
+def _normalize_aligned_rows(rows: list[dict[str, Any]], segments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Reject weak matches and prevent a distant duplicate phrase winning."""
+    accepted = []
+    previous_end = -1.0
+    for row in segments:
+        start = float(row.get("start", 0.0))
+        end = float(row.get("end", start))
+        confidence = float(row.get("confidence", 0.0))
+        if end <= start or start < previous_end or confidence < 0.42:
+            continue
+        accepted.append(row)
+        previous_end = end
+    return accepted
 
 
 def _download_audio(audio_url: str, destination: str) -> None:
@@ -182,7 +207,7 @@ def align(payload: dict[str, Any]) -> dict[str, Any]:
         }
 
     if word_segments:
-        aligned_rows = _align_rows_to_words(rows, word_segments)
+        aligned_rows = _normalize_aligned_rows(rows, _align_rows_to_words(rows, word_segments))
         if rows and len(aligned_rows) < max(1, (len(rows) + 1) // 2):
             raise RuntimeError("Transcript does not match enough spoken words in this audio")
         return {"provider": "whisperx", "segments": aligned_rows}
