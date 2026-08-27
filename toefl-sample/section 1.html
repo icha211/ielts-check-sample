@@ -1036,7 +1036,8 @@
                             answerKey: partData?.answerKey || "",
                             explanation: partData?.explanation || "",
                             questions: partData?.questions || "",
-                            transcripts: partData?.transcripts || ""
+                            transcripts: partData?.transcripts || "",
+                            transcriptSegments: Array.isArray(partData?.transcriptSegments) ? partData.transcriptSegments : []
                         };
                     });
                 }
@@ -4115,6 +4116,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         function buildPreviewSectionResult() {
             const transcriptMapsByPart = {};
             const transcriptTextsByPart = {};
+            const savedDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
 
             PARTS.forEach((part) => {
                 const transcriptText = String((document.getElementById(`input-transcript-${part.id}`) || {}).value || "").trim()
@@ -4129,7 +4131,13 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const qNum = Number(parts[1] || 0);
                 const question = globalQuestions[uid] || {};
                 const correct = String(globalAnswerKey[uid] || "").trim().toLowerCase();
-                const transcriptSegments = (((transcriptMapsByPart[partId] || {})[qNum]) || []).map((segment) => ({ ...segment }));
+                const savedSegments = Array.isArray(savedDraft.parts?.[partId]?.transcriptSegments)
+                    ? savedDraft.parts[partId].transcriptSegments.filter((segment) => Number(segment?.end) > Number(segment?.start))
+                    : [];
+                const transcriptSegments = (savedSegments.length
+                    ? savedSegments.filter((segment) => Number(segment?.questionNumber || segment?.question_number || 0) === qNum)
+                    : (((transcriptMapsByPart[partId] || {})[qNum]) || [])
+                ).map((segment) => ({ ...segment }));
                 const partMeta = PARTS.find((item) => Number(item.id) === partId) || {};
                 return {
                     uid,
@@ -4658,6 +4666,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
             const transcriptMapsByPart = {};
             const transcriptTextsByPart = {};
+            const savedDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
             PARTS.forEach((part) => {
                 const transcriptText = String((document.getElementById(`input-transcript-${part.id}`) || {}).value || "").trim()
                     || deriveTranscriptTextFromSmartQuestions((document.getElementById(`input-magic-questions-${part.id}`) || {}).value || "");
@@ -4675,7 +4684,13 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const correct = globalAnswerKey[uid];
                 const q = globalQuestions[uid] || {};
                 const part = PARTS.find((item) => item.id === pId) || {};
-                const transcriptSegments = ((transcriptMapsByPart[pId] || {})[qNum] || []).map((segment) => ({ ...segment }));
+                const savedSegments = Array.isArray(savedDraft.parts?.[pId]?.transcriptSegments)
+                    ? savedDraft.parts[pId].transcriptSegments.filter((segment) => Number(segment?.end) > Number(segment?.start))
+                    : [];
+                const transcriptSegments = (savedSegments.length
+                    ? savedSegments.filter((segment) => Number(segment?.questionNumber || segment?.question_number || 0) === qNum)
+                    : ((transcriptMapsByPart[pId] || {})[qNum] || [])
+                ).map((segment) => ({ ...segment }));
                 return {
                     uid,
                     number: qNum,
@@ -5069,8 +5084,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             audioUrlsByPart[partNumber] = canonicalObjectUrl;
 
             // Save draft to Firebase asynchronously (non-blocking)
-            if (window.toeflStorage && typeof toeflStorage.saveDraftBySetId === 'function') {
-                toeflStorage.saveDraftBySetId(currentSetId, currentTestType, draft).catch((err) => {
+            if (window.toeflStorage && typeof toeflStorage.saveDraftBySetIdAndType === 'function') {
+                toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, draft, currentTestType).catch((err) => {
                     console.warn('[Audio Upload] Firebase draft save failed (non-blocking):', err.message);
                 });
             }
