@@ -29,7 +29,7 @@ image = (
 def _words(value: str) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", str(value or "").lower()))
 
-
+          
 def _tokens(value: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", str(value or "").lower())
 
@@ -92,7 +92,9 @@ def _download_audio(audio_url: str, destination: str) -> None:
 def _transcript_rows(raw_text: str) -> list[dict[str, Any]]:
     rows = []
     question = 0
+    last_question = 0
     saw_question_block = False
+    pending_range: tuple[float, float] | None = None
     speaker_pattern = re.compile(
         r"(?:\[[^\]]+\]\s*)?(?:\d{1,2}:\d{2}(?::\d{2})?\s*)?"
         r"(Student\s*A\s*\(Man\)|Student\s*B\s*\(Woman\)|Man|Woman|Narrator|Narr|Speaker\s*[A-Z]|Professor|Student|Host|Interviewer)"
@@ -104,6 +106,7 @@ def _transcript_rows(raw_text: str) -> list[dict[str, Any]]:
         opening = re.match(r"<Question\s+(\d+)", line, re.IGNORECASE)
         if opening:
             question = int(opening.group(1))
+            last_question = question
             saw_question_block = True
             continue
         if re.match(r"</Question", line, re.IGNORECASE):
@@ -112,12 +115,28 @@ def _transcript_rows(raw_text: str) -> list[dict[str, Any]]:
         legacy = re.match(r"Question\s*(\d+)\b", line, re.IGNORECASE)
         if legacy:
             question = int(legacy.group(1))
+            last_question = question
             saw_question_block = True
             continue
+        timing = re.match(r"^(\d{1,2}:\d{2}(?:[:.]\d{1,3})?)\s*-\s*(\d{1,2}:\d{2}(?:[:.]\d{1,3})?)$", line)
+        if timing:
+            def timestamp_seconds(value: str) -> float:
+                parts = value.replace(',', '.').split(':')
+                if len(parts) == 3 and '.' in parts[2]:
+                    return (float(parts[0]) * 60) + float(parts[1]) + (float(parts[2]) / 100)
+                if len(parts) == 2:
+                    return (float(parts[0]) * 60) + float(parts[1])
+                return float(parts[0])
+            pending_range = (timestamp_seconds(timing.group(1)), timestamp_seconds(timing.group(2)))
+            continue
         match = speaker_pattern.match(line)
-        if match and (question or not saw_question_block):
+        if match and (question or not saw_question_block or last_question):
             speaker = re.sub(r".*\((Man|Woman)\).*", r"\1", match.group(1), flags=re.IGNORECASE)
-            rows.append({"questionNumber": question or 1, "speaker": speaker, "text": match.group(2).strip()})
+            row = {"questionNumber": question or last_question or 1, "speaker": speaker, "text": match.group(2).strip()}
+            if pending_range:
+                row["start"], row["end"] = pending_range
+                pending_range = None
+            rows.append(row)
     return rows
 
 
@@ -148,6 +167,20 @@ def align(payload: dict[str, Any]) -> dict[str, Any]:
     word_segments = aligned.get("word_segments", [])
 
     rows = _transcript_rows(transcript_text)
+    if rows and all("start" in row and "end" in row for row in rows):
+        return {
+            "provider": "whisperx-explicit-timestamps",
+            "segments": [
+                {
+                    **row,
+                    "start": round(float(row["start"]), 3),
+                    "end": round(float(row["end"]), 3),
+                    "confidence": 1.0,
+                }
+                for row in rows
+            ],
+        }
+
     if word_segments:
         aligned_rows = _align_rows_to_words(rows, word_segments)
         if rows and len(aligned_rows) < max(1, (len(rows) + 1) // 2):
