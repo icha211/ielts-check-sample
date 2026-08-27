@@ -1280,13 +1280,15 @@
             var map = {};
             if (!source) return map;
 
-            var questionBlockRegex = /<Question\s+(\d+)\s*>([\s\S]*?)<\/Question\s+\1\s*>/gi;
+            var questionBlockRegex = /<Question\s+(\d+)(?:\s+start=["']([^"']+)["']\s+end=["']([^"']+)["'])?\s*>([\s\S]*?)<\/Question\s+\1\s*>/gi;
             var blockMatch = null;
             while ((blockMatch = questionBlockRegex.exec(source))) {
                 var questionNumber = Number(blockMatch[1] || 0);
                 if (!(questionNumber > 0)) continue;
 
-                var blockText = String(blockMatch[2] || '');
+                var blockStart = blockMatch[2] ? parseTimestampToSeconds(blockMatch[2]) : NaN;
+                var blockEnd = blockMatch[3] ? parseTimestampToSeconds(blockMatch[3]) : NaN;
+                var blockText = String(blockMatch[4] || '');
                 var rangeRegex = /(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)\s*-\s*(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)/g;
                 var rangeMatch = null;
                 var minStart = Infinity;
@@ -1304,6 +1306,11 @@
                     map[questionNumber] = {
                         startFloat: minStart,
                         endFloat: maxEnd
+                    };
+                } else if (isFinite(blockStart) && isFinite(blockEnd) && blockEnd > blockStart) {
+                    map[questionNumber] = {
+                        startFloat: blockStart,
+                        endFloat: blockEnd
                     };
                 }
             }
@@ -1514,12 +1521,37 @@
         function refreshResultQuestionTranscriptSegments() {
             if (!reviewResultData || !Array.isArray(reviewResultData.questions)) return;
 
+            function hasRealTiming(segments) {
+                return Array.isArray(segments) && segments.some(function(seg) {
+                    return String((seg || {}).timestamp || '').trim() || Number(seg && seg.end) > Number(seg && seg.start);
+                });
+            }
+
             for (var i = 0; i < reviewResultData.questions.length; i += 1) {
                 var question = reviewResultData.questions[i] || {};
                 var partId = inferPartIdFromQuestion(question);
                 var qNum = Number(question.number || 0);
                 var map = reviewTranscriptMapByPart[partId] || {};
                 var fresh = map[qNum] || [];
+
+                // Preserve aligned result timestamps when the raw transcript fallback
+                // only produced synthetic 0, 8, 16... positions.
+                if (hasRealTiming(question.transcriptSegments)) {
+                    var alignedSegments = question.transcriptSegments.map(function(seg) {
+                        return {
+                            timestamp: String(seg.timestamp || ''),
+                            start: Number(seg.start || 0),
+                            speaker: String(seg.speaker || 'NARR'),
+                            text: String(seg.text || ''),
+                            end: Number(seg.end || 0)
+                        };
+                    });
+                    map[qNum] = alignedSegments;
+                    if (!Array.isArray(map[0]) || !hasRealTiming(map[0])) map[0] = alignedSegments.slice();
+                    reviewTranscriptMapByPart[partId] = map;
+                    continue;
+                }
+
                 if (!fresh.length) fresh = map[0] || [];
 
                 if (fresh.length) {
@@ -3884,6 +3916,7 @@
 
             for (var p = 1; p <= 3; p += 1) {
                 var rawTranscript = '';
+                var savedAlignedSegments = [];
 
                 // Source 1: V2 Firebase draft (requires setId)
                 if (window.toeflStorage && reviewSetId && typeof window.toeflStorage.getDraftBySetIdAndType === 'function') {
@@ -3891,7 +3924,9 @@
                         var params = new URLSearchParams(window.location.search || '');
                         var testType = String(params.get('testType') || (result && result.testType) || 'mocktest');
                         var typedDraft = await window.toeflStorage.getDraftBySetIdAndType(reviewSetId, testType);
-                        rawTranscript = String((((typedDraft || {}).parts || {})[p] || {}).transcript || '');
+                        var typedPart = (((typedDraft || {}).parts || {})[p] || {});
+                        rawTranscript = String(typedPart.transcript || '');
+                        savedAlignedSegments = Array.isArray(typedPart.transcriptSegments) ? typedPart.transcriptSegments : [];
                     } catch (_) { rawTranscript = ''; }
                 }
 
@@ -3941,6 +3976,25 @@
                 }
 
                 reviewTranscriptMapByPart[p] = mapTranscriptByQuestion(rawTranscript);
+                if (savedAlignedSegments.length) {
+                    var alignedByQuestion = {};
+                    var alignedAll = [];
+                    savedAlignedSegments.forEach(function(seg) {
+                        var normalizedSegment = {
+                            timestamp: String(seg.start || '') + ' - ' + String(seg.end || ''),
+                            start: Number(seg.start || 0),
+                            speaker: String(seg.speaker || 'NARR'),
+                            text: String(seg.text || ''),
+                            end: Number(seg.end || 0)
+                        };
+                        var qKey = String(seg.questionNumber || seg.question_number || 0);
+                        if (!alignedByQuestion[qKey]) alignedByQuestion[qKey] = [];
+                        alignedByQuestion[qKey].push(normalizedSegment);
+                        alignedAll.push(normalizedSegment);
+                    });
+                    alignedByQuestion[0] = alignedAll;
+                    reviewTranscriptMapByPart[p] = alignedByQuestion;
+                }
                 reviewQuestionBoundaryMapByPart[p] = extractQuestionBlockBoundaries(rawTranscript);
 
             }

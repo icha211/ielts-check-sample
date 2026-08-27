@@ -86,3 +86,13 @@ class PlaybackTelemetryEvent(BaseModel):
     attempted_url: str = Field(min_length=1, alias="attemptedUrl")
     timestamp: str = Field(min_length=1)
     user_agent: str = Field(default="", alias="userAgent")
+
+
+class AlignTranscriptRequest(BaseModel):
+    audio_url: str = Field(min_length=1, alias="audioUrl")
+    transcript_text: str = Field(min_length=1, alias="transcriptText")
+
+
+class AlignTranscriptResponse(BaseModel):
+    provider: str
+    segments: list[dict]

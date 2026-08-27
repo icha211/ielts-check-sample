@@ -1,6 +1,10 @@
 import os
 import re
 import uuid
+import json
+import urllib.parse
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from urllib.parse import quote
 
@@ -18,6 +22,8 @@ from schemas import (
     DeveloperUploadUrlRequest,
     DeveloperUploadUrlResponse,
     PlaybackTelemetryEvent,
+    AlignTranscriptRequest,
+    AlignTranscriptResponse,
 )
 
 
@@ -30,6 +36,69 @@ _ALLOWED_AUDIO_OBJECT_KEY_RE = re.compile(
     re.IGNORECASE,
 )
 DEFAULT_R2_PUBLIC_BASE_URL = "https://pub-1975cb14188340238a5d6d34750e4880.r2.dev"
+
+
+def _alignment_text_score(left: str, right: str) -> float:
+    def words(value: str) -> set[str]:
+        return set(re.findall(r"[a-z0-9]+", str(value or "").lower()))
+    source = words(left)
+    target = words(right)
+    if not source or not target:
+        return 0.0
+    return len(source & target) / len(source | target)
+
+
+def _parse_transcript_for_alignment(raw_text: str) -> list[dict]:
+    rows = []
+    current_question = 0
+    for raw_line in str(raw_text or "").splitlines():
+        line = raw_line.strip()
+        opening = re.match(r"<Question\s+(\d+)", line, re.IGNORECASE)
+        if opening:
+            current_question = int(opening.group(1))
+            continue
+        if re.match(r"</Question", line, re.IGNORECASE):
+            current_question = 0
+            continue
+        speaker = re.match(r"(?:\[[^\]]+\]\s*)?(?:\d{1,2}:\d{2}(?::\d{2})?\s*)?(Man|Woman|Narrator|Narr|Speaker\s*[A-Z]|Professor|Student|Host|Interviewer)\s*:\s*(.+)", line, re.IGNORECASE)
+        if speaker and current_question > 0:
+            rows.append({
+                "questionNumber": current_question,
+                "speaker": speaker.group(1),
+                "text": speaker.group(2).strip(),
+            })
+    return rows
+
+
+@router.post("/align-transcript", response_model=AlignTranscriptResponse)
+def align_transcript(payload: AlignTranscriptRequest) -> AlignTranscriptResponse:
+    aligner_url = settings.whisperx_aligner_url or os.getenv("WHISPERX_ALIGNER_URL")
+    if not aligner_url:
+        raise HTTPException(status_code=503, detail="WHISPERX_ALIGNER_URL is not configured")
+
+    request_body = json.dumps({
+        "audio_url": payload.audio_url,
+        "transcript_text": payload.transcript_text,
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        aligner_url,
+        data=request_body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=900) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(status_code=502, detail=f"WhisperX alignment failed: {detail[:500]}") from exc
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise HTTPException(status_code=504, detail=f"WhisperX alignment timed out: {exc}") from exc
+
+    segments = result.get("segments", [])
+    if not isinstance(segments, list):
+        raise HTTPException(status_code=502, detail="WhisperX returned an invalid segment list")
+    return AlignTranscriptResponse(provider="whisperx", segments=segments)
 
 
 def _sanitize_filename(name: str) -> str:

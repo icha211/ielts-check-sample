@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     r2_region_name: str = Field(default="auto", validation_alias="R2_REGION_NAME")
     r2_presign_expire_seconds: int = Field(default=900, validation_alias="R2_PRESIGN_EXPIRE_SECONDS")
     r2_read_expire_seconds: int = Field(default=3600, validation_alias="R2_READ_EXPIRE_SECONDS")
+    whisperx_aligner_url: str | None = Field(default=None, validation_alias="WHISPERX_ALIGNER_URL")
 
     model_config = SettingsConfigDict(
         env_prefix="IELTS_API_",

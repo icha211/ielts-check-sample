@@ -2608,6 +2608,7 @@
 
         async function saveSectionDraft() {
             const draft = { parts: {} };
+            const existingDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
             PARTS.forEach((part) => {
                 const p = part.id;
                 const questionInputValue = (document.getElementById(`input-magic-questions-${p}`) || {}).value || "";
@@ -2619,6 +2620,7 @@
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
                     explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || "",
                     transcript: transcriptValue,
+                    transcriptSegments: Array.isArray(existingDraft.parts?.[p]?.transcriptSegments) ? existingDraft.parts[p].transcriptSegments : [],
                     audio_cloudflare: audioUrlsByPart[p] || "",
                     audio_firebase: audioFirebaseByPart[p] || ""
                 };
@@ -2668,7 +2670,8 @@
                         answerKey: draft.parts[p]?.answerKey || "",
                         explanation: draft.parts[p]?.explanation || "",
                         questions: draft.parts[p]?.questions || "",
-                        transcripts: draft.parts[p]?.transcript || ""
+                        transcripts: draft.parts[p]?.transcript || "",
+                        transcriptSegments: draft.parts[p]?.transcriptSegments || []
                     };
                 });
 
@@ -3883,10 +3886,15 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const line = String(rawLine || "").trim();
                 if (!line) return;
 
-                const openTag = line.match(/<Question\s+(\d+)>/i);
+                const openTag = line.match(/<Question\s+(\d+)(?:\s+start=["']([^"']+)["']\s+end=["']([^"']+)["'])?>/i);
                 if (openTag) {
                     currentQuestion = Number(openTag[1] || 0);
                     ensureBucket(currentQuestion);
+                    if (openTag[2] && openTag[3]) {
+                        pendingTimestamp = `${openTag[2]} - ${openTag[3]}`;
+                        pendingStart = parseTimestampToSeconds(openTag[2]);
+                        pendingEnd = parseTimestampToSeconds(openTag[3]);
+                    }
                     return;
                 }
 
@@ -4829,6 +4837,29 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         
         const audioUploadStates = {};
 
+        async function alignUploadedTranscript(partNumber, audioUrl) {
+            const transcriptInput = document.getElementById(`input-transcript-${partNumber}`);
+            const questionInput = document.getElementById(`input-magic-questions-${partNumber}`);
+            const transcriptText = String((transcriptInput || {}).value || '').trim()
+                || deriveTranscriptTextFromSmartQuestions((questionInput || {}).value || '');
+            if (!transcriptText || !audioUrl) return null;
+
+            const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
+            const apiBase = getApiGatewayBaseCandidates(runtimeApiGatewayUrl)[0] || '';
+            if (!apiBase) return null;
+
+            const response = await fetch(`${apiBase}/api/developer/align-transcript`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audioUrl: audioUrl, transcriptText: transcriptText })
+            });
+            if (!response.ok) {
+                const detail = await response.text().catch(() => '');
+                throw new Error(`Automatic alignment failed: ${response.status} ${detail}`.trim());
+            }
+            return await response.json();
+        }
+
         async function handleAudioUpload(event, partNumber) {
             const file = event.target.files?.[0];
             if (!file) return;
@@ -4846,7 +4877,32 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     throw new Error('No test set selected. Create or select a test set first.');
                 }
 
-                await uploadAudioPartToCloudflare(file, partNumber);
+                const uploadResult = await uploadAudioPartToCloudflare(file, partNumber);
+
+                try {
+                    const alignment = await alignUploadedTranscript(partNumber, uploadResult.objectUrl);
+                    if (alignment && Array.isArray(alignment.segments)) {
+                        const draft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
+                        draft.parts = draft.parts || {};
+                        draft.parts[partNumber] = draft.parts[partNumber] || {};
+                        draft.parts[partNumber].transcriptSegments = alignment.segments;
+                        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+                        await window.toeflStorage?.saveDraftBySetIdAndType?.(currentSetId, MODULE_ID, draft, currentTestType);
+                        console.log(`[Audio Alignment] Part ${partNumber} aligned with ${alignment.provider}.`);
+                        const transcriptStatus = document.getElementById(`transcript-status-${partNumber}`);
+                        if (transcriptStatus) {
+                            transcriptStatus.textContent = `Audio uploaded and aligned automatically with WhisperX.`;
+                            transcriptStatus.style.color = '#15803d';
+                        }
+                    }
+                } catch (alignmentError) {
+                    console.warn(`[Audio Alignment] Part ${partNumber} skipped:`, alignmentError?.message || alignmentError);
+                    const transcriptStatus = document.getElementById(`transcript-status-${partNumber}`);
+                    if (transcriptStatus) {
+                        transcriptStatus.textContent = 'Audio uploaded. Automatic WhisperX alignment unavailable; check the aligner configuration.';
+                        transcriptStatus.style.color = '#b45309';
+                    }
+                }
                 
                 if (fileNameEl) {
                     fileNameEl.textContent = `✓ Uploaded: ${file.name}`;

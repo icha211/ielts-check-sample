@@ -44,23 +44,32 @@ const parsed = parseSmartInput(rawText);
 
 ## 2) Alignment Usage
 
-### Deepgram path
+### WhisperX automatic path
 
-Install dependency:
+Deploy the free WhisperX worker to Modal:
 
 ```bash
-npm install @deepgram/sdk
+pip install modal
+modal deploy apps/audio-aligner-modal/app.py
 ```
+
+Configure the API gateway with the generated Modal URL:
+
+```text
+WHISPERX_ALIGNER_URL=https://your-modal-function-url.modal.run
+```
+
+The browser calls `POST /api/developer/align-transcript` automatically after each successful audio upload. The gateway forwards the audio URL and exact transcript to WhisperX, then saves the returned `start` and `end` values into the set draft.
 
 Run:
 
 ```js
-const { alignWithDeepgram } = require("./toefl-sample/js/audio-sync/aligner.js");
+const { alignWithWhisperXScript } = require("./toefl-sample/js/audio-sync/aligner.js");
 
-const aligned = await alignWithDeepgram({
+const aligned = await alignWithWhisperXScript({
   audioUrl: "https://cdn.example.com/listening/test.mp3",
   parsedQuestions: parsed.questions,
-  deepgramApiKey: process.env.DEEPGRAM_API_KEY
+  pythonCommand: "python"
 });
 ```
 
