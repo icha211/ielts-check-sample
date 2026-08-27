@@ -4088,7 +4088,9 @@
         function handleReviewCrossTabSync(event) {
             if (!event || !event.key) return;
             if (event.key !== 'toefl_section1_editor_apply_sync_v1' && event.key !== 'toefl_section1_result') return;
-            window.location.reload();
+            // Do not reload the review page from editor autosave events. The
+            // editor can write this key repeatedly while the review is open,
+            // which previously caused a refresh loop.
         }
 
         window.addEventListener('DOMContentLoaded', init);
