@@ -12,6 +12,7 @@ import os
 import re
 import tempfile
 import urllib.request
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
@@ -29,12 +30,50 @@ def _words(value: str) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", str(value or "").lower()))
 
 
+def _tokens(value: str) -> list[str]:
+    return re.findall(r"[a-z0-9]+", str(value or "").lower())
+
+
 def _score(left: str, right: str) -> float:
     source = _words(left)
     target = _words(right)
     if not source or not target:
         return 0.0
     return len(source & target) / len(source | target)
+
+
+def _align_rows_to_words(rows: list[dict[str, Any]], word_segments: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    output = []
+    cursor = 0
+    for row in rows:
+        target = " ".join(_tokens(row["text"]))
+        target_count = max(1, len(_tokens(row["text"])))
+        best = None
+        best_score = 0.0
+        for start_index in range(cursor, len(word_segments)):
+            for length in range(max(1, target_count - 5), target_count + 7):
+                end_index = start_index + length
+                window = word_segments[start_index:end_index]
+                if not window:
+                    continue
+                candidate_text = " ".join(str(item.get("word", item.get("text", ""))) for item in window)
+                score = SequenceMatcher(None, target, " ".join(_tokens(candidate_text))).ratio()
+                if score > best_score:
+                    best_score = score
+                    best = (start_index, window)
+        if not best:
+            continue
+        start_index, window = best
+        cursor = start_index + len(window)
+        output.append({
+            "questionNumber": row["questionNumber"],
+            "speaker": row["speaker"],
+            "text": row["text"],
+            "start": round(float(window[0].get("start", 0.0)), 3),
+            "end": round(float(window[-1].get("end", window[-1].get("start", 0.0))), 3),
+            "confidence": round(best_score, 3),
+        })
+    return output
 
 
 def _download_audio(audio_url: str, destination: str) -> None:
@@ -56,7 +95,7 @@ def _transcript_rows(raw_text: str) -> list[dict[str, Any]]:
     saw_question_block = False
     speaker_pattern = re.compile(
         r"(?:\[[^\]]+\]\s*)?(?:\d{1,2}:\d{2}(?::\d{2})?\s*)?"
-        r"(Man|Woman|Narrator|Narr|Speaker\s*[A-Z]|Professor|Student|Host|Interviewer)"
+        r"(Student\s*A\s*\(Man\)|Student\s*B\s*\(Woman\)|Man|Woman|Narrator|Narr|Speaker\s*[A-Z]|Professor|Student|Host|Interviewer)"
         r"\s*:\s*(.+)",
         re.IGNORECASE,
     )
@@ -77,7 +116,8 @@ def _transcript_rows(raw_text: str) -> list[dict[str, Any]]:
             continue
         match = speaker_pattern.match(line)
         if match and (question or not saw_question_block):
-            rows.append({"questionNumber": question or 1, "speaker": match.group(1), "text": match.group(2).strip()})
+            speaker = re.sub(r".*\((Man|Woman)\).*", r"\1", match.group(1), flags=re.IGNORECASE)
+            rows.append({"questionNumber": question or 1, "speaker": speaker, "text": match.group(2).strip()})
     return rows
 
 
@@ -105,8 +145,15 @@ def align(payload: dict[str, Any]) -> dict[str, Any]:
     align_model, metadata = whisperx.load_align_model(language_code=language, device="cuda")
     aligned = whisperx.align(transcribed["segments"], align_model, metadata, audio_path, device="cuda")
     whisper_segments = aligned.get("segments", [])
+    word_segments = aligned.get("word_segments", [])
 
     rows = _transcript_rows(transcript_text)
+    if word_segments:
+        aligned_rows = _align_rows_to_words(rows, word_segments)
+        if rows and len(aligned_rows) < max(1, (len(rows) + 1) // 2):
+            raise RuntimeError("Transcript does not match enough spoken words in this audio")
+        return {"provider": "whisperx", "segments": aligned_rows}
+
     output = []
     cursor = 0
     for row in rows:

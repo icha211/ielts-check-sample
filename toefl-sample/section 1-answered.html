@@ -1482,6 +1482,15 @@
             var partId = inferPartIdFromQuestion(question);
             var qNum = Number((question && question.number) || 0);
             var map = reviewTranscriptMapByPart[partId] || {};
+
+            // Prefer saved WhisperX alignment over raw transcript parsing. The raw
+            // fallback creates synthetic 0, 8, 16... positions when timing is absent.
+            if (question && Array.isArray(question.transcriptSegments) && question.transcriptSegments.some(function(seg) {
+                return String((seg || {}).timestamp || '').trim() || Number.isFinite(Number(seg && seg.confidence));
+            })) {
+                return question.transcriptSegments;
+            }
+
             // Always prefer freshly hydrated transcript maps first.
             var direct = map[qNum] || [];
             if (direct.length) return direct;
@@ -1523,7 +1532,7 @@
 
             function hasRealTiming(segments) {
                 return Array.isArray(segments) && segments.some(function(seg) {
-                    return String((seg || {}).timestamp || '').trim() || Number(seg && seg.end) > Number(seg && seg.start);
+                    return String((seg || {}).timestamp || '').trim() || Number.isFinite(Number(seg && seg.confidence));
                 });
             }
 
@@ -1543,7 +1552,8 @@
                             start: Number(seg.start || 0),
                             speaker: String(seg.speaker || 'NARR'),
                             text: String(seg.text || ''),
-                            end: Number(seg.end || 0)
+                            end: Number(seg.end || 0),
+                            confidence: Number.isFinite(Number(seg.confidence)) ? Number(seg.confidence) : null
                         };
                     });
                     map[qNum] = alignedSegments;
@@ -3995,7 +4005,8 @@
                             start: Number(seg.start || 0),
                             speaker: String(seg.speaker || 'NARR'),
                             text: String(seg.text || ''),
-                            end: Number(seg.end || 0)
+                            end: Number(seg.end || 0),
+                            confidence: Number.isFinite(Number(seg.confidence)) ? Number(seg.confidence) : null
                         };
                         var qKey = String(seg.questionNumber || seg.question_number || 0);
                         if (!alignedByQuestion[qKey]) alignedByQuestion[qKey] = [];

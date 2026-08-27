@@ -3835,7 +3835,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     currentQuestion = Number(questionMatch[1] || 0);
                     optionSection = false;
                     output.push(`<Question ${currentQuestion}>`);
-                    if (/^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)\s*:/i.test(String(questionMatch[2] || "").trim())) {
+                    if (/^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)(?:\s*\([^)]*\))?\s*:/i.test(String(questionMatch[2] || "").trim())) {
                         output.push(String(questionMatch[2]).trim());
                     }
                     return;
@@ -3843,7 +3843,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 if (!currentQuestion) return;
                 if (/^[\(\[]?A[\)\].:\-]\s+/i.test(line)) optionSection = true;
                 if (optionSection) return;
-                if (/^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)\s*:/i.test(line)) output.push(line);
+                if (/^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student(?:\s*[ab])?|host|interviewer)(?:\s*\([^)]*\))?\s*:/i.test(line)) output.push(line);
             });
 
             return output.length ? `${output.join("\n")}\n` : "";
