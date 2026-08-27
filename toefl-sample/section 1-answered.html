@@ -1408,6 +1408,15 @@
                     continue;
                 }
 
+                var timedSpeakerMatch = line.match(/^(?:\[)?(\d{1,2}:\d{2}(?::\d{2})?(?:[\.,]\d+)?)(?:\])?\s*(?:-->|[-\u2013\u2014])?\s*(.+)$/);
+                if (timedSpeakerMatch && /^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)\s*:/i.test(timedSpeakerMatch[2])) {
+                    var timedTimestamp = String(timedSpeakerMatch[1] || '').replace(',', '.');
+                    var timedStart = parseTimestampToSeconds(timedTimestamp);
+                    var timedLine = parseTranscriptSpeakerLine(timedSpeakerMatch[2]);
+                    pushSegment(currentQuestion, timedTimestamp, timedStart, 0, timedLine.speaker, timedLine.text);
+                    continue;
+                }
+
                 var segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[�-]\s*(.+)$/);
                 if (!segmentMatch) {
                     segmentMatch = line.match(/(?:^\s*[-*]\s*)?\[(\d{1,2}:\d{2}(?::\d{2})?)\]\s*(.+)$/);
@@ -2262,6 +2271,7 @@
             var questionBoundary = ((reviewQuestionBoundaryMapByPart[partId] || {})[qNumber]) || null;
 
             var activeSegments = reviewTranscriptViewMode === 'question' ? questionSegments : fullSegments;
+            var hasEstimatedTiming = activeSegments.some(function(seg) { return !String((seg || {}).timestamp || '').trim(); });
             var sharedQuestionPlaybackRange = null;
             if (partId === 1 && reviewTranscriptViewMode === 'question' && activeSegments.length) {
                 var sharedStart = Infinity;
@@ -2302,6 +2312,9 @@
             html += '<span class="transcript-modern-legend-item is-women"><i class="ph ph-user" aria-hidden="true"></i><span>' + escapeHtml(partId === 2 ? 'Librarian (Women)' : 'Female Speaker') + '</span></span>';
             html += '<span class="transcript-modern-legend-item is-narr"><i class="ph ph-user" aria-hidden="true"></i><span>Narrator</span></span>';
             html += '</div>';
+            if (hasEstimatedTiming) {
+                html += '<div class="transcript-modern-empty">Timing is estimated because this transcript has no timestamps. Add timestamps or run alignment for exact audio playback.</div>';
+            }
 
             html += '<div class="transcript-modern-list">';
             if (!activeSegments.length) {

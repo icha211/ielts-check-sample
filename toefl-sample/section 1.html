@@ -3914,6 +3914,15 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     return;
                 }
 
+                const timedSpeakerMatch = line.match(/^(?:\[)?(\d{1,2}:\d{2}(?::\d{2})?(?:[\.,]\d+)?)(?:\])?\s*(?:-->|[-\u2013\u2014])?\s*(.+)$/);
+                if (timedSpeakerMatch && /^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)\s*:/i.test(timedSpeakerMatch[2])) {
+                    const timedTimestamp = String(timedSpeakerMatch[1] || "").replace(",", ".");
+                    const timedStart = parseTimestampToSeconds(timedTimestamp);
+                    const timedLine = parseTranscriptSpeakerLine(timedSpeakerMatch[2]);
+                    pushSegment(currentQuestion, timedTimestamp, timedStart, 0, timedLine.speaker, timedLine.text);
+                    return;
+                }
+
                 const segmentMatch = line.match(/(?:^\s*[-*]\s*)?\*\*(\d{1,2}:\d{2}(?::\d{2})?)\*\*\s*[�-]\s*(.+)$/);
                 let matched = segmentMatch;
                 if (!matched) {
