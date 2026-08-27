@@ -37,6 +37,19 @@ def _score(left: str, right: str) -> float:
     return len(source & target) / len(source | target)
 
 
+def _download_audio(audio_url: str, destination: str) -> None:
+    request = urllib.request.Request(
+        audio_url,
+        headers={
+            "User-Agent": "Mozilla/5.0 (compatible; IELTS-Check-WhisperX/1.0)",
+            "Accept": "audio/mpeg,audio/*;q=0.9,*/*;q=0.8",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=900) as response, open(destination, "wb") as output:
+        while chunk := response.read(1024 * 1024):
+            output.write(chunk)
+
+
 def _transcript_rows(raw_text: str) -> list[dict[str, Any]]:
     rows = []
     question = 0
@@ -77,7 +90,7 @@ def align(payload: dict[str, Any]) -> dict[str, Any]:
     suffix = Path(audio_url.split("?")[0]).suffix or ".mp3"
     fd, audio_path = tempfile.mkstemp(prefix="review-audio-", suffix=suffix)
     os.close(fd)
-    urllib.request.urlretrieve(audio_url, audio_path)
+    _download_audio(audio_url, audio_path)
 
     model = whisperx.load_model("base", device="cuda", compute_type="float16")
     transcribed = model.transcribe(audio_path)
