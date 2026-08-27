@@ -3873,7 +3873,16 @@
                 var rawTranscript = '';
 
                 // Source 1: V2 Firebase draft (requires setId)
-                if (window.toeflStorage && reviewSetId && typeof window.toeflStorage.getDraftBySetId === 'function') {
+                if (window.toeflStorage && reviewSetId && typeof window.toeflStorage.getDraftBySetIdAndType === 'function') {
+                    try {
+                        var params = new URLSearchParams(window.location.search || '');
+                        var testType = String(params.get('testType') || (result && result.testType) || 'mocktest');
+                        var typedDraft = await window.toeflStorage.getDraftBySetIdAndType(reviewSetId, testType);
+                        rawTranscript = String((((typedDraft || {}).parts || {})[p] || {}).transcript || '');
+                    } catch (_) { rawTranscript = ''; }
+                }
+
+                if (!rawTranscript && window.toeflStorage && reviewSetId && typeof window.toeflStorage.getDraftBySetId === 'function') {
                     try {
                         var draft = await window.toeflStorage.getDraftBySetId(reviewSetId);
                         rawTranscript = String((((draft || {}).parts || {})[p] || {}).transcript || '');

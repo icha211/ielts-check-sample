@@ -2610,11 +2610,15 @@
             const draft = { parts: {} };
             PARTS.forEach((part) => {
                 const p = part.id;
+                const questionInputValue = (document.getElementById(`input-magic-questions-${p}`) || {}).value || "";
+                const transcriptInput = document.getElementById(`input-transcript-${p}`);
+                const transcriptValue = String((transcriptInput || {}).value || "").trim() || deriveTranscriptTextFromSmartQuestions(questionInputValue);
+                if (transcriptInput && transcriptValue && !String(transcriptInput.value || "").trim()) transcriptInput.value = transcriptValue;
                 draft.parts[p] = {
-                    questions: (document.getElementById(`input-magic-questions-${p}`) || {}).value || "",
+                    questions: questionInputValue,
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
                     explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || "",
-                    transcript: (document.getElementById(`input-transcript-${p}`) || {}).value || "",
+                    transcript: transcriptValue,
                     audio_cloudflare: audioUrlsByPart[p] || "",
                     audio_firebase: audioFirebaseByPart[p] || ""
                 };
@@ -3814,6 +3818,34 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             return { speaker: "NARR", text: line };
         }
 
+        function deriveTranscriptTextFromSmartQuestions(rawText) {
+            const lines = String(rawText || "").replace(/\r/g, "").split("\n");
+            const output = [];
+            let currentQuestion = 0;
+            let optionSection = false;
+
+            lines.forEach((rawLine) => {
+                const line = String(rawLine || "").trim();
+                if (!line) return;
+                const questionMatch = line.match(/^(?:question\s*)?(\d+)[\.:)\-]?\s*(.*)$/i);
+                if (questionMatch) {
+                    currentQuestion = Number(questionMatch[1] || 0);
+                    optionSection = false;
+                    output.push(`<Question ${currentQuestion}>`);
+                    if (/^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)\s*:/i.test(String(questionMatch[2] || "").trim())) {
+                        output.push(String(questionMatch[2]).trim());
+                    }
+                    return;
+                }
+                if (!currentQuestion) return;
+                if (/^[\(\[]?A[\)\].:\-]\s+/i.test(line)) optionSection = true;
+                if (optionSection) return;
+                if (/^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)\s*:/i.test(line)) output.push(line);
+            });
+
+            return output.length ? `${output.join("\n")}\n` : "";
+        }
+
         function mapTranscriptByQuestion(rawText) {
             const map = {};
             const lines = String(rawText || "").split(/\r?\n/);
@@ -3907,6 +3939,13 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     pendingTimestamp = "";
                     pendingStart = 0;
                     pendingEnd = 0;
+                    continue;
+                }
+
+                if (currentQuestion > 0 && /^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)\s*:/i.test(line)) {
+                    const parsedLine = parseTranscriptSpeakerLine(line);
+                    const syntheticStart = (map[currentQuestion] || []).length * 8;
+                    pushSegment(currentQuestion, "", syntheticStart, syntheticStart + 8, parsedLine.speaker, parsedLine.text);
                 }
             });
 
@@ -4060,7 +4099,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const transcriptTextsByPart = {};
 
             PARTS.forEach((part) => {
-                const transcriptText = (document.getElementById(`input-transcript-${part.id}`) || {}).value || "";
+                const transcriptText = String((document.getElementById(`input-transcript-${part.id}`) || {}).value || "").trim()
+                    || deriveTranscriptTextFromSmartQuestions((document.getElementById(`input-magic-questions-${part.id}`) || {}).value || "");
                 transcriptTextsByPart[part.id] = transcriptText;
                 transcriptMapsByPart[part.id] = mapTranscriptByQuestion(transcriptText);
             });
@@ -4601,7 +4641,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const transcriptMapsByPart = {};
             const transcriptTextsByPart = {};
             PARTS.forEach((part) => {
-                const transcriptText = (document.getElementById(`input-transcript-${part.id}`) || {}).value || "";
+                const transcriptText = String((document.getElementById(`input-transcript-${part.id}`) || {}).value || "").trim()
+                    || deriveTranscriptTextFromSmartQuestions((document.getElementById(`input-magic-questions-${part.id}`) || {}).value || "");
                 transcriptTextsByPart[part.id] = transcriptText;
                 transcriptMapsByPart[part.id] = mapTranscriptByQuestion(transcriptText);
             });
@@ -4758,7 +4799,12 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         }
 
         function initAutoSave() {
-            const fields = ['set-date', 'set-difficulty', 'input-magic-questions-1', 'input-answer-key-1', 'input-explanation-1', 'input-video-step-1'];
+            const fields = [
+                'set-date', 'set-difficulty',
+                'input-magic-questions-1', 'input-answer-key-1', 'input-explanation-1', 'input-transcript-1', 'input-video-step-1',
+                'input-magic-questions-2', 'input-answer-key-2', 'input-explanation-2', 'input-transcript-2',
+                'input-magic-questions-3', 'input-answer-key-3', 'input-explanation-3', 'input-transcript-3'
+            ];
             fields.forEach(fieldId => {
                 const el = document.getElementById(fieldId);
                 if (el) {
