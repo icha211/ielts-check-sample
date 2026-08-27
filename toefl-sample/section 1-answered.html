@@ -2098,6 +2098,9 @@
 
         function setTranscriptViewMode(mode) {
             reviewTranscriptViewMode = mode === 'question' ? 'question' : 'full';
+            if (reviewCurrentQuestion && inferPartIdFromQuestion(reviewCurrentQuestion) === 1) {
+                reviewTranscriptViewMode = 'question';
+            }
             if (reviewCurrentQuestion) renderTranscriptCards(reviewCurrentQuestion);
         }
 
@@ -2297,6 +2300,7 @@
 
             var qNumber = Number((question && question.number) || 0);
             var partId = inferPartIdFromQuestion(question);
+            if (partId === 1) reviewTranscriptViewMode = 'question';
             var fullSegments = getPartTranscriptSegments(question);
 
             var questionSegments = getQuestionTranscriptSegments(question);
@@ -2329,10 +2333,16 @@
 
             var html = '';
             html += '<div class="transcript-modern-shell transcript-view">';
-            html += '<div class="transcript-modern-toggle" role="tablist" aria-label="Transcript scope">';
-            html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'full' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'full' ? 'true' : 'false') + '" onclick="setTranscriptViewMode(\'full\')">Full Transcript</button>';
-            html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'question' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'question' ? 'true' : 'false') + '" onclick="setTranscriptViewMode(\'question\')">Question ' + escapeHtml(String(qNumber || 'X')) + ' Only</button>';
-            html += '</div>';
+            if (partId !== 1) {
+                html += '<div class="transcript-modern-toggle" role="tablist" aria-label="Transcript scope">';
+                html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'full' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'full' ? 'true' : 'false') + '" onclick="setTranscriptViewMode(\'full\')">Full Transcript</button>';
+                html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'question' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'question' ? 'true' : 'false') + '">Question ' + escapeHtml(String(qNumber || 'X')) + ' Only</button>';
+                html += '</div>';
+            } else {
+                html += '<div class="transcript-modern-toggle" role="tablist" aria-label="Transcript scope">';
+                html += '<div class="transcript-modern-tab is-active" role="tab" aria-selected="true">Question ' + escapeHtml(String(qNumber || 'X')) + ' Only</div>';
+                html += '</div>';
+            }
 
             html += '<div class="transcript-modern-panel content-container">';
             html += '<div class="transcript-modern-legend">';

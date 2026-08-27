@@ -53,6 +53,7 @@ def _download_audio(audio_url: str, destination: str) -> None:
 def _transcript_rows(raw_text: str) -> list[dict[str, Any]]:
     rows = []
     question = 0
+    saw_question_block = False
     speaker_pattern = re.compile(
         r"(?:\[[^\]]+\]\s*)?(?:\d{1,2}:\d{2}(?::\d{2})?\s*)?"
         r"(Man|Woman|Narrator|Narr|Speaker\s*[A-Z]|Professor|Student|Host|Interviewer)"
@@ -60,17 +61,23 @@ def _transcript_rows(raw_text: str) -> list[dict[str, Any]]:
         re.IGNORECASE,
     )
     for raw_line in str(raw_text or "").splitlines():
-        line = raw_line.strip()
+        line = re.sub(r"\*{1,2}", "", raw_line).strip()
         opening = re.match(r"<Question\s+(\d+)", line, re.IGNORECASE)
         if opening:
             question = int(opening.group(1))
+            saw_question_block = True
             continue
         if re.match(r"</Question", line, re.IGNORECASE):
             question = 0
             continue
+        legacy = re.match(r"Question\s*(\d+)\b", line, re.IGNORECASE)
+        if legacy:
+            question = int(legacy.group(1))
+            saw_question_block = True
+            continue
         match = speaker_pattern.match(line)
-        if match and question:
-            rows.append({"questionNumber": question, "speaker": match.group(1), "text": match.group(2).strip()})
+        if match and (question or not saw_question_block):
+            rows.append({"questionNumber": question or 1, "speaker": match.group(1), "text": match.group(2).strip()})
     return rows
 
 
