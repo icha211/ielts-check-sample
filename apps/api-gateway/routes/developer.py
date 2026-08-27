@@ -70,6 +70,26 @@ def _parse_transcript_for_alignment(raw_text: str) -> list[dict]:
     return rows
 
 
+def _request_whisperx_alignment(audio_url: str, transcript_text: str) -> dict | None:
+    aligner_url = settings.whisperx_aligner_url or os.getenv("WHISPERX_ALIGNER_URL")
+    if not aligner_url or not transcript_text.strip():
+        return None
+    body = json.dumps({"audio_url": audio_url, "transcript_text": transcript_text}).encode("utf-8")
+    request = urllib.request.Request(
+        aligner_url,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=900) as response:
+            result = json.loads(response.read().decode("utf-8"))
+        return result if isinstance(result, dict) else None
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+        print(f"[WhisperX] automatic upload alignment failed: {exc}")
+        return None
+
+
 @router.post("/align-transcript", response_model=AlignTranscriptResponse)
 def align_transcript(payload: AlignTranscriptRequest) -> AlignTranscriptResponse:
     aligner_url = settings.whisperx_aligner_url or os.getenv("WHISPERX_ALIGNER_URL")
@@ -283,6 +303,7 @@ async def upload_audio_proxy(
     file_type: str | None = Form(default=None, alias="fileType"),
     set_id: str | None = Form(default=None, alias="setId"),
     part_number: int | None = Form(default=None, alias="partNumber"),
+    transcript_text: str | None = Form(default=None, alias="transcriptText"),
 ) -> DeveloperUploadProxyResponse:
     incoming_name = str(file_name or file.filename or "audio-file")
     incoming_type = str(file_type or file.content_type or "audio/mpeg").strip().lower()
@@ -310,11 +331,14 @@ async def upload_audio_proxy(
     except (ClientError, BotoCoreError) as exc:
         raise HTTPException(status_code=500, detail=f"Failed to upload file to R2: {exc}") from exc
 
+    alignment = _request_whisperx_alignment(_build_object_url(canonical_object_key), str(transcript_text or ""))
+
     return DeveloperUploadProxyResponse(
         objectKey=canonical_object_key,
         objectUrl=_build_object_url(canonical_object_key),
         contentType=incoming_type,
         size=len(data),
+        alignment=alignment,
     )
 
 

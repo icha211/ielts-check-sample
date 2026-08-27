@@ -4880,7 +4880,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const uploadResult = await uploadAudioPartToCloudflare(file, partNumber);
 
                 try {
-                    const alignment = await alignUploadedTranscript(partNumber, uploadResult.objectUrl);
+                    const alignment = uploadResult.alignment || await alignUploadedTranscript(partNumber, uploadResult.objectUrl);
                     if (alignment && Array.isArray(alignment.segments)) {
                         const draft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
                         draft.parts = draft.parts || {};
@@ -4944,6 +4944,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             let apiBase = apiBases[0] || '';
 
             let objectUrl = canonicalObjectUrl;
+            let alignment = null;
             let uploadMode = 'proxy';
 
             // Step 1: proxy-first upload to enforce exact server-side key write.
@@ -4954,6 +4955,11 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             proxyFormData.append('objectKey', objectKey);
             proxyFormData.append('setId', currentSetId);
             proxyFormData.append('partNumber', partNumber);
+            const transcriptInput = document.getElementById(`input-transcript-${partNumber}`);
+            const questionInput = document.getElementById(`input-magic-questions-${partNumber}`);
+            const transcriptText = String((transcriptInput || {}).value || '').trim()
+                || deriveTranscriptTextFromSmartQuestions((questionInput || {}).value || '');
+            if (transcriptText) proxyFormData.append('transcriptText', transcriptText);
 
             try {
                 const proxyResponse = await fetch(`${apiBase}/api/developer/upload-proxy`, {
@@ -4971,6 +4977,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     throw new Error(`Endpoint rewrote objectKey: expected ${objectKey}, got ${responseObjectKey}`);
                 }
                 objectUrl = String(proxyPayload?.objectUrl || canonicalObjectUrl).trim() || canonicalObjectUrl;
+                if (proxyPayload?.alignment && Array.isArray(proxyPayload.alignment.segments)) {
+                    alignment = proxyPayload.alignment;
+                }
             } catch (proxyError) {
                 console.warn('[Audio Upload] Proxy upload path failed, trying signed URL fallback:', proxyError?.message || proxyError);
                 uploadMode = 'signed-url';
@@ -5066,7 +5075,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             }
 
             console.log(`[Audio Upload] Part ${partNumber} saved (${uploadMode}): ${canonicalObjectUrl}`);
-            return { objectKey, objectUrl: canonicalObjectUrl, uploadMode };
+            return { objectKey, objectUrl: canonicalObjectUrl, uploadMode, alignment };
         }
 
         async function validateUploadedAudio() {

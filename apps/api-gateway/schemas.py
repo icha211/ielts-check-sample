@@ -63,6 +63,7 @@ class DeveloperUploadProxyResponse(BaseModel):
     object_url: str = Field(alias="objectUrl")
     content_type: str = Field(alias="contentType")
     size: int
+    alignment: Optional[dict] = None
 
 
 class DeveloperEnsureAudioFolderRequest(BaseModel):
