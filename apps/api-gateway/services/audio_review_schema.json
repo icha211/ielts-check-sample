@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ielts-check.local/schemas/audio-review-question-data.json",
+  "title": "Audio Review Question Data",
+  "type": "object",
+  "required": ["test_id", "set_id", "question_data"],
+  "properties": {
+    "test_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "set_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "question_data": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/question"
+      }
+    }
+  },
+  "$defs": {
+    "question": {
+      "type": "object",
+      "required": ["question_number", "options", "transcripts"],
+      "properties": {
+        "question_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "transcripts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/transcript_segment"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "transcript_segment": {
+      "type": "object",
+      "required": ["speaker", "text", "start", "end"],
+      "properties": {
+        "speaker": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string"
+        },
+        "start": {
+          "type": ["number", "null"],
+          "minimum": 0
+        },
+        "end": {
+          "type": ["number", "null"],
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
