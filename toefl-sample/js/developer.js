@@ -353,6 +353,7 @@ function buildEditorUrl(moduleId, setDate, setId, testType = "mocktest", options
     if (startBlank) params.set("new", "1");
     if (options && options.difficulty) params.set("difficulty", options.difficulty);
     if (options && options.focus) params.set("focus", options.focus);
+    if (options && options.editorTab) params.set("editorTab", options.editorTab);
     params.set("mode", "dev");
     params.set("testType", testType);
     const query = params.toString();
@@ -785,7 +786,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 modal.style.display = "none";
             }
 
-            const url = buildEditorUrl(module, undefined, undefined, currentTestType, { startBlank: true, difficulty, focus });
+            const url = buildEditorUrl(module, undefined, undefined, currentTestType, { startBlank: true, difficulty, focus, editorTab: "questions" });
             console.log("Navigating to:", url);
             window.location.href = url;
         });

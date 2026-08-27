@@ -3939,7 +3939,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     pendingTimestamp = "";
                     pendingStart = 0;
                     pendingEnd = 0;
-                    continue;
+                    return;
                 }
 
                 if (currentQuestion > 0 && /^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)\s*:/i.test(line)) {
@@ -5155,6 +5155,11 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const forceBlankNew = isExplicitNewPackageRequest();
             initAutoSave();
             initStructure();
+            const initialEditorTab = new URLSearchParams(window.location.search).get("editorTab");
+            if (initialEditorTab === "questions") {
+                const firstQuestionTab = document.querySelector('#dev-sub-nav-container .dev-sub-btn[data-part-id="1"]');
+                if (firstQuestionTab) firstQuestionTab.click();
+            }
             applyViewMode();
             activateInitialTab();
             initZoom();
