@@ -3260,10 +3260,14 @@
             const port = String(localStorage.getItem("toefl_api_gateway_port") || "8000").trim() || "8000";
             const protocol = String(localStorage.getItem("toefl_api_gateway_protocol") || "http").trim() || "http";
             const candidates = [];
+            const pageHost = String(window.location?.hostname || "").toLowerCase();
+            const isLocalPage = !pageHost || pageHost === "localhost" || pageHost === "127.0.0.1" || window.location?.protocol === "file:";
 
             if (hostOverride) candidates.push(`${protocol}://${hostOverride}:${port}`);
-            candidates.push(`${protocol}://127.0.0.1:${port}`);
-            candidates.push(`${protocol}://localhost:${port}`);
+            if (isLocalPage) {
+                candidates.push(`${protocol}://127.0.0.1:${port}`);
+                candidates.push(`${protocol}://localhost:${port}`);
+            }
             if (runtimeApiGatewayUrl) candidates.push(String(runtimeApiGatewayUrl).replace(/\/+$/, ""));
             
             if (window.location && window.location.origin && window.location.protocol !== "file:") {
