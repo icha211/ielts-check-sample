@@ -1037,7 +1037,8 @@
                             explanation: partData?.explanation || "",
                             questions: partData?.questions || "",
                             transcripts: partData?.transcripts || "",
-                            transcriptSegments: Array.isArray(partData?.transcriptSegments) ? partData.transcriptSegments : []
+                            transcriptSegments: Array.isArray(partData?.transcriptSegments) ? partData.transcriptSegments : [],
+                            questionAudio: partData?.questionAudio && typeof partData.questionAudio === "object" ? partData.questionAudio : {}
                         };
                     });
                 }
@@ -1448,6 +1449,14 @@
                 }
                 if (audioFirebaseValue) {
                     audioFirebaseByPart[p] = audioFirebaseValue;
+                }
+                if (p === 1 && row.questionAudio && typeof row.questionAudio === "object") {
+                    Object.entries(row.questionAudio).forEach(([questionNumber, audioRecord]) => {
+                        const statusElement = document.getElementById(`audio-file-name-1-q-${questionNumber}`);
+                        if (!statusElement) return;
+                        statusElement.textContent = `Uploaded Q${questionNumber}: ${audioRecord?.fileName || "saved question audio"}`;
+                        statusElement.style.color = "#16a34a";
+                    });
                 }
             });
         }
@@ -2622,6 +2631,7 @@
                     explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || "",
                     transcript: transcriptValue,
                     transcriptSegments: Array.isArray(existingDraft.parts?.[p]?.transcriptSegments) ? existingDraft.parts[p].transcriptSegments : [],
+                    questionAudio: existingDraft.parts?.[p]?.questionAudio && typeof existingDraft.parts[p].questionAudio === "object" ? existingDraft.parts[p].questionAudio : {},
                     audio_cloudflare: audioUrlsByPart[p] || "",
                     audio_firebase: audioFirebaseByPart[p] || ""
                 };
@@ -2672,7 +2682,8 @@
                         explanation: draft.parts[p]?.explanation || "",
                         questions: draft.parts[p]?.questions || "",
                         transcripts: draft.parts[p]?.transcript || "",
-                        transcriptSegments: draft.parts[p]?.transcriptSegments || []
+                        transcriptSegments: draft.parts[p]?.transcriptSegments || [],
+                        questionAudio: draft.parts[p]?.questionAudio || {}
                     };
                 });
 
@@ -2720,6 +2731,7 @@
                                 explanation: partData?.explanation || "",
                                 transcript: partData?.transcripts || "",
                                 transcriptSegments: Array.isArray(partData?.transcriptSegments) ? partData.transcriptSegments : [],
+                                questionAudio: partData?.questionAudio && typeof partData.questionAudio === "object" ? partData.questionAudio : {},
                                 audio_cloudflare: partData?.audio_cloudflare || "",
                                 audio_firebase: partData?.audio_firebase || ""
                             };
@@ -3010,6 +3022,15 @@
             audioBtn.innerText = "Setup Audio Utama";
             devNavContainer.appendChild(audioBtn);
 
+            const partAQuestionAudioRows = Array.from({ length: 30 }, (_, index) => {
+                const questionNumber = index + 1;
+                return `
+                                <div style="display:grid; grid-template-columns:44px 1fr; gap:8px; align-items:center; padding:8px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc;">
+                                    <div style="font-size:12px; font-weight:800; color:#1e3a5f; text-align:left;">Q${questionNumber}</div>
+                                    <div id="audio-file-name-1-q-${questionNumber}" style="font-size:11px; color:#64748b; font-weight:600; overflow-wrap:anywhere; text-align:left;">No question audio selected.</div>
+                                </div>`;
+            }).join("");
+
             devContainer.innerHTML += `
             <div id="dev-audio-setup" class="sub-content active">
                 <div class="dev-container">
@@ -3044,9 +3065,21 @@
                         <div style="margin-top:12px; display:grid; grid-template-columns:repeat(3, minmax(220px, 1fr)); gap:12px;">
                             <div id="audio-card-part-1" style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
                                 <div style="font-weight:700; color:#1e3a5f; margin-bottom:10px;">Part A Audio</div>
-                                <label for="audio-upload-file-a" class="audio-upload-label">Choose Local Audio File</label>
+                                <div style="font-size:12px; font-weight:700; color:#475569; text-align:left; margin-bottom:6px;">Full Part A audio</div>
+                                <label for="audio-upload-file-a" class="audio-upload-label">Choose Full Audio File</label>
                                 <input type="file" class="audio-upload-file" id="audio-upload-file-a" accept="audio/*" onchange="handleAudioUpload(event, 1)">
                                 <div id="audio-file-name-1" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
+                                <div style="margin-top:16px; padding-top:14px; border-top:1px solid #e2e8f0;">
+                                    <div style="font-size:12px; font-weight:700; color:#475569; text-align:left; margin-bottom:8px;">Per-question audio for Part A</div>
+                                    <div id="question-audio-dropzone-1" ondragover="handleQuestionAudioDragOver(event, 1)" ondragleave="handleQuestionAudioDragLeave(event, 1)" ondrop="handleQuestionAudioDrop(event, 1)" style="padding:12px; border:1px dashed #94a3b8; border-radius:10px; background:#f8fafc; text-align:left;">
+                                        <label for="audio-upload-file-a-questions" class="audio-upload-label">Upload Per Question Audio</label>
+                                        <input type="file" class="audio-upload-file" id="audio-upload-file-a-questions" accept="audio/*" multiple onchange="handleQuestionAudioBulkUpload(event, 1)">
+                                        <div id="question-audio-bulk-status-1" style="margin-top:8px; color:#64748b; font-size:12px; font-weight:600;">Select or drag up to 30 audio files. Files are assigned to Q1-Q30 by file name order.</div>
+                                    </div>
+                                    <div style="display:grid; gap:8px; max-height:360px; overflow:auto; padding-right:4px;">
+                                        ${partAQuestionAudioRows}
+                                    </div>
+                                </div>
                                 <div style="margin-top:12px; font-size:12px; color:#475569; text-align:left;">Transcript (.txt/.md)</div>
                                 <button type="button" class="audio-upload-label" style="margin-top:6px; padding:8px 12px; font-size:13px;" onclick="autoTranscribePart(1)">Auto Transcribe Part A</button>
                                 <div id="transcript-status-1" style="margin-top:6px; color:#64748b; font-size:12px; text-align:left;">No transcript generated yet.</div>
@@ -4941,6 +4974,258 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     error: String(error.message)
                 };
             }
+        }
+
+        async function handleQuestionAudioUpload(event, partNumber, questionNumber) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+
+            const normalizedPartNumber = Number(partNumber || 0);
+            const normalizedQuestionNumber = Number(questionNumber || 0);
+            const fileNameEl = document.getElementById(`audio-file-name-${normalizedPartNumber}-q-${normalizedQuestionNumber}`);
+
+            if (fileNameEl) {
+                fileNameEl.textContent = `Uploading ${file.name}...`;
+                fileNameEl.style.color = '#0066cc';
+            }
+
+            try {
+                if (!currentSetId) {
+                    throw new Error('No test set selected. Create or select a test set first.');
+                }
+                if (normalizedPartNumber !== 1 || normalizedQuestionNumber < 1 || normalizedQuestionNumber > 30) {
+                    throw new Error('Part A question audio must be between question 1 and 30.');
+                }
+
+                const uploadResult = await uploadQuestionAudioToCloudflare(file, normalizedPartNumber, normalizedQuestionNumber);
+
+                if (fileNameEl) {
+                    fileNameEl.textContent = `Uploaded Q${normalizedQuestionNumber}: ${file.name}`;
+                    fileNameEl.style.color = '#16a34a';
+                }
+
+                console.log(`[Question Audio Upload] Part ${normalizedPartNumber} Q${normalizedQuestionNumber} saved: ${uploadResult.objectUrl}`);
+            } catch (error) {
+                console.error(`[Question Audio Upload] Part ${normalizedPartNumber} Q${normalizedQuestionNumber} failed:`, error);
+                if (fileNameEl) {
+                    fileNameEl.textContent = `Error: ${error.message}`;
+                    fileNameEl.style.color = '#dc2626';
+                }
+            }
+        }
+
+        function setQuestionAudioBulkStatus(partNumber, message, color = '#64748b') {
+            const statusElement = document.getElementById(`question-audio-bulk-status-${partNumber}`);
+            if (!statusElement) return;
+            statusElement.textContent = message;
+            statusElement.style.color = color;
+        }
+
+        function getSortedQuestionAudioFiles(fileList) {
+            return Array.from(fileList || [])
+                .filter((file) => file && String(file.type || '').startsWith('audio/'))
+                .sort((left, right) => String(left.name || '').localeCompare(String(right.name || ''), undefined, { numeric: true, sensitivity: 'base' }));
+        }
+
+        async function uploadQuestionAudioFiles(fileList, partNumber) {
+            const normalizedPartNumber = Number(partNumber || 0);
+            const files = getSortedQuestionAudioFiles(fileList);
+
+            if (normalizedPartNumber !== 1) {
+                throw new Error('Bulk per-question upload is currently available for Part A only.');
+            }
+            if (!files.length) {
+                setQuestionAudioBulkStatus(normalizedPartNumber, 'No audio files found in the selected upload.', '#b91c1c');
+                return;
+            }
+            if (files.length > 30) {
+                setQuestionAudioBulkStatus(normalizedPartNumber, 'Please upload no more than 30 question audio files for Part A.', '#b91c1c');
+                return;
+            }
+            if (!currentSetId) {
+                setQuestionAudioBulkStatus(normalizedPartNumber, 'No test set selected. Create or select a test set first.', '#b91c1c');
+                return;
+            }
+
+            setQuestionAudioBulkStatus(normalizedPartNumber, `Uploading ${files.length} question audio file(s)...`, '#0066cc');
+
+            let completed = 0;
+            for (let index = 0; index < files.length; index += 1) {
+                const questionNumber = index + 1;
+                const file = files[index];
+                const fileNameEl = document.getElementById(`audio-file-name-${normalizedPartNumber}-q-${questionNumber}`);
+
+                if (fileNameEl) {
+                    fileNameEl.textContent = `Uploading ${file.name}...`;
+                    fileNameEl.style.color = '#0066cc';
+                }
+
+                try {
+                    await uploadQuestionAudioToCloudflare(file, normalizedPartNumber, questionNumber);
+                    completed += 1;
+                    if (fileNameEl) {
+                        fileNameEl.textContent = `Uploaded Q${questionNumber}: ${file.name}`;
+                        fileNameEl.style.color = '#16a34a';
+                    }
+                    setQuestionAudioBulkStatus(normalizedPartNumber, `Uploaded ${completed}/${files.length} question audio file(s).`, '#0066cc');
+                } catch (error) {
+                    if (fileNameEl) {
+                        fileNameEl.textContent = `Error: ${error.message}`;
+                        fileNameEl.style.color = '#dc2626';
+                    }
+                    setQuestionAudioBulkStatus(normalizedPartNumber, `Stopped at Q${questionNumber}: ${error.message}`, '#dc2626');
+                    return;
+                }
+            }
+
+            setQuestionAudioBulkStatus(normalizedPartNumber, `Uploaded ${completed}/${files.length} question audio file(s).`, '#16a34a');
+        }
+
+        async function handleQuestionAudioBulkUpload(event, partNumber) {
+            await uploadQuestionAudioFiles(event.target.files, partNumber);
+            if (event.target) event.target.value = '';
+        }
+
+        function handleQuestionAudioDragOver(event, partNumber) {
+            event.preventDefault();
+            const dropzone = document.getElementById(`question-audio-dropzone-${partNumber}`);
+            if (!dropzone) return;
+            dropzone.style.borderColor = '#2563eb';
+            dropzone.style.background = '#eff6ff';
+        }
+
+        function handleQuestionAudioDragLeave(event, partNumber) {
+            event.preventDefault();
+            const dropzone = document.getElementById(`question-audio-dropzone-${partNumber}`);
+            if (!dropzone) return;
+            dropzone.style.borderColor = '#94a3b8';
+            dropzone.style.background = '#f8fafc';
+        }
+
+        async function handleQuestionAudioDrop(event, partNumber) {
+            event.preventDefault();
+            handleQuestionAudioDragLeave(event, partNumber);
+            await uploadQuestionAudioFiles(event.dataTransfer?.files, partNumber);
+        }
+
+        async function uploadQuestionAudioToCloudflare(file, partNumber, questionNumber) {
+            if (!currentSetId) {
+                throw new Error('setId is required');
+            }
+
+            const normalizedPartNumber = Number(partNumber || 0);
+            const normalizedQuestionNumber = Number(questionNumber || 0);
+            if (normalizedPartNumber !== 1 || normalizedQuestionNumber < 1 || normalizedQuestionNumber > 30) {
+                throw new Error(`Unsupported question audio target: part ${partNumber}, question ${questionNumber}`);
+            }
+
+            const fileType = file.type || 'audio/mpeg';
+            const objectKey = `audio/listening/sets/${currentSetId}/part_${normalizedPartNumber}/questions/q_${String(normalizedQuestionNumber).padStart(2, '0')}.mp3`;
+            const canonicalObjectUrl = `${DEFAULT_R2_PUBLIC_BASE_URL}/${objectKey}`;
+            const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
+            const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
+            const apiBase = apiBases[0] || '';
+            let uploadMode = 'proxy';
+
+            const proxyFormData = new FormData();
+            proxyFormData.append('file', file);
+            proxyFormData.append('fileName', file.name);
+            proxyFormData.append('fileType', fileType);
+            proxyFormData.append('objectKey', objectKey);
+            proxyFormData.append('setId', currentSetId);
+            proxyFormData.append('partNumber', normalizedPartNumber);
+            proxyFormData.append('questionNumber', normalizedQuestionNumber);
+
+            try {
+                const proxyResponse = await fetch(`${apiBase}/api/developer/upload-proxy`, {
+                    method: 'POST',
+                    body: proxyFormData
+                });
+                if (!proxyResponse.ok) {
+                    const proxyDetail = await proxyResponse.text().catch(() => '');
+                    throw new Error(`Proxy upload failed: ${proxyResponse.status} ${proxyDetail}`.trim());
+                }
+
+                const proxyPayload = await proxyResponse.json().catch(() => ({}));
+                const responseObjectKey = String(proxyPayload?.objectKey || '').trim();
+                if (responseObjectKey && responseObjectKey !== objectKey) {
+                    throw new Error(`Endpoint rewrote objectKey: expected ${objectKey}, got ${responseObjectKey}`);
+                }
+            } catch (proxyError) {
+                console.warn('[Question Audio Upload] Proxy upload path failed, trying signed URL fallback:', proxyError?.message || proxyError);
+                uploadMode = 'signed-url';
+
+                const uploadUrlResponse = await fetch(`${apiBase}/api/developer/upload-url`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        objectKey,
+                        fileName: file.name,
+                        fileType
+                    })
+                });
+
+                if (!uploadUrlResponse.ok) {
+                    const errorText = await uploadUrlResponse.text();
+                    throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status} ${errorText}`);
+                }
+
+                const signedPayload = await uploadUrlResponse.json().catch(() => ({}));
+                const uploadUrl = String(signedPayload?.uploadUrl || '').trim();
+                const responseObjectKey = String(signedPayload?.objectKey || '').trim();
+                if (!uploadUrl) {
+                    throw new Error('Backend returned invalid upload URL');
+                }
+                if (responseObjectKey && responseObjectKey !== objectKey) {
+                    throw new Error(`Endpoint rewrote objectKey: expected ${objectKey}, got ${responseObjectKey}`);
+                }
+
+                const putResponse = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': fileType },
+                    body: file
+                });
+
+                if (!putResponse.ok) {
+                    throw new Error(`Upload to Cloudflare failed: ${putResponse.status}`);
+                }
+            }
+
+            const questionAudioRecord = {
+                url: canonicalObjectUrl,
+                objectKey,
+                storageProvider: 'cloudflare-r2',
+                candidateUrls: [canonicalObjectUrl],
+                contentType: fileType,
+                fileName: file.name,
+                size: file.size,
+                type: fileType,
+                uploadMode,
+                uploadedAt: new Date().toISOString()
+            };
+
+            if (window.toeflStorage && typeof toeflStorage._put === 'function') {
+                try {
+                    await toeflStorage._put(`toefl_itp/question_audio_urls/${currentSetId}/part_${normalizedPartNumber}/q_${normalizedQuestionNumber}`, questionAudioRecord);
+                } catch (fbError) {
+                    console.warn('[Question Audio Upload] Firebase question audio save failed:', fbError.message);
+                }
+            }
+
+            const draft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || await toeflStorage?.getDraftBySetIdAndType?.(currentSetId, currentTestType) || {};
+            draft.parts = draft.parts || {};
+            draft.parts[normalizedPartNumber] = draft.parts[normalizedPartNumber] || {};
+            draft.parts[normalizedPartNumber].questionAudio = draft.parts[normalizedPartNumber].questionAudio || {};
+            draft.parts[normalizedPartNumber].questionAudio[normalizedQuestionNumber] = questionAudioRecord;
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+
+            if (window.toeflStorage && typeof toeflStorage.saveDraftBySetIdAndType === 'function') {
+                toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, draft, currentTestType).catch((err) => {
+                    console.warn('[Question Audio Upload] Firebase draft save failed (non-blocking):', err.message);
+                });
+            }
+
+            return { objectKey, objectUrl: canonicalObjectUrl, uploadMode };
         }
 
         async function uploadAudioPartToCloudflare(file, partNumber) {
