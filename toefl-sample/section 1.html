@@ -3262,11 +3262,9 @@
             const candidates = [];
 
             if (hostOverride) candidates.push(`${protocol}://${hostOverride}:${port}`);
-            if (runtimeApiGatewayUrl) candidates.push(String(runtimeApiGatewayUrl).replace(/\/+$/, ""));
-            
-            // Try gateway port first (8000), then fall back to current page origin (8001)
             candidates.push(`${protocol}://127.0.0.1:${port}`);
             candidates.push(`${protocol}://localhost:${port}`);
+            if (runtimeApiGatewayUrl) candidates.push(String(runtimeApiGatewayUrl).replace(/\/+$/, ""));
             
             if (window.location && window.location.origin && window.location.protocol !== "file:") {
                 candidates.push(window.location.origin.replace(/\/+$/, ""));
@@ -5135,72 +5133,92 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const objectKey = `audio/listening/sets/${currentSetId}/question_set/part_${normalizedPartNumber}/q_${String(normalizedQuestionNumber).padStart(2, '0')}.mp3`;
             const canonicalObjectUrl = `${DEFAULT_R2_PUBLIC_BASE_URL}/${objectKey}`;
             const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
-            const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
-            const apiBase = apiBases[0] || '';
+            const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl).sort((left, right) => {
+                const leftIsLocal = /\/\/(?:127\.0\.0\.1|localhost)(?::|\/|$)/i.test(String(left || ""));
+                const rightIsLocal = /\/\/(?:127\.0\.0\.1|localhost)(?::|\/|$)/i.test(String(right || ""));
+                return Number(rightIsLocal) - Number(leftIsLocal);
+            });
             let uploadMode = 'proxy';
+            const uploadErrors = [];
 
-            const proxyFormData = new FormData();
-            proxyFormData.append('file', file);
-            proxyFormData.append('fileName', file.name);
-            proxyFormData.append('fileType', fileType);
-            proxyFormData.append('objectKey', objectKey);
-            proxyFormData.append('setId', currentSetId);
-            proxyFormData.append('partNumber', normalizedPartNumber);
-            proxyFormData.append('questionNumber', normalizedQuestionNumber);
+            for (const apiBase of apiBases) {
+                try {
+                    uploadMode = 'proxy';
+                    const proxyFormData = new FormData();
+                    proxyFormData.append('file', file);
+                    proxyFormData.append('fileName', file.name);
+                    proxyFormData.append('fileType', fileType);
+                    proxyFormData.append('objectKey', objectKey);
+                    proxyFormData.append('setId', currentSetId);
+                    proxyFormData.append('partNumber', normalizedPartNumber);
+                    proxyFormData.append('questionNumber', normalizedQuestionNumber);
 
-            try {
-                const proxyResponse = await fetch(`${apiBase}/api/developer/upload-proxy`, {
-                    method: 'POST',
-                    body: proxyFormData
-                });
-                if (!proxyResponse.ok) {
-                    const proxyDetail = await proxyResponse.text().catch(() => '');
-                    throw new Error(`Proxy upload failed: ${proxyResponse.status} ${proxyDetail}`.trim());
+                    const proxyResponse = await fetch(`${apiBase}/api/developer/upload-proxy`, {
+                        method: 'POST',
+                        body: proxyFormData
+                    });
+                    if (!proxyResponse.ok) {
+                        const proxyDetail = await proxyResponse.text().catch(() => '');
+                        throw new Error(`Proxy upload failed: ${proxyResponse.status} ${proxyDetail}`.trim());
+                    }
+
+                    const proxyPayload = await proxyResponse.json().catch(() => ({}));
+                    const responseObjectKey = String(proxyPayload?.objectKey || '').trim();
+                    if (responseObjectKey && responseObjectKey !== objectKey) {
+                        throw new Error(`Endpoint rewrote objectKey: expected ${objectKey}, got ${responseObjectKey}`);
+                    }
+                    uploadErrors.length = 0;
+                    break;
+                } catch (proxyError) {
+                    uploadErrors.push(`${apiBase} proxy -> ${proxyError?.message || proxyError}`);
+                    console.warn('[Question Audio Upload] Proxy upload path failed, trying signed URL fallback:', apiBase, proxyError?.message || proxyError);
+                    uploadMode = 'signed-url';
+
+                    try {
+                        const uploadUrlResponse = await fetch(`${apiBase}/api/developer/upload-url`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                objectKey,
+                                fileName: file.name,
+                                fileType
+                            })
+                        });
+
+                        if (!uploadUrlResponse.ok) {
+                            const errorText = await uploadUrlResponse.text();
+                            throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status} ${errorText}`);
+                        }
+
+                        const signedPayload = await uploadUrlResponse.json().catch(() => ({}));
+                        const uploadUrl = String(signedPayload?.uploadUrl || '').trim();
+                        const responseObjectKey = String(signedPayload?.objectKey || '').trim();
+                        if (!uploadUrl) {
+                            throw new Error('Backend returned invalid upload URL');
+                        }
+                        if (responseObjectKey && responseObjectKey !== objectKey) {
+                            throw new Error(`Endpoint rewrote objectKey: expected ${objectKey}, got ${responseObjectKey}`);
+                        }
+
+                        const putResponse = await fetch(uploadUrl, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': fileType },
+                            body: file
+                        });
+
+                        if (!putResponse.ok) {
+                            throw new Error(`Upload to Cloudflare failed: ${putResponse.status}`);
+                        }
+                        uploadErrors.length = 0;
+                        break;
+                    } catch (signedError) {
+                        uploadErrors.push(`${apiBase} signed-url -> ${signedError?.message || signedError}`);
+                    }
                 }
+            }
 
-                const proxyPayload = await proxyResponse.json().catch(() => ({}));
-                const responseObjectKey = String(proxyPayload?.objectKey || '').trim();
-                if (responseObjectKey && responseObjectKey !== objectKey) {
-                    throw new Error(`Endpoint rewrote objectKey: expected ${objectKey}, got ${responseObjectKey}`);
-                }
-            } catch (proxyError) {
-                console.warn('[Question Audio Upload] Proxy upload path failed, trying signed URL fallback:', proxyError?.message || proxyError);
-                uploadMode = 'signed-url';
-
-                const uploadUrlResponse = await fetch(`${apiBase}/api/developer/upload-url`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        objectKey,
-                        fileName: file.name,
-                        fileType
-                    })
-                });
-
-                if (!uploadUrlResponse.ok) {
-                    const errorText = await uploadUrlResponse.text();
-                    throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status} ${errorText}`);
-                }
-
-                const signedPayload = await uploadUrlResponse.json().catch(() => ({}));
-                const uploadUrl = String(signedPayload?.uploadUrl || '').trim();
-                const responseObjectKey = String(signedPayload?.objectKey || '').trim();
-                if (!uploadUrl) {
-                    throw new Error('Backend returned invalid upload URL');
-                }
-                if (responseObjectKey && responseObjectKey !== objectKey) {
-                    throw new Error(`Endpoint rewrote objectKey: expected ${objectKey}, got ${responseObjectKey}`);
-                }
-
-                const putResponse = await fetch(uploadUrl, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': fileType },
-                    body: file
-                });
-
-                if (!putResponse.ok) {
-                    throw new Error(`Upload to Cloudflare failed: ${putResponse.status}`);
-                }
+            if (uploadErrors.length > 0) {
+                throw new Error(uploadErrors.join(' | '));
             }
 
             const questionAudioRecord = {
