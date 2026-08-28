@@ -2168,6 +2168,24 @@
             if (reviewCurrentQuestion) renderTranscriptCards(reviewCurrentQuestion);
 
             var targetPartId = inferPartIdFromQuestion(reviewCurrentQuestion);
+            var questionAudio = getReviewQuestionAudioRecord(reviewCurrentQuestion);
+            if (targetPartId === 1 && questionAudio && questionAudio.url) {
+                var questionAudioKey = String(reviewSetId || '') + '_part_1_question_' + String(questionAudio.questionNumber) + '_' + String(questionAudio.objectKey || questionAudio.url);
+                setReviewAudioSource(questionAudio.url, 'Ready for Question ' + String(questionAudio.questionNumber), questionAudioKey, 1);
+                if (!reviewAudio) return;
+                reviewAudio.currentTime = 0;
+                reviewAudio.muted = reviewVolumeLevel <= 0;
+                reviewAudio.volume = reviewVolumeLevel;
+                reviewAudio.play().then(function() {
+                    setAudioStatus('Playing Question ' + String(questionAudio.questionNumber) + ' audio');
+                    startReviewWaveform();
+                    updatePlayPauseIcon();
+                }).catch(function() {
+                    setAudioStatus('Click the main play button to start Question ' + String(questionAudio.questionNumber) + ' audio');
+                });
+                return;
+            }
+
             reviewPendingTranscriptSegmentPlay = {
                 requestId: reviewPlaybackRequestId,
                 partId: Number(targetPartId || 0),
