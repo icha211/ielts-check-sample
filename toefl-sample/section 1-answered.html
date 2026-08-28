@@ -464,6 +464,7 @@
         var reviewSegmentBoundaryEnforcer = null;
         var reviewPlaybackRequestId = 0;
         var reviewPendingTranscriptSegmentPlay = null;
+        var REVIEW_R2_PUBLIC_BASE_URL = 'https://pub-1975cb14188340238a5d6d34750e4880.r2.dev';
 
         function stopAndResetActiveAudio() {
             if (!reviewAudio) return;
@@ -1752,6 +1753,45 @@
                     };
                 };
             });
+        }
+
+        function getReviewQuestionAudioRecord(question) {
+            var partId = inferPartIdFromQuestion(question);
+            var questionNumber = Number((question && question.number) || 0);
+            if (partId !== 1 || questionNumber < 1 || questionNumber > 30) return null;
+
+            var record = (question && question.questionAudio && typeof question.questionAudio === 'object') ? question.questionAudio : {};
+            var objectKey = String((question && question.questionAudioObjectKey) || record.objectKey || '').trim();
+            var url = String((question && question.questionAudioUrl) || record.url || record.objectUrl || '').trim();
+
+            if (!url && objectKey) {
+                url = REVIEW_R2_PUBLIC_BASE_URL.replace(/\/+$/, '') + '/' + objectKey.replace(/^\/+/, '');
+            }
+            if (!url) return null;
+
+            return {
+                url: url,
+                objectKey: objectKey,
+                questionNumber: questionNumber
+            };
+        }
+
+        async function loadAudioForQuestion(question) {
+            var partId = inferPartIdFromQuestion(question);
+            if (partId !== 1) {
+                await loadAudioForPart(partId);
+                return;
+            }
+
+            var questionAudio = getReviewQuestionAudioRecord(question);
+            if (questionAudio && questionAudio.url) {
+                var sourceKey = String(reviewSetId || '') + '_part_1_question_' + String(questionAudio.questionNumber) + '_' + String(questionAudio.objectKey || questionAudio.url);
+                setReviewAudioSource(questionAudio.url, 'Ready for Question ' + String(questionAudio.questionNumber), sourceKey, 1);
+                return;
+            }
+
+            setAudioStatus('Question audio not found. Loading full Part A audio...');
+            await loadAudioForPart(1);
         }
 
         async function loadAudioForPart(partId) {
@@ -3910,7 +3950,7 @@
             renderDetailSteps();
             updateTranslateButtonState(q);
             renderTranscriptCards(q);
-            loadAudioForPart(inferPartIdFromQuestion(q));
+            loadAudioForQuestion(q);
 
             if (reviewResultData && Array.isArray(reviewResultData.questions)) {
                 if (typeof indexHint === 'number') {

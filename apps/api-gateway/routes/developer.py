@@ -35,6 +35,10 @@ _ALLOWED_AUDIO_OBJECT_KEY_RE = re.compile(
     r"^audio/listening/sets/[A-Za-z0-9_-]+/part_([0-9]+)\.mp3$",
     re.IGNORECASE,
 )
+_ALLOWED_QUESTION_AUDIO_OBJECT_KEY_RE = re.compile(
+    r"^audio/listening/sets/[A-Za-z0-9_-]+/question_set/part_1/q_([0-9]{1,2})\.mp3$",
+    re.IGNORECASE,
+)
 DEFAULT_R2_PUBLIC_BASE_URL = "https://pub-1975cb14188340238a5d6d34750e4880.r2.dev"
 
 
@@ -215,15 +219,19 @@ def _validate_allowed_audio_object_key(object_key: str) -> str:
     if not key:
         raise HTTPException(status_code=400, detail="objectKey is required")
 
-    match = _ALLOWED_AUDIO_OBJECT_KEY_RE.match(key)
-    if not match:
-        raise HTTPException(status_code=400, detail="objectKey must match audio/listening/sets/{setId}/part_{1-3}.mp3")
+    if match := _ALLOWED_AUDIO_OBJECT_KEY_RE.match(key):
+        part_no = int(match.group(1))
+        if part_no not in _ALLOWED_AUDIO_PARTS:
+            raise HTTPException(status_code=400, detail="Only part_1..part_3 are playable")
+        return key
 
-    part_no = int(match.group(1))
-    if part_no not in _ALLOWED_AUDIO_PARTS:
-        raise HTTPException(status_code=400, detail="Only part_1..part_3 are playable")
+    if question_match := _ALLOWED_QUESTION_AUDIO_OBJECT_KEY_RE.match(key):
+        question_no = int(question_match.group(1))
+        if question_no < 1 or question_no > 30:
+            raise HTTPException(status_code=400, detail="Only Part A question audio q_01..q_30 is playable")
+        return key
 
-    return key
+    raise HTTPException(status_code=400, detail="objectKey must match audio/listening/sets/{setId}/part_{1-3}.mp3 or audio/listening/sets/{setId}/question_set/part_1/q_{01-30}.mp3")
 
 
 def _build_proxy_audio_url(request: Request, object_key: str) -> str:

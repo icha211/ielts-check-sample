@@ -4167,6 +4167,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const savedSegments = Array.isArray(savedDraft.parts?.[partId]?.transcriptSegments)
                     ? savedDraft.parts[partId].transcriptSegments.filter((segment) => Number(segment?.end) > Number(segment?.start))
                     : [];
+                const questionAudio = savedDraft.parts?.[partId]?.questionAudio?.[qNum]
+                    || savedDraft.parts?.[partId]?.questionAudio?.[String(qNum)]
+                    || null;
                 const transcriptSegments = (savedSegments.length
                     ? savedSegments.filter((segment) => Number(segment?.questionNumber || segment?.question_number || 0) === qNum)
                     : (((transcriptMapsByPart[partId] || {})[qNum]) || [])
@@ -4183,6 +4186,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     userAnswer: correct,
                     isCorrect: Boolean(correct),
                     explanation: String(globalExplanations[uid] || ""),
+                    questionAudio: questionAudio,
+                    questionAudioUrl: String(questionAudio?.url || ""),
+                    questionAudioObjectKey: String(questionAudio?.objectKey || ""),
                     transcriptSegments
                 };
             }).filter((item) => Number.isFinite(item.number) && item.number > 0)
@@ -4720,6 +4726,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const savedSegments = Array.isArray(savedDraft.parts?.[pId]?.transcriptSegments)
                     ? savedDraft.parts[pId].transcriptSegments.filter((segment) => Number(segment?.end) > Number(segment?.start))
                     : [];
+                const questionAudio = savedDraft.parts?.[pId]?.questionAudio?.[qNum]
+                    || savedDraft.parts?.[pId]?.questionAudio?.[String(qNum)]
+                    || null;
                 const transcriptSegments = (savedSegments.length
                     ? savedSegments.filter((segment) => Number(segment?.questionNumber || segment?.question_number || 0) === qNum)
                     : ((transcriptMapsByPart[pId] || {})[qNum] || [])
@@ -4735,6 +4744,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     userAnswer,
                     isCorrect: userAnswer === correct,
                     explanation: globalExplanations[uid] || "",
+                    questionAudio: questionAudio,
+                    questionAudioUrl: String(questionAudio?.url || ""),
+                    questionAudioObjectKey: String(questionAudio?.objectKey || ""),
                     transcriptSegments
                 };
             }).sort((left, right) => left.number - right.number);
