@@ -4506,11 +4506,11 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     const rawLine = lines[index].trim();
                     let questionMatch = rawLine.match(/^question\s*(\d+)\s*[:.)-]?\s*(.*)$/i);
                     if (!questionMatch) {
-                        questionMatch = rawLine.match(/^(\d+)(?:[\.:\)\-]\s*|\s+)(.*)$/);
+                        questionMatch = rawLine.match(/^(\d+)(?:[\.:\)\-]\s*(.*)|\s+(.*)|$)/);
                     }
                     if (questionMatch && (!currentBlock || currentBlock.lines.length >= 4)) {
                         if (currentBlock) blocks.push(currentBlock);
-                        currentBlock = { num: questionMatch[1], text: questionMatch[2], lines: [] };
+                        currentBlock = { num: questionMatch[1], text: questionMatch[2] || questionMatch[3] || "", lines: [] };
                     } else if (currentBlock) {
                         currentBlock.lines.push(rawLine);
                     }
