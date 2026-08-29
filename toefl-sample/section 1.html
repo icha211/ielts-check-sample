@@ -2623,8 +2623,8 @@
                 const p = part.id;
                 const questionInputValue = (document.getElementById(`input-magic-questions-${p}`) || {}).value || "";
                 const transcriptInput = document.getElementById(`input-transcript-${p}`);
-                const transcriptValue = String((transcriptInput || {}).value || "").trim() || deriveTranscriptTextFromSmartQuestions(questionInputValue);
-                if (transcriptInput && transcriptValue && !String(transcriptInput.value || "").trim()) transcriptInput.value = transcriptValue;
+                const transcriptValue = getTranscriptForSmartQuestions(p);
+                if (transcriptInput && transcriptValue && !hasTimedTranscriptContent(transcriptInput.value)) transcriptInput.value = transcriptValue;
                 draft.parts[p] = {
                     questions: questionInputValue,
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
@@ -3885,6 +3885,21 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             return output.length ? `${output.join("\n")}\n` : "";
         }
 
+        function hasTimedTranscriptContent(value) {
+            const text = String(value || "").trim();
+            return /<Question\s+\d+\s+start=/i.test(text)
+                || /^\s*(?:\[)?\d{1,2}:\d{2}(?::\d{2})?(?:[\.,]\d+)?(?:\])?\s*(?:-->|[-\u2013\u2014])/m.test(text);
+        }
+
+        function getTranscriptForSmartQuestions(partNumber) {
+            const questionInput = document.getElementById(`input-magic-questions-${partNumber}`);
+            const transcriptInput = document.getElementById(`input-transcript-${partNumber}`);
+            const derived = deriveTranscriptTextFromSmartQuestions((questionInput || {}).value || "");
+            const existing = String((transcriptInput || {}).value || "").trim();
+
+            return derived && !hasTimedTranscriptContent(existing) ? derived : (existing || derived);
+        }
+
         function mapTranscriptByQuestion(rawText) {
             const map = {};
             const lines = String(rawText || "").split(/\r?\n/);
@@ -4153,8 +4168,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const savedDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
 
             PARTS.forEach((part) => {
-                const transcriptText = String((document.getElementById(`input-transcript-${part.id}`) || {}).value || "").trim()
-                    || deriveTranscriptTextFromSmartQuestions((document.getElementById(`input-magic-questions-${part.id}`) || {}).value || "");
+                const transcriptText = getTranscriptForSmartQuestions(part.id);
                 transcriptTextsByPart[part.id] = transcriptText;
                 transcriptMapsByPart[part.id] = mapTranscriptByQuestion(transcriptText);
             });
@@ -4708,8 +4722,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const transcriptTextsByPart = {};
             const savedDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
             PARTS.forEach((part) => {
-                const transcriptText = String((document.getElementById(`input-transcript-${part.id}`) || {}).value || "").trim()
-                    || deriveTranscriptTextFromSmartQuestions((document.getElementById(`input-magic-questions-${part.id}`) || {}).value || "");
+                const transcriptText = getTranscriptForSmartQuestions(part.id);
                 transcriptTextsByPart[part.id] = transcriptText;
                 transcriptMapsByPart[part.id] = mapTranscriptByQuestion(transcriptText);
             });
@@ -4900,10 +4913,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         const audioUploadStates = {};
 
         async function alignUploadedTranscript(partNumber, audioUrl) {
-            const transcriptInput = document.getElementById(`input-transcript-${partNumber}`);
-            const questionInput = document.getElementById(`input-magic-questions-${partNumber}`);
-            const transcriptText = String((transcriptInput || {}).value || '').trim()
-                || deriveTranscriptTextFromSmartQuestions((questionInput || {}).value || '');
+            const transcriptText = getTranscriptForSmartQuestions(partNumber);
             if (!transcriptText || !audioUrl) return null;
 
             const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
@@ -5289,10 +5299,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             proxyFormData.append('objectKey', objectKey);
             proxyFormData.append('setId', currentSetId);
             proxyFormData.append('partNumber', partNumber);
-            const transcriptInput = document.getElementById(`input-transcript-${partNumber}`);
-            const questionInput = document.getElementById(`input-magic-questions-${partNumber}`);
-            const transcriptText = String((transcriptInput || {}).value || '').trim()
-                || deriveTranscriptTextFromSmartQuestions((questionInput || {}).value || '');
+            const transcriptText = getTranscriptForSmartQuestions(partNumber);
             if (transcriptText) proxyFormData.append('transcriptText', transcriptText);
 
             try {
