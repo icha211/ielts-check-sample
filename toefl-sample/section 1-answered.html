@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Section 1 Review - Listening | TOEFL ITP</title>
     <link rel="stylesheet" href="css/explaination.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
 </head>
 <body>
     <div class="explaination">
@@ -252,43 +253,24 @@
 
                     <!-- Transport controls -->
                     <div class="transport">
-                        <!-- Stop -->
-                        <button class="transport-btn sm" id="btn-stop" title="Stop" onclick="reviewAudioStop()">
-                            <svg viewBox="0 0 24 24" width="20" height="20"><rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor"/></svg>
-                        </button>
                         <!-- -10s -->
-                        <button class="transport-btn skip-label" id="btn-back10" title="Back 10 s" onclick="reviewAudioSeekRel(-10)">
-                            <svg viewBox="0 0 24 24" width="24" height="24">
-                                <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" fill="currentColor"/>
-                                <text x="12" y="14.5" text-anchor="middle" font-size="7" font-family="sans-serif" fill="currentColor">10</text>
-                            </svg>
-                            <span>-10s</span>
+                        <button class="transport-btn med" id="btn-back10" title="Back 10 s" aria-label="Back 10 seconds" onclick="reviewAudioSeekRel(-10)">
+                            <i class="ti ti-rewind-backward-10" aria-hidden="true"></i>
                         </button>
                         <!-- Play / Pause -->
-                        <button class="transport-btn big" id="btn-playpause" title="Play / Pause" onclick="reviewAudioToggle()">
-                            <svg id="icon-play" viewBox="0 0 44 44" width="40" height="40">
-                                <circle cx="22" cy="22" r="21" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
-                                <polygon points="17,13 33,22 17,31" fill="currentColor"/>
-                            </svg>
-                            <svg id="icon-pause" viewBox="0 0 44 44" width="40" height="40" style="display:none">
-                                <circle cx="22" cy="22" r="21" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
-                                <rect x="13" y="13" width="5" height="18" rx="2" fill="currentColor"/>
-                                <rect x="26" y="13" width="5" height="18" rx="2" fill="currentColor"/>
-                            </svg>
+                        <button class="transport-btn big" id="btn-playpause" title="Play / Pause" aria-label="Play audio" onclick="reviewAudioToggle()">
+                            <i class="ph-fill ph-play-circle" id="icon-play" aria-hidden="true"></i>
+                            <i class="ph-fill ph-pause-circle" id="icon-pause" aria-hidden="true" style="display:none"></i>
                         </button>
                         <!-- +10s -->
-                        <button class="transport-btn skip-label" id="btn-fwd10" title="Forward 10 s" onclick="reviewAudioSeekRel(10)">
-                            <svg viewBox="0 0 24 24" width="24" height="24">
-                                <path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z" fill="currentColor"/>
-                                <text x="12" y="14.5" text-anchor="middle" font-size="7" font-family="sans-serif" fill="currentColor">10</text>
-                            </svg>
-                            <span>+10s</span>
+                        <button class="transport-btn med" id="btn-fwd10" title="Forward 10 s" aria-label="Forward 10 seconds" onclick="reviewAudioSeekRel(10)">
+                            <i class="ti ti-rewind-forward-10" aria-hidden="true"></i>
                         </button>
                         <!-- hidden native audio -->
                         <audio id="review-audio" preload="metadata" style="display:none"></audio>
                     </div>
 
-                    <p style="font-size:11px;color:rgba(255,255,255,0.35);text-align:center;margin-top:-4px;" id="audio-status-label">No audio loaded</p>
+                    <!-- <p style="font-size:11px;color:rgba(255,255,255,0.35);text-align:center;margin-top:-4px;" id="audio-status-label">No audio loaded</p> -->
                 </section>
 
                 <section class="property-1default" id="transcript-section">
@@ -303,36 +285,11 @@
                             <img src="../asst/icon/explaination tab.png" alt="Explaination tab icon">
                             <span>Explaination</span>
                         </button>
-                        <button type="button" class="section-explaination-tab" id="partbTabStep" role="tab" aria-selected="false" onclick="setReviewExplainationTab('step')">
-                            <img src="../asst/icon/stepbystep tab.png" alt="Step-by-step tab icon">
-                            <span>Step-by-Step</span>
-                        </button>
-                        <button type="button" class="section-explaination-tab" id="partbTabAsk" role="tab" aria-selected="false" onclick="setReviewExplainationTab('ask')">
-                            <img src="../asst/icon/Ask AIQC tab.svg" alt="Ask AIQC tab icon">
-                            <span>Ask AIQC</span>
-                        </button>
                     </div>
 
                     <div class="section-explaination-panels">
                         <section class="section-explaination-panel is-active" id="partbPanelExplaination" role="tabpanel" aria-labelledby="partbTabExplaination">
                             <section class="explaination-figma" id="explainationTabContent"></section>
-                        </section>
-
-                        <section class="section-explaination-panel" id="partbPanelStep" role="tabpanel" aria-labelledby="partbTabStep" hidden>
-                            <section class="step-figma-main" id="stepByStepTabContent"></section>
-                        </section>
-
-                        <section class="section-explaination-panel" id="partbPanelAsk" role="tabpanel" aria-labelledby="partbTabAsk" hidden>
-                            <section class="frame-parent13">
-                                <div class="sparkle-duotone-1-wrapper"><img src="../asst/icon/instruction.svg" alt="Ask AI tutor"></div>
-                                <div class="frame-parent14">
-                                    <div class="ask-ai-tutor-parent">
-                                        <div class="ask-ai-tutor">ASK AI TUTOR</div>
-                                        <div class="real-time-answer">Real-time answer</div>
-                                    </div>
-                                    <button type="button" class="section-caret-toggle" id="askTutorToggle" onclick="toggleCaretOnly('askTutorToggle')" aria-label="Toggle ask ai tutor"></button>
-                                </div>
-                            </section>
                         </section>
                     </div>
                 </section>
@@ -436,6 +393,8 @@
         var reviewLoadedAudioPartId = 0;
         var reviewAudioLoadingPartId = 0;
         var reviewAudioObjectUrl = null;
+        var reviewCurrentAudioFallbackUrls = [];
+        var reviewCurrentAudioSourceKind = '';
 
         var reviewTranscriptMapByPart = { 1: {}, 2: {}, 3: {} };
         var reviewQuestionBoundaryMapByPart = { 1: {}, 2: {}, 3: {} };
@@ -465,6 +424,7 @@
         var reviewPlaybackRequestId = 0;
         var reviewPendingTranscriptSegmentPlay = null;
         var REVIEW_R2_PUBLIC_BASE_URL = 'https://pub-1975cb14188340238a5d6d34750e4880.r2.dev';
+        var REVIEW_API_GATEWAY_URL = 'https://ielts-api-gateway-753959270698.asia-southeast1.run.app';
 
         function stopAndResetActiveAudio() {
             if (!reviewAudio) return;
@@ -1181,6 +1141,53 @@
             return await withTimeout(fetchPromise, Number(timeoutMs || 3500), null);
         }
 
+        function getReviewApiGatewayBaseCandidates() {
+            var baseOverride = String(localStorage.getItem('toefl_api_gateway_url') || '').trim();
+            if (baseOverride) return [baseOverride.replace(/\/+$/, '')];
+
+            var host = String((window.location && window.location.hostname) || '').toLowerCase();
+            var isLocalPage = !host || host === 'localhost' || host === '127.0.0.1' || (window.location && window.location.protocol === 'file:');
+            var candidates = [];
+
+            if (isLocalPage) {
+                candidates.push('http://127.0.0.1:8000');
+                candidates.push('http://localhost:8000');
+            }
+            candidates.push(REVIEW_API_GATEWAY_URL.replace(/\/+$/, ''));
+            if (window.location && window.location.origin && window.location.protocol !== 'file:') {
+                candidates.push(window.location.origin.replace(/\/+$/, ''));
+            }
+            return candidates.filter(function(item, index, list) {
+                return item && list.indexOf(item) === index;
+            });
+        }
+
+        async function getCloudflareQuestionAudioSource(objectKey, directUrl) {
+            var key = String(objectKey || '').trim();
+            var fallbackDirectUrl = String(directUrl || '').trim();
+            if (!key) {
+                return fallbackDirectUrl ? { url: fallbackDirectUrl, fallbackUrls: [] } : null;
+            }
+
+            var apiBases = getReviewApiGatewayBaseCandidates();
+            for (var i = 0; i < apiBases.length; i += 1) {
+                var apiBase = apiBases[i];
+                try {
+                    var response = await fetch(apiBase + '/api/developer/audio-url?objectKey=' + encodeURIComponent(key), { method: 'GET' });
+                    if (!response.ok) continue;
+                    var payload = await response.json().catch(function() { return {}; });
+                    var proxyUrl = String(payload.audioUrl || '').trim();
+                    var fallbackUrl = String(payload.fallbackUrl || '').trim();
+                    var fallbacks = [fallbackUrl, fallbackDirectUrl].filter(function(item, index, list) {
+                        return item && item !== proxyUrl && list.indexOf(item) === index;
+                    });
+                    if (proxyUrl) return { url: proxyUrl, fallbackUrls: fallbacks };
+                } catch (_) {}
+            }
+
+            return fallbackDirectUrl ? { url: fallbackDirectUrl, fallbackUrls: [] } : null;
+        }
+
         function formatReviewPackageLabel(dateValue) {
             var normalized = normalizeDateKey(dateValue);
             if (!normalized) return 'Package 01 Jan';
@@ -1608,6 +1615,26 @@
             reviewAudio.addEventListener('canplay', tryPlayPendingTranscriptSegmentPlay);
             reviewAudio.addEventListener('ended', onReviewEnded);
             reviewAudio.addEventListener('error', function() {
+                if (reviewCurrentAudioFallbackUrls.length > 0) {
+                    var nextFallbackUrl = reviewCurrentAudioFallbackUrls.shift();
+                    if (nextFallbackUrl && reviewAudio && reviewAudio.src !== nextFallbackUrl) {
+                        setReviewAudioSource(
+                            nextFallbackUrl,
+                            'Ready from Cloudflare fallback',
+                            String(reviewCurrentAudioKey || '') + '_cloudflare-fallback_' + String(reviewCurrentAudioFallbackUrls.length),
+                            reviewCurrentPartId,
+                            [],
+                            reviewCurrentAudioSourceKind || 'cloudflare'
+                        );
+                        return;
+                    }
+                }
+
+                if (reviewCurrentAudioSourceKind === 'question-cloudflare') {
+                    setAudioStatus('Cloudflare question audio failed to load');
+                    return;
+                }
+
                 if (!window.toeflStorage || !reviewSetId || typeof window.toeflStorage.getAudioUrlFromLocalServer !== 'function') {
                     setAudioStatus('Audio source failed to load');
                     return;
@@ -1663,7 +1690,7 @@
             startReviewWaveform();
         }
 
-        function setReviewAudioSource(url, sourceLabel, sourceKey, loadedPartId) {
+        function setReviewAudioSource(url, sourceLabel, sourceKey, loadedPartId, fallbackUrls, sourceKind) {
             if (!reviewAudio || !url) return;
             if (reviewCurrentAudioKey === sourceKey && reviewAudio.src) return;
 
@@ -1672,6 +1699,8 @@
 
             reviewCurrentAudioKey = sourceKey || '';
             reviewLoadedAudioPartId = Number(loadedPartId || reviewCurrentPartId || 0) || 0;
+            reviewCurrentAudioFallbackUrls = Array.isArray(fallbackUrls) ? fallbackUrls.filter(Boolean) : [];
+            reviewCurrentAudioSourceKind = String(sourceKind || '');
             if (reviewAudioObjectUrl) {
                 URL.revokeObjectURL(reviewAudioObjectUrl);
                 reviewAudioObjectUrl = null;
@@ -1776,6 +1805,11 @@
             };
         }
 
+        function getReviewQuestionAudioSourceKey(questionAudio) {
+            if (!questionAudio) return '';
+            return String(reviewSetId || '') + '_part_1_question_' + String(questionAudio.questionNumber) + '_' + String(questionAudio.objectKey || questionAudio.url || '');
+        }
+
         async function loadAudioForQuestion(question) {
             var partId = inferPartIdFromQuestion(question);
             if (partId !== 1) {
@@ -1785,8 +1819,20 @@
 
             var questionAudio = getReviewQuestionAudioRecord(question);
             if (questionAudio && questionAudio.url) {
-                var sourceKey = String(reviewSetId || '') + '_part_1_question_' + String(questionAudio.questionNumber) + '_' + String(questionAudio.objectKey || questionAudio.url);
-                setReviewAudioSource(questionAudio.url, 'Ready for Question ' + String(questionAudio.questionNumber), sourceKey, 1);
+                var cloudflareSource = await getCloudflareQuestionAudioSource(questionAudio.objectKey, questionAudio.url);
+                var sourceKey = getReviewQuestionAudioSourceKey(questionAudio);
+                if (cloudflareSource && cloudflareSource.url) {
+                    setReviewAudioSource(
+                        cloudflareSource.url,
+                        'Ready from Cloudflare for Question ' + String(questionAudio.questionNumber),
+                        sourceKey,
+                        1,
+                        cloudflareSource.fallbackUrls,
+                        'question-cloudflare'
+                    );
+                } else {
+                    setAudioStatus('Cloudflare question audio not found');
+                }
                 return;
             }
 
@@ -1898,8 +1944,15 @@
 
         function updatePlayPauseIcon() {
             var playing = reviewAudio && !reviewAudio.paused && !reviewAudio.ended;
-            document.getElementById('icon-play').style.display  = playing ? 'none' : 'block';
-            document.getElementById('icon-pause').style.display = playing ? 'block' : 'none';
+            var playIcon = document.getElementById('icon-play');
+            var pauseIcon = document.getElementById('icon-pause');
+            var button = document.getElementById('btn-playpause');
+            if (playIcon) playIcon.style.display = playing ? 'none' : 'block';
+            if (pauseIcon) pauseIcon.style.display = playing ? 'block' : 'none';
+            if (button) {
+                button.title = playing ? 'Pause' : 'Play';
+                button.setAttribute('aria-label', playing ? 'Pause audio' : 'Play audio');
+            }
         }
 
         function ensureReviewAnalyser() {
@@ -2170,8 +2223,10 @@
             var targetPartId = inferPartIdFromQuestion(reviewCurrentQuestion);
             var questionAudio = getReviewQuestionAudioRecord(reviewCurrentQuestion);
             if (targetPartId === 1 && questionAudio && questionAudio.url) {
-                var questionAudioKey = String(reviewSetId || '') + '_part_1_question_' + String(questionAudio.questionNumber) + '_' + String(questionAudio.objectKey || questionAudio.url);
-                setReviewAudioSource(questionAudio.url, 'Ready for Question ' + String(questionAudio.questionNumber), questionAudioKey, 1);
+                var questionAudioKey = getReviewQuestionAudioSourceKey(questionAudio);
+                if (reviewCurrentAudioKey !== questionAudioKey || !reviewAudio || !reviewAudio.src) {
+                    setReviewAudioSource(questionAudio.url, 'Ready from Cloudflare for Question ' + String(questionAudio.questionNumber), questionAudioKey, 1, [], 'question-cloudflare');
+                }
                 if (!reviewAudio) return;
                 reviewAudio.currentTime = 0;
                 reviewAudio.muted = reviewVolumeLevel <= 0;
@@ -2406,10 +2461,6 @@
                 html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'full' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'full' ? 'true' : 'false') + '" onclick="setTranscriptViewMode(\'full\')">Full Transcript</button>';
                 html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'question' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'question' ? 'true' : 'false') + '">Question ' + escapeHtml(String(qNumber || 'X')) + ' Only</button>';
                 html += '</div>';
-            } else {
-                html += '<div class="transcript-modern-toggle" role="tablist" aria-label="Transcript scope">';
-                html += '<div class="transcript-modern-tab is-active" role="tab" aria-selected="true">Question ' + escapeHtml(String(qNumber || 'X')) + ' Only</div>';
-                html += '</div>';
             }
 
             html += '<div class="transcript-modern-panel content-container">';
@@ -2418,21 +2469,11 @@
                 var sharedCardKey = encodeURIComponent('part-a-question-' + String(qNumber || '0'));
                 html += '<button type="button" class="transcript-modern-play-btn transcript-modern-legend-play" aria-label="Play full question transcript" onclick="playTranscriptSegmentFromCard(\'' + sharedCardKey + '\',' + Number(sharedQuestionPlaybackRange.start || 0) + ',' + Number(sharedQuestionPlaybackRange.end || 0) + ')"><i class="ph-fill ph-play-circle" aria-hidden="true"></i></button>';
             }
-            html += '<span class="transcript-modern-legend-item is-men"><i class="ph ph-user" aria-hidden="true"></i><span>' + escapeHtml(partId === 2 ? 'Student (Male)' : 'Male Speaker') + '</span></span>';
-            html += '<span class="transcript-modern-legend-item is-women"><i class="ph ph-user" aria-hidden="true"></i><span>' + escapeHtml(partId === 2 ? 'Librarian (Women)' : 'Female Speaker') + '</span></span>';
-            html += '<span class="transcript-modern-legend-item is-narr"><i class="ph ph-user" aria-hidden="true"></i><span>Narrator</span></span>';
             html += '</div>';
-            if (hasEstimatedTiming) {
-                html += '<div class="transcript-modern-empty">Timing is estimated because this transcript has no timestamps. Add timestamps or run alignment for exact audio playback.</div>';
-            }
 
             html += '<div class="transcript-modern-list">';
             if (!activeSegments.length) {
-                html += '<div class="transcript-modern-empty">'
-                    + (reviewTranscriptViewMode === 'question'
-                        ? 'No transcript lines mapped for Question [' + escapeHtml(String(qNumber || 'X')) + '] yet.'
-                        : 'No transcript timeline available for this part yet.')
-                    + '</div>';
+                html += '';
             } else {
                 for (var i = 0; i < activeSegments.length; i += 1) {
                     var seg = activeSegments[i] || {};
@@ -2468,7 +2509,6 @@
                     html += '<article class="' + itemClasses + '"' + (sharedQuestionPlaybackRange ? '' : ' onclick="playTranscriptSegmentFromCard(\'' + encodedCardKey + '\',' + playStart + ',' + playEnd + ')"') + '>';
                     html += '<div class="transcript-modern-item-head">';
                     html += '<div class="transcript-modern-item-speaker">' + (sharedQuestionPlaybackRange ? '' : '<button type="button" class="transcript-modern-play-btn" aria-label="Play transcript segment" onclick="event.stopPropagation();playTranscriptSegmentFromCard(\'' + encodedCardKey + '\',' + playStart + ',' + playEnd + ')"><i class="ph-fill ph-play" aria-hidden="true"></i></button>') + '<i class="ph ph-user transcript-modern-item-user" aria-hidden="true"></i><span>' + speakerLabel + '</span></div>';
-                    html += '<div class="transcript-modern-item-time">' + ts + '</div>';
                     html += '</div>';
                     html += '<div class="transcript-modern-item-body">' + text + '</div>';
                     html += '</article>';
@@ -3353,9 +3393,8 @@
                 if (item.is_correct_choice) markerClass += ' is-correct-answer';
                 if (item.is_user_answer || item.is_correct_choice) markerClass += ' option-selected';
 
-                html += '<div class="explaination-figma-option-row">';
-                html += '<div class="' + markerClass + '"><span class="option-marker">' + escapeHtml(String(item.letter || '')) + '</span></div>';
                 html += '<div class="explaination-figma-option ' + optionStateClass + '">';
+                html += '<div class="' + markerClass + '"><span class="option-marker">' + escapeHtml(String(item.letter || '')) + '</span></div>';
                 html += '<div class="explaination-figma-option-text option-answer-d"><span class="option-text">' + escapeHtml(String(item.text || '')) + '</span></div>';
 
                 if (item.is_user_answer && !item.is_correct_choice) {
@@ -3365,7 +3404,6 @@
                     html += '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">Correct Answer ?</span></div>';
                 }
 
-                html += '</div>';
                 html += '</div>';
             }
             html += '</div>';
@@ -3962,7 +4000,6 @@
             if (!schemaRendered) {
                 renderExplainationTabDetail(q, explanation, correctLtr || 'B');
             }
-            renderStepByStepTabDetail(q);
             reviewDetailSteps = buildDetailSteps(q, explanation);
             reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
             renderDetailSteps();
@@ -4096,7 +4133,6 @@
 
             setSectionCaretIcon(document.getElementById('questionHeaderToggle'), true);
             setSectionCaretIcon(document.getElementById('detailHeaderToggle'), true);
-            setSectionCaretIcon(document.getElementById('askTutorToggle'), false);
             setReviewExplainationTab('explaination');
 
             var result = null;
