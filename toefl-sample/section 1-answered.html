@@ -2621,10 +2621,12 @@
                 }
             }
             html += '</div>';
+            html += '<div class="transcript-scrollbar-track" id="transcriptScrollTrack"><div class="transcript-scrollbar-thumb" id="transcriptScrollThumb"></div></div>';
             html += '</div>';
             html += '</div>';
 
             host.innerHTML = html;
+            initTranscriptCustomScrollbar();
         }
 
         function questionIsCorrect(q) {
@@ -4322,6 +4324,58 @@
         // transcript card follows the explanation panel instead of the other way around.
         var reviewColumnHeightObserver = null;
 
+        // Overlay scrollbar for the transcript list: hidden at rest, appears on
+        // scroll/hover, then fades out after a short delay (like iPad/macOS).
+        var transcriptScrollHideTimer = null;
+
+        function isTranscriptListScrollable(list) {
+            return !!list && list.scrollHeight > list.clientHeight + 1;
+        }
+
+        function updateTranscriptScrollThumb(list, track, thumb) {
+            if (!isTranscriptListScrollable(list)) return;
+            var trackHeight = track.clientHeight;
+            var thumbHeight = Math.max(24, (list.clientHeight / list.scrollHeight) * trackHeight);
+            var maxThumbTop = Math.max(0, trackHeight - thumbHeight);
+            var scrollRange = list.scrollHeight - list.clientHeight;
+            var scrollRatio = scrollRange > 0 ? (list.scrollTop / scrollRange) : 0;
+            thumb.style.height = thumbHeight + 'px';
+            thumb.style.top = (maxThumbTop * scrollRatio) + 'px';
+        }
+
+        function showTranscriptScrollbar(list, track, thumb) {
+            if (!isTranscriptListScrollable(list)) {
+                track.classList.remove('is-visible');
+                return;
+            }
+            updateTranscriptScrollThumb(list, track, thumb);
+            track.classList.add('is-visible');
+            if (transcriptScrollHideTimer) clearTimeout(transcriptScrollHideTimer);
+            transcriptScrollHideTimer = setTimeout(function() {
+                track.classList.remove('is-visible');
+            }, 1000);
+        }
+
+        function refreshTranscriptScrollbarMetrics() {
+            var list = document.querySelector('.transcript-modern-list');
+            var track = document.getElementById('transcriptScrollTrack');
+            var thumb = document.getElementById('transcriptScrollThumb');
+            if (!list || !track || !thumb) return;
+            updateTranscriptScrollThumb(list, track, thumb);
+            if (!isTranscriptListScrollable(list)) track.classList.remove('is-visible');
+        }
+
+        function initTranscriptCustomScrollbar() {
+            var list = document.querySelector('.transcript-modern-list');
+            var track = document.getElementById('transcriptScrollTrack');
+            var thumb = document.getElementById('transcriptScrollThumb');
+            if (!list || !track || !thumb) return;
+
+            updateTranscriptScrollThumb(list, track, thumb);
+            list.addEventListener('scroll', function() { showTranscriptScrollbar(list, track, thumb); });
+            list.addEventListener('mouseenter', function() { showTranscriptScrollbar(list, track, thumb); });
+        }
+
         function applyTranscriptColumnHeight(explanationHeight) {
             var leftCol = document.querySelector('.left-col');
             if (!leftCol) return;
@@ -4330,6 +4384,7 @@
                 return;
             }
             leftCol.style.height = explanationHeight + 'px';
+            requestAnimationFrame(refreshTranscriptScrollbarMetrics);
         }
 
         function initTranscriptColumnHeightSync() {
