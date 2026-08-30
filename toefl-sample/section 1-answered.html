@@ -1784,15 +1784,35 @@
             });
         }
 
+        // Part B/C explanation audio is one file per conversation/talk group.
+        var REVIEW_AUDIO_GROUPS = {
+            2: [{ key: '31-34', start: 31, end: 34 }, { key: '35-38', start: 35, end: 38 }],
+            3: [{ key: '39-42', start: 39, end: 42 }, { key: '43-46', start: 43, end: 46 }, { key: '47-50', start: 47, end: 50 }]
+        };
+
+        function getReviewAudioGroup(partId, questionNumber) {
+            var groups = REVIEW_AUDIO_GROUPS[Number(partId || 0)] || [];
+            var qNum = Number(questionNumber || 0);
+            for (var i = 0; i < groups.length; i += 1) {
+                if (qNum >= groups[i].start && qNum <= groups[i].end) return groups[i];
+            }
+            return null;
+        }
+
         function getReviewQuestionAudioRecord(question) {
             var partId = inferPartIdFromQuestion(question);
             var questionNumber = Number((question && question.number) || 0);
-            if (partId !== 1 || questionNumber < 1 || questionNumber > 30) return null;
+            var group = getReviewAudioGroup(partId, questionNumber);
+            var isPartAQuestion = partId === 1 && questionNumber >= 1 && questionNumber <= 30;
+            if (!isPartAQuestion && !group) return null;
 
             var record = (question && question.questionAudio && typeof question.questionAudio === 'object') ? question.questionAudio : {};
             var objectKey = String((question && question.questionAudioObjectKey) || record.objectKey || '').trim();
             var url = String((question && question.questionAudioUrl) || record.url || record.objectUrl || '').trim();
 
+            if (!url && !objectKey && group && reviewSetId) {
+                objectKey = 'audio/listening/sets/' + reviewSetId + '/question_set/part_' + partId + '/q_' + group.key + '.mp3';
+            }
             if (!url && objectKey) {
                 url = REVIEW_R2_PUBLIC_BASE_URL.replace(/\/+$/, '') + '/' + objectKey.replace(/^\/+/, '');
             }
@@ -1801,22 +1821,19 @@
             return {
                 url: url,
                 objectKey: objectKey,
-                questionNumber: questionNumber
+                partId: partId,
+                questionNumber: questionNumber,
+                label: group ? ('Questions ' + group.key) : ('Question ' + String(questionNumber))
             };
         }
 
         function getReviewQuestionAudioSourceKey(questionAudio) {
             if (!questionAudio) return '';
-            return String(reviewSetId || '') + '_part_1_question_' + String(questionAudio.questionNumber) + '_' + String(questionAudio.objectKey || questionAudio.url || '');
+            return String(reviewSetId || '') + '_part_' + String(questionAudio.partId || 1) + '_question_' + String(questionAudio.questionNumber) + '_' + String(questionAudio.objectKey || questionAudio.url || '');
         }
 
         async function loadAudioForQuestion(question) {
             var partId = inferPartIdFromQuestion(question);
-            if (partId !== 1) {
-                await loadAudioForPart(partId);
-                return;
-            }
-
             var questionAudio = getReviewQuestionAudioRecord(question);
             if (questionAudio && questionAudio.url) {
                 var cloudflareSource = await getCloudflareQuestionAudioSource(questionAudio.objectKey, questionAudio.url);
@@ -1824,15 +1841,20 @@
                 if (cloudflareSource && cloudflareSource.url) {
                     setReviewAudioSource(
                         cloudflareSource.url,
-                        'Ready from Cloudflare for Question ' + String(questionAudio.questionNumber),
+                        'Ready from Cloudflare for ' + questionAudio.label,
                         sourceKey,
-                        1,
+                        partId,
                         cloudflareSource.fallbackUrls,
                         'question-cloudflare'
                     );
                 } else {
                     setAudioStatus('Cloudflare question audio not found');
                 }
+                return;
+            }
+
+            if (partId !== 1) {
+                await loadAudioForPart(partId);
                 return;
             }
 
@@ -2222,21 +2244,21 @@
 
             var targetPartId = inferPartIdFromQuestion(reviewCurrentQuestion);
             var questionAudio = getReviewQuestionAudioRecord(reviewCurrentQuestion);
-            if (targetPartId === 1 && questionAudio && questionAudio.url) {
+            if (questionAudio && questionAudio.url) {
                 var questionAudioKey = getReviewQuestionAudioSourceKey(questionAudio);
                 if (reviewCurrentAudioKey !== questionAudioKey || !reviewAudio || !reviewAudio.src) {
-                    setReviewAudioSource(questionAudio.url, 'Ready from Cloudflare for Question ' + String(questionAudio.questionNumber), questionAudioKey, 1, [], 'question-cloudflare');
+                    setReviewAudioSource(questionAudio.url, 'Ready from Cloudflare for ' + questionAudio.label, questionAudioKey, targetPartId, [], 'question-cloudflare');
                 }
                 if (!reviewAudio) return;
                 reviewAudio.currentTime = 0;
                 reviewAudio.muted = reviewVolumeLevel <= 0;
                 reviewAudio.volume = reviewVolumeLevel;
                 reviewAudio.play().then(function() {
-                    setAudioStatus('Playing Question ' + String(questionAudio.questionNumber) + ' audio');
+                    setAudioStatus('Playing ' + questionAudio.label + ' audio');
                     startReviewWaveform();
                     updatePlayPauseIcon();
                 }).catch(function() {
-                    setAudioStatus('Click the main play button to start Question ' + String(questionAudio.questionNumber) + ' audio');
+                    setAudioStatus('Click the main play button to start ' + questionAudio.label + ' audio');
                 });
                 return;
             }
