@@ -2504,9 +2504,11 @@
             var qNumber = Number((question && question.number) || 0);
             var partId = inferPartIdFromQuestion(question);
             if (partId === 1) reviewTranscriptViewMode = 'question';
-            var fullSegments = getPartTranscriptSegments(question);
-
             var questionSegments = getQuestionTranscriptSegments(question);
+            // Part B/C audio + transcript is scoped per conversation group (e.g. 31-34,
+            // 35-38), not per whole part, so "full" view must stay group-scoped too —
+            // otherwise it always shows the first group's dialogue for every question.
+            var fullSegments = partId === 1 ? getPartTranscriptSegments(question) : questionSegments;
             var questionBoundary = ((reviewQuestionBoundaryMapByPart[partId] || {})[qNumber]) || null;
 
             var activeSegments = reviewTranscriptViewMode === 'question' ? questionSegments : fullSegments;
