@@ -1641,6 +1641,9 @@ class ToeflStorageSync {
 
      async getTranscriptTextFromLocalServer(setId, partId = 1) {
        if (!setId) return "";
+       // Skip entirely on HTTPS pages: the local dev server is http-only, so the
+       // browser blocks this as mixed content anyway — just avoid the noisy log.
+       if (typeof window !== "undefined" && window.location && window.location.protocol === "https:") return "";
        const response = await fetch(
          `${this._getLocalStorageServerBase()}/api/transcript/download/${encodeURIComponent(setId)}/${Number(partId || 1)}`,
          { method: "GET" }

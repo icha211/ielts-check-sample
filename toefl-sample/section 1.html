@@ -2656,6 +2656,18 @@
                 const transcriptInput = document.getElementById(`input-transcript-${p}`);
                 const transcriptValue = getTranscriptForSmartQuestions(p);
                 if (transcriptInput && transcriptValue && !hasTimedTranscriptContent(transcriptInput.value)) transcriptInput.value = transcriptValue;
+
+                // Read every group-transcript textarea directly instead of trusting the
+                // localStorage cache written by handleGroupTranscriptChange's onchange —
+                // that cache goes stale whenever a textarea is edited but never blurred
+                // before this save runs, silently dropping that group's transcript.
+                const existingGroupTranscript = existingDraft.parts?.[p]?.groupTranscript && typeof existingDraft.parts[p].groupTranscript === "object" ? existingDraft.parts[p].groupTranscript : {};
+                const groupTranscript = { ...existingGroupTranscript };
+                (AUDIO_QUESTION_GROUPS[p] || []).forEach((group) => {
+                    const groupTextarea = document.getElementById(`input-group-transcript-${p}-${group.key}`);
+                    if (groupTextarea) groupTranscript[group.key] = String(groupTextarea.value || "").trim();
+                });
+
                 draft.parts[p] = {
                     questions: questionInputValue,
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
@@ -2664,7 +2676,7 @@
                     transcriptSegments: Array.isArray(existingDraft.parts?.[p]?.transcriptSegments) ? existingDraft.parts[p].transcriptSegments : [],
                     questionAudio: existingDraft.parts?.[p]?.questionAudio && typeof existingDraft.parts[p].questionAudio === "object" ? existingDraft.parts[p].questionAudio : {},
                     groupAudio: existingDraft.parts?.[p]?.groupAudio && typeof existingDraft.parts[p].groupAudio === "object" ? existingDraft.parts[p].groupAudio : {},
-                    groupTranscript: existingDraft.parts?.[p]?.groupTranscript && typeof existingDraft.parts[p].groupTranscript === "object" ? existingDraft.parts[p].groupTranscript : {},
+                    groupTranscript: groupTranscript,
                     audio_cloudflare: audioUrlsByPart[p] || "",
                     audio_firebase: audioFirebaseByPart[p] || ""
                 };

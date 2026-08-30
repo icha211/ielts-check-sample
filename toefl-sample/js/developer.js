@@ -61,6 +61,34 @@ function safeParse(raw, fallback) {
     }
 }
 
+// deleteSetRecordWithType only prunes the test-type-scoped sets/drafts keys.
+// These legacy/generic keys (written by the editor pages themselves, e.g.
+// getStoredSetMap()/upsertLocalRecord() in section 1/2/3.html) are never
+// pruned anywhere else, so a deleted set's data kept resurfacing whenever a
+// brand new package was created for the same date.
+function purgeLocalSetCaches(setId) {
+    if (!setId) return;
+
+    const setsMapKeys = [
+        "toefl_developer_sets_v2",
+        "toefl_developer_sets_v1",
+        "toefl_developer_mocktest_sets_v2",
+        "toefl_developer_practicetest_sets_v2"
+    ];
+    const draftsMapKeys = [
+        "toefl_developer_drafts_v2",
+        "toefl_developer_mocktest_drafts_v2",
+        "toefl_developer_practicetest_drafts_v2"
+    ];
+
+    setsMapKeys.concat(draftsMapKeys).forEach((key) => {
+        const map = safeParse(localStorage.getItem(key), {});
+        if (!map || typeof map !== "object" || !(setId in map)) return;
+        delete map[setId];
+        localStorage.setItem(key, JSON.stringify(map));
+    });
+}
+
 function normalizeDateKey(value) {
     const raw = String(value || "").trim();
     if (!raw) return "";
@@ -304,6 +332,7 @@ async function deleteSet(setId, module) {
     try {
         // Always fully delete: removes from active Firebase data and local storage/UI
         await toeflStorage.deleteSetRecordWithType(setId, currentTestType);
+        purgeLocalSetCaches(setId);
         updateSyncStatus(toeflStorage.online);
         toast(`${moduleLabel} deleted. 🗑️`);
         await renderAll();
