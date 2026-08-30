@@ -447,6 +447,30 @@ function renderModuleOverview() {
     }).join("");
 }
 
+const LIBRARY_VIEW_KEY = "toefl_library_view";
+
+function applyLibraryView(view) {
+    const host = document.getElementById("library");
+    if (host) host.classList.toggle("list-view", view === "list");
+    document.querySelectorAll("#libraryViewToggle .view-toggle-btn").forEach((btn) => {
+        const isActive = btn.dataset.view === view;
+        btn.classList.toggle("active", isActive);
+        btn.setAttribute("aria-pressed", String(isActive));
+    });
+}
+
+function initLibraryViewToggle() {
+    const toggle = document.getElementById("libraryViewToggle");
+    if (!toggle) return;
+    applyLibraryView(localStorage.getItem(LIBRARY_VIEW_KEY) === "list" ? "list" : "grid");
+    toggle.addEventListener("click", (event) => {
+        const btn = event.target.closest(".view-toggle-btn");
+        if (!btn) return;
+        localStorage.setItem(LIBRARY_VIEW_KEY, btn.dataset.view);
+        applyLibraryView(btn.dataset.view);
+    });
+}
+
 function renderLibrary() {
     const host = document.getElementById("library");
     if (sectionSets.length === 0) {
@@ -704,6 +728,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
     
+    initLibraryViewToggle();
+
     document.getElementById("exportBtn").addEventListener("click", exportData);
     document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
     document.getElementById("importFile").addEventListener("change", (event) => {

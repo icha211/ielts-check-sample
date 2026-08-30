@@ -1038,7 +1038,9 @@
                             questions: partData?.questions || "",
                             transcripts: partData?.transcripts || "",
                             transcriptSegments: Array.isArray(partData?.transcriptSegments) ? partData.transcriptSegments : [],
-                            questionAudio: partData?.questionAudio && typeof partData.questionAudio === "object" ? partData.questionAudio : {}
+                            questionAudio: partData?.questionAudio && typeof partData.questionAudio === "object" ? partData.questionAudio : {},
+                            groupAudio: partData?.groupAudio && typeof partData.groupAudio === "object" ? partData.groupAudio : {},
+                            groupTranscript: partData?.groupTranscript && typeof partData.groupTranscript === "object" ? partData.groupTranscript : {}
                         };
                     });
                 }
@@ -1456,6 +1458,23 @@
                         if (!statusElement) return;
                         statusElement.textContent = `Uploaded Q${questionNumber}: ${audioRecord?.fileName || "saved question audio"}`;
                         statusElement.style.color = "#16a34a";
+                    });
+                }
+                if (row.groupAudio && typeof row.groupAudio === "object") {
+                    Object.entries(row.groupAudio).forEach(([groupKey, audioRecord]) => {
+                        setGroupAudioStatus(p, groupKey, `Uploaded ${groupKey}: ${audioRecord?.fileName || "saved group audio"}`, "#16a34a");
+                    });
+                }
+                if (row.groupTranscript && typeof row.groupTranscript === "object") {
+                    Object.entries(row.groupTranscript).forEach(([groupKey, transcriptText]) => {
+                        const groupTextarea = document.getElementById(`input-group-transcript-${p}-${groupKey}`);
+                        const value = String(transcriptText || "");
+                        if (groupTextarea && (value.trim() || !String(groupTextarea.value || "").trim())) {
+                            groupTextarea.value = value;
+                        }
+                        if (value.trim()) {
+                            setGroupTranscriptStatus(p, groupKey, `Saved transcript for ${groupKey} (${parseGroupTranscriptSegments(value).length} line(s)).`, "#16a34a");
+                        }
                     });
                 }
             });
@@ -2632,6 +2651,8 @@
                     transcript: transcriptValue,
                     transcriptSegments: Array.isArray(existingDraft.parts?.[p]?.transcriptSegments) ? existingDraft.parts[p].transcriptSegments : [],
                     questionAudio: existingDraft.parts?.[p]?.questionAudio && typeof existingDraft.parts[p].questionAudio === "object" ? existingDraft.parts[p].questionAudio : {},
+                    groupAudio: existingDraft.parts?.[p]?.groupAudio && typeof existingDraft.parts[p].groupAudio === "object" ? existingDraft.parts[p].groupAudio : {},
+                    groupTranscript: existingDraft.parts?.[p]?.groupTranscript && typeof existingDraft.parts[p].groupTranscript === "object" ? existingDraft.parts[p].groupTranscript : {},
                     audio_cloudflare: audioUrlsByPart[p] || "",
                     audio_firebase: audioFirebaseByPart[p] || ""
                 };
@@ -2683,7 +2704,9 @@
                         questions: draft.parts[p]?.questions || "",
                         transcripts: draft.parts[p]?.transcript || "",
                         transcriptSegments: draft.parts[p]?.transcriptSegments || [],
-                        questionAudio: draft.parts[p]?.questionAudio || {}
+                        questionAudio: draft.parts[p]?.questionAudio || {},
+                        groupAudio: draft.parts[p]?.groupAudio || {},
+                        groupTranscript: draft.parts[p]?.groupTranscript || {}
                     };
                 });
 
@@ -2732,6 +2755,8 @@
                                 transcript: partData?.transcripts || "",
                                 transcriptSegments: Array.isArray(partData?.transcriptSegments) ? partData.transcriptSegments : [],
                                 questionAudio: partData?.questionAudio && typeof partData.questionAudio === "object" ? partData.questionAudio : {},
+                                groupAudio: partData?.groupAudio && typeof partData.groupAudio === "object" ? partData.groupAudio : {},
+                                groupTranscript: partData?.groupTranscript && typeof partData.groupTranscript === "object" ? partData.groupTranscript : {},
                                 audio_cloudflare: partData?.audio_cloudflare || "",
                                 audio_firebase: partData?.audio_firebase || ""
                             };
@@ -3090,6 +3115,19 @@
                                 <label for="audio-upload-file-b" class="audio-upload-label">Choose Local Audio File</label>
                                 <input type="file" class="audio-upload-file" id="audio-upload-file-b" accept="audio/*" onchange="handleAudioUpload(event, 2)">
                                 <div id="audio-file-name-2" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
+                                <div style="margin-top:16px; padding-top:14px; border-top:1px solid #e2e8f0; text-align:left;">
+                                    <div style="font-size:12px; font-weight:700; color:#475569; margin-bottom:8px;">Explanation audio per conversation group</div>
+                                    <label for="audio-upload-file-b-group-31-34" class="audio-upload-label">Upload Audio 31-34</label>
+                                    <input type="file" class="audio-upload-file" id="audio-upload-file-b-group-31-34" accept="audio/*" onchange="handleGroupAudioUpload(event, 2, '31-34')">
+                                    <div id="group-audio-status-2-31-34" style="margin-top:6px; color:#64748b; font-size:12px; font-weight:600;">No audio selected for questions 31-34.</div>
+                                    <textarea id="input-group-transcript-2-31-34" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript for questions 31-34" onchange="handleGroupTranscriptChange(2, '31-34')"></textarea>
+                                    <div id="group-transcript-status-2-31-34" style="margin-top:4px; color:#64748b; font-size:12px; font-weight:600;">No transcript saved for questions 31-34.</div>
+                                    <label for="audio-upload-file-b-group-35-38" class="audio-upload-label" style="margin-top:10px;">Upload Audio 35-38</label>
+                                    <input type="file" class="audio-upload-file" id="audio-upload-file-b-group-35-38" accept="audio/*" onchange="handleGroupAudioUpload(event, 2, '35-38')">
+                                    <div id="group-audio-status-2-35-38" style="margin-top:6px; color:#64748b; font-size:12px; font-weight:600;">No audio selected for questions 35-38.</div>
+                                    <textarea id="input-group-transcript-2-35-38" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript for questions 35-38" onchange="handleGroupTranscriptChange(2, '35-38')"></textarea>
+                                    <div id="group-transcript-status-2-35-38" style="margin-top:4px; color:#64748b; font-size:12px; font-weight:600;">No transcript saved for questions 35-38.</div>
+                                </div>
                                 <div style="margin-top:12px; font-size:12px; color:#475569; text-align:left;">Transcript (.txt/.md)</div>
                                 <button type="button" class="audio-upload-label" style="margin-top:6px; padding:8px 12px; font-size:13px;" onclick="autoTranscribePart(2)">Auto Transcribe Part B</button>
                                 <div id="transcript-status-2" style="margin-top:6px; color:#64748b; font-size:12px; text-align:left;">No transcript generated yet.</div>
@@ -3101,6 +3139,24 @@
                                 <label for="audio-upload-file-c" class="audio-upload-label">Choose Local Audio File</label>
                                 <input type="file" class="audio-upload-file" id="audio-upload-file-c" accept="audio/*" onchange="handleAudioUpload(event, 3)">
                                 <div id="audio-file-name-3" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
+                                <div style="margin-top:16px; padding-top:14px; border-top:1px solid #e2e8f0; text-align:left;">
+                                    <div style="font-size:12px; font-weight:700; color:#475569; margin-bottom:8px;">Explanation audio per talk group</div>
+                                    <label for="audio-upload-file-c-group-39-42" class="audio-upload-label">Upload Audio 39-42</label>
+                                    <input type="file" class="audio-upload-file" id="audio-upload-file-c-group-39-42" accept="audio/*" onchange="handleGroupAudioUpload(event, 3, '39-42')">
+                                    <div id="group-audio-status-3-39-42" style="margin-top:6px; color:#64748b; font-size:12px; font-weight:600;">No audio selected for questions 39-42.</div>
+                                    <textarea id="input-group-transcript-3-39-42" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript for questions 39-42" onchange="handleGroupTranscriptChange(3, '39-42')"></textarea>
+                                    <div id="group-transcript-status-3-39-42" style="margin-top:4px; color:#64748b; font-size:12px; font-weight:600;">No transcript saved for questions 39-42.</div>
+                                    <label for="audio-upload-file-c-group-43-46" class="audio-upload-label" style="margin-top:10px;">Upload Audio 43-46</label>
+                                    <input type="file" class="audio-upload-file" id="audio-upload-file-c-group-43-46" accept="audio/*" onchange="handleGroupAudioUpload(event, 3, '43-46')">
+                                    <div id="group-audio-status-3-43-46" style="margin-top:6px; color:#64748b; font-size:12px; font-weight:600;">No audio selected for questions 43-46.</div>
+                                    <textarea id="input-group-transcript-3-43-46" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript for questions 43-46" onchange="handleGroupTranscriptChange(3, '43-46')"></textarea>
+                                    <div id="group-transcript-status-3-43-46" style="margin-top:4px; color:#64748b; font-size:12px; font-weight:600;">No transcript saved for questions 43-46.</div>
+                                    <label for="audio-upload-file-c-group-47-50" class="audio-upload-label" style="margin-top:10px;">Upload Audio 47-50</label>
+                                    <input type="file" class="audio-upload-file" id="audio-upload-file-c-group-47-50" accept="audio/*" onchange="handleGroupAudioUpload(event, 3, '47-50')">
+                                    <div id="group-audio-status-3-47-50" style="margin-top:6px; color:#64748b; font-size:12px; font-weight:600;">No audio selected for questions 47-50.</div>
+                                    <textarea id="input-group-transcript-3-47-50" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript for questions 47-50" onchange="handleGroupTranscriptChange(3, '47-50')"></textarea>
+                                    <div id="group-transcript-status-3-47-50" style="margin-top:4px; color:#64748b; font-size:12px; font-weight:600;">No transcript saved for questions 47-50.</div>
+                                </div>
                                 <div style="margin-top:12px; font-size:12px; color:#475569; text-align:left;">Transcript (.txt/.md)</div>
                                 <button type="button" class="audio-upload-label" style="margin-top:6px; padding:8px 12px; font-size:13px;" onclick="autoTranscribePart(3)">Auto Transcribe Part C</button>
                                 <div id="transcript-status-3" style="margin-top:6px; color:#64748b; font-size:12px; text-align:left;">No transcript generated yet.</div>
@@ -4182,13 +4238,13 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const savedSegments = Array.isArray(savedDraft.parts?.[partId]?.transcriptSegments)
                     ? savedDraft.parts[partId].transcriptSegments.filter((segment) => Number(segment?.end) > Number(segment?.start))
                     : [];
-                const questionAudio = savedDraft.parts?.[partId]?.questionAudio?.[qNum]
-                    || savedDraft.parts?.[partId]?.questionAudio?.[String(qNum)]
-                    || null;
+                const questionAudio = resolveExplanationAudioRecord(savedDraft, partId, qNum);
+                const groupSegments = resolveGroupTranscriptSegments(savedDraft, partId, qNum);
                 const transcriptSegments = (savedSegments.length
                     ? savedSegments.filter((segment) => Number(segment?.questionNumber || segment?.question_number || 0) === qNum)
                     : (((transcriptMapsByPart[partId] || {})[qNum]) || [])
                 ).map((segment) => ({ ...segment }));
+                const resolvedSegments = transcriptSegments.length ? transcriptSegments : groupSegments;
                 const partMeta = PARTS.find((item) => Number(item.id) === partId) || {};
                 return {
                     uid,
@@ -4204,7 +4260,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     questionAudio: questionAudio,
                     questionAudioUrl: String(questionAudio?.url || ""),
                     questionAudioObjectKey: String(questionAudio?.objectKey || ""),
-                    transcriptSegments
+                    transcriptSegments: resolvedSegments
                 };
             }).filter((item) => Number.isFinite(item.number) && item.number > 0)
               .sort((left, right) => left.number - right.number);
@@ -4740,13 +4796,13 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const savedSegments = Array.isArray(savedDraft.parts?.[pId]?.transcriptSegments)
                     ? savedDraft.parts[pId].transcriptSegments.filter((segment) => Number(segment?.end) > Number(segment?.start))
                     : [];
-                const questionAudio = savedDraft.parts?.[pId]?.questionAudio?.[qNum]
-                    || savedDraft.parts?.[pId]?.questionAudio?.[String(qNum)]
-                    || null;
+                const questionAudio = resolveExplanationAudioRecord(savedDraft, pId, qNum);
+                const groupSegments = resolveGroupTranscriptSegments(savedDraft, pId, qNum);
                 const transcriptSegments = (savedSegments.length
                     ? savedSegments.filter((segment) => Number(segment?.questionNumber || segment?.question_number || 0) === qNum)
                     : ((transcriptMapsByPart[pId] || {})[qNum] || [])
                 ).map((segment) => ({ ...segment }));
+                const resolvedSegments = transcriptSegments.length ? transcriptSegments : groupSegments;
                 return {
                     uid,
                     number: qNum,
@@ -4761,7 +4817,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     questionAudio: questionAudio,
                     questionAudioUrl: String(questionAudio?.url || ""),
                     questionAudioObjectKey: String(questionAudio?.objectKey || ""),
-                    transcriptSegments
+                    transcriptSegments: resolvedSegments
                 };
             }).sort((left, right) => left.number - right.number);
 
@@ -5042,6 +5098,260 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             if (!statusElement) return;
             statusElement.textContent = message;
             statusElement.style.color = color;
+        }
+
+        // Part B/C explanation audio is grouped per conversation or talk instead of per question.
+        const AUDIO_QUESTION_GROUPS = {
+            2: [
+                { key: '31-34', start: 31, end: 34 },
+                { key: '35-38', start: 35, end: 38 }
+            ],
+            3: [
+                { key: '39-42', start: 39, end: 42 },
+                { key: '43-46', start: 43, end: 46 },
+                { key: '47-50', start: 47, end: 50 }
+            ]
+        };
+
+        function getAudioGroupForQuestion(partNumber, questionNumber) {
+            const groups = AUDIO_QUESTION_GROUPS[Number(partNumber || 0)] || [];
+            const qNum = Number(questionNumber || 0);
+            return groups.find((group) => qNum >= group.start && qNum <= group.end) || null;
+        }
+
+        function setGroupAudioStatus(partNumber, groupKey, message, color = '#64748b') {
+            const statusElement = document.getElementById(`group-audio-status-${partNumber}-${groupKey}`);
+            if (!statusElement) return;
+            statusElement.textContent = message;
+            statusElement.style.color = color;
+        }
+
+        async function handleGroupAudioUpload(event, partNumber, groupKey) {
+            const file = event.target?.files?.[0];
+            if (!file) return;
+
+            const normalizedPartNumber = Number(partNumber || 0);
+            setGroupAudioStatus(normalizedPartNumber, groupKey, `Uploading ${file.name}...`, '#0066cc');
+
+            try {
+                if (!currentSetId) {
+                    throw new Error('No test set selected. Create or select a test set first.');
+                }
+                const result = await uploadGroupAudioToCloudflare(file, normalizedPartNumber, groupKey);
+                setGroupAudioStatus(normalizedPartNumber, groupKey, `Uploaded ${groupKey}: ${file.name}`, '#16a34a');
+                console.log(`[Group Audio Upload] Part ${normalizedPartNumber} ${groupKey} saved: ${result.objectUrl}`);
+            } catch (error) {
+                console.error(`[Group Audio Upload] Part ${normalizedPartNumber} ${groupKey} failed:`, error);
+                setGroupAudioStatus(normalizedPartNumber, groupKey, `Error: ${error.message}`, '#dc2626');
+            } finally {
+                if (event.target) event.target.value = '';
+            }
+        }
+
+        async function uploadGroupAudioToCloudflare(file, partNumber, groupKey) {
+            if (!currentSetId) {
+                throw new Error('setId is required');
+            }
+
+            const normalizedPartNumber = Number(partNumber || 0);
+            const groups = AUDIO_QUESTION_GROUPS[normalizedPartNumber] || [];
+            const group = groups.find((item) => item.key === String(groupKey));
+            if (!group) {
+                throw new Error(`Unsupported group audio target: part ${partNumber}, group ${groupKey}`);
+            }
+
+            const fileType = file.type || 'audio/mpeg';
+            const objectKey = `audio/listening/sets/${currentSetId}/question_set/part_${normalizedPartNumber}/q_${group.key}.mp3`;
+            const canonicalObjectUrl = `${DEFAULT_R2_PUBLIC_BASE_URL}/${objectKey}`;
+            const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
+            const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
+            let uploadMode = 'proxy';
+            const uploadErrors = [];
+
+            for (const apiBase of apiBases) {
+                try {
+                    uploadMode = 'proxy';
+                    const proxyFormData = new FormData();
+                    proxyFormData.append('file', file);
+                    proxyFormData.append('fileName', file.name);
+                    proxyFormData.append('fileType', fileType);
+                    proxyFormData.append('objectKey', objectKey);
+                    proxyFormData.append('setId', currentSetId);
+                    proxyFormData.append('partNumber', normalizedPartNumber);
+
+                    const proxyResponse = await fetch(`${apiBase}/api/developer/upload-proxy`, {
+                        method: 'POST',
+                        body: proxyFormData
+                    });
+                    if (!proxyResponse.ok) {
+                        const proxyDetail = await proxyResponse.text().catch(() => '');
+                        throw new Error(`Proxy upload failed: ${proxyResponse.status} ${proxyDetail}`.trim());
+                    }
+                    uploadErrors.length = 0;
+                    break;
+                } catch (proxyError) {
+                    uploadErrors.push(`${apiBase} proxy -> ${proxyError?.message || proxyError}`);
+                    uploadMode = 'signed-url';
+
+                    try {
+                        const uploadUrlResponse = await fetch(`${apiBase}/api/developer/upload-url`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ objectKey, fileName: file.name, fileType })
+                        });
+                        if (!uploadUrlResponse.ok) {
+                            const errorText = await uploadUrlResponse.text().catch(() => '');
+                            throw new Error(`Failed to get upload URL: ${uploadUrlResponse.status} ${errorText}`.trim());
+                        }
+
+                        const signedPayload = await uploadUrlResponse.json().catch(() => ({}));
+                        const uploadUrl = String(signedPayload?.uploadUrl || '').trim();
+                        if (!uploadUrl) {
+                            throw new Error('Backend returned invalid upload URL');
+                        }
+
+                        const putResponse = await fetch(uploadUrl, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': fileType },
+                            body: file
+                        });
+                        if (!putResponse.ok) {
+                            throw new Error(`Upload to Cloudflare failed: ${putResponse.status}`);
+                        }
+                        uploadErrors.length = 0;
+                        break;
+                    } catch (signedError) {
+                        uploadErrors.push(`${apiBase} signed-url -> ${signedError?.message || signedError}`);
+                    }
+                }
+            }
+
+            if (uploadErrors.length > 0) {
+                throw new Error(uploadErrors.join(' | '));
+            }
+
+            const groupAudioRecord = {
+                url: canonicalObjectUrl,
+                objectKey,
+                storageProvider: 'cloudflare-r2',
+                candidateUrls: [canonicalObjectUrl],
+                contentType: fileType,
+                fileName: file.name,
+                size: file.size,
+                type: fileType,
+                groupKey: group.key,
+                startQuestion: group.start,
+                endQuestion: group.end,
+                uploadMode,
+                uploadedAt: new Date().toISOString()
+            };
+
+            if (window.toeflStorage && typeof toeflStorage._put === 'function') {
+                try {
+                    await toeflStorage._put(`toefl_itp/group_audio_urls/${currentSetId}/part_${normalizedPartNumber}/g_${group.key}`, groupAudioRecord);
+                } catch (fbError) {
+                    console.warn('[Group Audio Upload] Firebase group audio save failed:', fbError.message);
+                }
+            }
+
+            const draft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
+            draft.parts = draft.parts || {};
+            draft.parts[normalizedPartNumber] = draft.parts[normalizedPartNumber] || {};
+            draft.parts[normalizedPartNumber].groupAudio = draft.parts[normalizedPartNumber].groupAudio || {};
+            draft.parts[normalizedPartNumber].groupAudio[group.key] = groupAudioRecord;
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+
+            if (window.toeflStorage && typeof toeflStorage.saveDraftBySetIdAndType === 'function') {
+                toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, draft, currentTestType).catch((err) => {
+                    console.warn('[Group Audio Upload] Firebase draft save failed (non-blocking):', err.message);
+                });
+            }
+
+            return { objectKey, objectUrl: canonicalObjectUrl, uploadMode };
+        }
+
+        function resolveExplanationAudioRecord(savedDraft, partId, questionNumber) {
+            const perQuestion = savedDraft?.parts?.[partId]?.questionAudio?.[questionNumber]
+                || savedDraft?.parts?.[partId]?.questionAudio?.[String(questionNumber)]
+                || null;
+            if (perQuestion) return perQuestion;
+
+            const group = getAudioGroupForQuestion(partId, questionNumber);
+            if (!group) return null;
+            return savedDraft?.parts?.[partId]?.groupAudio?.[group.key] || null;
+        }
+
+        function setGroupTranscriptStatus(partNumber, groupKey, message, color = '#64748b') {
+            const statusElement = document.getElementById(`group-transcript-status-${partNumber}-${groupKey}`);
+            if (!statusElement) return;
+            statusElement.textContent = message;
+            statusElement.style.color = color;
+        }
+
+        function parseGroupTranscriptSegments(rawText) {
+            const cleaned = String(rawText || "").replace(/\r/g, "").replace(/\*\*/g, "");
+            const lines = cleaned.split("\n").map((line) => line.trim()).filter(Boolean);
+            const segments = [];
+
+            lines.forEach((line) => {
+                const hasSpeakerPrefix = /^[A-Za-z][A-Za-z\s]*(?:\([^)]+\))?\s*:/.test(line);
+                const stripQuotes = (value) => String(value || "").replace(/^["“]+|["”]+$/g, "").trim();
+
+                // Wrapped paragraph lines continue the previous speaker turn.
+                if (!hasSpeakerPrefix && segments.length > 0) {
+                    const previous = segments[segments.length - 1];
+                    previous.text = `${previous.text} ${stripQuotes(line)}`.trim();
+                    return;
+                }
+
+                const parsed = parseTranscriptSpeakerLine(line);
+                const text = stripQuotes(parsed.text);
+                if (!text) return;
+                const start = segments.length * 8;
+                segments.push({
+                    timestamp: "",
+                    start,
+                    end: start + 8,
+                    speaker: parsed.speaker,
+                    text
+                });
+            });
+
+            return segments;
+        }
+
+        async function handleGroupTranscriptChange(partNumber, groupKey) {
+            const normalizedPartNumber = Number(partNumber || 0);
+            const textarea = document.getElementById(`input-group-transcript-${normalizedPartNumber}-${groupKey}`);
+            const text = String(textarea?.value || "").trim();
+
+            const draft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
+            draft.parts = draft.parts || {};
+            draft.parts[normalizedPartNumber] = draft.parts[normalizedPartNumber] || {};
+            draft.parts[normalizedPartNumber].groupTranscript = draft.parts[normalizedPartNumber].groupTranscript || {};
+            draft.parts[normalizedPartNumber].groupTranscript[groupKey] = text;
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+
+            if (!text) {
+                setGroupTranscriptStatus(normalizedPartNumber, groupKey, `No transcript saved for questions ${groupKey}.`);
+                return;
+            }
+
+            const segmentCount = parseGroupTranscriptSegments(text).length;
+            setGroupTranscriptStatus(normalizedPartNumber, groupKey, `Saved transcript for ${groupKey} (${segmentCount} line(s)).`, '#16a34a');
+
+            try {
+                await saveSectionDraft();
+            } catch (error) {
+                console.warn('[Group Transcript] draft save failed:', error);
+            }
+        }
+
+        function resolveGroupTranscriptSegments(savedDraft, partId, questionNumber) {
+            const group = getAudioGroupForQuestion(partId, questionNumber);
+            if (!group) return [];
+            const text = savedDraft?.parts?.[partId]?.groupTranscript?.[group.key] || "";
+            return parseGroupTranscriptSegments(text);
         }
 
         function getSortedQuestionAudioFiles(fileList) {

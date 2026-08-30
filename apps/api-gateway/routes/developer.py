@@ -39,6 +39,15 @@ _ALLOWED_QUESTION_AUDIO_OBJECT_KEY_RE = re.compile(
     r"^audio/listening/sets/[A-Za-z0-9_-]+/question_set/part_1/q_([0-9]{1,2})\.mp3$",
     re.IGNORECASE,
 )
+_ALLOWED_GROUP_AUDIO_OBJECT_KEY_RE = re.compile(
+    r"^audio/listening/sets/[A-Za-z0-9_-]+/question_set/part_([23])/q_([0-9]{2})-([0-9]{2})\.mp3$",
+    re.IGNORECASE,
+)
+# Part B/C explanation audio is grouped per conversation/talk.
+_ALLOWED_AUDIO_GROUPS = {
+    2: {(31, 34), (35, 38)},
+    3: {(39, 42), (43, 46), (47, 50)},
+}
 DEFAULT_R2_PUBLIC_BASE_URL = "https://pub-1975cb14188340238a5d6d34750e4880.r2.dev"
 
 
@@ -231,7 +240,14 @@ def _validate_allowed_audio_object_key(object_key: str) -> str:
             raise HTTPException(status_code=400, detail="Only Part A question audio q_01..q_30 is playable")
         return key
 
-    raise HTTPException(status_code=400, detail="objectKey must match audio/listening/sets/{setId}/part_{1-3}.mp3 or audio/listening/sets/{setId}/question_set/part_1/q_{01-30}.mp3")
+    if group_match := _ALLOWED_GROUP_AUDIO_OBJECT_KEY_RE.match(key):
+        part_no = int(group_match.group(1))
+        group_range = (int(group_match.group(2)), int(group_match.group(3)))
+        if group_range not in _ALLOWED_AUDIO_GROUPS.get(part_no, set()):
+            raise HTTPException(status_code=400, detail="Unsupported explanation audio group range")
+        return key
+
+    raise HTTPException(status_code=400, detail="objectKey must match audio/listening/sets/{setId}/part_{1-3}.mp3, .../question_set/part_1/q_{01-30}.mp3, or .../question_set/part_{2-3}/q_{range}.mp3")
 
 
 def _build_proxy_audio_url(request: Request, object_key: str) -> str:
