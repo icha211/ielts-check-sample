@@ -4307,6 +4307,7 @@
                 }
             }
             renderQuestion(firstQuestion, firstIndex);
+            initTranscriptColumnHeightSync();
         }
 
         function handleReviewCrossTabSync(event) {
@@ -4315,6 +4316,40 @@
             // Do not reload the review page from editor autosave events. The
             // editor can write this key repeatedly while the review is open,
             // which previously caused a refresh loop.
+        }
+
+        // Pins .left-col's height to #partBExplainationTabs's rendered height so the
+        // transcript card follows the explanation panel instead of the other way around.
+        var reviewColumnHeightObserver = null;
+
+        function applyTranscriptColumnHeight(explanationHeight) {
+            var leftCol = document.querySelector('.left-col');
+            if (!leftCol) return;
+            if (window.innerWidth < 901 || !(explanationHeight > 0)) {
+                leftCol.style.height = '';
+                return;
+            }
+            leftCol.style.height = explanationHeight + 'px';
+        }
+
+        function initTranscriptColumnHeightSync() {
+            var tabs = document.getElementById('partBExplainationTabs');
+            if (!tabs) return;
+
+            if (window.ResizeObserver && !reviewColumnHeightObserver) {
+                reviewColumnHeightObserver = new ResizeObserver(function(entries) {
+                    var entry = entries && entries[0];
+                    var height = entry ? entry.contentRect.height : tabs.getBoundingClientRect().height;
+                    applyTranscriptColumnHeight(height);
+                });
+                reviewColumnHeightObserver.observe(tabs);
+            }
+
+            window.addEventListener('resize', function() {
+                applyTranscriptColumnHeight(tabs.getBoundingClientRect().height);
+            });
+
+            applyTranscriptColumnHeight(tabs.getBoundingClientRect().height);
         }
 
         window.addEventListener('DOMContentLoaded', init);
