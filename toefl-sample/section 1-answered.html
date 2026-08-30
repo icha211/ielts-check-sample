@@ -4125,6 +4125,14 @@
             }
         }
 
+        function collectGroupTranscriptText(partData) {
+            var groupMap = partData && typeof partData.groupTranscript === 'object' ? partData.groupTranscript : {};
+            var texts = Object.keys(groupMap || {}).map(function(key) {
+                return String(groupMap[key] || '').trim();
+            }).filter(Boolean);
+            return texts.join('\n\n');
+        }
+
         async function hydrateTranscriptFallbackMaps(result) {
 
             reviewTranscriptMapByPart = { 1: {}, 2: {}, 3: {} };
@@ -4143,6 +4151,7 @@
                         var typedDraft = await window.toeflStorage.getDraftBySetIdAndType(reviewSetId, testType);
                         var typedPart = (((typedDraft || {}).parts || {})[p] || {});
                         rawTranscript = String(typedPart.transcript || '');
+                        if (!rawTranscript) rawTranscript = collectGroupTranscriptText(typedPart);
                         savedAlignedSegments = Array.isArray(typedPart.transcriptSegments) ? typedPart.transcriptSegments : [];
                     } catch (_) { rawTranscript = ''; }
                 }
@@ -4150,10 +4159,12 @@
                 if (!rawTranscript && window.toeflStorage && reviewSetId && typeof window.toeflStorage.getDraftBySetId === 'function') {
                     try {
                         var draft = await window.toeflStorage.getDraftBySetId(reviewSetId);
-                        rawTranscript = String((((draft || {}).parts || {})[p] || {}).transcript || '');
+                        var draftPart = (((draft || {}).parts || {})[p] || {});
+                        rawTranscript = String(draftPart.transcript || '');
                         if (!rawTranscript) {
                             rawTranscript = String((((draft || {}).transcripts || {})['part_' + p] || ''));
                         }
+                        if (!rawTranscript) rawTranscript = collectGroupTranscriptText(draftPart);
                     } catch (_) { rawTranscript = ''; }
                 }
 
@@ -4175,7 +4186,9 @@
                 if (!rawTranscript) {
                     try {
                         var v1Local = JSON.parse(localStorage.getItem('toefl_section1_dev_draft_v1') || '{}');
-                        rawTranscript = String((((v1Local || {}).parts || {})[p] || {}).transcript || '');
+                        var v1LocalPart = (((v1Local || {}).parts || {})[p] || {});
+                        rawTranscript = String(v1LocalPart.transcript || '');
+                        if (!rawTranscript) rawTranscript = collectGroupTranscriptText(v1LocalPart);
                     } catch (_) { rawTranscript = ''; }
                 }
 
@@ -4183,7 +4196,9 @@
                 if (!rawTranscript && window.toeflStorage && typeof window.toeflStorage.getDraft === 'function') {
                     try {
                         var v1FirebaseDraft = await window.toeflStorage.getDraft('listening');
-                        rawTranscript = String((((v1FirebaseDraft || {}).parts || {})[p] || {}).transcript || '');
+                        var v1FirebasePart = (((v1FirebaseDraft || {}).parts || {})[p] || {});
+                        rawTranscript = String(v1FirebasePart.transcript || '');
+                        if (!rawTranscript) rawTranscript = collectGroupTranscriptText(v1FirebasePart);
                     } catch (_) { rawTranscript = ''; }
                 }
 
