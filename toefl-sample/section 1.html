@@ -1501,7 +1501,19 @@
                 if (answerElement) answerElement.value = "";
                 if (explanationElement) explanationElement.value = "";
                 if (transcriptElement) transcriptElement.value = "";
+
+                const groups = AUDIO_QUESTION_GROUPS[p] || [];
+                groups.forEach((group) => {
+                    const groupTextarea = document.getElementById(`input-group-transcript-${p}-${group.key}`);
+                    if (groupTextarea) groupTextarea.value = "";
+                    setGroupTranscriptStatus(p, group.key, `No transcript saved for questions ${group.key}.`);
+                    setGroupAudioStatus(p, group.key, `No audio selected for questions ${group.key}.`);
+                });
             });
+
+            // A fresh package must never inherit the previous package's cached
+            // draft (localStorage is not scoped per-setId), so wipe it here.
+            localStorage.removeItem(DRAFT_KEY);
 
             // Reset in-memory audio URL maps so a new package never inherits
             // Cloudflare/Firebase URLs from a previously opened set.
