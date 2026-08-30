@@ -2478,24 +2478,50 @@
 
             var html = '';
             html += '<div class="transcript-modern-shell transcript-view">';
-            if (partId !== 1) {
-                html += '<div class="transcript-modern-toggle" role="tablist" aria-label="Transcript scope">';
-                html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'full' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'full' ? 'true' : 'false') + '" onclick="setTranscriptViewMode(\'full\')">Full Transcript</button>';
-                html += '<button type="button" class="transcript-modern-tab ' + (reviewTranscriptViewMode === 'question' ? 'is-active' : '') + '" role="tab" aria-selected="' + (reviewTranscriptViewMode === 'question' ? 'true' : 'false') + '">Question ' + escapeHtml(String(qNumber || 'X')) + ' Only</button>';
-                html += '</div>';
-            }
 
             html += '<div class="transcript-modern-panel content-container">';
-            html += '<div class="transcript-modern-legend">';
-            if (sharedQuestionPlaybackRange) {
-                var sharedCardKey = encodeURIComponent('part-a-question-' + String(qNumber || '0'));
-                html += '<button type="button" class="transcript-modern-play-btn transcript-modern-legend-play" aria-label="Play full question transcript" onclick="playTranscriptSegmentFromCard(\'' + sharedCardKey + '\',' + Number(sharedQuestionPlaybackRange.start || 0) + ',' + Number(sharedQuestionPlaybackRange.end || 0) + ')"><i class="ph-fill ph-play-circle" aria-hidden="true"></i></button>';
-            }
-            html += '</div>';
 
-            html += '<div class="transcript-modern-list">';
-            if (!activeSegments.length) {
+            var useFlowLayout = partId !== 1;
+            html += '<div class="transcript-modern-list' + (useFlowLayout ? ' transcript-modern-list--flow' : '') + '">';
+            if (!activeSegments.length) { 
                 html += '';
+            } else if (useFlowLayout) {
+                var lastSpeakerTag = null;
+                for (var fi = 0; fi < activeSegments.length; fi += 1) {
+                    var fSeg = activeSegments[fi] || {};
+                    var fStart = Number(fSeg.start || 0);
+                    var fEnd = Number(fSeg.end || (fStart + 8));
+                    if (questionBoundary && reviewTranscriptViewMode === 'question') {
+                        if (fStart < questionBoundary.startFloat) fStart = questionBoundary.startFloat;
+                        if (fEnd > questionBoundary.endFloat) fEnd = questionBoundary.endFloat;
+                    }
+                    if (!(fEnd > fStart)) fEnd = fStart + 0.2;
+
+                    var fPlayStart = fStart;
+                    var fPlayEnd = fEnd;
+                    if (sharedQuestionPlaybackRange) {
+                        fPlayStart = Number(sharedQuestionPlaybackRange.start || fStart);
+                        fPlayEnd = Number(sharedQuestionPlaybackRange.end || fEnd);
+                        if (!(fPlayEnd > fPlayStart)) {
+                            fPlayStart = fStart;
+                            fPlayEnd = fEnd;
+                        }
+                    }
+
+                    var fSpeakerTag = normalizeSpeakerTag(fSeg.speaker || 'NARR');
+                    var fSpeakerLabel = escapeHtml(getTranscriptSpeakerLabel(fSpeakerTag, partId));
+                    var fRawText = String(fSeg.text || '').trim().replace(/^["\u201c\u201d]+|["\u201c\u201d]+$/g, '').trim();
+                    var fText = escapeHtml(fRawText);
+                    var fCardKey = ['flow', String(fSpeakerTag), String(fStart), String(fSeg.timestamp || ''), String(fSeg.text || '')].join('|');
+                    var fEncodedCardKey = encodeURIComponent(fCardKey);
+                    var fIsActive = reviewActiveTranscriptKey === fCardKey;
+                    var fShowLabel = fSpeakerTag !== lastSpeakerTag;
+                    lastSpeakerTag = fSpeakerTag;
+
+                    html += '<p class="transcript-modern-paragraph' + (fIsActive ? ' is-active' : '') + '"' + (sharedQuestionPlaybackRange ? '' : ' onclick="playTranscriptSegmentFromCard(\'' + fEncodedCardKey + '\',' + fPlayStart + ',' + fPlayEnd + ')"') + '>';
+                    if (fShowLabel) html += '<span class="transcript-modern-speaker-label">' + fSpeakerLabel + ':</span> ';
+                    html += fText + '</p>';
+                }
             } else {
                 for (var i = 0; i < activeSegments.length; i += 1) {
                     var seg = activeSegments[i] || {};
