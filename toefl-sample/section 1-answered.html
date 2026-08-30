@@ -1326,6 +1326,15 @@
             return map;
         }
 
+        function titleCaseSpeakerLabel(value) {
+            var text = String(value || '').trim();
+            if (!text) return '';
+            return text.split(/\s+/).map(function(word) {
+                if (!word) return word;
+                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+            }).join(' ');
+        }
+
         function parseTranscriptSpeakerLine(rawLine) {
             var line = String(rawLine || '').replace(/\*\*/g, '').trim();
             var speakerMatch = line.match(/^([A-Za-z][A-Za-z\s]*(?:\([^)]+\))?)\s*:\s*(.*)$/i);
@@ -1338,10 +1347,11 @@
                 else if (/MAN|MALE|STUDENT\s*A|STUDENT/.test(upperSpeaker)) normalized = 'MEN';
                 return {
                     speaker: normalized,
+                    speakerLabel: titleCaseSpeakerLabel(rawSpeaker),
                     text: String(speakerMatch[2] || '').trim()
                 };
             }
-            return { speaker: 'NARR', text: line };
+            return { speaker: 'NARR', speakerLabel: 'Narrator', text: line };
         }
 
         function mapTranscriptByQuestion(rawText) {
@@ -1356,13 +1366,14 @@
                 if (!map[key]) map[key] = [];
             }
 
-            function pushSegment(targetQuestion, timestamp, start, end, speaker, text) {
+            function pushSegment(targetQuestion, timestamp, start, end, speaker, text, speakerLabel) {
                 var cleanText = String(text || '').trim();
                 if (!cleanText) return;
                 var baseSegment = {
                     timestamp: String(timestamp || ''),
                     start: Number(start || 0),
                     speaker: String(speaker || 'NARR'),
+                    speakerLabel: String(speakerLabel || ''),
                     text: cleanText,
                     end: Number(end || 0)
                 };
@@ -1372,6 +1383,7 @@
                     timestamp: baseSegment.timestamp,
                     start: baseSegment.start,
                     speaker: baseSegment.speaker,
+                    speakerLabel: baseSegment.speakerLabel,
                     text: baseSegment.text,
                     end: baseSegment.end
                 });
@@ -1382,6 +1394,7 @@
                         timestamp: baseSegment.timestamp,
                         start: baseSegment.start,
                         speaker: baseSegment.speaker,
+                        speakerLabel: baseSegment.speakerLabel,
                         text: baseSegment.text,
                         end: baseSegment.end
                     });
@@ -1428,7 +1441,7 @@
                     var timedTimestamp = String(timedSpeakerMatch[1] || '').replace(',', '.');
                     var timedStart = parseTimestampToSeconds(timedTimestamp);
                     var timedLine = parseTranscriptSpeakerLine(timedSpeakerMatch[2]);
-                    pushSegment(currentQuestion, timedTimestamp, timedStart, 0, timedLine.speaker, timedLine.text);
+                    pushSegment(currentQuestion, timedTimestamp, timedStart, 0, timedLine.speaker, timedLine.text, timedLine.speakerLabel);
                     continue;
                 }
 
@@ -1442,7 +1455,7 @@
                 if (segmentMatch) {
                     var ts = String(segmentMatch[1] || '');
                     var parsedInline = parseTranscriptSpeakerLine(segmentMatch[2]);
-                    pushSegment(currentQuestion, ts, parseTimestampToSeconds(ts), 0, parsedInline.speaker, parsedInline.text);
+                    pushSegment(currentQuestion, ts, parseTimestampToSeconds(ts), 0, parsedInline.speaker, parsedInline.text, parsedInline.speakerLabel);
                     pendingTimestamp = '';
                     pendingStart = 0;
                     pendingEnd = 0;
@@ -1451,7 +1464,7 @@
 
                 if (pendingTimestamp) {
                     var parsed = parseTranscriptSpeakerLine(line);
-                    pushSegment(currentQuestion, pendingTimestamp, pendingStart, pendingEnd, parsed.speaker, parsed.text);
+                    pushSegment(currentQuestion, pendingTimestamp, pendingStart, pendingEnd, parsed.speaker, parsed.text, parsed.speakerLabel);
                     pendingTimestamp = '';
                     pendingStart = 0;
                     pendingEnd = 0;
@@ -2509,7 +2522,7 @@
                     }
 
                     var fSpeakerTag = normalizeSpeakerTag(fSeg.speaker || 'NARR');
-                    var fSpeakerLabel = escapeHtml(getTranscriptSpeakerLabel(fSpeakerTag, partId));
+                    var fSpeakerLabel = escapeHtml(String(fSeg.speakerLabel || '').trim() || getTranscriptSpeakerLabel(fSpeakerTag, partId));
                     var fRawText = String(fSeg.text || '').trim().replace(/^["\u201c\u201d]+|["\u201c\u201d]+$/g, '').trim();
                     var fText = escapeHtml(fRawText);
                     var fCardKey = ['flow', String(fSpeakerTag), String(fStart), String(fSeg.timestamp || ''), String(fSeg.text || '')].join('|');
@@ -2547,7 +2560,7 @@
 
                     var ts = escapeHtml(seg.timestamp || fmtTime(start));
                     var speakerClass = getTranscriptSpeakerClass(seg.speaker || 'NARR');
-                    var speakerLabel = escapeHtml(getTranscriptSpeakerLabel(seg.speaker || 'NARR', partId));
+                    var speakerLabel = escapeHtml(String(seg.speakerLabel || '').trim() || getTranscriptSpeakerLabel(seg.speaker || 'NARR', partId));
                     var text = escapeHtml(seg.text || '');
                     var cardKey = [String(speakerClass), String(start), String(seg.timestamp || ''), String(seg.text || '')].join('|');
                     var encodedCardKey = encodeURIComponent(cardKey);
@@ -4147,6 +4160,7 @@
                             timestamp: String(seg.start || '') + ' - ' + String(seg.end || ''),
                             start: Number(seg.start || 0),
                             speaker: String(seg.speaker || 'NARR'),
+                            speakerLabel: titleCaseSpeakerLabel(seg.speaker || 'NARR'),
                             text: String(seg.text || ''),
                             end: Number(seg.end || 0),
                             confidence: Number.isFinite(Number(seg.confidence)) ? Number(seg.confidence) : null
