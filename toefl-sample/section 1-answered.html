@@ -1356,7 +1356,10 @@
 
         function parsePlainSpeakerTranscript(rawText) {
             var cleaned = String(rawText || '').replace(/\r/g, '').replace(/\*\*/g, '');
-            var lines = cleaned.split('\n').map(function(line) { return line.trim(); }).filter(Boolean);
+            var lines = cleaned.split('\n')
+                .map(function(line) { return line.trim(); })
+                .filter(Boolean)
+                .filter(function(line) { return !/^<\/?Question\b/i.test(line); });
             var segments = [];
 
             function stripQuotes(value) {
@@ -1364,7 +1367,8 @@
             }
 
             for (var i = 0; i < lines.length; i += 1) {
-                var line = lines[i];
+                var line = lines[i].replace(/<\/?Question[^>]*>/gi, '').trim();
+                if (!line) continue;
                 var hasSpeakerPrefix = /^[A-Za-z][A-Za-z\s]*(?:\([^)]+\))?\s*:/.test(line);
 
                 if (!hasSpeakerPrefix && segments.length > 0) {
@@ -4133,6 +4137,11 @@
             return texts.join('\n\n');
         }
 
+        function isTagOnlyTranscript(text) {
+            var stripped = String(text || '').replace(/<\/?Question[^>]*>/gi, '').trim();
+            return !stripped;
+        }
+
         async function hydrateTranscriptFallbackMaps(result) {
 
             reviewTranscriptMapByPart = { 1: {}, 2: {}, 3: {} };
@@ -4151,7 +4160,7 @@
                         var typedDraft = await window.toeflStorage.getDraftBySetIdAndType(reviewSetId, testType);
                         var typedPart = (((typedDraft || {}).parts || {})[p] || {});
                         rawTranscript = String(typedPart.transcript || '');
-                        if (!rawTranscript) rawTranscript = collectGroupTranscriptText(typedPart);
+                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) rawTranscript = collectGroupTranscriptText(typedPart);
                         savedAlignedSegments = Array.isArray(typedPart.transcriptSegments) ? typedPart.transcriptSegments : [];
                     } catch (_) { rawTranscript = ''; }
                 }
@@ -4164,7 +4173,7 @@
                         if (!rawTranscript) {
                             rawTranscript = String((((draft || {}).transcripts || {})['part_' + p] || ''));
                         }
-                        if (!rawTranscript) rawTranscript = collectGroupTranscriptText(draftPart);
+                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) rawTranscript = collectGroupTranscriptText(draftPart);
                     } catch (_) { rawTranscript = ''; }
                 }
 
@@ -4188,7 +4197,7 @@
                         var v1Local = JSON.parse(localStorage.getItem('toefl_section1_dev_draft_v1') || '{}');
                         var v1LocalPart = (((v1Local || {}).parts || {})[p] || {});
                         rawTranscript = String(v1LocalPart.transcript || '');
-                        if (!rawTranscript) rawTranscript = collectGroupTranscriptText(v1LocalPart);
+                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) rawTranscript = collectGroupTranscriptText(v1LocalPart);
                     } catch (_) { rawTranscript = ''; }
                 }
 
@@ -4198,17 +4207,20 @@
                         var v1FirebaseDraft = await window.toeflStorage.getDraft('listening');
                         var v1FirebasePart = (((v1FirebaseDraft || {}).parts || {})[p] || {});
                         rawTranscript = String(v1FirebasePart.transcript || '');
-                        if (!rawTranscript) rawTranscript = collectGroupTranscriptText(v1FirebasePart);
+                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) rawTranscript = collectGroupTranscriptText(v1FirebasePart);
                     } catch (_) { rawTranscript = ''; }
                 }
 
                 // Source 6: baked into the test result at submit time (fallback only)
-                if (!rawTranscript && result.transcriptsByPart && typeof result.transcriptsByPart[p] === 'string') {
+                if ((!rawTranscript || isTagOnlyTranscript(rawTranscript)) && result.transcriptsByPart && typeof result.transcriptsByPart[p] === 'string') {
                     rawTranscript = result.transcriptsByPart[p];
                 }
 
+                if (isTagOnlyTranscript(rawTranscript)) rawTranscript = '';
+
                 reviewTranscriptMapByPart[p] = mapTranscriptByQuestion(rawTranscript);
-                if (savedAlignedSegments.length) {
+                var hasTextBasedSegments = Boolean(reviewTranscriptMapByPart[p][0] && reviewTranscriptMapByPart[p][0].length);
+                if (savedAlignedSegments.length && !hasTextBasedSegments) {
                     var alignedByQuestion = {};
                     var alignedAll = [];
                     savedAlignedSegments.forEach(function(seg) {

@@ -3948,8 +3948,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         }
 
         function getTranscriptForSmartQuestions(partNumber) {
-            const questionInput = document.getElementById(`input-magic-questions-${partNumber}`);
             const transcriptInput = document.getElementById(`input-transcript-${partNumber}`);
+            if (!transcriptInput) return "";
+            const questionInput = document.getElementById(`input-magic-questions-${partNumber}`);
             const derived = deriveTranscriptTextFromSmartQuestions((questionInput || {}).value || "");
             const existing = String((transcriptInput || {}).value || "").trim();
 
@@ -5290,10 +5291,15 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
         function parseGroupTranscriptSegments(rawText) {
             const cleaned = String(rawText || "").replace(/\r/g, "").replace(/\*\*/g, "");
-            const lines = cleaned.split("\n").map((line) => line.trim()).filter(Boolean);
+            const lines = cleaned.split("\n")
+                .map((line) => line.trim())
+                .filter(Boolean)
+                .filter((line) => !/^<\/?Question\b/i.test(line));
             const segments = [];
 
-            lines.forEach((line) => {
+            lines.forEach((rawLine) => {
+                const line = rawLine.replace(/<\/?Question[^>]*>/gi, "").trim();
+                if (!line) return;
                 const hasSpeakerPrefix = /^[A-Za-z][A-Za-z\s]*(?:\([^)]+\))?\s*:/.test(line);
                 const stripQuotes = (value) => String(value || "").replace(/^["“]+|["”]+$/g, "").trim();
 
