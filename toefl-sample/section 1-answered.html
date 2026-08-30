@@ -4139,6 +4139,38 @@
             return texts.join('\n\n');
         }
 
+        function parseQuestionRangeKey(key) {
+            var match = String(key || '').trim().match(/^(\d+)\s*-\s*(\d+)$/);
+            if (!match) return null;
+            var start = Number(match[1]);
+            var end = Number(match[2]);
+            if (!isFinite(start) || !isFinite(end) || end < start) return null;
+            return { start: start, end: end };
+        }
+
+        // Part B/C transcripts are saved per conversation group (e.g. "31-34",
+        // "35-38"); parsing them as one joined blob loses that boundary, so
+        // every question in the part ends up showing the first group's dialogue.
+        // Keep each group's segments scoped to its own question numbers instead.
+        function buildGroupTranscriptQuestionMap(groupTranscriptObj) {
+            var byQuestion = {};
+            var combined = [];
+            var groupMap = groupTranscriptObj && typeof groupTranscriptObj === 'object' ? groupTranscriptObj : {};
+            Object.keys(groupMap).forEach(function(key) {
+                var text = String(groupMap[key] || '').trim();
+                if (!text) return;
+                var segments = parsePlainSpeakerTranscript(text);
+                if (!segments.length) return;
+                combined = combined.concat(segments);
+                var range = parseQuestionRangeKey(key);
+                if (!range) return;
+                for (var qNum = range.start; qNum <= range.end; qNum += 1) {
+                    byQuestion[qNum] = segments;
+                }
+            });
+            return { byQuestion: byQuestion, combined: combined };
+        }
+
         function isTagOnlyTranscript(text) {
             var stripped = String(text || '').replace(/<\/?Question[^>]*>/gi, '').trim();
             return !stripped;
@@ -4153,6 +4185,7 @@
             for (var p = 1; p <= 3; p += 1) {
                 var rawTranscript = '';
                 var savedAlignedSegments = [];
+                var groupTranscriptSourceMap = null;
 
                 // Source 1: V2 Firebase draft (requires setId)
                 if (window.toeflStorage && reviewSetId && typeof window.toeflStorage.getDraftBySetIdAndType === 'function') {
@@ -4162,7 +4195,10 @@
                         var typedDraft = await window.toeflStorage.getDraftBySetIdAndType(reviewSetId, testType);
                         var typedPart = (((typedDraft || {}).parts || {})[p] || {});
                         rawTranscript = String(typedPart.transcript || '');
-                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) rawTranscript = collectGroupTranscriptText(typedPart);
+                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) {
+                            rawTranscript = collectGroupTranscriptText(typedPart);
+                            if (rawTranscript) groupTranscriptSourceMap = typedPart.groupTranscript;
+                        }
                         savedAlignedSegments = Array.isArray(typedPart.transcriptSegments) ? typedPart.transcriptSegments : [];
                     } catch (_) { rawTranscript = ''; }
                 }
@@ -4175,7 +4211,10 @@
                         if (!rawTranscript) {
                             rawTranscript = String((((draft || {}).transcripts || {})['part_' + p] || ''));
                         }
-                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) rawTranscript = collectGroupTranscriptText(draftPart);
+                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) {
+                            rawTranscript = collectGroupTranscriptText(draftPart);
+                            if (rawTranscript) groupTranscriptSourceMap = draftPart.groupTranscript;
+                        }
                     } catch (_) { rawTranscript = ''; }
                 }
 
@@ -4199,7 +4238,10 @@
                         var v1Local = JSON.parse(localStorage.getItem('toefl_section1_dev_draft_v1') || '{}');
                         var v1LocalPart = (((v1Local || {}).parts || {})[p] || {});
                         rawTranscript = String(v1LocalPart.transcript || '');
-                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) rawTranscript = collectGroupTranscriptText(v1LocalPart);
+                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) {
+                            rawTranscript = collectGroupTranscriptText(v1LocalPart);
+                            if (rawTranscript) groupTranscriptSourceMap = v1LocalPart.groupTranscript;
+                        }
                     } catch (_) { rawTranscript = ''; }
                 }
 
@@ -4209,7 +4251,10 @@
                         var v1FirebaseDraft = await window.toeflStorage.getDraft('listening');
                         var v1FirebasePart = (((v1FirebaseDraft || {}).parts || {})[p] || {});
                         rawTranscript = String(v1FirebasePart.transcript || '');
-                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) rawTranscript = collectGroupTranscriptText(v1FirebasePart);
+                        if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) {
+                            rawTranscript = collectGroupTranscriptText(v1FirebasePart);
+                            if (rawTranscript) groupTranscriptSourceMap = v1FirebasePart.groupTranscript;
+                        }
                     } catch (_) { rawTranscript = ''; }
                 }
 
@@ -4221,6 +4266,21 @@
                 if (isTagOnlyTranscript(rawTranscript)) rawTranscript = '';
 
                 reviewTranscriptMapByPart[p] = mapTranscriptByQuestion(rawTranscript);
+
+                // Overlay per-group segments so each question only ever sees its
+                // own conversation group's transcript instead of the merged blob.
+                if (groupTranscriptSourceMap) {
+                    var groupResult = buildGroupTranscriptQuestionMap(groupTranscriptSourceMap);
+                    if (groupResult.combined.length) {
+                        var overlaidMap = reviewTranscriptMapByPart[p];
+                        Object.keys(groupResult.byQuestion).forEach(function(qNum) {
+                            overlaidMap[qNum] = groupResult.byQuestion[qNum];
+                        });
+                        if (!(Array.isArray(overlaidMap[0]) && overlaidMap[0].length)) overlaidMap[0] = groupResult.combined;
+                        reviewTranscriptMapByPart[p] = overlaidMap;
+                    }
+                }
+
                 var hasTextBasedSegments = Boolean(reviewTranscriptMapByPart[p][0] && reviewTranscriptMapByPart[p][0].length);
                 if (savedAlignedSegments.length && !hasTextBasedSegments) {
                     var alignedByQuestion = {};
