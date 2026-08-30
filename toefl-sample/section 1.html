@@ -3895,6 +3895,15 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             return parts[0] || 0;
         }
 
+        function titleCaseSpeakerLabel(value) {
+            const text = String(value || "").trim();
+            if (!text) return "";
+            return text.split(/\s+/).map((word) => {
+                if (!word) return word;
+                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+            }).join(" ");
+        }
+
         function parseTranscriptSpeakerLine(rawLine) {
             const line = String(rawLine || "").replace(/\*\*/g, "").trim();
             const speakerMatch = line.match(/^([A-Za-z][A-Za-z\s]*(?:\([^)]+\))?)\s*:\s*(.*)$/i);
@@ -3907,10 +3916,11 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 else if (/MAN|MALE|STUDENT\s*A|STUDENT/.test(upperSpeaker)) normalized = "MEN";
                 return {
                     speaker: normalized,
+                    speakerLabel: titleCaseSpeakerLabel(rawSpeaker),
                     text: String(speakerMatch[2] || "").trim()
                 };
             }
-            return { speaker: "NARR", text: line };
+            return { speaker: "NARR", speakerLabel: "Narrator", text: line };
         }
 
         function deriveTranscriptTextFromSmartQuestions(rawText) {
@@ -5313,6 +5323,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     start,
                     end: start + 8,
                     speaker: parsed.speaker,
+                    speakerLabel: parsed.speakerLabel,
                     text
                 });
             });
