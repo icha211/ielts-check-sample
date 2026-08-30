@@ -1354,6 +1354,42 @@
             return { speaker: 'NARR', speakerLabel: 'Narrator', text: line };
         }
 
+        function parsePlainSpeakerTranscript(rawText) {
+            var cleaned = String(rawText || '').replace(/\r/g, '').replace(/\*\*/g, '');
+            var lines = cleaned.split('\n').map(function(line) { return line.trim(); }).filter(Boolean);
+            var segments = [];
+
+            function stripQuotes(value) {
+                return String(value || '').replace(/^["\u201c]+|["\u201d]+$/g, '').trim();
+            }
+
+            for (var i = 0; i < lines.length; i += 1) {
+                var line = lines[i];
+                var hasSpeakerPrefix = /^[A-Za-z][A-Za-z\s]*(?:\([^)]+\))?\s*:/.test(line);
+
+                if (!hasSpeakerPrefix && segments.length > 0) {
+                    var previous = segments[segments.length - 1];
+                    previous.text = (previous.text + ' ' + stripQuotes(line)).trim();
+                    continue;
+                }
+
+                var parsed = parseTranscriptSpeakerLine(line);
+                var text = stripQuotes(parsed.text);
+                if (!text) continue;
+                var start = segments.length * 8;
+                segments.push({
+                    timestamp: '',
+                    start: start,
+                    end: start + 8,
+                    speaker: parsed.speaker,
+                    speakerLabel: parsed.speakerLabel,
+                    text: text
+                });
+            }
+
+            return segments;
+        }
+
         function mapTranscriptByQuestion(rawText) {
             var map = {};
             var lines = String(rawText || '').split(/\r?\n/);
@@ -1469,6 +1505,11 @@
                     pendingStart = 0;
                     pendingEnd = 0;
                 }
+            }
+
+            if (!(Array.isArray(map[0]) && map[0].length) && String(rawText || '').trim()) {
+                var plainSegments = parsePlainSpeakerTranscript(rawText);
+                if (plainSegments.length) map[0] = plainSegments;
             }
 
             var qKeys = Object.keys(map);
