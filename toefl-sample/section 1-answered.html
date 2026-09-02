@@ -1356,11 +1356,9 @@
 
         function parsePlainSpeakerTranscript(rawText) {
             var cleaned = String(rawText || '').replace(/\r/g, '').replace(/\*\*/g, '');
-            var lines = cleaned.split('\n')
-                .map(function(line) { return line.trim(); })
-                .filter(Boolean)
-                .filter(function(line) { return !/^<\/?Question\b/i.test(line); });
+            var lines = cleaned.split('\n').map(function(line) { return line.trim(); });
             var segments = [];
+            var startsNewParagraph = false;
 
             function stripQuotes(value) {
                 return String(value || '').replace(/^["\u201c]+|["\u201d]+$/g, '').trim();
@@ -1368,11 +1366,27 @@
 
             for (var i = 0; i < lines.length; i += 1) {
                 var line = lines[i].replace(/<\/?Question[^>]*>/gi, '').trim();
-                if (!line) continue;
+                if (!line) {
+                    startsNewParagraph = segments.length > 0;
+                    continue;
+                }
                 var hasSpeakerPrefix = /^[A-Za-z][A-Za-z\s]*(?:\([^)]+\))?\s*:/.test(line);
 
                 if (!hasSpeakerPrefix && segments.length > 0) {
                     var previous = segments[segments.length - 1];
+                    if (startsNewParagraph) {
+                        var paragraphStart = segments.length * 8;
+                        segments.push({
+                            timestamp: '',
+                            start: paragraphStart,
+                            end: paragraphStart + 8,
+                            speaker: previous.speaker,
+                            speakerLabel: previous.speakerLabel,
+                            text: stripQuotes(line)
+                        });
+                        startsNewParagraph = false;
+                        continue;
+                    }
                     previous.text = (previous.text + ' ' + stripQuotes(line)).trim();
                     continue;
                 }
@@ -1389,6 +1403,7 @@
                     speakerLabel: parsed.speakerLabel,
                     text: text
                 });
+                startsNewParagraph = false;
             }
 
             return segments;
@@ -3332,17 +3347,50 @@
             return html;
         }
 
-        function getSchemaTranscriptHighlightTerms(schema, answerText) {
+        function getSchemaTranscriptHighlightTerms(schema, answerText, transcriptSegments) {
             var payload = (schema && schema.explanation_payload) || {};
             var source = String(payload.main_explanation_html || '');
+            var dialogueBlocks = Array.isArray(payload.dialogue_blocks) ? payload.dialogue_blocks : [];
+            for (var blockIndex = 0; blockIndex < dialogueBlocks.length; blockIndex += 1) {
+                source += '\n' + String((dialogueBlocks[blockIndex] || {}).quote_text_html || '');
+            }
             var phrases = [];
             var match;
             var markRegex = /<mark\b[^>]*>([\s\S]*?)<\/mark>/gi;
             while ((match = markRegex.exec(source))) {
-                var phrase = String(match[1] || '').replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').replace(/\s+/g, ' ').trim();
+                var phrase = String(match[1] || '').replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '').replace(/\s+/g, ' ').trim();
                 if (phrase && phrases.indexOf(phrase) === -1) phrases.push(phrase);
             }
-            return phrases.length ? phrases : buildHighlightTermsFromAnswer(answerText);
+
+            var transcriptText = (Array.isArray(transcriptSegments) ? transcriptSegments : []).map(function(segment) {
+                return String((segment || {}).text || '');
+            }).join(' ');
+            var normalizedTranscript = normalizeSearchText(transcriptText);
+            if (normalizedTranscript && phrases.length) {
+                var usablePhrases = [];
+                for (var phraseIndex = 0; phraseIndex < phrases.length; phraseIndex += 1) {
+                    var candidate = phrases[phraseIndex];
+                    if (normalizedTranscript.indexOf(normalizeSearchText(candidate)) !== -1) {
+                        usablePhrases.push(candidate);
+                        continue;
+                    }
+                    var words = normalizeSearchText(candidate).split(' ').filter(Boolean);
+                    for (var size = Math.min(5, words.length); size >= 3; size -= 1) {
+                        var found = false;
+                        for (var start = 0; start <= words.length - size; start += 1) {
+                            var shortened = words.slice(start, start + size).join(' ');
+                            if (normalizedTranscript.indexOf(shortened) !== -1) {
+                                usablePhrases.push(shortened);
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (found) break;
+                    }
+                }
+                if (usablePhrases.length) return usablePhrases.slice(0, 2);
+            }
+            return phrases.length ? phrases.slice(0, 2) : buildHighlightTermsFromAnswer(answerText);
         }
 
         function renderExplanationContent(html) {
@@ -3756,6 +3804,97 @@
             return out;
         }
 
+        function parseStoredPartQuestions(questionText) {
+            var lines = String(questionText || '').replace(/\r/g, '').split('\n');
+            var questions = {};
+            var current = null;
+
+            function saveCurrent() {
+                if (!current || !current.number) return;
+                if (!current.questionText) {
+                    for (var lineIndex = current.lines.length - 1; lineIndex >= 0; lineIndex -= 1) {
+                        var prompt = String(current.lines[lineIndex] || '').replace(/^(?:narrator|narr)\s*:\s*/i, '').trim();
+                        if (/\?$/.test(prompt)) {
+                            current.questionText = prompt;
+                            break;
+                        }
+                    }
+                }
+                questions[current.number] = current;
+            }
+
+            for (var i = 0; i < lines.length; i += 1) {
+                var line = String(lines[i] || '').trim();
+                if (!line) continue;
+                var header = line.match(/^(?:question\s*)?(\d+)[.)]?\s+(.+)$/i);
+                if (header) {
+                    saveCurrent();
+                    current = { number: Number(header[1]), questionText: String(header[2] || '').trim(), options: {}, lines: [] };
+                    continue;
+                }
+                var standaloneNumber = line.match(/^(\d+)$/);
+                if (standaloneNumber) {
+                    saveCurrent();
+                    current = { number: Number(standaloneNumber[1]), questionText: '', options: {}, lines: [] };
+                    continue;
+                }
+                if (!current) continue;
+                var option = line.match(/^\(?([A-D])\)?[.)]?\s+(.+)$/i);
+                if (option) current.options[String(option[1]).toUpperCase()] = String(option[2] || '').trim();
+                else current.lines.push(line);
+            }
+            saveCurrent();
+            return questions;
+        }
+
+        function parseStoredAnswerKey(answerKeyText) {
+            var answerKey = {};
+            var lines = String(answerKeyText || '').replace(/\r/g, '').split('\n');
+            for (var i = 0; i < lines.length; i += 1) {
+                var match = String(lines[i] || '').trim().match(/^(\d+)\s*[.)-]?\s*([A-D])\b/i);
+                if (match) answerKey[Number(match[1])] = String(match[2]).toUpperCase();
+            }
+            return answerKey;
+        }
+
+        async function hydrateReviewQuestionMetadata(result) {
+            if (!result || !Array.isArray(result.questions) || !reviewSetId || !window.toeflStorage) return;
+            var draft = null;
+            try {
+                var params = new URLSearchParams(window.location.search || '');
+                draft = await window.toeflStorage.getDraftBySetIdAndType(reviewSetId, String(params.get('testType') || result.testType || 'mocktest'));
+            } catch (_) {}
+            if (!draft) {
+                try { draft = await window.toeflStorage.getDraftBySetId(reviewSetId); } catch (_) {}
+            }
+            if (!draft || !draft.parts) return;
+
+            var byPart = {};
+            for (var partId = 1; partId <= 3; partId += 1) {
+                var part = draft.parts[partId] || {};
+                byPart[partId] = {
+                    questions: parseStoredPartQuestions(part.questions),
+                    answers: parseStoredAnswerKey(part.answerKey),
+                    schemas: part.explanationSchemas || {}
+                };
+            }
+
+            for (var i = 0; i < result.questions.length; i += 1) {
+                var question = result.questions[i] || {};
+                var partData = byPart[inferPartIdFromQuestion(question)] || {};
+                var number = Number(question.number || 0);
+                var storedQuestion = (partData.questions || {})[number];
+                if (storedQuestion && Object.keys(storedQuestion.options || {}).length === 4) {
+                    question.questionText = storedQuestion.questionText || question.questionText;
+                    question.options = storedQuestion.options;
+                }
+                if ((partData.answers || {})[number]) question.correctAnswer = partData.answers[number];
+                if (!question.explanationSchema && (partData.schemas || {})[number]) {
+                    question.explanationSchema = JSON.stringify(partData.schemas[number]);
+                }
+            }
+        }
+
         async function compileActiveExplanationPayload(setId, questionNumber, userChoice) {
             var qNum = Number(questionNumber || 0);
             var fallbackQuestion = null;
@@ -4080,7 +4219,7 @@
                     var parsedSchema = JSON.parse(String(q.explanationSchema || '{}'));
                     if (parsedSchema && parsedSchema.explanation_payload) {
                         parsedSchema = applyUserAnswerStateToSchema(parsedSchema, q);
-                        highlightTerms = getSchemaTranscriptHighlightTerms(parsedSchema, q.options[correctLtr] || '');
+                        highlightTerms = getSchemaTranscriptHighlightTerms(parsedSchema, q.options[correctLtr] || '', getQuestionTranscriptSegments(q));
                         reviewTranscriptHighlightTerms = highlightTerms;
                         parsedSchema.explanation_payload.dialogue_blocks = buildFreshDialogueBlocksForQuestion(
                             q,
@@ -4338,6 +4477,7 @@
             var params = new URLSearchParams(window.location.search || '');
             reviewSetDate = String(urlPackageDate || result.setDate || params.get('setDate') || '');
             reviewSetId = await resolveReviewSetId(result);
+            await hydrateReviewQuestionMetadata(result);
             renderReviewPackageLabel(reviewSetDate);
             if (reviewSetId && (!result.setId || String(result.setId) !== reviewSetId)) {
                 result.setId = reviewSetId;
