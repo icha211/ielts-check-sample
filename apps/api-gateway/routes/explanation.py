@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import time
 
 from fastapi import APIRouter, HTTPException
 from google import genai
@@ -92,6 +93,11 @@ def _parse_json(text: str) -> dict:
     return parsed
 
 
+def _is_retryable(exc: Exception) -> bool:
+    message = str(exc or "").upper()
+    return any(marker in message for marker in ("429", "RESOURCE_EXHAUSTED", "503", "UNAVAILABLE", "TIMEOUT"))
+
+
 @router.post("/toefl-explanation-json")
 def generate_toefl_explanation(payload: dict) -> dict:
     transcript = str(payload.get("isolated_transcript_block") or "").strip()
@@ -101,17 +107,28 @@ def generate_toefl_explanation(payload: dict) -> dict:
     model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
     try:
         client = _create_client()
-        response = client.models.generate_content(
-            model=model,
-            contents=_build_prompt(payload),
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
-            ),
-        )
-        return _parse_json(response.text or "")
+        last_error = None
+        for attempt, delay in enumerate((1.0, 2.0, 4.0, 8.0, 0.0)):
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=_build_prompt(payload),
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.2,
+                    ),
+                )
+                return _parse_json(response.text or "")
+            except Exception as exc:
+                last_error = exc
+                if attempt >= 4 or (not _is_retryable(exc) and not isinstance(exc, (ValueError, json.JSONDecodeError))):
+                    raise
+                time.sleep(delay)
+
+        raise last_error or RuntimeError("Gemini generation failed")
     except HTTPException:
         raise
     except Exception as exc:
         message = re.sub(r"AIza[\w-]+", "[redacted]", str(exc))
-        raise HTTPException(status_code=502, detail=f"Gemini generation failed: {message}") from exc
+        status_code = 429 if "429" in message or "RESOURCE_EXHAUSTED" in message.upper() else 502
+        raise HTTPException(status_code=status_code, detail=f"Gemini generation failed: {message}") from exc

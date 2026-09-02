@@ -276,7 +276,7 @@
             <div class="dev-header-actions">
                 <button type="button" onclick="openExplanationFromDeveloper()" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">View Explanation</button>
                 <button class="mode-switch-btn" type="button" onclick="openUserPreviewFromDeveloper()">Apply + Open User View</button>
-                <button class="btn-save" type="button" onclick="updateUserView(true)">Apply and Update View</button>
+                <button class="btn-save" type="button" onclick="applyAndUpdateUserView(this)">Apply and Update View</button>
             </div>
         </header>
 
@@ -1354,10 +1354,10 @@
             const normalizedTarget = normalizeDateKey(setDate);
             const testTypeToCheck = filterTestType || currentTestType;
             try {
-                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
-                    const records = await toeflStorage.getSetRecords();
+                if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
+                    const records = await toeflStorage.getSetRecordsByTestType(testTypeToCheck);
                     const match = (records || [])
-                        .filter((item) => item && item.module === MODULE_ID && normalizeDateKey(item.setDate) === normalizedTarget && item.testType === testTypeToCheck)
+                        .filter((item) => item && item.module === MODULE_ID && normalizeDateKey(item.setDate) === normalizedTarget)
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
                     if (match) return match;
                 }
@@ -1389,8 +1389,8 @@
 
         async function resolveLatestSetRecord() {
             try {
-                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
-                    const records = await toeflStorage.getSetRecords();
+                if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
+                    const records = await toeflStorage.getSetRecordsByTestType(currentTestType);
                     const latest = (records || [])
                         .filter((item) => item && item.module === MODULE_ID)
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
@@ -1581,8 +1581,8 @@
             }
 
             try {
-                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function" && typeof toeflStorage.getDraftBySetId === "function") {
-                    const records = await toeflStorage.getSetRecords();
+                if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function" && typeof toeflStorage.getDraftBySetIdAndType === "function") {
+                    const records = await toeflStorage.getSetRecordsByTestType(currentTestType);
                     const ordered = (records || [])
                         .filter((item) => item && item.module === MODULE_ID && item.setId)
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
@@ -1602,8 +1602,8 @@
         }
 
         async function findLatestSetWithAudio(partId = 1) {
-            if (!window.toeflStorage || typeof toeflStorage.getSetRecords !== "function") return null;
-            const records = await toeflStorage.getSetRecords();
+            if (!window.toeflStorage || typeof toeflStorage.getSetRecordsByTestType !== "function") return null;
+            const records = await toeflStorage.getSetRecordsByTestType(currentTestType);
             const ordered = (records || [])
                 .filter((item) => item && item.module === MODULE_ID && item.setId)
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime());
@@ -4445,22 +4445,23 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
         async function generateExplanationSchemaFromPayload(payload) {
             if (!payload || !payload.isolated_transcript_block) return null;
-            const request = await fetchAiWithFallback("/api/toefl-explanation-json", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            const response = request && request.response;
-            if (!response || !response.ok) return null;
-
-            try {
-                const data = await response.json();
-                if (!data || !data.explanation_payload) return null;
-                return data;
-            } catch {
-                return null;
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+                const request = await fetchAiWithFallback("/api/toefl-explanation-json", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const response = request && request.response;
+                if (response && response.ok) {
+                    try {
+                        const data = await response.json();
+                        if (data && data.explanation_payload) return data;
+                    } catch {}
+                }
+                if (!response || (response.status !== 429 && response.status !== 502 && response.status !== 503)) return null;
+                await new Promise((resolve) => setTimeout(resolve, 2000 * (attempt + 1)));
             }
+            return null;
         }
 
         async function precomputeExplanationSchemasForResult(result) {
@@ -4480,6 +4481,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const num = Number(item?.number || 0);
                 if (num) questionsByNum[num] = item;
             });
+            const failedQuestionNumbers = [];
 
             for (let i = 0; i < result.questions.length; i += 1) {
                 const rq = result.questions[i] || {};
@@ -4495,12 +4497,16 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const payload = await compileActiveExplanationPayloadForQuestion(fullSetDraft, questionItem, rq);
                 if (!payload) continue;
                 const schema = await generateExplanationSchemaFromPayload(payload);
-                if (!schema) continue;
+                if (!schema) {
+                    failedQuestionNumbers.push(qNum);
+                    continue;
+                }
                 rq.explanationSchema = JSON.stringify(schema);
                 if (fullSetDraft.parts[partId]) {
                     fullSetDraft.parts[partId].explanationSchemas = fullSetDraft.parts[partId].explanationSchemas || {};
                     fullSetDraft.parts[partId].explanationSchemas[qNum] = schema;
                 }
+                await new Promise((resolve) => setTimeout(resolve, 500));
             }
 
             await toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, fullSetDraft, currentTestType);
@@ -4509,6 +4515,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 if (partData?.explanationSchemas) schemasByPart[partId] = partData.explanationSchemas;
             });
             await savePublishedExplanationSchemas(currentSetId, schemasByPart);
+            if (failedQuestionNumbers.length) {
+                throw new Error(`Gemini explanation generation failed for questions ${failedQuestionNumbers.join(", ")}. Apply again to retry only these questions.`);
+            }
 
             return result;
         }
@@ -4534,7 +4543,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                         kind: "schema-refresh"
                     }));
                 }
-            } catch (_) {}
+            } catch (error) {
+                throw error;
+            }
         }
 
         async function openExplanationFromDeveloper() {
@@ -4603,6 +4614,27 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const nextPartId = Number(match[1]);
             if (!PARTS.some((part) => Number(part.id) === nextPartId)) return null;
             return nextPartId;
+        }
+
+        let applyUpdateInProgress = false;
+
+        async function applyAndUpdateUserView(button) {
+            if (applyUpdateInProgress) return;
+            applyUpdateInProgress = true;
+            const originalText = button?.textContent || "Apply and Update View";
+            if (button) {
+                button.disabled = true;
+                button.textContent = "Generating explanations...";
+            }
+            try {
+                await updateUserView(true);
+            } finally {
+                applyUpdateInProgress = false;
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = originalText;
+                }
+            }
         }
 
         async function updateUserView(shouldSaveMeta = false, options = {}) {
@@ -4826,7 +4858,10 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                         setId: String(currentSetId || ""),
                         setDate: String((document.getElementById("set-date") || {}).value || "")
                     }));
-                } catch (_) {}
+                } catch (error) {
+                    console.error("[AI Explanation] Automatic generation failed:", error);
+                    alert(String(error?.message || "Automatic explanation generation failed. Apply again to retry."));
+                }
             }
         }
 
