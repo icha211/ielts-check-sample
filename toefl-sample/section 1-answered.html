@@ -2514,7 +2514,7 @@
             return deduped;
         }
 
-        function renderTranscriptCards(question) {
+        function renderTranscriptCards(question, highlightTerms) {
             var host = document.getElementById('transcript-cards-container');
             if (!host) return;
 
@@ -2528,6 +2528,7 @@
             // map each question to its conversation group, while Part A maps to its
             // three speaker lines.
             var activeSegments = questionSegments;
+            var terms = Array.isArray(highlightTerms) ? highlightTerms : reviewTranscriptHighlightTerms;
             var hasEstimatedTiming = activeSegments.some(function(seg) { return !String((seg || {}).timestamp || '').trim(); });
             var sharedQuestionPlaybackRange = null;
             if (partId === 1 && reviewTranscriptViewMode === 'question' && activeSegments.length) {
@@ -2586,7 +2587,7 @@
                     var fSpeakerTag = normalizeSpeakerTag(fSeg.speaker || 'NARR');
                     var fSpeakerLabel = escapeHtml(String(fSeg.speakerLabel || '').trim() || getTranscriptSpeakerLabel(fSpeakerTag, partId));
                     var fRawText = String(fSeg.text || '').trim().replace(/^["\u201c\u201d]+|["\u201c\u201d]+$/g, '').trim();
-                    var fText = escapeHtml(fRawText);
+                    var fText = renderTranscriptTextWithMarks(fRawText, terms);
                     var fCardKey = ['flow', String(fSpeakerTag), String(fStart), String(fSeg.timestamp || ''), String(fSeg.text || '')].join('|');
                     var fEncodedCardKey = encodeURIComponent(fCardKey);
                     var fIsActive = reviewActiveTranscriptKey === fCardKey;
@@ -3554,6 +3555,8 @@
         function renderExplainationTabDetail(question, explanation, correctLtr) {
             var host = document.getElementById('explainationTabContent');
             if (!host) return;
+            var highlightTerms = buildHighlightTermsFromAnswer((question && question.options && question.options[correctLtr]) || '');
+            reviewTranscriptHighlightTerms = highlightTerms;
             var schema = buildExplanationSchemaFromQuestion(question, explanation, correctLtr);
             host.innerHTML = renderExplanationFromSchema(schema);
         }
@@ -3570,6 +3573,8 @@
             var optionD = sanitizeFigmaOptionText(options.D || 'How to pay for expensive journal subscriptions.');
             var correctLtr = String(q.correctAnswer || '').trim().toUpperCase() || 'A';
             var bestAnswerText = sanitizeFigmaOptionText(options[correctLtr] || '');
+            var highlightTerms = buildHighlightTermsFromAnswer(bestAnswerText);
+            reviewTranscriptHighlightTerms = highlightTerms;
             var partId = inferPartIdFromQuestion(q);
             var qSegments = getQuestionTranscriptSegments(q);
             var studentSeg = getFirstSpeakerSegment(qSegments, partId === 2 ? 'MEN' : 'MEN');
@@ -3662,6 +3667,7 @@
 
         var reviewCurrentQuestion = null;
         var reviewAiGenerating = false;
+        var reviewTranscriptHighlightTerms = [];
 
         function isStructuredThreeStepExplanation(text) {
             var raw = String(text || '');
@@ -3988,7 +3994,11 @@
                 persistExplanationTranslationToResult(question.number, question.explanationId, true);
 
                 var translatedExplanation = parseExplanationSegments(question.explanationId);
-                renderExplainationTabDetail(question, translatedExplanation, String(question.correctAnswer || 'B').trim().toUpperCase() || 'B');
+                var correctAnswer = String(question.correctAnswer || 'B').trim().toUpperCase() || 'B';
+                var highlightTerms = buildHighlightTermsFromAnswer(question.options[correctAnswer] || '');
+                reviewTranscriptHighlightTerms = highlightTerms;
+                renderExplainationTabDetail(question, translatedExplanation, correctAnswer);
+                renderTranscriptCards(question, highlightTerms);
                 reviewDetailSteps = buildDetailSteps(question, translatedExplanation);
                 reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
                 renderDetailSteps();
@@ -4024,6 +4034,9 @@
 
             var detailSub = document.getElementById('detailSub');
             if (detailSub) detailSub.textContent = 'Why ' + (correctLtr||'B') + ' is correct? Proof Transcribe';
+            var highlightTerms = buildHighlightTermsFromAnswer(q.options[correctLtr] || '');
+            reviewTranscriptHighlightTerms = highlightTerms;
+            
             var schemaRendered = false;
             try {
                 if (q.explanationSchema) {
@@ -4047,7 +4060,7 @@
             reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
             renderDetailSteps();
             updateTranslateButtonState(q);
-            renderTranscriptCards(q);
+            renderTranscriptCards(q, highlightTerms);
             loadAudioForQuestion(q);
 
             if (reviewResultData && Array.isArray(reviewResultData.questions)) {
