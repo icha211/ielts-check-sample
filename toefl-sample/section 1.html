@@ -1035,6 +1035,7 @@
                             audio_firebase: partData?.audio_firebase || "",
                             answerKey: partData?.answerKey || "",
                             explanation: partData?.explanation || "",
+                            explanationSchemas: partData?.explanationSchemas && typeof partData.explanationSchemas === "object" ? partData.explanationSchemas : {},
                             questions: partData?.questions || "",
                             transcripts: partData?.transcripts || "",
                             transcriptSegments: Array.isArray(partData?.transcriptSegments) ? partData.transcriptSegments : [],
@@ -1070,6 +1071,29 @@
                 console.warn("[ListeningData] Failed to save to Firebase:", error);
             }
             return false;
+        }
+
+        async function savePublishedExplanationSchemas(setId, schemasByPart) {
+            const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
+            if (!firebaseUrl || !setId) return;
+
+            const updates = {};
+            Object.entries(schemasByPart || {}).forEach(([partId, schemas]) => {
+                updates[`parts/${partId}/explanationSchemas`] = schemas || {};
+            });
+            if (!Object.keys(updates).length) return;
+
+            await Promise.all([
+                `toefl_itp/sets_v2/${setId}`,
+                `toefl_itp/drafts_v2/${setId}`
+            ].map(async (path) => {
+                const response = await fetch(`${firebaseUrl}/${path}.json`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(updates)
+                });
+                if (!response.ok) throw new Error(`Explanation schema publish failed (${response.status})`);
+            }));
         }
 
         // Fetch complete listening data from Firebase RTDB
@@ -2672,6 +2696,7 @@
                     questions: questionInputValue,
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
                     explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || "",
+                    explanationSchemas: existingDraft.parts?.[p]?.explanationSchemas || {},
                     transcript: transcriptValue,
                     transcriptSegments: Array.isArray(existingDraft.parts?.[p]?.transcriptSegments) ? existingDraft.parts[p].transcriptSegments : [],
                     questionAudio: existingDraft.parts?.[p]?.questionAudio && typeof existingDraft.parts[p].questionAudio === "object" ? existingDraft.parts[p].questionAudio : {},
@@ -2700,7 +2725,7 @@
 
                 currentSetId = setId;
 
-                toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType).catch((error) => console.warn("[ToeflSync] draft save failed:", error));
+                await toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType).catch((error) => console.warn("[ToeflSync] draft save failed:", error));
 
                 // Also save complete listening data to Firebase RTDB with audio URLs and content
                 const cloudflareFolder = folderUrl;
@@ -2725,6 +2750,7 @@
                         audio_firebase: firebaseUrl,
                         answerKey: draft.parts[p]?.answerKey || "",
                         explanation: draft.parts[p]?.explanation || "",
+                        explanationSchemas: draft.parts[p]?.explanationSchemas || {},
                         questions: draft.parts[p]?.questions || "",
                         transcripts: draft.parts[p]?.transcript || "",
                         transcriptSegments: draft.parts[p]?.transcriptSegments || [],
@@ -2776,6 +2802,7 @@
                                 questions: partData?.questions || "",
                                 answerKey: partData?.answerKey || "",
                                 explanation: partData?.explanation || "",
+                                explanationSchemas: partData?.explanationSchemas && typeof partData.explanationSchemas === "object" ? partData.explanationSchemas : {},
                                 transcript: partData?.transcripts || "",
                                 transcriptSegments: Array.isArray(partData?.transcriptSegments) ? partData.transcriptSegments : [],
                                 questionAudio: partData?.questionAudio && typeof partData.questionAudio === "object" ? partData.questionAudio : {},
@@ -2832,6 +2859,7 @@
 
             if (!draft || typeof draft !== "object" || !draft.parts) return;
             if (!hasListeningDraftContent(draft)) return;
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
             applyDraftToEditorInputs(draft);
         }
 
@@ -4282,6 +4310,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     userAnswer: correct,
                     isCorrect: Boolean(correct),
                     explanation: String(globalExplanations[uid] || ""),
+                    explanationSchema: savedDraft.parts?.[partId]?.explanationSchemas?.[qNum]
+                        ? JSON.stringify(savedDraft.parts[partId].explanationSchemas[qNum])
+                        : "",
                     questionAudio: questionAudio,
                     questionAudioUrl: String(questionAudio?.url || ""),
                     questionAudioObjectKey: String(questionAudio?.objectKey || ""),
@@ -4313,23 +4344,40 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         function buildAiEndpointCandidates(path) {
             const params = new URLSearchParams(window.location.search || "");
             const port = String(params.get("aiPort") || localStorage.getItem("ai_review_port") || "8787");
-            const hosts = [];
+            const endpoints = [];
 
-            function pushHost(value) {
-                const host = String(value || "").trim();
-                if (!host) return;
-                if (hosts.includes(host)) return;
-                hosts.push(host);
+            function pushEndpoint(value) {
+                const endpoint = String(value || "").trim();
+                if (!endpoint || endpoints.includes(endpoint)) return;
+                endpoints.push(endpoint);
             }
 
-            pushHost(params.get("aiHost"));
-            pushHost(localStorage.getItem("ai_review_host"));
-            pushHost(localStorage.getItem("toefl_storage_server_host"));
-            pushHost(window.location.hostname);
-            pushHost("127.0.0.1");
-            pushHost("localhost");
+            function pushLocalHost(value) {
+                const host = String(value || "").trim();
+                if (!host) return;
+                pushEndpoint(`http://${host}:${port}${path}`);
+            }
 
-            return hosts.map((host) => `http://${host}:${port}${path}`);
+            const gatewayBase = String(
+                localStorage.getItem("toefl_api_gateway_url") ||
+                window.__TOEFL_API_GATEWAY_URL__ ||
+                "https://ielts-api-gateway-753959270698.asia-southeast1.run.app"
+            ).replace(/\/+$/, "");
+            const isSecurePage = window.location.protocol === "https:";
+
+            if (isSecurePage) {
+                pushEndpoint(`${gatewayBase}${path}`);
+            } else {
+                pushLocalHost(params.get("aiHost"));
+                pushLocalHost(localStorage.getItem("ai_review_host"));
+                pushLocalHost(localStorage.getItem("toefl_storage_server_host"));
+                pushLocalHost(window.location.hostname);
+                pushLocalHost("127.0.0.1");
+                pushLocalHost("localhost");
+                pushEndpoint(`${gatewayBase}${path}`);
+            }
+
+            return endpoints;
         }
 
         async function fetchAiWithFallback(path, init) {
@@ -4374,13 +4422,15 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             if (!questionNumber) return null;
 
             const partId = Number((resultQuestion && resultQuestion.partId) || (questionItem && questionItem.partId) || 0);
-            const transcripts = (fullSetDraft && fullSetDraft.transcripts) || {};
-            const transcriptText = String(transcripts[`part_${partId}`] || "");
-            const isolated = extractIsolatedQuestionBlock(transcriptText, questionNumber);
+            const segments = Array.isArray(resultQuestion?.transcriptSegments) ? resultQuestion.transcriptSegments : [];
+            const isolated = segments.map((segment) => {
+                const label = String(segment?.speakerLabel || segment?.speaker || "Narrator").trim();
+                const text = String(segment?.text || "").trim();
+                return text ? `${label}: ${text}` : "";
+            }).filter(Boolean).join("\n");
             if (!isolated) return null;
 
-            const answerKey = (fullSetDraft && fullSetDraft.answerKey) || {};
-            const correct = String(answerKey[questionNumber] || answerKey[String(questionNumber)] || (resultQuestion && resultQuestion.correctAnswer) || "").trim().toUpperCase();
+            const correct = String((resultQuestion && resultQuestion.correctAnswer) || "").trim().toUpperCase();
             const user = String((resultQuestion && resultQuestion.userAnswer) || "").trim().toUpperCase();
 
             return {
@@ -4415,7 +4465,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
         async function precomputeExplanationSchemasForResult(result) {
             if (!result || !Array.isArray(result.questions) || !result.questions.length) return result;
-            if (!window.toeflStorage || !currentSetId || typeof toeflStorage.getDraftBySetId !== "function") return result;
+            if (!window.toeflStorage || !currentSetId || typeof toeflStorage.saveDraftBySetIdAndType !== "function") return result;
 
             let fullSetDraft = null;
             try {
@@ -4423,27 +4473,42 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             } catch {
                 fullSetDraft = null;
             }
-            if (!fullSetDraft || !Array.isArray(fullSetDraft.questions)) return result;
+            if (!fullSetDraft || !fullSetDraft.parts) return result;
 
             const questionsByNum = {};
-            for (let i = 0; i < fullSetDraft.questions.length; i += 1) {
-                const item = fullSetDraft.questions[i] || {};
-                const num = Number(item.num || item.number || 0);
-                if (!num) continue;
-                questionsByNum[num] = item;
-            }
+            result.questions.forEach((item) => {
+                const num = Number(item?.number || 0);
+                if (num) questionsByNum[num] = item;
+            });
 
             for (let i = 0; i < result.questions.length; i += 1) {
                 const rq = result.questions[i] || {};
                 const qNum = Number(rq.number || 0);
                 if (!qNum) continue;
+                const partId = Number(rq.partId || 0);
+                const savedSchema = fullSetDraft.parts?.[partId]?.explanationSchemas?.[qNum];
+                if (savedSchema && savedSchema.explanation_payload) {
+                    rq.explanationSchema = JSON.stringify(savedSchema);
+                    continue;
+                }
                 const questionItem = questionsByNum[qNum] || null;
                 const payload = await compileActiveExplanationPayloadForQuestion(fullSetDraft, questionItem, rq);
                 if (!payload) continue;
                 const schema = await generateExplanationSchemaFromPayload(payload);
                 if (!schema) continue;
                 rq.explanationSchema = JSON.stringify(schema);
+                if (fullSetDraft.parts[partId]) {
+                    fullSetDraft.parts[partId].explanationSchemas = fullSetDraft.parts[partId].explanationSchemas || {};
+                    fullSetDraft.parts[partId].explanationSchemas[qNum] = schema;
+                }
             }
+
+            await toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, fullSetDraft, currentTestType);
+            const schemasByPart = {};
+            Object.entries(fullSetDraft.parts || {}).forEach(([partId, partData]) => {
+                if (partData?.explanationSchemas) schemasByPart[partId] = partData.explanationSchemas;
+            });
+            await savePublishedExplanationSchemas(currentSetId, schemasByPart);
 
             return result;
         }
@@ -4540,7 +4605,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             return nextPartId;
         }
 
-        function updateUserView(shouldSaveMeta = false, options = {}) {
+        async function updateUserView(shouldSaveMeta = false, options = {}) {
             const { preferEditedPart = true } = options || {};
             if (shouldHydrateEditorFromFallbackDraft()) {
                 hydrateEditorInputsFromLocalDraftIfEmpty();
@@ -4557,8 +4622,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             }
 
             if (shouldSaveMeta) {
-                saveSectionMeta().catch(() => {});
-                saveSectionDraft().catch(() => {});
+                await saveSectionMeta().catch(() => {});
+                await saveSectionDraft().catch(() => {});
             }
 
             const scoreBoard = document.getElementById("global-score-board");
@@ -4755,8 +4820,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
             if (shouldSaveMeta) {
                 try {
-                    persistPreviewSectionResult();
-                    persistPreviewSectionResultWithSchemas();
+                    await persistPreviewSectionResultWithSchemas();
                     localStorage.setItem(EDITOR_APPLY_SYNC_KEY, JSON.stringify({
                         at: new Date().toISOString(),
                         setId: String(currentSetId || ""),
@@ -4839,6 +4903,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     userAnswer,
                     isCorrect: userAnswer === correct,
                     explanation: globalExplanations[uid] || "",
+                    explanationSchema: savedDraft.parts?.[pId]?.explanationSchemas?.[qNum]
+                        ? JSON.stringify(savedDraft.parts[pId].explanationSchemas[qNum])
+                        : "",
                     questionAudio: questionAudio,
                     questionAudioUrl: String(questionAudio?.url || ""),
                     questionAudioObjectKey: String(questionAudio?.objectKey || ""),

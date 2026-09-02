@@ -3928,67 +3928,6 @@
             label.textContent = hasBaseExplanation ? 'Translate ID' : 'Translate ID';
         }
 
-        async function triggerAiExplanation() {
-            var question = reviewCurrentQuestion;
-            if (!question) return;
-
-            if (reviewAiGenerating) return;
-            reviewAiGenerating = true;
-            var btn = document.getElementById('aiGenExplanationBtn');
-            var label = document.getElementById('aiGenBtnLabel');
-            if (btn) { btn.disabled = true; btn.classList.add('loading'); }
-            if (label) label.textContent = 'Generating�';
-
-            try {
-                var payload = await compileActiveExplanationPayload(reviewSetId, Number(question.number || 0), String(question.userAnswer || '').trim().toUpperCase());
-                if (!payload || !String(payload.isolated_transcript_block || '').trim()) {
-                    throw new Error('No isolated transcript block found between <Question ' + String(question.number || '') + '> and </Question ' + String(question.number || '') + '>.');
-                }
-
-                var requestResult = await fetchAiWithFallback('/api/toefl-explanation-json', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                var resp = requestResult.response;
-
-                if (!resp.ok) {
-                    var errJson = {};
-                    try { errJson = await resp.json(); } catch(_) {}
-                    throw new Error(errJson.error || ('Server error ' + resp.status));
-                }
-
-                var schema = {};
-                try { schema = await resp.json(); } catch (_) { schema = {}; }
-                if (!schema || !schema.explanation_payload) throw new Error('Invalid explanation schema from AI server');
-
-                question.explanationSchema = JSON.stringify(schema);
-                question.explanationId = '';
-                question.showBahasaExplanation = false;
-                persistExplanationSchemaToResult(question.number, schema);
-                persistExplanationTranslationToResult(question.number, '', false);
-
-                var host = document.getElementById('explainationTabContent');
-                if (host) host.innerHTML = renderExplanationFromSchema(schema);
-
-                var explanation = parseExplanationSegments((schema.explanation_payload && schema.explanation_payload.main_explanation_html) || '');
-                reviewDetailSteps = buildDetailSteps(question, explanation);
-                reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
-                renderDetailSteps();
-                updateTranslateButtonState(question);
-
-                if (label) label.textContent = 'Regenerate AI';
-            } catch (err) {
-                if (label) label.textContent = 'Generate AI';
-                console.error('[AI Explanation]', err);
-                alert('AI explanation failed: ' + String(err.message || err));
-            } finally {
-                reviewAiGenerating = false;
-                if (btn) { btn.disabled = false; btn.classList.remove('loading'); }
-                updateTranslateButtonState(question);
-            }
-        }
-
         var reviewAiTranslating = false;
 
         async function triggerTranslateExplanation() {
@@ -4018,11 +3957,8 @@
             }
 
             if (!String(question.explanation || '').trim()) {
-                await triggerAiExplanation();
-                if (!String(question.explanation || '').trim()) {
-                    updateTranslateButtonState(question);
-                    return;
-                }
+                updateTranslateButtonState(question);
+                return;
             }
 
             reviewAiTranslating = true;

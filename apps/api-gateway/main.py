@@ -6,6 +6,7 @@ from routes.chat import router as chat_router
 from routes.evaluation import router as evaluation_router
 from routes.health import router as health_router
 from routes.developer import router as developer_router
+from routes.explanation import router as explanation_router
 
 
 DEFAULT_ALLOWED_ORIGINS = [
@@ -21,9 +22,7 @@ def create_app() -> FastAPI:
         debug=settings.debug,
     )
 
-    allowed_origins = parse_cors_origins(settings.cors_origins)
-    if not allowed_origins:
-        allowed_origins = DEFAULT_ALLOWED_ORIGINS
+    allowed_origins = parse_cors_origins(settings.cors_origins) or DEFAULT_ALLOWED_ORIGINS
 
     app.add_middleware(
         CORSMiddleware,
@@ -38,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router, prefix=settings.api_prefix)
     app.include_router(evaluation_router, prefix=settings.api_prefix)
     app.include_router(developer_router, prefix=settings.api_prefix)
+    app.include_router(explanation_router, prefix=settings.api_prefix)
 
     return app
 
