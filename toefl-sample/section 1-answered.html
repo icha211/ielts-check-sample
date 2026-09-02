@@ -3470,6 +3470,25 @@
             return blocks;
         }
 
+        function applyUserAnswerStateToSchema(schema, question) {
+            var model = schema || {};
+            var q = question || {};
+            var userLetter = String(q.userAnswer || '').trim().toUpperCase();
+            var correctLetter = String(q.correctAnswer || '').trim().toUpperCase();
+
+            model.question_metadata = model.question_metadata || {};
+            model.question_metadata.user_was_correct = Boolean(userLetter && userLetter === correctLetter);
+
+            var statuses = Array.isArray(model.options_status) ? model.options_status : [];
+            for (var i = 0; i < statuses.length; i += 1) {
+                var letter = String((statuses[i] || {}).letter || '').trim().toUpperCase();
+                statuses[i].is_correct_choice = letter === correctLetter;
+                statuses[i].is_user_answer = Boolean(userLetter && letter === userLetter);
+            }
+            model.options_status = statuses;
+            return model;
+        }
+
         function renderExplanationFromSchema(schema) {
             var model = schema || {};
             var meta = model.question_metadata || {};
@@ -3507,11 +3526,12 @@
                 html += '<div class="' + markerClass + '"><span class="option-marker">' + escapeHtml(String(item.letter || '')) + '</span></div>';
                 html += '<div class="explaination-figma-option-text option-answer-d"><span class="option-text">' + escapeHtml(String(item.text || '')) + '</span></div>';
 
-                if (item.is_user_answer && !item.is_correct_choice) {
-                    html += '<div class="explaination-figma-your-answer is-wrong"><span class="your-answer">Your Answer ?</span></div>';
-                }
-                if (item.is_correct_choice) {
-                    html += '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">Correct Answer ?</span></div>';
+                if (item.is_user_answer && item.is_correct_choice) {
+                    html += '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">Your Answer</span><i class="ti ti-check" aria-hidden="true"></i></div>';
+                } else if (item.is_user_answer) {
+                    html += '<div class="explaination-figma-your-answer is-wrong"><span class="your-answer">Your Answer</span><i class="ti ti-x" aria-hidden="true"></i></div>';
+                } else if (item.is_correct_choice) {
+                    html += '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">Correct Answer</span><i class="ti ti-check" aria-hidden="true"></i></div>';
                 }
 
                 html += '</div>';
@@ -4033,6 +4053,7 @@
                 if (q.explanationSchema) {
                     var parsedSchema = JSON.parse(String(q.explanationSchema || '{}'));
                     if (parsedSchema && parsedSchema.explanation_payload) {
+                        parsedSchema = applyUserAnswerStateToSchema(parsedSchema, q);
                         parsedSchema.explanation_payload.dialogue_blocks = buildFreshDialogueBlocksForQuestion(
                             q,
                             parsedSchema.explanation_payload.dialogue_blocks
