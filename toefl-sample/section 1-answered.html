@@ -3404,6 +3404,8 @@
             }
 
             var partId = inferPartIdFromQuestion(q);
+            var correctLtr = String(q.correctAnswer || '').trim().toUpperCase();
+            var highlightTerms = buildHighlightTermsFromAnswer((q.options || {})[correctLtr] || '');
             var picks = [];
 
             if (partId === 2) {
@@ -3438,7 +3440,7 @@
                     introduction_label: String(prevBlock.introduction_label || ('The ' + speakerName + ' says:')),
                     speaker_name: speakerName,
                     speaker_gender: gender,
-                    quote_text_html: '&ldquo;' + escapeHtml(String(picked.text || '')) + '&rdquo;',
+                    quote_text_html: '&ldquo;' + renderTranscriptTextWithMarks(String(picked.text || ''), highlightTerms) + '&rdquo;',
                     start_sec: Number(picked.start || 0),
                     end_sec: Number(picked.end || (Number(picked.start || 0) + 8))
                 });
