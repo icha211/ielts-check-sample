@@ -1468,6 +1468,16 @@
                     continue;
                 }
 
+                var standaloneQuestion = line.match(/^\s*(\d{1,2})\s*[.)]?\s*$/);
+                if (standaloneQuestion) {
+                    var standaloneQuestionNumber = Number(standaloneQuestion[1] || 0);
+                    if (standaloneQuestionNumber >= 1 && standaloneQuestionNumber <= 50) {
+                        currentQuestion = standaloneQuestionNumber;
+                        ensureBucket(currentQuestion);
+                        continue;
+                    }
+                }
+
                 var rangeMatch = line.match(/^(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)\s*-\s*(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?)/);
                 if (rangeMatch) {
                     pendingTimestamp = String(rangeMatch[1] || '');
@@ -1508,6 +1518,13 @@
                     pendingTimestamp = '';
                     pendingStart = 0;
                     pendingEnd = 0;
+                    continue;
+                }
+
+                if (/^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)\s*:/i.test(line)) {
+                    var plainLine = parseTranscriptSpeakerLine(line);
+                    var estimatedStart = Array.isArray(map[0]) ? map[0].length * 8 : 0;
+                    pushSegment(currentQuestion, '', estimatedStart, estimatedStart + 8, plainLine.speaker, plainLine.text, plainLine.speakerLabel);
                 }
             }
 
@@ -2505,13 +2522,12 @@
             var partId = inferPartIdFromQuestion(question);
             if (partId === 1) reviewTranscriptViewMode = 'question';
             var questionSegments = getQuestionTranscriptSegments(question);
-            // Part B/C audio + transcript is scoped per conversation group (e.g. 31-34,
-            // 35-38), not per whole part, so "full" view must stay group-scoped too —
-            // otherwise it always shows the first group's dialogue for every question.
-            var fullSegments = partId === 1 ? getPartTranscriptSegments(question) : questionSegments;
             var questionBoundary = ((reviewQuestionBoundaryMapByPart[partId] || {})[qNumber]) || null;
 
-            var activeSegments = reviewTranscriptViewMode === 'question' ? questionSegments : fullSegments;
+            // Review transcripts are always scoped to the active question. Parts B/C
+            // map each question to its conversation group, while Part A maps to its
+            // three speaker lines.
+            var activeSegments = questionSegments;
             var hasEstimatedTiming = activeSegments.some(function(seg) { return !String((seg || {}).timestamp || '').trim(); });
             var sharedQuestionPlaybackRange = null;
             if (partId === 1 && reviewTranscriptViewMode === 'question' && activeSegments.length) {
@@ -2541,11 +2557,10 @@
 
             html += '<div class="transcript-modern-panel content-container">';
 
-            var useFlowLayout = partId !== 1;
-            html += '<div class="transcript-modern-list' + (useFlowLayout ? ' transcript-modern-list--flow' : '') + '">';
+            html += '<div class="transcript-modern-list transcript-modern-list--flow">';
             if (!activeSegments.length) { 
                 html += '';
-            } else if (useFlowLayout) {
+            } else {
                 var lastSpeakerTag = null;
                 for (var fi = 0; fi < activeSegments.length; fi += 1) {
                     var fSeg = activeSegments[fi] || {};
@@ -2581,45 +2596,6 @@
                     html += '<p class="transcript-modern-paragraph' + (fIsActive ? ' is-active' : '') + '"' + (sharedQuestionPlaybackRange ? '' : ' onclick="playTranscriptSegmentFromCard(\'' + fEncodedCardKey + '\',' + fPlayStart + ',' + fPlayEnd + ')"') + '>';
                     if (fShowLabel) html += '<span class="transcript-modern-speaker-label">' + fSpeakerLabel + ':</span> ';
                     html += fText + '</p>';
-                }
-            } else {
-                for (var i = 0; i < activeSegments.length; i += 1) {
-                    var seg = activeSegments[i] || {};
-                    var start = Number(seg.start || 0);
-
-                    var end = Number(seg.end || (start + 8));
-                    if (questionBoundary && reviewTranscriptViewMode === 'question') {
-                        if (start < questionBoundary.startFloat) start = questionBoundary.startFloat;
-                        if (end > questionBoundary.endFloat) end = questionBoundary.endFloat;
-                    }
-                    if (!(end > start)) end = start + 0.2;
-
-                    var playStart = start;
-                    var playEnd = end;
-                    if (sharedQuestionPlaybackRange) {
-                        playStart = Number(sharedQuestionPlaybackRange.start || start);
-                        playEnd = Number(sharedQuestionPlaybackRange.end || end);
-                        if (!(playEnd > playStart)) {
-                            playStart = start;
-                            playEnd = end;
-                        }
-                    }
-
-                    var ts = escapeHtml(seg.timestamp || fmtTime(start));
-                    var speakerClass = getTranscriptSpeakerClass(seg.speaker || 'NARR');
-                    var speakerLabel = escapeHtml(String(seg.speakerLabel || '').trim() || getTranscriptSpeakerLabel(seg.speaker || 'NARR', partId));
-                    var text = escapeHtml(seg.text || '');
-                    var cardKey = [String(speakerClass), String(start), String(seg.timestamp || ''), String(seg.text || '')].join('|');
-                    var encodedCardKey = encodeURIComponent(cardKey);
-                    var isActive = reviewActiveTranscriptKey === cardKey;
-                    var legacyClass = speakerClass === 'men' ? 'second-speaker' : (speakerClass === 'women' ? 'thrid-speaker' : 'first-speaker');
-                    var itemClasses = 'transcript-modern-item transcript-modern-item--' + speakerClass + ' ' + legacyClass + (isActive ? ' is-active' : '') + (sharedQuestionPlaybackRange ? ' transcript-modern-item--static' : '');
-                    html += '<article class="' + itemClasses + '"' + (sharedQuestionPlaybackRange ? '' : ' onclick="playTranscriptSegmentFromCard(\'' + encodedCardKey + '\',' + playStart + ',' + playEnd + ')"') + '>';
-                    html += '<div class="transcript-modern-item-head">';
-                    html += '<div class="transcript-modern-item-speaker">' + (sharedQuestionPlaybackRange ? '' : '<button type="button" class="transcript-modern-play-btn" aria-label="Play transcript segment" onclick="event.stopPropagation();playTranscriptSegmentFromCard(\'' + encodedCardKey + '\',' + playStart + ',' + playEnd + ')"><i class="ph-fill ph-play" aria-hidden="true"></i></button>') + '<i class="ph ph-user transcript-modern-item-user" aria-hidden="true"></i><span>' + speakerLabel + '</span></div>';
-                    html += '</div>';
-                    html += '<div class="transcript-modern-item-body">' + text + '</div>';
-                    html += '</article>';
                 }
             }
             html += '</div>';
