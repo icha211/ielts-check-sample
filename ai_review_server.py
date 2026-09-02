@@ -470,8 +470,11 @@ You are given:
 STRICT RULES:
 - Use ONLY evidence inside isolated_transcript_block.
 - No hallucination, no generic placeholders, no unrelated dialogue.
-- Inject highlight tags exactly as:
+- Use this yellow mark tag ONLY around a short exact phrase quoted from isolated_transcript_block:
     <mark style=\"background-color: #FFDE00; color: #000000; font-weight: 500;\">...<\/mark>
+- Use <strong>...</strong> only for one or two important explanatory words that are NOT transcript quotations.
+- Do not use yellow marks for paraphrases, answer-option wording, or general explanation prose.
+- Use yellow marks sparingly: at most two decisive transcript phrases per explanation.
 - Output VALID JSON ONLY. No markdown fences.
 
 INPUT:

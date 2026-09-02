@@ -3332,6 +3332,24 @@
             return html;
         }
 
+        function getSchemaTranscriptHighlightTerms(schema, answerText) {
+            var payload = (schema && schema.explanation_payload) || {};
+            var source = String(payload.main_explanation_html || '');
+            var phrases = [];
+            var match;
+            var markRegex = /<mark\b[^>]*>([\s\S]*?)<\/mark>/gi;
+            while ((match = markRegex.exec(source))) {
+                var phrase = String(match[1] || '').replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').replace(/\s+/g, ' ').trim();
+                if (phrase && phrases.indexOf(phrase) === -1) phrases.push(phrase);
+            }
+            return phrases.length ? phrases : buildHighlightTermsFromAnswer(answerText);
+        }
+
+        function renderExplanationContent(html) {
+            return String(html || '')
+                .replace(/<strong(?![^>]*\bstyle=)/gi, '<strong style="font-weight: 600;"');
+        }
+
         function buildExplanationSchemaFromQuestion(question, explanation, correctLtr) {
             var q = question || {};
             var options = q.options || {};
@@ -3345,7 +3363,7 @@
             var librarianSeg = getFirstSpeakerSegment(qSegments, partId === 2 ? 'WOMEN' : 'WOMEN');
             var highlightTerms = buildHighlightTermsFromAnswer(bestAnswerText);
             var reasonText = buildFigmaWhyReason(q, explanation, bestAnswerText);
-            var reasonHtml = renderTranscriptTextWithMarks(reasonText, highlightTerms);
+            var reasonHtml = escapeHtml(reasonText);
 
             var optionsStatus = [];
             for (var i = 0; i < letters.length; i += 1) {
@@ -3396,7 +3414,7 @@
             };
         }
 
-        function buildFreshDialogueBlocksForQuestion(question, existingBlocks) {
+        function buildFreshDialogueBlocksForQuestion(question, existingBlocks, transcriptHighlightTerms) {
             var q = question || {};
             var segments = getQuestionTranscriptSegments(q);
             if (!Array.isArray(segments) || !segments.length) {
@@ -3405,7 +3423,9 @@
 
             var partId = inferPartIdFromQuestion(q);
             var correctLtr = String(q.correctAnswer || '').trim().toUpperCase();
-            var highlightTerms = buildHighlightTermsFromAnswer((q.options || {})[correctLtr] || '');
+            var highlightTerms = Array.isArray(transcriptHighlightTerms)
+                ? transcriptHighlightTerms
+                : buildHighlightTermsFromAnswer((q.options || {})[correctLtr] || '');
             var picks = [];
 
             if (partId === 2) {
@@ -3458,11 +3478,26 @@
             model.question_metadata = model.question_metadata || {};
             model.question_metadata.user_was_correct = Boolean(userLetter && userLetter === correctLetter);
 
-            var statuses = Array.isArray(model.options_status) ? model.options_status : [];
-            for (var i = 0; i < statuses.length; i += 1) {
-                var letter = String((statuses[i] || {}).letter || '').trim().toUpperCase();
-                statuses[i].is_correct_choice = letter === correctLetter;
-                statuses[i].is_user_answer = Boolean(userLetter && letter === userLetter);
+            var savedStatuses = Array.isArray(model.options_status) ? model.options_status : [];
+            var savedByLetter = {};
+            for (var i = 0; i < savedStatuses.length; i += 1) {
+                var saved = savedStatuses[i] || {};
+                savedByLetter[String(saved.letter || '').trim().toUpperCase()] = saved;
+            }
+
+            var options = q.options || {};
+            var letters = Object.keys(options).sort();
+            var statuses = [];
+            for (var j = 0; j < letters.length; j += 1) {
+                var letter = String(letters[j] || '').trim().toUpperCase();
+                if (!letter) continue;
+                var savedStatus = savedByLetter[letter] || {};
+                statuses.push({
+                    letter: letter,
+                    text: sanitizeFigmaOptionText(options[letter] || savedStatus.text || ''),
+                    is_correct_choice: letter === correctLetter,
+                    is_user_answer: Boolean(userLetter && letter === userLetter)
+                });
             }
             model.options_status = statuses;
             return model;
@@ -3506,7 +3541,7 @@
                 html += '<div class="explaination-figma-option-text option-answer-d"><span class="option-text">' + escapeHtml(String(item.text || '')) + '</span></div>';
 
                 if (item.is_user_answer && item.is_correct_choice) {
-                    html += '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">Your Answer</span><i class="ti ti-check" aria-hidden="true"></i></div>';
+                    html += '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">Your Answer - Correct</span><i class="ti ti-check" aria-hidden="true"></i></div>';
                 } else if (item.is_user_answer) {
                     html += '<div class="explaination-figma-your-answer is-wrong"><span class="your-answer">Your Answer</span><i class="ti ti-x" aria-hidden="true"></i></div>';
                 } else if (item.is_correct_choice) {
@@ -3523,7 +3558,7 @@
             html += '<div class="explaination-figma-why-block">';
             html += '<div class="heading">' + escapeHtml(String(payload.header_title || 'Why?')) + '</div>';
             html += '<div class="main-content">';
-            html += '<div class="explanation-text">' + String(payload.main_explanation_html || '') + '</div>';
+            html += '<div class="explanation-text">' + renderExplanationContent(payload.main_explanation_html || '') + '</div>';
 
             for (var j = 0; j < dialogueBlocks.length; j += 1) {
                 var block = dialogueBlocks[j] || {};
@@ -4045,9 +4080,12 @@
                     var parsedSchema = JSON.parse(String(q.explanationSchema || '{}'));
                     if (parsedSchema && parsedSchema.explanation_payload) {
                         parsedSchema = applyUserAnswerStateToSchema(parsedSchema, q);
+                        highlightTerms = getSchemaTranscriptHighlightTerms(parsedSchema, q.options[correctLtr] || '');
+                        reviewTranscriptHighlightTerms = highlightTerms;
                         parsedSchema.explanation_payload.dialogue_blocks = buildFreshDialogueBlocksForQuestion(
                             q,
-                            parsedSchema.explanation_payload.dialogue_blocks
+                            parsedSchema.explanation_payload.dialogue_blocks,
+                            highlightTerms
                         );
                         var host = document.getElementById('explainationTabContent');
                         if (host) host.innerHTML = renderExplanationFromSchema(parsedSchema);

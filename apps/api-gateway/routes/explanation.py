@@ -37,7 +37,10 @@ Rules:
 - Return valid JSON only, matching the requested schema.
 - Do not invent dialogue or facts.
 - Quote only lines present in the transcript.
-- Use <mark style=\"background-color: #FFDE00; color: #000000; font-weight: 500;\">...</mark> around decisive words.
+- Use <mark style=\"background-color: #FFDE00; color: #000000; font-weight: 500;\">...</mark> only around short exact transcript phrases that are decisive evidence.
+- Use <strong>...</strong> only for one or two important explanatory words that are not quoted transcript text.
+- Do not use yellow marks for paraphrases, answer-option wording, or general explanation prose.
+- Use no more than two yellow transcript phrases per explanation.
 - Include one or two dialogue blocks that directly support the correct answer.
 
 Input:
