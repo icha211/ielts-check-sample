@@ -165,12 +165,20 @@ async function syncMaterialsLibraryToFirebase() {
         hiddenTopics: getHiddenMaterialTopics()
     });
     if (!saved) toast("Saved locally. Firebase sync will retry when online.");
+    return saved;
 }
 
 async function loadMaterialsLibraryFromFirebase() {
     if (!window.toeflStorage || typeof window.toeflStorage.getMaterialsLibrary !== "function") return;
     const remote = await window.toeflStorage.getMaterialsLibrary();
     if (!remote || typeof remote !== "object") return;
+    const hasRemoteData = (remote.records && Object.keys(remote.records).length > 0)
+        || (Array.isArray(remote.customTopics) && remote.customTopics.length > 0);
+    const hasLocalData = Object.keys(getMaterialRecords()).length > 0 || getCustomMaterialTopics().length > 0;
+    if (!hasRemoteData && hasLocalData) {
+        await syncMaterialsLibraryToFirebase();
+        return;
+    }
     if (remote.records && typeof remote.records === "object") localStorage.setItem(MATERIALS_KEY, JSON.stringify(remote.records));
     if (Array.isArray(remote.customTopics)) localStorage.setItem(MATERIAL_TOPICS_KEY, JSON.stringify(remote.customTopics));
     if (Array.isArray(remote.hiddenTopics)) localStorage.setItem(HIDDEN_MATERIAL_TOPICS_KEY, JSON.stringify(remote.hiddenTopics));
