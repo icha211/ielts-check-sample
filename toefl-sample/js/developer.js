@@ -27,6 +27,35 @@ const MODULE_CONFIG = {
 const MONTH_LABELS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
 const MODULES = ["listening", "structure", "reading"];
 let sectionSets = [];
+let pendingMaterialTopicId = "";
+const MATERIALS_KEY = "toefl_structure_materials_v1";
+const MATERIAL_TOPICS_KEY = "toefl_structure_material_topics_v1";
+const HIDDEN_MATERIAL_TOPICS_KEY = "toefl_hidden_material_topics_v1";
+const MATERIALS_VIEW_KEY = "toefl_materials_library_view";
+const MATERIALS_DOCUMENT_URL = "https://docs.google.com/document/d/1PQuVZWtVnbyMgbLvXC6YosOxuP76ZQjS/edit";
+const DEFAULT_MATERIAL_TOPICS = [
+    ["Module 1", "Sentence Foundation (Core Structure)", "fwm0htce4hfj", [
+        ["1.1", "Missing Subjects & Verbs", "tk90kv3d0ueb"], ["1.2", "Appositives (Noun Phrase Distractors)", "v29ynt82k1nw"], ["1.3", "Present Participles (-ing) vs. Past Participles (-ed)", "n6szn2voai93"], ["1.4", "Subject-Verb Agreement", "dqzite884zzv"], ["1.5", "Tricky Singular Subjects", "wb90rp7vdygw"]
+    ]],
+    ["Module 2", "Clauses & Connectors", "j0qsk030edq3", [
+        ["2.1", "Coordinate Connectors", "cgt876hy0b25"], ["2.2", "Adverb Clauses", "ixdl2ewgupy7"], ["2.3", "Noun Clauses", "sx8pexlpcwri"], ["2.4", "Adjective/Relative Clauses", "nlqj805otend"], ["2.5", "Reduced Clauses", "xyftgejmqlep"]
+    ]],
+    ["Module 3", "Advanced Verb Mechanics", "rozbt4lm6qmd", [
+        ["3.1", "Causative Verbs", "uuk2pgvcuuy0"], ["3.2", "Active vs. Passive Voice", "m76zs4iiu06f"], ["3.3", "Modals + Base Verbs", "ne680slyfgsj"], ["3.4", "Infinitives vs. Gerunds", "qsfbphukh19x"], ["3.5", "Time Markers & Tenses", "cr94bxy4gp3w"]
+    ]],
+    ["Module 4", "Word Order & Inversion", "majq7kkgj0fj", [
+        ["4.1", "Inversion with Negatives", "91vyvha3q9ri"], ["4.2", "Inversion with Place Expressions", "aog5t6z8pyry"], ["4.3", "Inversion in Conditionals", "t1thd5omst7y"]
+    ]],
+    ["Module 5", "Parallelism & Comparisons", "s7nigh578i8l", [
+        ["5.1", "Parallel Structure", "yerjaseu1sl6"], ["5.2", "Paired Conjunctions", "trypm2ym2qs3"], ["5.3", "Comparatives & Superlatives", "atrtn1zfpicv"], ["5.4", "Illogical Comparisons", "6gwyjzh4kxh5"]
+    ]],
+    ["Module 6", "Word Forms & Parts of Speech", "9nhfhs9olc45", [
+        ["6.1", "Adjectives vs. Adverbs", "2vcjvcwg8nca"], ["6.2", "Noun Endings", "zaxuv4xr0cb7"], ["6.3", "Singular/Plural Countability", "va8hzv6k5kyc"], ["6.4", "Pronoun Agreement", "m45q6zxakv0u"]
+    ]],
+    ["Module 7", "Tricky Vocabulary & Idioms", "ua0o72t9yikl", [
+        ["7.1", "Dependent Prepositions", "lsxm16xl0omv"], ["7.2", "Make vs. Do", "jfsedsc92pgo"], ["7.3", "Like, Alike, and Unlike", "axi3cpyqmu7e"], ["7.4", "Another, Other, Others", "zay714s3qunh"]
+    ]]
+];
 
 // Create-modal options shown for Mock Test: one blank set per module, difficulty chosen inside the editor.
 const MOCK_MODULE_OPTIONS = [
@@ -111,6 +140,154 @@ function escapeHtml(value) {
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#39;");
+}
+
+function getMaterialRecords() {
+    const saved = safeParse(localStorage.getItem(MATERIALS_KEY), {});
+    return saved && typeof saved === "object" ? saved : {};
+}
+
+function getCustomMaterialTopics() {
+    const saved = safeParse(localStorage.getItem(MATERIAL_TOPICS_KEY), []);
+    return Array.isArray(saved) ? saved : [];
+}
+
+function getHiddenMaterialTopics() {
+    const saved = safeParse(localStorage.getItem(HIDDEN_MATERIAL_TOPICS_KEY), []);
+    return Array.isArray(saved) ? saved : [];
+}
+
+async function syncMaterialsLibraryToFirebase() {
+    if (!window.toeflStorage || typeof window.toeflStorage.saveMaterialsLibrary !== "function") return;
+    const saved = await window.toeflStorage.saveMaterialsLibrary({
+        records: getMaterialRecords(),
+        customTopics: getCustomMaterialTopics(),
+        hiddenTopics: getHiddenMaterialTopics()
+    });
+    if (!saved) toast("Saved locally. Firebase sync will retry when online.");
+}
+
+async function loadMaterialsLibraryFromFirebase() {
+    if (!window.toeflStorage || typeof window.toeflStorage.getMaterialsLibrary !== "function") return;
+    const remote = await window.toeflStorage.getMaterialsLibrary();
+    if (!remote || typeof remote !== "object") return;
+    if (remote.records && typeof remote.records === "object") localStorage.setItem(MATERIALS_KEY, JSON.stringify(remote.records));
+    if (Array.isArray(remote.customTopics)) localStorage.setItem(MATERIAL_TOPICS_KEY, JSON.stringify(remote.customTopics));
+    if (Array.isArray(remote.hiddenTopics)) localStorage.setItem(HIDDEN_MATERIAL_TOPICS_KEY, JSON.stringify(remote.hiddenTopics));
+}
+
+function materialTopicId(topic) {
+    return `${topic.module}-${topic.code}`;
+}
+
+function getDefaultMaterialTopics() {
+    const defaults = DEFAULT_MATERIAL_TOPICS.flatMap(([module, moduleTitle, moduleHeading, topics]) => topics.map(([code, title, heading]) => ({
+        module, moduleTitle, moduleHeading, code, title, heading,
+        defaultUrl: `${MATERIALS_DOCUMENT_URL}#heading=h.${heading}`
+    })));
+    const hiddenIds = getHiddenMaterialTopics();
+    return defaults.concat(getCustomMaterialTopics())
+        .filter((topic) => hiddenIds.indexOf(materialTopicId(topic)) === -1);
+}
+
+function renderMaterialsLibrary() {
+    const list = document.getElementById("materialsLibraryList");
+    const count = document.getElementById("materialsLibraryCount");
+    const search = String((document.getElementById("materialsSearch") || {}).value || "").trim().toLowerCase();
+    if (!list || !count) return;
+
+    const topics = getDefaultMaterialTopics();
+    const records = getMaterialRecords();
+    count.textContent = `${topics.length} topics`;
+    const visible = topics.filter((topic) => `${topic.module} ${topic.moduleTitle} ${topic.code} ${topic.title}`.toLowerCase().includes(search));
+    list.innerHTML = visible.map((topic) => {
+        const record = records[materialTopicId(topic)] || null;
+        const topicId = materialTopicId(topic);
+        const viewUrl = `material-preview.html?topic=${encodeURIComponent(topicId)}`;
+        return `<article class="material-card">
+            <div class="material-card__module">${escapeHtml(topic.module)}</div>
+            <h3>${escapeHtml(topic.code)} ${escapeHtml(topic.title)}</h3>
+            <p>${record ? escapeHtml(record.title) : "No uploaded lesson yet"}</p>
+            <div class="material-card__actions">
+                <a class="btn-mini open" href="${escapeHtml(viewUrl)}" target="_blank" rel="noopener">View Material</a>
+                <button class="btn-mini edit" type="button" onclick="uploadMaterial('${escapeHtml(topicId)}')">${record ? "Replace" : "Upload"}</button>
+                <button class="btn-mini delete" type="button" onclick="deleteMaterial('${escapeHtml(topicId)}')">Delete</button>
+            </div>
+        </article>`;
+    }).join("") || '<div class="empty">No topics match this search.</div>';
+}
+
+function uploadMaterial(topicId) {
+    const input = document.getElementById("materialDocumentInput");
+    if (!input) return;
+    pendingMaterialTopicId = topicId;
+    input.value = "";
+    input.click();
+}
+
+async function saveMaterialDocument(file) {
+    if (!pendingMaterialTopicId || !file) return;
+    if (!window.mammoth || typeof window.mammoth.convertToHtml !== "function") {
+        toast("Document reader is unavailable. Check your internet connection and try again.");
+        return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+        toast("DOCX files must be 8 MB or smaller.");
+        return;
+    }
+    try {
+        const result = await window.mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+        const html = String(result.value || "").trim();
+        if (!html) throw new Error("The document has no readable text.");
+        const records = getMaterialRecords();
+        records[pendingMaterialTopicId] = {
+            title: file.name.replace(/\.docx$/i, ""),
+            html,
+            fileName: file.name,
+            updatedAt: new Date().toISOString()
+        };
+        localStorage.setItem(MATERIALS_KEY, JSON.stringify(records));
+        renderMaterialsLibrary();
+        await syncMaterialsLibraryToFirebase();
+        toast("Material uploaded and extracted");
+    } catch (error) {
+        toast(error.message || "Unable to read this DOCX file.");
+    } finally {
+        pendingMaterialTopicId = "";
+    }
+}
+
+function applyMaterialsView(view) {
+    const selectedView = view === "list" ? "list" : "grid";
+    const list = document.getElementById("materialsLibraryList");
+    if (list) list.classList.toggle("list-view", selectedView === "list");
+    document.querySelectorAll("#materialsViewToggle [data-materials-view]").forEach((button) => {
+        const active = button.dataset.materialsView === selectedView;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-pressed", String(active));
+    });
+}
+
+function deleteMaterial(topicId) {
+    const records = getMaterialRecords();
+    delete records[topicId];
+    localStorage.setItem(MATERIALS_KEY, JSON.stringify(records));
+    const hiddenTopics = safeParse(localStorage.getItem(HIDDEN_MATERIAL_TOPICS_KEY), []);
+    const nextHiddenTopics = Array.isArray(hiddenTopics) ? hiddenTopics : [];
+    if (nextHiddenTopics.indexOf(topicId) === -1) nextHiddenTopics.push(topicId);
+    localStorage.setItem(HIDDEN_MATERIAL_TOPICS_KEY, JSON.stringify(nextHiddenTopics));
+    renderMaterialsLibrary();
+    syncMaterialsLibraryToFirebase();
+    toast("Material removed from the library");
+}
+
+function readMaterialFile(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(reader.error || new Error("Unable to read file"));
+        reader.readAsDataURL(file);
+    });
 }
 
 function toast(message) {
@@ -747,6 +924,18 @@ async function renderAll() {
     renderMonthCalendar();
 }
 
+function setMaterialsLibraryVisible(isVisible) {
+    const panel = document.getElementById("materialsLibraryPanel");
+    const dashboardSections = ["stats", "moduleOverview", "library", "monthGrid", "monthDetail"];
+    if (panel) panel.hidden = !isVisible;
+    dashboardSections.forEach((id) => {
+        const element = document.getElementById(id);
+        const section = element?.closest("section");
+        if (section) section.hidden = isVisible;
+    });
+    if (isVisible) renderMaterialsLibrary();
+}
+
 // Initialize event listeners
 document.addEventListener("DOMContentLoaded", async () => {
     // Run data migration on startup to recover any lost data
@@ -756,6 +945,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             console.error("[Developer] Migration error (non-blocking):", err);
         });
     }
+    await loadMaterialsLibraryFromFirebase();
     
     initLibraryViewToggle();
 
@@ -773,10 +963,46 @@ document.addEventListener("DOMContentLoaded", async () => {
             currentTestType = e.target.dataset.testType;
             document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
             e.target.classList.add("active");
+            if (currentTestType === "materialslibrary") {
+                setMaterialsLibraryVisible(true);
+                return;
+            }
+            setMaterialsLibraryVisible(false);
             await renderAll();
         });
     });
 
+    document.getElementById("materialsSearch")?.addEventListener("input", renderMaterialsLibrary);
+    document.getElementById("createMaterialTopicForm")?.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const moduleNumber = String(document.getElementById("newMaterialModule")?.value || "").trim();
+        const code = String(document.getElementById("newMaterialTopicCode")?.value || "").trim();
+        const title = String(document.getElementById("newMaterialTopicName")?.value || "").trim();
+        if (!moduleNumber || !code || !title) return;
+        const topics = getCustomMaterialTopics();
+        const topic = { module: `Module ${moduleNumber}`, moduleTitle: "Custom material", moduleHeading: "", code, title, heading: "", defaultUrl: "" };
+        if (getDefaultMaterialTopics().some((item) => materialTopicId(item) === materialTopicId(topic))) {
+            toast("A material with this module and topic number already exists.");
+            return;
+        }
+        topics.push(topic);
+        localStorage.setItem(MATERIAL_TOPICS_KEY, JSON.stringify(topics));
+        event.currentTarget.reset();
+        renderMaterialsLibrary();
+        syncMaterialsLibraryToFirebase();
+        toast("New material created");
+    });
+    document.getElementById("materialDocumentInput")?.addEventListener("change", (event) => {
+        saveMaterialDocument(event.target.files?.[0]);
+    });
+    document.getElementById("materialsViewToggle")?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-materials-view]");
+        if (!button) return;
+        const view = button.dataset.materialsView;
+        localStorage.setItem(MATERIALS_VIEW_KEY, view);
+        applyMaterialsView(view);
+    });
+    applyMaterialsView(localStorage.getItem(MATERIALS_VIEW_KEY));
     // Create button with test type selection - with error handling
     const createBtn = document.getElementById("createBtn");
     if (createBtn) {

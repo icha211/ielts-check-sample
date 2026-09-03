@@ -241,6 +241,29 @@ class ToeflStorageSync {
     try { return JSON.parse(raw) || fallback; } catch { return fallback; }
   }
 
+  async getMaterialsLibrary() {
+    try {
+      const data = await this._get("toefl_itp/materials_library");
+      return data && typeof data === "object" ? data : {};
+    } catch (error) {
+      console.warn("[ToeflSync] Materials library fetch failed; using local cache:", error.message);
+      return {};
+    }
+  }
+
+  async saveMaterialsLibrary(data) {
+    const payload = data && typeof data === "object"
+      ? { ...data, updatedAt: new Date().toISOString() }
+      : { updatedAt: new Date().toISOString() };
+    try {
+      await this._put("toefl_itp/materials_library", payload);
+      return true;
+    } catch (error) {
+      console.warn("[ToeflSync] Materials library save failed; local cache remains available:", error.message);
+      return false;
+    }
+  }
+
   createSetId(module, setDate, testType = "mocktest") {
     const stamp = Date.now();
     const rand = Math.random().toString(36).slice(2, 8);
