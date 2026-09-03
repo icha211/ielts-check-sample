@@ -1258,8 +1258,12 @@
         .calendar-brand { display: none; }
         .calendar-date-row { display: flex; align-items: center; gap: 12px; }
         .toefl-101-trigger { flex: 0 0 auto; min-height: 36px; padding: 8px 12px; border: 2px solid #0d9488; border-radius: 999px; background: #11d8c7; color: #ffffff; font: 800 12px "Plus Jakarta Sans", sans-serif; cursor: pointer; transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease; }
+        .toefl-101-trigger.is-attention { animation: toefl101Attention 1.8s ease-in-out infinite; }
+        .toefl-101-trigger[aria-expanded="true"] { background: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.16); }
         .toefl-101-trigger:hover { background: #0fc8b8; transform: translateY(-1px); box-shadow: 0 5px 12px rgba(13, 148, 136, 0.18); }
         .toefl-101-trigger:focus-visible { outline: 3px solid rgba(14, 165, 233, 0.28); outline-offset: 2px; }
+        @keyframes toefl101Attention { 0%, 100% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0); } 50% { box-shadow: 0 0 0 7px rgba(13, 148, 136, 0.2); } }
+        @media (prefers-reduced-motion: reduce) { .toefl-101-trigger.is-attention { animation: none; } }
 
         .toefl-101-modal { position: fixed; inset: 0; z-index: 10020; display: none; place-items: center; padding: 24px; background: rgba(6, 34, 61, 0.48); backdrop-filter: blur(5px); }
         .toefl-101-modal.is-open { display: grid; }
@@ -1530,7 +1534,7 @@
                                     </div>
                                     <div class="calendar-date-copy"><div class="calendar-title">DAILY SCHEDULE</div><div class="calendar-range" id="dashboardMonthRange">Range</div></div>
                                 </div>
-                                <button class="toefl-101-trigger" id="openToefl101" type="button" aria-haspopup="dialog" aria-controls="toefl101Modal">TOEFL ITP 101</button>
+                                <button class="toefl-101-trigger" id="openToefl101" type="button" aria-haspopup="dialog" aria-controls="toefl101Modal" aria-expanded="false">TOEFL ITP 101</button>
                             </div>
                             <div class="calendar-weekdays"><span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span></div>
                             <div class="dashboard-calendar-grid" id="dashboardCalendarGrid"></div>
@@ -1986,6 +1990,7 @@
         function openToefl101() {
             toefl101Modal.classList.add("is-open");
             toefl101Modal.setAttribute("aria-hidden", "false");
+            openToefl101Button.setAttribute("aria-expanded", "true");
             document.body.style.overflow = "hidden";
             closeToefl101Button.focus();
         }
@@ -1993,11 +1998,22 @@
         function closeToefl101() {
             toefl101Modal.classList.remove("is-open");
             toefl101Modal.setAttribute("aria-hidden", "true");
+            openToefl101Button.setAttribute("aria-expanded", "false");
             document.body.style.overflow = "";
             openToefl101Button.focus();
         }
 
-        openToefl101Button.addEventListener("click", openToefl101);
+        const toefl101AttentionKey = "toefl_101_trigger_seen";
+        if (localStorage.getItem(toefl101AttentionKey) !== "1") {
+            openToefl101Button.classList.add("is-attention");
+        }
+
+        openToefl101Button.addEventListener("click", () => {
+            openToefl101Button.classList.remove("is-attention");
+            localStorage.setItem(toefl101AttentionKey, "1");
+            if (toefl101Modal.classList.contains("is-open")) closeToefl101();
+            else openToefl101();
+        });
         closeToefl101Button.addEventListener("click", closeToefl101);
         toefl101Modal.addEventListener("click", (event) => {
             if (event.target === toefl101Modal) closeToefl101();
