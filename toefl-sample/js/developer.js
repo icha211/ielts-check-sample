@@ -157,10 +157,22 @@ function getHiddenMaterialTopics() {
     return Array.isArray(saved) ? saved : [];
 }
 
+function encodeMaterialRecordsForFirebase(records) {
+    return Object.fromEntries(Object.entries(records || {}).map(([key, value]) => [encodeURIComponent(key).replace(/\./g, "%2E"), value]));
+}
+
+function decodeMaterialRecordsFromFirebase(records) {
+    return Object.fromEntries(Object.entries(records || {}).map(([key, value]) => {
+        let decodedKey = key;
+        try { decodedKey = decodeURIComponent(key); } catch (_) {}
+        return [decodedKey, value];
+    }));
+}
+
 async function syncMaterialsLibraryToFirebase() {
     if (!window.toeflStorage || typeof window.toeflStorage.saveMaterialsLibrary !== "function") return;
     const saved = await window.toeflStorage.saveMaterialsLibrary({
-        records: getMaterialRecords(),
+        records: encodeMaterialRecordsForFirebase(getMaterialRecords()),
         customTopics: getCustomMaterialTopics(),
         hiddenTopics: getHiddenMaterialTopics()
     });
@@ -179,7 +191,7 @@ async function loadMaterialsLibraryFromFirebase() {
         await syncMaterialsLibraryToFirebase();
         return;
     }
-    if (remote.records && typeof remote.records === "object") localStorage.setItem(MATERIALS_KEY, JSON.stringify(remote.records));
+    if (remote.records && typeof remote.records === "object") localStorage.setItem(MATERIALS_KEY, JSON.stringify(decodeMaterialRecordsFromFirebase(remote.records)));
     if (Array.isArray(remote.customTopics)) localStorage.setItem(MATERIAL_TOPICS_KEY, JSON.stringify(remote.customTopics));
     if (Array.isArray(remote.hiddenTopics)) localStorage.setItem(HIDDEN_MATERIAL_TOPICS_KEY, JSON.stringify(remote.hiddenTopics));
 }
