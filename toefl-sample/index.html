@@ -1119,15 +1119,23 @@
         .summary-card-heading { display: grid; gap: 2px; }
         .summary-card h1, .summary-card h2 { margin: 0; color: #40536a; font-size: 16px; line-height: 1.1; letter-spacing: 0; }
         .summary-card-heading span, .summary-card small { color: #9aafc4; font-size: 10px; }
-        .score-pair { display: grid; grid-template-columns: 1fr 1fr; margin-top: 10px; border: 1px solid #d6e5f3; border-radius: 8px; overflow: hidden; }
-        .score-pair div { padding: 8px 9px; display: grid; gap: 5px; }
-        .score-pair div + div { border-left: 1px solid #d6e5f3; }
-        .score-pair span, .taken-row > span { color: #526b84; font-size: 10px; }
-        .score-pair strong { color: #11aeda; font-size: 23px; font-weight: 500; line-height: 1; }
-        .score-pair div + div strong { color: #9aaec1; font-size: 20px; text-align: center; }
-        .taken-row { margin-top: 10px; display: grid; grid-template-columns: 1fr repeat(4, auto); gap: 7px; align-items: center; font-size: 9px; }
-        .taken-row b { display: grid; gap: 4px; color: #95a9bd; font-size: 9px; font-weight: 400; text-align: center; }
-        .taken-row em { color: #1e2f41; font-size: 17px; font-style: normal; }
+        .progress-card { container-type: inline-size; }
+        .progress-card__head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .progress-card__head h1 { color: #1c1c1c; font: 700 14px "Plus Jakarta Sans", sans-serif; }
+        .progress-card__period { display: inline-flex; align-items: center; gap: 7px; min-height: 25px; padding: 0 10px; border: 0; border-radius: 8px; background: #f4f7fb; color: #1c1c1c; font: 400 10px "Outfit", sans-serif; }
+        .progress-card__period .ti { font-size: 14px; }
+        .progress-card__label { display: block; margin-top: 5px; color: #7a8fa6; font: 400 9px "Outfit", sans-serif; }
+        .progress-card__score { display: block; margin-top: 1px; color: #111111; font: 500 25px/1 "Outfit", sans-serif; }
+        .progress-card__bars { display: grid; gap: 6px; margin-top: 8px; }
+        .progress-card__row { display: grid; grid-template-columns: 52px minmax(0, 1fr) 30px; gap: 5px; align-items: center; color: #26384f; font: 400 9px "Outfit", sans-serif; }
+        .progress-card__track { height: 19px; overflow: hidden; border-radius: 10px; background: #c8f8f0; }
+        .progress-card__fill { position: relative; height: 100%; overflow: hidden; border-radius: inherit; background: #1598a5; }
+        .progress-card__fill::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(45deg, rgba(255,255,255,.16) 0 7px, transparent 7px 14px); }
+        .progress-card__value { color: #111111; font-weight: 600; }
+        .progress-card__scale { display: flex; justify-content: space-between; padding-left: 57px; padding-right: 30px; color: #b7cbdc; font: 400 8px "Outfit", sans-serif; }
+        .progress-card__footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; color: #111111; font: 400 9px "Outfit", sans-serif; }
+        .progress-card__report { display: inline-flex; align-items: center; gap: 5px; color: #111111; text-decoration: none; }
+        .progress-card__report .ti { font-size: 15px; }
         .inline-heading { display: flex; justify-content: space-between; align-items: center; }
         .inline-heading span { display: inline-flex; align-items: center; gap: 4px; color: #333333; font-size: 12px; }
         .inline-heading .ti-books { font-size: 13px; stroke-width: 1; }
@@ -1409,17 +1417,22 @@
                         </article>
                     </div>
                     <article class="summary-card progress-card">
-                        <div class="summary-card-heading">
+                        <div class="progress-card__head">
                             <h1>Study Progress</h1>
-                            <span>Start the test to load your study progress</span>
+                            <button class="progress-card__period" type="button" aria-label="Study progress period">This month <i class="ti ti-chevron-down" aria-hidden="true"></i></button>
                         </div>
-                        <div class="score-pair">
-                            <div><span>Estimated Score</span><strong>000</strong></div>
-                            <div><span>Target Score</span><strong>--</strong></div>
+                        <span class="progress-card__label">Accumulate Score</span>
+                        <strong class="progress-card__score">2147</strong>
+                        <div class="progress-card__bars" aria-label="Study progress by section">
+                            <div class="progress-card__row"><span>Listening</span><div class="progress-card__track"><div class="progress-card__fill" style="width:62%;"></div></div><span class="progress-card__value">62%</span></div>
+                            <div class="progress-card__row"><span>Structure</span><div class="progress-card__track"><div class="progress-card__fill" style="width:70%;"></div></div><span class="progress-card__value">70%</span></div>
+                            <div class="progress-card__row"><span>Writing</span><div class="progress-card__track"><div class="progress-card__fill" style="width:75%;"></div></div><span class="progress-card__value">75%</span></div>
+                            <div class="progress-card__row"><span>Reading</span><div class="progress-card__track"><div class="progress-card__fill" style="width:76%;"></div></div><span class="progress-card__value">76%</span></div>
                         </div>
-                        <div class="taken-row">
-                            <span>Test Taken</span>
-                            <b>Listening <em>0</em></b><b>Structure <em>0</em></b><b>Writing <em>0</em></b><b>Reading <em>0</em></b>
+                        <div class="progress-card__scale" aria-hidden="true"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+                        <div class="progress-card__footer">
+                            <span>You have maintain good practice</span>
+                            <a class="progress-card__report" href="MyProgress.html">View report <i class="ti ti-arrow-up-right" aria-hidden="true"></i></a>
                         </div>
                     </article>
                     <article class="summary-card partner-card" aria-label="Find your English partner">
