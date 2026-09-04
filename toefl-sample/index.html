@@ -1183,32 +1183,55 @@
             text-align: center;
             gap: 0;
         }
+        .partner-content { position: relative; z-index: 1; width: 100%; display: grid; justify-items: center; margin: auto 0; transform: translateY(-52px); }
         .partner-card h2 { position: relative; z-index: 1; margin: 12px 0 0; color: #1c1c1c; font: 700 20px "Plus Jakarta Sans", sans-serif; }
         .partner-status { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 0; color: #0d9488; font: 600 10px "Outfit", sans-serif; }
         .partner-status .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #0d9488; }
         .partner-card::before { content: ""; position: absolute; inset: 50px 6px 68px; z-index: 0; background: url("../asst/icon/Global.svg") center / contain no-repeat; pointer-events: none; }
-        .partner-carousel { position: relative; z-index: 1; margin: auto 0 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .partner-carousel { position: relative; z-index: 1; margin: 80px 0 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .partner-nav { border: 0; background: transparent; color: #7A8FA6; cursor: pointer; display: grid; place-items: center; padding: 0; }
         .partner-nav .ti { font-size: 20px; }
         .partner-avatars { display: flex; align-items: center; gap: 20px; }
         .partner-avatar { position: relative; width: 56px; height: 56px; border-radius: 50%; border: 2px solid #1c1c1c; background: #ffffff; display: grid; place-items: center; overflow: visible; }
         .partner-avatar::after { content: ""; position: absolute; right: -2px; bottom: -2px; width: 18px; height: 18px; border-radius: 50%; background: #ff5a5a; border: 2px solid #ffffff; z-index: 2; }
         .partner-avatar .ti { position: relative; z-index: 1; font-size: 28px; color: #1c1c1c; }
-        .partner-avatar.active { width: 72px; height: 72px; border: 3px solid #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.16); }
-        .partner-avatar.active::after { width: 22px; height: 22px; }
-        .partner-avatar.active .ti { font-size: 34px; }
+        .partner-avatar.active { width: 56px; height: 56px; border: 3px solid #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.16); }
+        .partner-avatar.active::after { width: 18px; height: 18px; }
+        .partner-avatar.active .ti { font-size: 28px; }
         .partner-popover { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 2; padding: 3px 8px; border-radius: 6px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.12); color: #40536a; font: 600 8px "Plus Jakarta Sans", sans-serif; text-align: center; white-space: nowrap; }
         .partner-popover small { display: block; color: #9aafc4; font-size: 7px; font-weight: 400; }
-        .partner-match { position: relative; z-index: 1; margin-top: 56px; color: #0d9488; font: 700 13px "Plus Jakarta Sans", sans-serif; }
+        .partner-popover.partner-profile-popover { width: 250px; padding: 12px 14px; display: grid; gap: 8px; border-radius: 24px; color: #000000; box-shadow: 0 0 4px rgba(0, 0, 0, 0.1); font-family: Inter, sans-serif; text-align: left; white-space: normal; transform: translateX(-50%) scale(0.6); transform-origin: top center; }
+        .partner-search-result { position: absolute; top: calc(100% + 8px); left: 50%; z-index: 2; width: 100%; max-width: 225px; display: grid; grid-template-rows: 0fr; overflow: hidden; opacity: 0; pointer-events: none; transform: translate(-50%, -8px); transition: grid-template-rows 220ms cubic-bezier(0.23, 1, 0.32, 1), opacity 160ms ease-out, transform 220ms cubic-bezier(0.23, 1, 0.32, 1); }
+        .partner-card .partner-search-result.is-visible { grid-template-rows: 1fr; opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+        .partner-search-result > * { min-height: 0; }
+        .partner-search-result .partner-profile-popover { position: static; width: 250px; margin: 0 auto; transform: scale(0.64); transform-origin: top center; }
+        @media (prefers-reduced-motion: reduce) { .partner-search-result { transition: none; } }
+        .partner-profile-popover__header { display: flex; align-items: center; gap: 8px; }
+        .partner-profile-popover__avatar { width: 64px; height: 64px; flex: 0 0 auto; border-radius: 50%; object-fit: cover; }
+        .partner-profile-popover__details { min-width: 0; flex: 1; display: grid; gap: 8px; }
+        .partner-profile-popover__name { color: #000000; font: 500 18px/20px Inter, sans-serif; }
+        .partner-profile-popover__meta { display: flex; align-items: center; gap: 12px; min-height: 22px; }
+        .partner-profile-popover__status { width: 32px; height: 22px; flex: 0 0 auto; object-fit: cover; box-shadow: 0 0 4px rgba(0, 0, 0, 0.1); }
+        .partner-profile-popover__divider { width: 1px; height: 20px; flex: 0 0 auto; }
+        .partner-profile-popover__level { color: #3a4a5c; font: 400 14px/20px Inter, sans-serif; }
+        .partner-profile-popover__connections { min-width: 54px; margin-left: auto; display: grid; justify-items: center; }
+        .partner-profile-popover__connections strong { color: #000000; font: 500 16px/16px Outfit, sans-serif; }
+        .partner-profile-popover__connections small { color: #7a8fa6; font: 400 8px/10px Inter, sans-serif; }
+        .partner-profile-popover__tags { display: flex; justify-content: center; gap: 4px; }
+        .partner-profile-popover__tag { padding: 2px 8px; border: 0.5px solid #d1dce8; border-radius: 20px; color: #7a8fa6; font: 400 10px/12px Inter, sans-serif; }
+        .partner-profile-popover__request { min-height: 28px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 4px 12px; border-radius: 20px; background: #0d9488; color: #ffffff; font: 400 14px/20px Inter, sans-serif; text-decoration: none; }
+        .partner-profile-popover__request:active { transform: scale(0.97); }
+        .partner-profile-popover__request img { width: 20px; height: 20px; flex: 0 0 auto; }
+        .partner-match { position: relative; z-index: 1; margin-top: 32px; color: #0d9488; font: 700 13px "Plus Jakarta Sans", sans-serif; }
         .partner-search { position: relative; z-index: 1; width: 100%; max-width: 225px; margin-top: 4px; margin-bottom: auto; display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1.5px solid #0d9488; border-radius: 20px; color: #7a8fa6; }
         .partner-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 400 10px "Plus Jakarta Sans", sans-serif; color: #40536a; }
         .partner-search .ti-arrow-right { color: #0d9488; }
-        .partner-discord-link { position: relative; z-index: 1; align-self: flex-end; display: inline-flex; align-items: center; gap: 12px; margin-top: auto; color: #7a8fa6; font: 400 11px "Plus Jakarta Sans", sans-serif; text-decoration: none; }
+        .partner-discord-link { position: absolute; right: 18px; bottom: 18px; z-index: 1; display: inline-flex; align-items: center; gap: 12px; color: #7a8fa6; font: 400 11px "Plus Jakarta Sans", sans-serif; text-decoration: none; }
         .partner-discord-link:hover { color: #586d84; }
         .partner-discord-link img { width: 24px; height: 24px; object-fit: contain; }
 
         main { margin-top: 26px; gap: 18px; }
-        .month-panel { padding: 20px; border: 1px solid #d1dce8; border-radius: 8px; background: #D8FFF7; box-shadow: 0 0 2px rgba(0, 0, 0, 0.1); }
+        .month-panel { padding: 20px; border: 1px solid #d1dce8; border-radius: 8px; background: #ffffff; box-shadow: 0 0 2px rgba(0, 0, 0, 0.1); }
         .month-panel > .section-head { display: none; }
         .planner-layout { margin-top: 0; display: block; }
         .month-selector-block { display: none; }
@@ -1248,7 +1271,7 @@
             padding: 0;
             border: 0;
             border-radius: 10px;
-            background: #D8FFF7;
+            background: #ffffff;
             box-shadow: none;
             overflow: hidden;
         }
@@ -1258,44 +1281,27 @@
         .calendar-brand { display: none; }
         .calendar-date-row { display: flex; align-items: center; gap: 12px; }
         .toefl-101-trigger { flex: 0 0 auto; min-height: 36px; padding: 8px 12px; border: 2px solid #0d9488; border-radius: 999px; background: #11d8c7; color: #ffffff; font: 800 12px "Plus Jakarta Sans", sans-serif; cursor: pointer; transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease; }
-        .toefl-101-trigger.is-floating { position: fixed; z-index: 10021; }
-        .toefl-101-trigger.is-attention { animation: toefl101Attention 1.8s ease-in-out infinite; }
-        .toefl-101-trigger[aria-expanded="true"] { background: #0d9488; box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.16); }
         .toefl-101-trigger:hover { background: #0fc8b8; transform: translateY(-1px); box-shadow: 0 5px 12px rgba(13, 148, 136, 0.18); }
-        .toefl-101-trigger:focus-visible { outline: 3px solid rgba(14, 165, 233, 0.28); outline-offset: 2px; }
-        @keyframes toefl101Attention { 0%, 100% { box-shadow: 0 0 0 0 rgba(13, 148, 136, 0); } 50% { box-shadow: 0 0 0 7px rgba(13, 148, 136, 0.2); } }
-        @media (prefers-reduced-motion: reduce) { .toefl-101-trigger.is-attention { animation: none; } }
-
+        .toefl-101-trigger:active { transform: scale(0.97); }
+        .toefl-101-trigger:focus-visible, .toefl-101-close:focus-visible { outline: 3px solid rgba(14, 165, 233, 0.28); outline-offset: 2px; }
         .toefl-101-modal { position: fixed; inset: 0; z-index: 10020; display: none; place-items: center; padding: 24px; background: rgba(6, 34, 61, 0.48); backdrop-filter: blur(5px); }
         .toefl-101-modal.is-open { display: grid; }
         .toefl-101-dialog { width: min(760px, 100%); max-height: min(760px, calc(100dvh - 48px)); overflow: hidden; border: 1px solid #b9d9d5; border-radius: 16px; background: #ffffff; box-shadow: 0 24px 70px rgba(6, 34, 61, 0.25); }
         .toefl-101-dialog__header { min-height: 86px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: #d8fff7; border-bottom: 1px solid #b9e9df; }
         .toefl-101-dialog__eyebrow { margin: 0 0 4px; color: #0d9488; font: 700 11px "Plus Jakarta Sans", sans-serif; letter-spacing: 0.08em; text-transform: uppercase; }
-        .toefl-101-dialog h2 { margin: 0; color: #06223d; font: 800 26px/1.15 "Plus Jakarta Sans", sans-serif; letter-spacing: 0; }
+        .toefl-101-dialog h2 { margin: 0; color: #06223d; font: 800 26px/1.15 "Plus Jakarta Sans", sans-serif; }
         .toefl-101-close { width: 36px; height: 36px; flex: 0 0 auto; display: grid; place-items: center; padding: 0; border: 1px solid #b9d9d5; border-radius: 50%; background: #ffffff; color: #40536a; cursor: pointer; }
-        .toefl-101-close:hover { color: #0d9488; border-color: #0d9488; }
-        .toefl-101-close:focus-visible { outline: 3px solid rgba(14, 165, 233, 0.24); outline-offset: 2px; }
         .toefl-101-dialog__body { max-height: calc(min(760px, 100dvh - 48px) - 86px); overflow-y: auto; padding: 24px; color: #40536a; font: 400 14px/1.65 "Outfit", sans-serif; }
         .toefl-101-intro { margin: 0 0 20px; color: #526a80; font-size: 16px; }
         .toefl-101-section { padding: 18px 0; border-top: 1px solid #e1edf2; }
         .toefl-101-section h3 { margin: 0 0 8px; color: #06223d; font: 700 17px "Plus Jakarta Sans", sans-serif; }
-        .toefl-101-section p { margin: 0; }
-        .toefl-101-section p + p { margin-top: 10px; }
-        .toefl-101-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
-        .toefl-101-fact { min-height: 88px; padding: 14px; border-radius: 8px; background: #f4f7fb; }
-        .toefl-101-fact strong { display: block; margin-bottom: 3px; color: #0d9488; font: 800 20px "Plus Jakarta Sans", sans-serif; }
         .toefl-101-list { margin: 8px 0 0; padding-left: 20px; }
         .toefl-101-list li + li { margin-top: 6px; }
         .toefl-101-table-wrap { margin-top: 12px; overflow-x: auto; border: 1px solid #d9e7ed; border-radius: 8px; }
         .toefl-101-table { width: 100%; min-width: 620px; border-collapse: collapse; font-size: 12px; line-height: 1.45; }
         .toefl-101-table th, .toefl-101-table td { padding: 10px 12px; border-bottom: 1px solid #e4eef2; text-align: left; vertical-align: top; }
-        .toefl-101-table th { color: #06223d; background: #eef9f7; font-family: "Plus Jakarta Sans", sans-serif; font-weight: 700; }
+        .toefl-101-table th { color: #06223d; background: #eef9f7; font-family: "Plus Jakarta Sans", sans-serif; }
         .toefl-101-table tr:last-child td { border-bottom: 0; }
-        .toefl-101-subheading { margin: 18px 0 6px; color: #0d9488; font: 700 14px "Plus Jakarta Sans", sans-serif; }
-        .toefl-101-example { margin-top: 8px; padding: 12px 14px; border-left: 3px solid #0d9488; border-radius: 0 8px 8px 0; background: #f4f7fb; }
-        .toefl-101-options { display: grid; gap: 3px; margin-top: 8px; }
-        .toefl-101-formula { margin-top: 12px; padding: 14px; border-radius: 8px; background: #d8fff7; color: #06223d; font-weight: 600; }
-        .toefl-101-note { margin-top: 10px; color: #6b7f91; font-size: 12px; font-style: italic; }
         .calendar-date-picker { position: relative; flex: 0 0 auto; }
         .calendar-date-badge { flex: 0 0 auto; width: 64px; height: 65px; display: flex; flex-direction: column; border: 1px solid #d1dce8; border-radius: 8px; overflow: hidden; padding: 0; cursor: pointer; background: #ffffff; }
         .calendar-date-badge-month { display: grid; place-items: center; height: 30px; background: #f4f7fb; color: #7a8fa6; font-family: "Outfit", sans-serif; font-size: 13px; font-weight: 600; }
@@ -1400,13 +1406,6 @@
             .calendar-brand { font-size: 18px; }
             .calendar-date-badge { width: 48px; height: 50px; }
             .calendar-date-badge-day { font-size: 18px; }
-            .toefl-101-trigger { min-height: 34px; padding: 7px 10px; font-size: 10px; }
-            .toefl-101-modal { padding: 12px; }
-            .toefl-101-dialog { max-height: calc(100dvh - 24px); border-radius: 12px; }
-            .toefl-101-dialog__header, .toefl-101-dialog__body { padding: 18px; }
-            .toefl-101-dialog h2 { font-size: 21px; }
-            .toefl-101-dialog__body { max-height: calc(100dvh - 106px); }
-            .toefl-101-facts { grid-template-columns: 1fr; }
         }
     </style>
     <link rel="stylesheet" href="toefl-navigation.css">
@@ -1483,23 +1482,28 @@
                         </div>
                     </article>
                     <article class="summary-card partner-card" aria-label="Find your English partner">
-                        <h2>Find You English Partner</h2>
-                        <p class="partner-status"><span class="status-dot"></span>User Online &amp; Matching</p>
-                        <div class="partner-carousel">
-                            <button class="partner-nav" type="button" aria-label="Previous partner"><i class="ti ti-chevron-left"></i></button>
-                            <div class="partner-avatars">
-                                <span class="partner-avatar"><i class="ti ti-user"></i></span>
-                                <span class="partner-avatar"><i class="ti ti-user"></i></span>
-                                <span class="partner-avatar active"><i class="ti ti-user"></i><span class="partner-popover">@user1<small>Level: B1</small></span></span>
-                                <span class="partner-avatar"><i class="ti ti-user"></i></span>
-                                <span class="partner-avatar"><i class="ti ti-user"></i></span>
+                        <div class="partner-content">
+                            <h2>Find You English Partner</h2>
+                            <p class="partner-status"><span class="status-dot"></span>User Online &amp; Matching</p>
+                            <div class="partner-carousel">
+                                <button class="partner-nav" type="button" aria-label="Previous partner"><i class="ti ti-chevron-left"></i></button>
+                                <div class="partner-avatars">
+                                    <span class="partner-avatar"><i class="ti ti-user"></i></span>
+                                    <span class="partner-avatar"><i class="ti ti-user"></i></span>
+                                    <span class="partner-avatar active"><i class="ti ti-user"></i></span>
+                                    <span class="partner-avatar"><i class="ti ti-user"></i></span>
+                                    <span class="partner-avatar"><i class="ti ti-user"></i></span>
+                                </div>
+                                <button class="partner-nav" type="button" aria-label="Next partner"><i class="ti ti-chevron-right"></i></button>
                             </div>
-                            <button class="partner-nav" type="button" aria-label="Next partner"><i class="ti ti-chevron-right"></i></button>
+                            <div class="partner-match">Match Now</div>
+                            <label class="partner-search"><i class="ti ti-search"></i><input id="partnerSearch" type="search" placeholder="Search Now" autocomplete="off"><i class="ti ti-arrow-right"></i></label>
+                            <div class="partner-search-result" id="partnerSearchResult" aria-live="polite">
+                                <div class="partner-popover partner-profile-popover"><div class="partner-profile-popover__header"><img class="partner-profile-popover__avatar" src="../asset/figma/partner-portrait.jpeg" alt="@user_ken profile"><div class="partner-profile-popover__details"><div class="partner-profile-popover__name">@user_ken</div><div class="partner-profile-popover__meta"><img class="partner-profile-popover__status" src="../asset/figma/partner-profile-overlay.png" alt="Online"><img class="partner-profile-popover__divider" src="../asset/figma/partner-divider.svg" alt="" aria-hidden="true"><span class="partner-profile-popover__level">A2</span><img class="partner-profile-popover__divider" src="../asset/figma/partner-divider.svg" alt="" aria-hidden="true"><span class="partner-profile-popover__connections"><strong>100+</strong><small>Connections</small></span></div><div class="partner-profile-popover__tags"><span class="partner-profile-popover__tag">#music</span><span class="partner-profile-popover__tag">#anime</span></div></div></div><a class="partner-profile-popover__request" href="https://discord.gg/APnzhYPFT8" target="_blank" rel="noopener noreferrer"><img src="../asset/figma/partner-plus.svg" alt="" aria-hidden="true"><span>Request Match</span></a></div>
+                            </div>
                         </div>
-                        <div class="partner-match">Match Now</div>
-                        <label class="partner-search"><i class="ti ti-search"></i><input type="search" placeholder="Search Now"><i class="ti ti-arrow-right"></i></label>
                         <a class="partner-discord-link" href="https://discord.gg/APnzhYPFT8" target="_blank" rel="noopener noreferrer">
-                            <span>Talk with Friends Now</span>
+                            <span>Talk with Your Friends</span>
                             <img src="../asset/icon/discord.png" alt="Join Discord">
                         </a>
                     </article>
@@ -1579,62 +1583,14 @@
 
     <div class="toefl-101-modal" id="toefl101Modal" aria-hidden="true">
         <article class="toefl-101-dialog" role="dialog" aria-modal="true" aria-labelledby="toefl101Title">
-            <header class="toefl-101-dialog__header">
-                <div><p class="toefl-101-dialog__eyebrow">QuickCheck Learning Guide</p><h2 id="toefl101Title">TOEFL ITP 101</h2></div>
-                <button class="toefl-101-close" id="closeToefl101" type="button" aria-label="Close TOEFL ITP 101"><i class="ti ti-x" aria-hidden="true"></i></button>
-            </header>
+            <header class="toefl-101-dialog__header"><div><p class="toefl-101-dialog__eyebrow">QuickCheck Learning Guide</p><h2 id="toefl101Title">TOEFL ITP 101</h2></div><button class="toefl-101-close" id="closeToefl101" type="button" aria-label="Close TOEFL ITP 101"><i class="ti ti-x" aria-hidden="true"></i></button></header>
             <div class="toefl-101-dialog__body">
                 <p class="toefl-101-intro">The TOEFL ITP (Level 1) evaluates the English proficiency of non-native speakers in academic contexts. It is a 115-minute, multiple-choice exam consisting of 140 questions.</p>
-                <section class="toefl-101-section">
-                    <h3>1. Test Structure and Format</h3>
-                    <p>The test is entirely paper-based and does not include speaking or essay-writing components. It is divided into three distinct, strictly timed sections:</p>
-                    <div class="toefl-101-table-wrap">
-                        <table class="toefl-101-table">
-                            <thead><tr><th>Section</th><th>Focus</th><th>Time Limit</th><th>Questions</th><th>Score Range</th></tr></thead>
-                            <tbody>
-                                <tr><td>1. Listening Comprehension</td><td>Spoken academic English</td><td>35 minutes</td><td>50</td><td>31-68</td></tr>
-                                <tr><td>2. Structure &amp; Written Expression</td><td>Grammar and syntax</td><td>25 minutes</td><td>40</td><td>31-68</td></tr>
-                                <tr><td>3. Reading Comprehension</td><td>Academic reading material</td><td>55 minutes</td><td>50</td><td>31-67</td></tr>
-                                <tr><td><strong>Total</strong></td><td>All sections</td><td>115 minutes</td><td>140</td><td>310-677</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <h4 class="toefl-101-subheading">Section Breakdown</h4>
-                    <ul class="toefl-101-list">
-                        <li><strong>Listening Comprehension:</strong> tests your ability to understand spoken English in college settings through short conversations (30 questions), longer conversations (8 questions), and short academic lectures (12 questions).</li>
-                        <li><strong>Structure and Written Expression:</strong> tests your recognition of correct grammar and sentence structure through 15 sentence-completion questions and 25 error-identification questions.</li>
-                        <li><strong>Reading Comprehension:</strong> tests your ability to understand academic texts, including main ideas, specific details, vocabulary in context, and implied meanings.</li>
-                    </ul>
-                    <div class="toefl-101-example"><strong>Sentence-completion example</strong><p>The American bald eagle, ____________ on the endangered species list, has made a remarkable recovery in recent decades.</p><div class="toefl-101-options"><span>(A) which once</span><strong>(B) once placed</strong><span>(C) it was once</span><span>(D) was once</span></div></div>
-                    <div class="toefl-101-example"><strong>Error-identification example</strong><p>The <strong>[A] rapidly</strong> development <strong>[B] of</strong> solar technology has <strong>[C] made</strong> renewable energy more <strong>[D] accessible</strong> than ever before.</p><div class="toefl-101-options"><strong>(A) rapidly</strong><span>(B) of</span><span>(C) made</span><span>(D) accessible</span></div></div>
-                </section>
-                <section class="toefl-101-section">
-                    <h3>2. How the TOEFL ITP is Scored</h3>
-                    <p>Because it is a multiple-choice test, you are graded based on the number of correct answers, with no penalty for guessing. The absolute lowest score you can receive is 310, and the highest is 677.</p>
-                    <h4 class="toefl-101-subheading">The Scoring Formula</h4>
-                    <ol class="toefl-101-list"><li>Add the three scaled section scores together.</li><li>Divide the sum by 3.</li><li>Multiply that number by 10.</li></ol>
-                    <div class="toefl-101-formula">Example: Listening 54 + Structure 53 + Reading 56 = 163<br>163 / 3 = 54.33<br>54.33 x 10 = <strong>543 Total Score</strong></div>
-                </section>
-                <section class="toefl-101-section">
-                    <h3>3. CEFR Level Mapping</h3>
-                    <p>Educational Testing Service (ETS) maps TOEFL ITP scores to the Common European Framework of Reference for Languages (CEFR). Most institutions require a B1 or B2 level for graduation or academic placement.</p>
-                    <div class="toefl-101-table-wrap"><table class="toefl-101-table"><thead><tr><th>CEFR Level</th><th>English Proficiency</th><th>TOEFL ITP Total Score Range</th></tr></thead><tbody><tr><td><strong>C1</strong></td><td>Advanced</td><td>627-677</td></tr><tr><td><strong>B2</strong></td><td>Upper-Intermediate</td><td>543-626</td></tr><tr><td><strong>B1</strong></td><td>Intermediate</td><td>460-542</td></tr><tr><td><strong>A2</strong></td><td>Waystage (Basic)</td><td>337-459</td></tr></tbody></table></div>
-                    <p class="toefl-101-note">Scores below 337 fall under the A2 threshold, and the test does not measure C2 level proficiency.</p>
-                </section>
-                <section class="toefl-101-section">
-                    <h3>4. TOEFL ITP vs. TOEFL iBT: What's the Difference?</h3>
-                    <p>While both exams are created by ETS and measure academic English, they serve entirely different purposes.</p>
-                    <div class="toefl-101-table-wrap"><table class="toefl-101-table"><thead><tr><th>Feature</th><th>TOEFL ITP</th><th>TOEFL iBT</th></tr></thead><tbody><tr><td>Primary Use</td><td>Internal university placement, exit exams, local requirements.</td><td>International university admissions, visas, scholarships.</td></tr><tr><td>Format</td><td>Paper-based (Scantron).</td><td>Internet-based (Computer).</td></tr><tr><td>Skills Tested</td><td>Listening, Grammar (Structure), Reading.</td><td>Reading, Listening, Speaking, Writing.</td></tr><tr><td>Test Duration</td><td>About 2 hours.</td><td>About 2 hours.</td></tr><tr><td>Scoring</td><td>310 to 677.</td><td>0 to 120.</td></tr><tr><td>Price</td><td>Generally lower, set by the local institution.</td><td>Higher, standardized globally.</td></tr></tbody></table></div>
-                </section>
-                <section class="toefl-101-section">
-                    <h3>5. Quick Preparation Tips</h3>
-                    <ol class="toefl-101-list">
-                        <li><strong>Target the Structure Section:</strong> improving your grammar is often the fastest way to boost your total because all three sections carry equal weight.</li>
-                        <li><strong>Never Leave Blanks:</strong> there is no negative marking for incorrect answers. If you are running out of time, guess.</li>
-                        <li><strong>Pace Yourself in Reading:</strong> 55 minutes for 50 questions gives you roughly one minute per question, including passage-reading time. Practice skimming for main ideas.</li>
-                        <li><strong>Focus on the Second Speaker:</strong> in Listening Part A, the answer is almost always found in what the second speaker says.</li>
-                    </ol>
-                </section>
+                <section class="toefl-101-section"><h3>1. Test Structure and Format</h3><p>The test is entirely paper-based and does not include speaking or essay-writing components. It is divided into three distinct, strictly timed sections:</p><div class="toefl-101-table-wrap"><table class="toefl-101-table"><thead><tr><th>Section</th><th>Focus</th><th>Time Limit</th><th>Questions</th><th>Score Range</th></tr></thead><tbody><tr><td>1. Listening Comprehension</td><td>Spoken academic English</td><td>35 minutes</td><td>50</td><td>31-68</td></tr><tr><td>2. Structure &amp; Written Expression</td><td>Grammar and syntax</td><td>25 minutes</td><td>40</td><td>31-68</td></tr><tr><td>3. Reading Comprehension</td><td>Academic reading material</td><td>55 minutes</td><td>50</td><td>31-67</td></tr><tr><td><strong>Total</strong></td><td>All sections</td><td>115 minutes</td><td>140</td><td>310-677</td></tr></tbody></table></div><h4>Section Breakdown</h4><ul class="toefl-101-list"><li><strong>Listening Comprehension:</strong> Tests your ability to understand spoken English in college settings. It features short conversations between two people (30 questions), longer conversations (8 questions), and short academic lectures (12 questions).</li><li><strong>Structure and Written Expression:</strong> Tests your recognition of correct grammar and sentence structure. It includes 15 sentence-completion questions and 25 error-identification questions.</li><li><strong>Reading Comprehension:</strong> Tests your ability to read and understand academic texts, including main ideas, specific details, vocabulary in context, and implied meanings.</li></ul><p><strong>Sentence-completion example:</strong> The American bald eagle, ____________ on the endangered species list, has made a remarkable recovery in recent decades.</p><ul class="toefl-101-list"><li>(A) which once</li><li><strong>(B) once placed</strong></li><li>(C) it was once</li><li>(D) was once</li></ul><p><strong>Error-identification example:</strong> The [A] <strong>rapidly</strong> development [B] <strong>of</strong> solar technology has [C] <strong>made</strong> renewable energy more [D] <strong>accessible</strong> than ever before.</p><ul class="toefl-101-list"><li><strong>(A) rapidly</strong></li><li>(B) of</li><li>(C) made</li><li>(D) accessible</li></ul></section>
+                <section class="toefl-101-section"><h3>2. How the TOEFL ITP is Scored</h3><p>Because it is a multiple-choice test, you are graded based on the number of correct answers, with no penalty for guessing. The absolute lowest score you can receive is 310, and the highest is 677.</p><h4>The Scoring Formula</h4><ol class="toefl-101-list"><li>Add the three scaled section scores together.</li><li>Divide the sum by 3.</li><li>Multiply that number by 10.</li></ol><p><strong>Calculation Example:</strong> If you score 54 in Listening, 53 in Structure, and 56 in Reading: 54 + 53 + 56 = 163; 163 divided by 3 = 54.33; 54.33 multiplied by 10 = <strong>543 (Total Score)</strong>.</p></section>
+                <section class="toefl-101-section"><h3>3. CEFR Level Mapping</h3><p>Educational Testing Service (ETS) maps TOEFL ITP scores to the Common European Framework of Reference for Languages (CEFR). Most institutions require a B1 or B2 level for graduation or academic placement.</p><div class="toefl-101-table-wrap"><table class="toefl-101-table"><thead><tr><th>CEFR Level</th><th>English Proficiency</th><th>TOEFL ITP Total Score Range</th></tr></thead><tbody><tr><td><strong>C1</strong></td><td>Advanced</td><td>627-677</td></tr><tr><td><strong>B2</strong></td><td>Upper-Intermediate</td><td>543-626</td></tr><tr><td><strong>B1</strong></td><td>Intermediate</td><td>460-542</td></tr><tr><td><strong>A2</strong></td><td>Waystage (Basic)</td><td>337-459</td></tr></tbody></table></div><p><em>Scores below 337 fall under the A2 threshold, and the test does not measure C2 level proficiency.</em></p></section>
+                <section class="toefl-101-section"><h3>4. TOEFL ITP vs. TOEFL iBT: What's the Difference?</h3><p>While both exams are created by ETS and measure academic English, they serve entirely different purposes.</p><div class="toefl-101-table-wrap"><table class="toefl-101-table"><thead><tr><th>Feature</th><th>TOEFL ITP</th><th>TOEFL iBT</th></tr></thead><tbody><tr><td>Primary Use</td><td>Internal university placement, exit exams, local requirements.</td><td>International university admissions, visas, scholarships.</td></tr><tr><td>Format</td><td>Paper-based (Scantron).</td><td>Internet-based (Computer).</td></tr><tr><td>Skills Tested</td><td>Listening, Grammar (Structure), Reading.</td><td>Reading, Listening, Speaking, Writing.</td></tr><tr><td>Test Duration</td><td>About 2 hours.</td><td>About 2 hours.</td></tr><tr><td>Scoring</td><td>310 to 677.</td><td>0 to 120.</td></tr><tr><td>Price</td><td>Generally lower, set by the local institution.</td><td>Higher, standardized globally.</td></tr></tbody></table></div></section>
+                <section class="toefl-101-section"><h3>5. Quick Preparation Tips</h3><ol class="toefl-101-list"><li><strong>Target the Structure Section:</strong> Because all three sections carry equal weight in the final score, improving your grammar is often the fastest way to boost your total. A single point improvement in a section scales up to over three points on your final score.</li><li><strong>Never Leave Blanks:</strong> There is no negative marking for incorrect answers. If you are running out of time, guess.</li><li><strong>Pace Yourself in Reading:</strong> You have 55 minutes for 50 questions, roughly one minute per question including reading dense academic passages. Practice skimming for main ideas before reading the detailed questions.</li><li><strong>Focus on the Second Speaker:</strong> In the Listening short conversations (Part A), the answer to the question is almost always found in what the second speaker says.</li></ol></section>
             </div>
         </article>
     </div>
@@ -1663,9 +1619,6 @@
         const toefl101Modal = document.getElementById("toefl101Modal");
         const openToefl101Button = document.getElementById("openToefl101");
         const closeToefl101Button = document.getElementById("closeToefl101");
-        const toefl101TriggerParent = openToefl101Button.parentNode;
-        const toefl101TriggerNextSibling = openToefl101Button.nextSibling;
-        let toefl101TriggerPlaceholder = null;
         const MONTH_PICKER_LABELS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MEI", "JUNE", "JULI", "AUGUSTUS", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
         const dashboardSync = typeof StudyPlanFirestoreSync === "function"
             ? new StudyPlanFirestoreSync({ projectId: "quickcheck-25590" })
@@ -1681,6 +1634,12 @@
             document.querySelectorAll("[data-nav-label]").forEach((item) => {
                 item.hidden = Boolean(query) && !item.dataset.navLabel.toLowerCase().includes(query);
             });
+        });
+
+        const partnerSearch = document.getElementById("partnerSearch");
+        const partnerSearchResult = document.getElementById("partnerSearchResult");
+        partnerSearch.addEventListener("input", () => {
+            partnerSearchResult.classList.toggle("is-visible", partnerSearch.value.trim().toLowerCase() === "user_ken");
         });
 
         function formatDateKey(year, month, day) {
@@ -1992,17 +1951,6 @@
         });
 
         function openToefl101() {
-            const triggerRect = openToefl101Button.getBoundingClientRect();
-            toefl101TriggerPlaceholder = document.createElement("span");
-            toefl101TriggerPlaceholder.setAttribute("aria-hidden", "true");
-            toefl101TriggerPlaceholder.style.cssText = `flex: 0 0 ${triggerRect.width}px; width: ${triggerRect.width}px; height: ${triggerRect.height}px;`;
-            toefl101TriggerParent.insertBefore(toefl101TriggerPlaceholder, openToefl101Button);
-            document.body.appendChild(openToefl101Button);
-            openToefl101Button.classList.add("is-floating");
-            openToefl101Button.style.top = `${triggerRect.top}px`;
-            openToefl101Button.style.left = `${triggerRect.left}px`;
-            openToefl101Button.style.width = `${triggerRect.width}px`;
-            openToefl101Button.style.height = `${triggerRect.height}px`;
             toefl101Modal.classList.add("is-open");
             toefl101Modal.setAttribute("aria-hidden", "false");
             openToefl101Button.setAttribute("aria-expanded", "true");
@@ -2014,29 +1962,11 @@
             toefl101Modal.classList.remove("is-open");
             toefl101Modal.setAttribute("aria-hidden", "true");
             openToefl101Button.setAttribute("aria-expanded", "false");
-            openToefl101Button.classList.remove("is-floating");
-            openToefl101Button.removeAttribute("style");
-            if (toefl101TriggerNextSibling && toefl101TriggerNextSibling.parentNode === toefl101TriggerParent) {
-                toefl101TriggerParent.insertBefore(openToefl101Button, toefl101TriggerNextSibling);
-            } else {
-                toefl101TriggerParent.appendChild(openToefl101Button);
-            }
-            if (toefl101TriggerPlaceholder) {
-                toefl101TriggerPlaceholder.remove();
-                toefl101TriggerPlaceholder = null;
-            }
             document.body.style.overflow = "";
             openToefl101Button.focus();
         }
 
-        const toefl101AttentionKey = "toefl_101_trigger_seen";
-        if (localStorage.getItem(toefl101AttentionKey) !== "1") {
-            openToefl101Button.classList.add("is-attention");
-        }
-
         openToefl101Button.addEventListener("click", () => {
-            openToefl101Button.classList.remove("is-attention");
-            localStorage.setItem(toefl101AttentionKey, "1");
             if (toefl101Modal.classList.contains("is-open")) closeToefl101();
             else openToefl101();
         });
