@@ -1173,21 +1173,35 @@
         .partner-card {
             grid-column: 4;
             grid-row: 1 / 3;
-            height: auto;
+            min-height: 385px;
+            height: 100%;
             position: relative;
             overflow: hidden;
-            padding: 20px 18px 18px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            padding: 0;
+            border-radius: 16px;
             text-align: center;
-            gap: 0;
+            perspective: 1200px;
         }
+        .partner-card:hover { transform: none; }
+        .partner-card__inner { position: absolute; inset: 0; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1); }
+        .partner-card.is-flipped .partner-card__inner { transform: rotateY(-180deg); }
+        .partner-card__face { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+        .partner-card-front { padding: 20px 18px 18px; display: flex; flex-direction: column; align-items: center; }
+        .partner-card-back { --network-space-xs: 4px; --network-space-sm: 8px; --network-space-md: 16px; --network-space-lg: 24px; --network-space-xl: 32px; padding: var(--network-space-sm); background: #D8FFF7; color: #111111; transform: rotateY(180deg); font-family: "Plus Jakarta Sans", sans-serif; }
         .partner-content { position: relative; z-index: 1; width: 100%; display: grid; justify-items: center; margin: auto 0; transform: translateY(-52px); }
         .partner-card h2 { position: relative; z-index: 1; margin: 12px 0 0; color: #1c1c1c; font: 700 20px "Plus Jakarta Sans", sans-serif; }
-        .partner-status { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px 0 0; color: #0d9488; font: 600 10px "Outfit", sans-serif; }
+        .partner-status-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; }
+        .partner-status { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; color: #0d9488; font: 600 10px "Outfit", sans-serif; }
         .partner-status .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #0d9488; }
-        .partner-card::before { content: ""; position: absolute; inset: 50px 6px 68px; z-index: 0; background: url("../asst/icon/Global.svg") center / contain no-repeat; pointer-events: none; }
+        .you-have-50-connection-parent { position: relative; width: auto; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 10px; border: 0; border-radius: 24px; box-sizing: border-box; background-color: #ccfbf1; color: #0d9488; text-align: center; font: 400 8px Inter, sans-serif; cursor: pointer; }
+        .you-have-50-connection-parent:hover { background-color: #b5f5e8; }
+        .you-have-50-connection-parent:focus-visible { outline: 2px solid #0d9488; outline-offset: 2px; }
+        .you-have-50-container { position: relative; line-height: 1.15; }
+        .you-have { font-weight: 500; }
+        .you-have-50-container .connection { display: block; font-size: 10px; font-weight: 600; }
+        .connection2 { line-height: 115%; }
+        .arrow-right-icon { position: relative; width: 10px; height: 10px; flex: 0 0 auto; font-size: 10px; }
+        .partner-card-front::before { content: ""; position: absolute; inset: 50px 6px 68px; z-index: 0; background: url("../asst/icon/Global.svg") center / contain no-repeat; pointer-events: none; }
         .partner-carousel { position: relative; z-index: 1; margin: 80px 0 0; display: flex; align-items: center; justify-content: center; gap: 8px; }
         .partner-nav { border: 0; background: transparent; color: #7A8FA6; cursor: pointer; display: grid; place-items: center; padding: 0; }
         .partner-nav .ti { font-size: 20px; }
@@ -1229,9 +1243,45 @@
         .partner-discord-link { position: absolute; right: 18px; bottom: 18px; z-index: 1; display: inline-flex; align-items: center; gap: 12px; color: #7a8fa6; font: 400 11px "Plus Jakarta Sans", sans-serif; text-decoration: none; }
         .partner-discord-link:hover { color: #586d84; }
         .partner-discord-link img { width: 24px; height: 24px; object-fit: contain; }
+        .network-card-heading { position: relative; z-index: 1; display: grid; justify-items: center; gap: var(--network-space-sm); transform: translateY(var(--network-space-md)); }
+        .network-card-title { margin: 0; color: #0d9488; font-size: 16px; font-weight: 700; }
+        .network-card-total { height: 39px; display: grid; justify-items: center; align-content: start; }
+        .network-card-total__count { display: inline-flex; align-items: center; gap: 4px; color: #0d9488; font-size: 14px; font-weight: 700; }
+        .network-card-total__count .ti { font-size: 16px; }
+        .network-card-total strong { color: #000000; font-size: 14px; line-height: 1.2; }
+        .network-card-body { position: relative; z-index: 1; width: 100%; margin-top: var(--network-space-md); display: grid; gap: var(--network-space-sm); transform: translateY(var(--network-space-md)); }
+        .network-insights { min-height: 106px; display: grid; grid-template-columns: minmax(135px, 1fr) 1px minmax(135px, 1fr); gap: var(--network-space-sm); padding: var(--network-space-sm); border-radius: 8px; background: #ffffff; box-shadow: 0 0 4px rgba(0, 0, 0, 0.25); }
+        .network-insights h4, .network-connections h4 { margin: 0; color: #111111; font-size: 12px; font-weight: 600; line-height: 1.15; }
+        .network-insights h4 small { display: block; font-size: 8px; font-weight: 400; }
+        .network-divider { width: 1px; height: 90px; background: #d9d9d9; }
+        .network-bars { height: 68px; display: flex; align-items: end; justify-content: space-between; }
+        .network-bar { width: 22px; height: 68px; display: flex; flex-direction: column; justify-content: end; align-items: center; gap: 3px; color: #111111; font-size: 10px; }
+        .network-bar strong { min-height: 16px; font-size: 14px; font-weight: 400; }
+        .network-bar i { width: 20px; height: var(--bar-height); min-height: 4px; border-radius: 2px 2px 0 0; background: #3f8884; }
+        .network-countries { display: grid; align-content: start; gap: var(--network-space-xs); text-align: left; }
+        .network-country { display: grid; grid-template-columns: 31px 1fr auto; gap: 8px; align-items: center; min-height: 20px; font-size: 10px; }
+        .network-country strong { font-size: 14px; font-weight: 400; }
+        .network-flag { position: relative; width: 31px; height: 20px; overflow: hidden; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
+        .network-flag.japan { background: radial-gradient(circle at center, #bc002d 0 5px, transparent 5.5px), #ffffff; }
+        .network-flag.brazil { background: #009c3b; }
+        .network-flag.brazil::before { content: ""; position: absolute; width: 14px; height: 14px; left: 8px; top: 3px; background: #ffdf00; transform: rotate(45deg); }
+        .network-flag.spain { background: linear-gradient(#aa151b 0 25%, #f1bf00 25% 75%, #aa151b 75%); }
+        .network-connections { display: grid; gap: var(--network-space-xs); padding: var(--network-space-xs) var(--network-space-sm); border-radius: 10px; background: #ffffff; box-shadow: 0 2px 8px rgba(22, 60, 57, 0.09); text-align: left; }
+        .network-connection-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--network-space-xs); }
+        .network-person { min-width: 0; height: 24px; display: grid; grid-template-columns: 24px minmax(38px, 1fr) 25px 21px; gap: 6px; align-items: center; padding: 0 5px 0 6px; border-radius: 6px; background: #398b88; color: #ffffff; font-size: 10px; }
+        .network-person > .ti { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: #ffffff; color: #111111; font-size: 22px; }
+        .network-person__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .network-person .network-flag { width: 25px; height: 18px; }
+        .network-level { width: 21px; height: 21px; display: grid; place-items: center; border-radius: 4px; background: #72a7a4; font-size: 11px; }
+        .network-view-all { color: #49706e; font-size: 8px; text-align: center; }
+        .partner-card-back::before { content: ""; position: absolute; inset: 50px 6px 68px; z-index: 0; background: url("../asst/icon/Global.svg") center / contain no-repeat; pointer-events: none; }
+        .network-back-button { position: absolute; right: var(--network-space-sm); bottom: var(--network-space-sm); z-index: 2; min-height: 24px; display: inline-flex; align-items: center; gap: var(--network-space-lg); padding: var(--network-space-xs) var(--network-space-sm); border: 0; border-radius: 20px; background: #0d9488; color: #ffffff; font: 600 8px/1.2 Inter, sans-serif; cursor: pointer; }
+        .network-back-button .ti { font-size: 10px; }
+        .network-back-button:focus-visible { outline: 2px solid #0d9488; outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { .partner-card__inner { transition-duration: 1ms; } }
 
         main { margin-top: 26px; gap: 18px; }
-        .month-panel { padding: 20px; border: 1px solid #d1dce8; border-radius: 8px; background: #ffffff; box-shadow: 0 0 2px rgba(0, 0, 0, 0.1); }
+        .month-panel { padding: 20px; border: 1px solid #d1dce8; border-radius: 8px; background: #D8FFF7; box-shadow: 0 0 2px rgba(0, 0, 0, 0.1); }
         .month-panel > .section-head { display: none; }
         .planner-layout { margin-top: 0; display: block; }
         .month-selector-block { display: none; }
@@ -1271,7 +1321,7 @@
             padding: 0;
             border: 0;
             border-radius: 10px;
-            background: #ffffff;
+            background: #D8FFF7;
             box-shadow: none;
             overflow: hidden;
         }
@@ -1302,8 +1352,8 @@
         .toefl-101-table th, .toefl-101-table td { padding: 10px 12px; border-bottom: 1px solid #e4eef2; text-align: left; vertical-align: top; }
         .toefl-101-table th { color: #06223d; background: #eef9f7; font-family: "Plus Jakarta Sans", sans-serif; }
         .toefl-101-table tr:last-child td { border-bottom: 0; }
-        .calendar-date-picker { position: relative; flex: 0 0 auto; }
-        .calendar-date-badge { flex: 0 0 auto; width: 64px; height: 65px; display: flex; flex-direction: column; border: 1px solid #d1dce8; border-radius: 8px; overflow: hidden; padding: 0; cursor: pointer; background: #ffffff; }
+        .calendar-date-picker { position: relative; flex: 0 0 auto; border-radius: 16px; }
+        .calendar-date-badge { flex: 0 0 auto; width: 64px; height: 65px; display: flex; flex-direction: column; border: 1px solid #d1dce8; border-radius: inherit; overflow: hidden; padding: 0; cursor: pointer; background: #ffffff; }
         .calendar-date-badge-month { display: grid; place-items: center; height: 30px; background: #f4f7fb; color: #7a8fa6; font-family: "Outfit", sans-serif; font-size: 13px; font-weight: 600; }
         .calendar-date-badge-day { flex: 1; display: grid; place-items: center; color: #000000; font-family: "Outfit", sans-serif; font-size: 18px; font-weight: 600; }
         .calendar-date-badge:focus-visible { outline: none; box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.18); }
@@ -1388,7 +1438,7 @@
             .dashboard-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; }
             .promo-banner, .profile-card, .stacked-cards, .progress-card, .partner-card { grid-column: auto; grid-row: auto; }
             .promo-banner { grid-column: 1 / -1; min-height: 150px; }
-            .partner-card { height: auto; }
+            .partner-card { min-height: 385px; height: 385px; }
             .calendar-head { padding: 16px; }
             .calendar-brand { font-size: 22px; }
             .calendar-main-layout { grid-template-columns: 1fr; }
@@ -1481,10 +1531,18 @@
                             <a class="progress-card__report" href="MyProgress.html">View report <i class="ti ti-arrow-up-right" aria-hidden="true"></i></a>
                         </div>
                     </article>
-                    <article class="summary-card partner-card" aria-label="Find your English partner">
+                    <article class="summary-card partner-card" id="partnerCard" aria-label="Find your English partner">
+                        <div class="partner-card__inner">
+                        <div class="partner-card__face partner-card-front" id="partnerCardFront">
                         <div class="partner-content">
                             <h2>Find You English Partner</h2>
-                            <p class="partner-status"><span class="status-dot"></span>User Online &amp; Matching</p>
+                            <div class="partner-status-row">
+                                <p class="partner-status"><span class="status-dot"></span>User Online &amp; Matching</p>
+                                <button class="you-have-50-connection-parent" id="showPartnerNetwork" type="button" aria-label="View your 50 plus connections" aria-expanded="false" aria-controls="partnerCardBack">
+                                    <span class="you-have-50-container"><span class="you-have">You have</span><span class="connection"><span class="connection2">50+ Connection</span></span></span>
+                                    <i class="ti ti-arrow-right arrow-right-icon" aria-hidden="true"></i>
+                                </button>
+                            </div>
                             <div class="partner-carousel">
                                 <button class="partner-nav" type="button" aria-label="Previous partner"><i class="ti ti-chevron-left"></i></button>
                                 <div class="partner-avatars">
@@ -1506,6 +1564,23 @@
                             <span>Talk with Your Friends</span>
                             <img src="../asset/icon/discord.png" alt="Join Discord">
                         </a>
+                        </div>
+                        <section class="partner-card__face partner-card-back" id="partnerCardBack" aria-label="Your global network" aria-hidden="true" inert>
+                            <div class="network-card-heading">
+                                <h3 class="network-card-title">YOUR GLOBAL NETWORK</h3>
+                                <div class="network-card-total"><span class="network-card-total__count"><i class="ti ti-users" aria-hidden="true"></i>3 /78</span><strong>TOTAL CONNECTION</strong></div>
+                            </div>
+                            <div class="network-card-body">
+                                <div class="network-insights">
+                                    <section><h4>Connection Breakdown <small>(CEFR LEVEL)</small></h4><div class="network-bars"><span class="network-bar"><strong>&nbsp;</strong><i style="--bar-height:4px"></i><span>A1</span></span><span class="network-bar"><strong>&nbsp;</strong><i style="--bar-height:17px"></i><span>A2</span></span><span class="network-bar"><strong>78</strong><i style="--bar-height:27px"></i><span>B1</span></span><span class="network-bar"><strong>48</strong><i style="--bar-height:23px"></i><span>B2</span></span><span class="network-bar"><strong>0</strong><i style="--bar-height:4px"></i><span>C1</span></span><span class="network-bar"><strong>0</strong><i style="--bar-height:4px"></i><span>C2</span></span></div></section>
+                                    <span class="network-divider" aria-hidden="true"></span>
+                                    <section class="network-countries"><h4>Top Connecting Countries</h4><div class="network-country"><span class="network-flag japan" aria-label="Japan"></span><span>Japan</span><strong>12</strong></div><div class="network-country"><span class="network-flag brazil" aria-label="Brazil"></span><span>Brazil</span><strong>8</strong></div><div class="network-country"><span class="network-flag spain" aria-label="Spain"></span><span>Spain</span><strong>7</strong></div></section>
+                                </div>
+                                <section class="network-connections"><h4>List of Connections</h4><div class="network-connection-grid"><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Yuki T.</span><span class="network-flag japan" aria-label="Japan"></span><span class="network-level">B1</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Einiry P.</span><span class="network-flag brazil" aria-label="Brazil"></span><span class="network-level">B1</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Carlos R.</span><span class="network-flag brazil" aria-label="Brazil"></span><span class="network-level">B2</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Glacia E.</span><span class="network-flag spain" aria-label="Spain"></span><span class="network-level">B1</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Sofia L.</span><span class="network-flag spain" aria-label="Spain"></span><span class="network-level">B2</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Jonch A.</span><span class="network-flag spain" aria-label="Spain"></span><span class="network-level">B2</span></div></div><span class="network-view-all">View All (78 Connections)</span></section>
+                            </div>
+                            <button class="network-back-button" id="hidePartnerNetwork" type="button"><span>Go Back to Matchmaking</span><i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+                        </section>
+                        </div>
                     </article>
                 </section>
             </div>
@@ -1638,9 +1713,27 @@
 
         const partnerSearch = document.getElementById("partnerSearch");
         const partnerSearchResult = document.getElementById("partnerSearchResult");
+        const partnerCard = document.getElementById("partnerCard");
+        const partnerCardFront = document.getElementById("partnerCardFront");
+        const partnerCardBack = document.getElementById("partnerCardBack");
+        const showPartnerNetworkButton = document.getElementById("showPartnerNetwork");
+        const hidePartnerNetworkButton = document.getElementById("hidePartnerNetwork");
         partnerSearch.addEventListener("input", () => {
             partnerSearchResult.classList.toggle("is-visible", partnerSearch.value.trim().toLowerCase() === "user_ken");
         });
+
+        function setPartnerCardFlipped(isFlipped) {
+            partnerCard.classList.toggle("is-flipped", isFlipped);
+            showPartnerNetworkButton.setAttribute("aria-expanded", String(isFlipped));
+            partnerCardFront.setAttribute("aria-hidden", String(isFlipped));
+            partnerCardBack.setAttribute("aria-hidden", String(!isFlipped));
+            partnerCardFront.inert = isFlipped;
+            partnerCardBack.inert = !isFlipped;
+            (isFlipped ? hidePartnerNetworkButton : showPartnerNetworkButton).focus({ preventScroll: true });
+        }
+
+        showPartnerNetworkButton.addEventListener("click", () => setPartnerCardFlipped(true));
+        hidePartnerNetworkButton.addEventListener("click", () => setPartnerCardFlipped(false));
 
         function formatDateKey(year, month, day) {
             return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -1941,6 +2034,9 @@
         });
 
         document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && partnerCard.classList.contains("is-flipped")) {
+                setPartnerCardFlipped(false);
+            }
             if (event.key === "Escape" && monthPickerPopover.classList.contains("is-open")) {
                 closeMonthPicker();
                 calendarDateBadge.focus();
