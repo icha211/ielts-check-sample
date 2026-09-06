@@ -3255,6 +3255,20 @@
             return null;
         }
 
+        function getExplanationEvidenceSegments(question) {
+            var partId = inferPartIdFromQuestion(question);
+            var segments = getQuestionTranscriptSegments(question).filter(function(segment) {
+                return String((segment && segment.text) || '').trim();
+            });
+            if (partId === 3) {
+                var narratorSegments = segments.filter(function(segment) {
+                    return normalizeSpeakerTag(segment && segment.speaker) === 'NARR';
+                });
+                return (narratorSegments.length ? narratorSegments : segments).slice(0, 2);
+            }
+            return segments.slice(0, 2);
+        }
+
         function highlightQuotePhrases(text, phrases) {
             var html = escapeHtml(text || '');
             var list = Array.isArray(phrases) ? phrases : [];
@@ -3408,8 +3422,9 @@
             var bestAnswerText = sanitizeFigmaOptionText(options[normalizedCorrect] || '');
             var partId = inferPartIdFromQuestion(q);
             var qSegments = getQuestionTranscriptSegments(q);
-            var studentSeg = getFirstSpeakerSegment(qSegments, partId === 2 ? 'MEN' : 'MEN');
-            var librarianSeg = getFirstSpeakerSegment(qSegments, partId === 2 ? 'WOMEN' : 'WOMEN');
+            var evidenceSegments = getExplanationEvidenceSegments(q);
+            var studentSeg = partId === 3 ? evidenceSegments[0] : getFirstSpeakerSegment(qSegments, 'MEN');
+            var librarianSeg = partId === 3 ? evidenceSegments[1] : getFirstSpeakerSegment(qSegments, 'WOMEN');
             var highlightTerms = buildHighlightTermsFromAnswer(bestAnswerText);
             var reasonText = buildFigmaWhyReason(q, explanation, bestAnswerText);
             var reasonHtml = escapeHtml(reasonText);
@@ -3428,9 +3443,9 @@
             var dialogueBlocks = [];
             if (studentSeg && studentSeg.text) {
                 dialogueBlocks.push({
-                    speaker_name: 'Student',
-                    speaker_gender: 'male',
-                    introduction_label: 'For instance, if we look directly at the spoken dialogue, the Student clearly explains his situation by stating:',
+                    speaker_name: partId === 3 ? 'Professor' : 'Student',
+                    speaker_gender: partId === 3 ? 'neutral' : 'male',
+                    introduction_label: partId === 3 ? 'The lecture states:' : 'For instance, if we look directly at the spoken dialogue, the Student clearly explains his situation by stating:',
                     quote_text_html: '&ldquo;' + renderTranscriptTextWithMarks(studentSeg.text || '', highlightTerms) + '&rdquo;',
                     start_sec: Number(studentSeg.start || 0),
                     end_sec: Number(studentSeg.end || (Number(studentSeg.start || 0) + 8))
@@ -3438,9 +3453,9 @@
             }
             if (librarianSeg && librarianSeg.text) {
                 dialogueBlocks.push({
-                    speaker_name: 'Librarian',
-                    speaker_gender: 'female',
-                    introduction_label: 'The Librarian immediately solves this by responding:',
+                    speaker_name: partId === 3 ? 'Professor' : 'Librarian',
+                    speaker_gender: partId === 3 ? 'neutral' : 'female',
+                    introduction_label: partId === 3 ? 'The lecture continues:' : 'The Librarian immediately solves this by responding:',
                     quote_text_html: '&ldquo;' + renderTranscriptTextWithMarks(librarianSeg.text || '', highlightTerms) + '&rdquo;',
                     start_sec: Number(librarianSeg.start || 0),
                     end_sec: Number(librarianSeg.end || (Number(librarianSeg.start || 0) + 8))
@@ -3482,6 +3497,8 @@
                 var womenSeg = getFirstSpeakerSegment(segments, 'WOMEN');
                 if (menSeg && menSeg.text) picks.push(menSeg);
                 if (womenSeg && womenSeg.text) picks.push(womenSeg);
+            } else if (partId === 3) {
+                picks = getExplanationEvidenceSegments(q);
             }
 
             if (!picks.length) {
