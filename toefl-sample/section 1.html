@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TOEFL ITP Simulator - Section 1: Listening Comprehension</title>
     <script src="app-config.js?v=20260802a"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
+    twemoji.parse(document.body);
     <link rel="stylesheet" href="css/editor.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
@@ -1036,6 +1038,7 @@
                             answerKey: partData?.answerKey || "",
                             explanation: partData?.explanation || "",
                             explanationSchemas: partData?.explanationSchemas && typeof partData.explanationSchemas === "object" ? partData.explanationSchemas : {},
+                            explanationTexts: partData?.explanationTexts && typeof partData.explanationTexts === "object" ? partData.explanationTexts : {},
                             questions: partData?.questions || "",
                             transcripts: partData?.transcripts || "",
                             transcriptSegments: Array.isArray(partData?.transcriptSegments) ? partData.transcriptSegments : [],
@@ -1501,7 +1504,59 @@
                         }
                     });
                 }
+                hydrateExplanationCardTextareas(p, row);
             });
+        }
+
+        function explanationHtmlToText(value) {
+            const host = document.createElement("div");
+            host.innerHTML = String(value || "")
+                .replace(/<br\s*\/?>/gi, "\n")
+                .replace(/<\/p>|<\/div>/gi, "\n");
+            return String(host.textContent || "")
+                .replace(/\u00a0/g, " ")
+                .replace(/[ \t]+\n/g, "\n")
+                .replace(/\n{3,}/g, "\n\n")
+                .trim();
+        }
+
+        function buildWhySectionTextFromSchema(schema) {
+            const payload = schema?.explanation_payload || {};
+            const lines = [];
+            const heading = explanationHtmlToText(payload.header_title || "");
+            const main = explanationHtmlToText(payload.main_explanation_html || "");
+            const blocks = Array.isArray(payload.dialogue_blocks) ? payload.dialogue_blocks : [];
+            const closing = explanationHtmlToText(payload.closing_analysis_html || "");
+
+            if (heading) lines.push(heading);
+            if (main) lines.push(main);
+            blocks.forEach((block) => {
+                const introduction = explanationHtmlToText(block?.introduction_label || "");
+                const quote = explanationHtmlToText(block?.quote_text_html || "");
+                if (introduction) lines.push(introduction);
+                if (quote) lines.push(quote);
+            });
+            if (closing) lines.push(closing);
+            return lines.join("\n\n");
+        }
+
+        function hydrateExplanationCardTextareas(partId, partData) {
+            const part = PARTS.find((item) => Number(item.id) === Number(partId));
+            if (!part) return;
+            const schemas = partData?.explanationSchemas || {};
+            const texts = partData?.explanationTexts || {};
+
+            for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
+                const savedText = texts[questionNumber] || texts[String(questionNumber)] || {};
+                const schema = schemas[questionNumber] || schemas[String(questionNumber)] || null;
+                const english = String(savedText?.explanation || "").trim() || buildWhySectionTextFromSchema(schema);
+                const bahasa = String(savedText?.explanationId || "").trim();
+                const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
+                const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
+
+                if (englishInput && english && !String(englishInput.value || "").trim()) englishInput.value = english;
+                if (bahasaInput && bahasa && !String(bahasaInput.value || "").trim()) bahasaInput.value = bahasa;
+            }
         }
 
         function hasEditorQuestionOrAnswerContent() {
@@ -2691,12 +2746,31 @@
                     const groupTextarea = document.getElementById(`input-group-transcript-${p}-${group.key}`);
                     if (groupTextarea) groupTranscript[group.key] = String(groupTextarea.value || "").trim();
                 });
+                const explanationTexts = {
+                    ...(existingDraft.parts?.[p]?.explanationTexts && typeof existingDraft.parts[p].explanationTexts === "object"
+                        ? existingDraft.parts[p].explanationTexts
+                        : {})
+                };
+                for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
+                    const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
+                    const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
+                    const english = String(englishInput?.value || "").trim();
+                    const bahasa = String(bahasaInput?.value || "").trim();
+                    if (!english && !bahasa && !explanationTexts[questionNumber]) continue;
+                    explanationTexts[questionNumber] = {
+                        ...(explanationTexts[questionNumber] || {}),
+                        explanation: english,
+                        explanationId: bahasa,
+                        showBahasaExplanation: Boolean(bahasa)
+                    };
+                }
 
                 draft.parts[p] = {
                     questions: questionInputValue,
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
                     explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || "",
                     explanationSchemas: existingDraft.parts?.[p]?.explanationSchemas || {},
+                    explanationTexts: explanationTexts,
                     transcript: transcriptValue,
                     transcriptSegments: Array.isArray(existingDraft.parts?.[p]?.transcriptSegments) ? existingDraft.parts[p].transcriptSegments : [],
                     questionAudio: existingDraft.parts?.[p]?.questionAudio && typeof existingDraft.parts[p].questionAudio === "object" ? existingDraft.parts[p].questionAudio : {},
@@ -2751,6 +2825,7 @@
                         answerKey: draft.parts[p]?.answerKey || "",
                         explanation: draft.parts[p]?.explanation || "",
                         explanationSchemas: draft.parts[p]?.explanationSchemas || {},
+                        explanationTexts: draft.parts[p]?.explanationTexts || {},
                         questions: draft.parts[p]?.questions || "",
                         transcripts: draft.parts[p]?.transcript || "",
                         transcriptSegments: draft.parts[p]?.transcriptSegments || [],
@@ -2803,6 +2878,7 @@
                                 answerKey: partData?.answerKey || "",
                                 explanation: partData?.explanation || "",
                                 explanationSchemas: partData?.explanationSchemas && typeof partData.explanationSchemas === "object" ? partData.explanationSchemas : {},
+                                explanationTexts: partData?.explanationTexts && typeof partData.explanationTexts === "object" ? partData.explanationTexts : {},
                                 transcript: partData?.transcripts || "",
                                 transcriptSegments: Array.isArray(partData?.transcriptSegments) ? partData.transcriptSegments : [],
                                 questionAudio: partData?.questionAudio && typeof partData.questionAudio === "object" ? partData.questionAudio : {},
@@ -3240,6 +3316,37 @@
 
                 const hintHTML = "Use smart paste: place question number lines (1., 2., ...) and ensure the last 4 lines of each block are options A-D.";
                 const placeholderQuestion = "1.\nMan: Did you finish reading the chapter for biology?\nWoman: I barely made a dent in it.\nNarrator: What does the woman mean?\n(A) She dropped the book.\n(B) She has not read much of the chapter.\n(C) She finished it quickly.\n(D) She damaged the book.";
+                const explanationCardsHTML = Array.from(
+                    { length: part.end - part.start + 1 },
+                    (_, index) => part.start + index
+                ).map((questionNumber) => `
+                        <div class="dev-card explaination-card" data-question-number="${questionNumber}">
+                            <h3 class="dev-card-title">Explanation / Transcript</h3>
+                            <h2 class="dev-card-question-number">Question ${questionNumber}</h2>
+                            <div style="font-size:12px; color:#475569; line-height:1.6;">
+                                Generated explanation can be edited in both Bahasa and English. If you want to provide your own explanation, please fill in the text areas below.
+                            </div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; margin-top:16px; align-items:start;">
+                                <div style="min-width:250px;">
+                                    <div class="format-toolbar header-bahas">
+                                        <span style="font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:6px;">
+                                            Explanation in Bahasa
+                                            <img src="https://hatscripts.github.io/circle-flags/flags/id.svg" width="18" height="18" alt="Indonesia Flag">
+                                        </span>
+                                    </div>
+                                    <textarea id="input-explanation-id-${questionNumber}" class="explanation-textarea" placeholder="Kenapa jawaban untuk pertanyaan ${questionNumber} benar?"></textarea>
+                                </div>
+                                <div style="min-width:250px;">
+                                    <div class="format-toolbar header-bahas">
+                                        <span style="font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:6px;">
+                                            Explanation in English
+                                            <img src="https://hatscripts.github.io/circle-flags/flags/gb.svg" width="18" height="18" alt="UK Flag">
+                                        </span>
+                                    </div>
+                                    <textarea id="input-explanation-en-${questionNumber}" class="explanation-textarea" placeholder="Why is the answer to question ${questionNumber} correct?"></textarea>
+                                </div>
+                            </div>
+                        </div>`).join("");
 
                 devContainer.innerHTML += `
                 <div id="dev-part-${part.id}" class="sub-content">
@@ -3263,6 +3370,7 @@
                                 </div>
                             </div>
                         </div>
+                        ${explanationCardsHTML}
                     </div>
                 </div>`;
             });
@@ -4497,6 +4605,10 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const savedSchema = fullSetDraft.parts?.[partId]?.explanationSchemas?.[qNum];
                 if (savedSchema && savedSchema.explanation_payload) {
                     rq.explanationSchema = JSON.stringify(savedSchema);
+                    const englishInput = document.getElementById(`input-explanation-en-${qNum}`);
+                    if (englishInput && !String(englishInput.value || "").trim()) {
+                        englishInput.value = buildWhySectionTextFromSchema(savedSchema);
+                    }
                     continue;
                 }
                 const questionItem = questionsByNum[qNum] || null;
@@ -4508,12 +4620,28 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     continue;
                 }
                 rq.explanationSchema = JSON.stringify(schema);
+                const englishInput = document.getElementById(`input-explanation-en-${qNum}`);
+                if (englishInput) englishInput.value = buildWhySectionTextFromSchema(schema);
                 if (fullSetDraft.parts[partId]) {
                     fullSetDraft.parts[partId].explanationSchemas = fullSetDraft.parts[partId].explanationSchemas || {};
                     fullSetDraft.parts[partId].explanationSchemas[qNum] = schema;
+                    fullSetDraft.parts[partId].explanationTexts = fullSetDraft.parts[partId].explanationTexts || {};
+                    fullSetDraft.parts[partId].explanationTexts[qNum] = {
+                        ...(fullSetDraft.parts[partId].explanationTexts[qNum] || {}),
+                        explanation: buildWhySectionTextFromSchema(schema)
+                    };
                 }
                 await new Promise((resolve) => setTimeout(resolve, 500));
             }
+
+            const localDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
+            localDraft.parts = localDraft.parts || {};
+            Object.entries(fullSetDraft.parts || {}).forEach(([partId, partData]) => {
+                localDraft.parts[partId] = localDraft.parts[partId] || {};
+                localDraft.parts[partId].explanationSchemas = partData?.explanationSchemas || {};
+                localDraft.parts[partId].explanationTexts = partData?.explanationTexts || {};
+            });
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(localDraft));
 
             await toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, fullSetDraft, currentTestType);
             const schemasByPart = {};

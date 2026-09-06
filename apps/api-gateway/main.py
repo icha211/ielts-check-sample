@@ -13,6 +13,7 @@ DEFAULT_ALLOWED_ORIGINS = [
     "https://icha211.github.io",
     "http://localhost:3000",
     "http://localhost:8000",
+    "null",
 ]
 
 

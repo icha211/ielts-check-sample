@@ -331,22 +331,25 @@
             pushHost(localStorage.getItem('ai_review_host'));
             pushHost(localStorage.getItem('toefl_storage_server_host'));
             pushHost(window.location.hostname);
-            pushHost('127.0.0.1');
-            pushHost('localhost');
 
             var isSecurePage = window.location.protocol === 'https:';
-            if (isSecurePage) {
+            var isFilePage = window.location.protocol === 'file:';
+            if (isSecurePage || isFilePage) {
                 pushEndpoint('https://quickcheck-25590.web.app');
             }
             if (isSecurePage && typeof REVIEW_API_GATEWAY_URL !== 'undefined') {
                 pushEndpoint(REVIEW_API_GATEWAY_URL);
             }
+            if (!isFilePage) {
+                pushHost('127.0.0.1');
+                pushHost('localhost');
+            }
             hosts.forEach(function(host) {
-                if (!isSecurePage || host === '127.0.0.1' || host === 'localhost') {
+                if (!isFilePage && (!isSecurePage || host === '127.0.0.1' || host === 'localhost')) {
                     pushEndpoint('http://' + host + ':' + port);
                 }
             });
-            if (!isSecurePage && typeof REVIEW_API_GATEWAY_URL !== 'undefined') {
+            if (!isSecurePage && !isFilePage && typeof REVIEW_API_GATEWAY_URL !== 'undefined') {
                 pushEndpoint(REVIEW_API_GATEWAY_URL);
             }
             return endpoints;
@@ -1170,14 +1173,18 @@
             if (baseOverride) return [baseOverride.replace(/\/+$/, '')];
 
             var host = String((window.location && window.location.hostname) || '').toLowerCase();
-            var isLocalPage = !host || host === 'localhost' || host === '127.0.0.1' || (window.location && window.location.protocol === 'file:');
+            var isFilePage = window.location && window.location.protocol === 'file:';
+            var isLocalServerPage = !isFilePage && (!host || host === 'localhost' || host === '127.0.0.1');
             var candidates = [];
 
-            if (isLocalPage) {
+            if (isFilePage) {
+                candidates.push('https://quickcheck-25590.web.app');
+            }
+            if (isLocalServerPage) {
                 candidates.push('http://127.0.0.1:8000');
                 candidates.push('http://localhost:8000');
             }
-            candidates.push(REVIEW_API_GATEWAY_URL.replace(/\/+$/, ''));
+            if (!isFilePage) candidates.push(REVIEW_API_GATEWAY_URL.replace(/\/+$/, ''));
             if (window.location && window.location.origin && window.location.protocol !== 'file:') {
                 candidates.push(window.location.origin.replace(/\/+$/, ''));
             }
