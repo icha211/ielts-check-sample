@@ -311,6 +311,14 @@
             var params = new URLSearchParams(window.location.search || '');
             var port = String(params.get('aiPort') || localStorage.getItem('ai_review_port') || '8787');
             var hosts = [];
+            var endpoints = [];
+
+            function pushEndpoint(value) {
+                var endpoint = String(value || '').trim().replace(/\/+$/, '');
+                if (!endpoint) return;
+                var resolved = endpoint + path;
+                if (endpoints.indexOf(resolved) === -1) endpoints.push(resolved);
+            }
 
             function pushHost(value) {
                 var host = String(value || '').trim();
@@ -326,9 +334,19 @@
             pushHost('127.0.0.1');
             pushHost('localhost');
 
-            return hosts.map(function(host) {
-                return 'http://' + host + ':' + port + path;
+            var isSecurePage = window.location.protocol === 'https:';
+            if (isSecurePage && typeof REVIEW_API_GATEWAY_URL !== 'undefined') {
+                pushEndpoint(REVIEW_API_GATEWAY_URL);
+            }
+            hosts.forEach(function(host) {
+                if (!isSecurePage || host === '127.0.0.1' || host === 'localhost') {
+                    pushEndpoint('http://' + host + ':' + port);
+                }
             });
+            if (!isSecurePage && typeof REVIEW_API_GATEWAY_URL !== 'undefined') {
+                pushEndpoint(REVIEW_API_GATEWAY_URL);
+            }
+            return endpoints;
         }
 
         function resolveAiEndpoint(path) {
@@ -350,8 +368,9 @@
                             localStorage.setItem('ai_review_host', parsed.hostname || '');
                             localStorage.setItem('ai_review_port', parsed.port || '8787');
                         } catch (_) {}
+                        return { response: response, endpoint: endpoint };
                     }
-                    return { response: response, endpoint: endpoint };
+                    lastError = new Error('AI endpoint returned HTTP ' + String(response && response.status || 'unknown'));
                 } catch (err) {
                     lastError = err;
                 }
@@ -4009,7 +4028,16 @@
                     body: JSON.stringify(payload)
                 });
                 var response = request && request.response;
-                if (!response || !response.ok) throw new Error('AI explanation request failed');
+                if (!response || !response.ok) {
+                    var errorText = '';
+                    try {
+                        var errorPayload = await response.json();
+                        errorText = String(errorPayload.detail || errorPayload.error || '').trim();
+                    } catch (_) {
+                        errorText = await response.text().catch(function() { return ''; });
+                    }
+                    throw new Error(errorText || ('AI explanation request failed (HTTP ' + String(response && response.status || 'unknown') + ')'));
+                }
                 var schema = await response.json();
                 if (!schema || !schema.explanation_payload) throw new Error('AI returned an incomplete explanation');
 
@@ -4023,7 +4051,7 @@
                 }
             } catch (error) {
                 if (host && reviewCurrentQuestion === q) {
-                    host.innerHTML = '<div class="explaination-ai-error">AI explanation could not be generated. Check the AI service and reload this question.</div>';
+                    host.innerHTML = '<div class="explaination-ai-error">AI explanation could not be generated. ' + escapeHtml(String(error && error.message || 'Check the AI service and try again.')) + '</div>';
                 }
                 console.warn('[AI Explanation]', error);
             } finally {
