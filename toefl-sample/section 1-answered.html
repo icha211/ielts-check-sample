@@ -402,6 +402,7 @@
         var reviewDetailOpenSteps = [];
         var reportIssueTransitionTimer = null;
         var reviewExplanationWriteQueue = Promise.resolve();
+        var reviewAiGenerationQuestion = 0;
         var reportIssueSelectedFiles = [];
         var reportIssueDropActive = false;
         var reviewTranscriptViewMode = 'full';
@@ -3661,7 +3662,6 @@
             var highlightTerms = buildHighlightTermsFromAnswer((question && question.options && question.options[correctLtr]) || '');
             reviewTranscriptHighlightTerms = highlightTerms;
             var schema = buildExplanationSchemaFromQuestion(question, explanation, correctLtr);
-            persistExplanationSchemaToResult(Number(question && question.number || 0), schema);
             host.innerHTML = renderExplanationFromSchema(schema);
         }
 
@@ -3966,6 +3966,71 @@
             });
 
             return reviewExplanationWriteQueue;
+        }
+
+        function buildReviewExplanationPayload(question) {
+            var q = question || {};
+            var partId = inferPartIdFromQuestion(q);
+            var segments = getQuestionTranscriptSegments(q).filter(function(segment) {
+                return String((segment && segment.text) || '').trim();
+            });
+            if (!segments.length) return null;
+
+            return {
+                active_question_number: Number(q.number || 0),
+                question_text: String(q.questionText || '').trim(),
+                options_array: normalizeOptionsMap(q.options || {}),
+                correct_option_letter: String(q.correctAnswer || '').trim().toUpperCase(),
+                user_selected_letter: String(q.userAnswer || '').trim().toUpperCase(),
+                isolated_transcript_block: segments.map(function(segment) {
+                    var speaker = getTranscriptSpeakerLabel(segment.speaker || 'NARR', partId);
+                    return speaker + ': ' + String(segment.text || '').trim();
+                }).join('\n')
+            };
+        }
+
+        async function generateMissingExplanation(question) {
+            var q = question || {};
+            var questionNumber = Number(q.number || 0);
+            if (!questionNumber || q.explanationSchema || reviewAiGenerationQuestion === questionNumber) return;
+
+            var payload = buildReviewExplanationPayload(q);
+            if (!payload || !payload.isolated_transcript_block) return;
+
+            reviewAiGenerationQuestion = questionNumber;
+            reviewAiGenerating = true;
+            var host = document.getElementById('explainationTabContent');
+            if (host) host.innerHTML = '<div class="explaination-ai-loading">Generating AI explanation from the transcript...</div>';
+
+            try {
+                var request = await fetchAiWithFallback('/api/toefl-explanation-json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                var response = request && request.response;
+                if (!response || !response.ok) throw new Error('AI explanation request failed');
+                var schema = await response.json();
+                if (!schema || !schema.explanation_payload) throw new Error('AI returned an incomplete explanation');
+
+                q.explanationSchema = JSON.stringify(schema);
+                persistExplanationSchemaToResult(questionNumber, schema);
+                if (reviewCurrentQuestion === q && host) {
+                    schema = applyUserAnswerStateToSchema(schema, q);
+                    var terms = getSchemaTranscriptHighlightTerms(schema, q.options?.[q.correctAnswer] || '', getQuestionTranscriptSegments(q));
+                    schema.explanation_payload.dialogue_blocks = buildFreshDialogueBlocksForQuestion(q, schema.explanation_payload.dialogue_blocks, terms);
+                    host.innerHTML = renderExplanationFromSchema(schema);
+                }
+            } catch (error) {
+                if (host && reviewCurrentQuestion === q) {
+                    host.innerHTML = '<div class="explaination-ai-error">AI explanation could not be generated. Check the AI service and reload this question.</div>';
+                }
+                console.warn('[AI Explanation]', error);
+            } finally {
+                reviewAiGenerating = false;
+                reviewAiGenerationQuestion = 0;
+                updateTranslateButtonState(q);
+            }
         }
 
         async function compileActiveExplanationPayload(setId, questionNumber, userChoice) {
@@ -4319,6 +4384,7 @@
             } catch (_) {}
             if (!schemaRendered) {
                 renderExplainationTabDetail(q, explanation, correctLtr || 'B');
+                void generateMissingExplanation(q);
             }
             reviewDetailSteps = buildDetailSteps(q, explanation);
             reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];
