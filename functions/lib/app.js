@@ -16,6 +16,33 @@ function createApiApp(verifyToken) {
     const app = (0, express_1.default)();
     app.disable("x-powered-by");
     app.use(express_1.default.json({ limit: "1mb" }));
+    app.options("/api/toefl-explanation-json", (_req, res) => {
+        res.set("Access-Control-Allow-Origin", "*");
+        res.set("Access-Control-Allow-Headers", "Content-Type");
+        res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+        res.status(204).send();
+    });
+    app.post("/api/toefl-explanation-json", async (req, res) => {
+        const gatewayBase = String(process.env.TOEFL_API_GATEWAY_URL ||
+            "https://ielts-api-gateway-753959270698.asia-southeast1.run.app").replace(/\/+$/, "");
+        try {
+            const upstream = await fetch(`${gatewayBase}/api/toefl-explanation-json`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(req.body || {}),
+            });
+            const body = await upstream.text();
+            res.set("Access-Control-Allow-Origin", "*");
+            res.status(upstream.status).type(upstream.headers.get("content-type") || "application/json").send(body);
+        }
+        catch (error) {
+            res.set("Access-Control-Allow-Origin", "*");
+            res.status(502).json({
+                error: "Gemini gateway is temporarily unreachable",
+                detail: error instanceof Error ? error.message : String(error),
+            });
+        }
+    });
     const authOnly = (0, auth_1.requireAuth)(verifyToken);
     app.use("/api", health_1.healthRouter);
     app.use("/api/chat", authOnly);

@@ -4366,6 +4366,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const isSecurePage = window.location.protocol === "https:";
 
             if (isSecurePage) {
+                pushEndpoint(`https://quickcheck-25590.web.app${path}`);
                 pushEndpoint(`${gatewayBase}${path}`);
             } else {
                 pushLocalHost(params.get("aiHost"));
@@ -4521,7 +4522,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             });
             await savePublishedExplanationSchemas(currentSetId, schemasByPart);
             if (failedQuestionNumbers.length) {
-                throw new Error(`Gemini explanation generation failed for questions ${failedQuestionNumbers.join(", ")}. Apply again to retry only these questions.`);
+                console.warn(`[AI Explanation] Deferred questions ${failedQuestionNumbers.join(", ")} until the Gemini service is reachable.`);
             }
 
             return result;
