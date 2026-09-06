@@ -401,6 +401,7 @@
         var reviewDetailSteps = [];
         var reviewDetailOpenSteps = [];
         var reportIssueTransitionTimer = null;
+        var reviewExplanationWriteQueue = Promise.resolve();
         var reportIssueSelectedFiles = [];
         var reportIssueDropActive = false;
         var reviewTranscriptViewMode = 'full';
@@ -3643,6 +3644,7 @@
             var highlightTerms = buildHighlightTermsFromAnswer((question && question.options && question.options[correctLtr]) || '');
             reviewTranscriptHighlightTerms = highlightTerms;
             var schema = buildExplanationSchemaFromQuestion(question, explanation, correctLtr);
+            persistExplanationSchemaToResult(Number(question && question.number || 0), schema);
             host.innerHTML = renderExplanationFromSchema(schema);
         }
 
@@ -3875,7 +3877,8 @@
                 byPart[partId] = {
                     questions: parseStoredPartQuestions(part.questions),
                     answers: parseStoredAnswerKey(part.answerKey),
-                    schemas: part.explanationSchemas || {}
+                    schemas: part.explanationSchemas || {},
+                    explanations: part.explanationTexts || {}
                 };
             }
 
@@ -3889,10 +3892,63 @@
                     question.options = storedQuestion.options;
                 }
                 if ((partData.answers || {})[number]) question.correctAnswer = partData.answers[number];
-                if (!question.explanationSchema && (partData.schemas || {})[number]) {
+                if ((partData.schemas || {})[number]) {
                     question.explanationSchema = JSON.stringify(partData.schemas[number]);
                 }
+                var storedExplanation = (partData.explanations || {})[number];
+                if (storedExplanation && typeof storedExplanation === 'object') {
+                    if (storedExplanation.explanation) question.explanation = storedExplanation.explanation;
+                    if (storedExplanation.explanationId !== undefined) question.explanationId = storedExplanation.explanationId;
+                    if (typeof storedExplanation.showBahasaExplanation === 'boolean') {
+                        question.showBahasaExplanation = storedExplanation.showBahasaExplanation;
+                    }
+                }
             }
+        }
+
+        function getReviewTestType() {
+            var params = new URLSearchParams(window.location.search || '');
+            return String(params.get('testType') || (reviewResultData && reviewResultData.testType) || 'mocktest');
+        }
+
+        function queueExplanationFirebaseWrite(questionNumber, payload) {
+            if (!reviewSetId || !window.toeflStorage || typeof window.toeflStorage.getDraftBySetIdAndType !== 'function' || typeof window.toeflStorage.saveDraftBySetIdAndType !== 'function') {
+                return Promise.resolve(false);
+            }
+
+            var number = Number(questionNumber || 0);
+            var question = (reviewResultData && Array.isArray(reviewResultData.questions))
+                ? reviewResultData.questions.find(function(item) { return Number(item && item.number || 0) === number; })
+                : null;
+            var partId = inferPartIdFromQuestion(question || { number: number });
+            var writePayload = payload && typeof payload === 'object' ? payload : {};
+
+            reviewExplanationWriteQueue = reviewExplanationWriteQueue.then(async function() {
+                var testType = getReviewTestType();
+                var draft = await window.toeflStorage.getDraftBySetIdAndType(reviewSetId, testType).catch(function() { return {}; });
+                draft = draft && typeof draft === 'object' && !Array.isArray(draft) ? draft : {};
+                draft.parts = draft.parts && typeof draft.parts === 'object' ? draft.parts : {};
+                var part = draft.parts[partId] && typeof draft.parts[partId] === 'object' ? draft.parts[partId] : {};
+
+                if (writePayload.schema) {
+                    part.explanationSchemas = part.explanationSchemas && typeof part.explanationSchemas === 'object' ? part.explanationSchemas : {};
+                    part.explanationSchemas[number] = writePayload.schema;
+                }
+                if (Object.prototype.hasOwnProperty.call(writePayload, 'explanation') || Object.prototype.hasOwnProperty.call(writePayload, 'explanationId') || Object.prototype.hasOwnProperty.call(writePayload, 'showBahasaExplanation')) {
+                    part.explanationTexts = part.explanationTexts && typeof part.explanationTexts === 'object' ? part.explanationTexts : {};
+                    var existing = part.explanationTexts[number] && typeof part.explanationTexts[number] === 'object' ? part.explanationTexts[number] : {};
+                    part.explanationTexts[number] = Object.assign({}, existing, writePayload.explanation !== undefined ? { explanation: writePayload.explanation } : {}, writePayload.explanationId !== undefined ? { explanationId: writePayload.explanationId } : {}, writePayload.showBahasaExplanation !== undefined ? { showBahasaExplanation: !!writePayload.showBahasaExplanation } : {});
+                }
+
+                draft.parts[partId] = part;
+                await window.toeflStorage.saveDraftBySetIdAndType(reviewSetId, 'listening', draft, testType);
+                return true;
+            }).catch(function(error) {
+                console.warn('[ExplanationSync] Firebase save failed:', error);
+                return false;
+            });
+
+            return reviewExplanationWriteQueue;
         }
 
         async function compileActiveExplanationPayload(setId, questionNumber, userChoice) {
@@ -3978,7 +4034,10 @@
             try {
                 var schemaText = JSON.stringify(schemaObject || {});
                 var raw = localStorage.getItem('toefl_section1_result');
-                if (!raw) return;
+                if (!raw) {
+                    void queueExplanationFirebaseWrite(questionNumber, { schema: schemaObject });
+                    return;
+                }
                 var result = JSON.parse(raw);
                 if (!result || !Array.isArray(result.questions)) return;
                 for (var i = 0; i < result.questions.length; i += 1) {
@@ -3996,13 +4055,17 @@
                         }
                     }
                 }
+                void queueExplanationFirebaseWrite(questionNumber, { schema: schemaObject });
             } catch (_) {}
         }
 
         function persistExplanationToResult(questionNumber, explanationText) {
             try {
                 var raw = localStorage.getItem('toefl_section1_result');
-                if (!raw) return;
+                if (!raw) {
+                    void queueExplanationFirebaseWrite(questionNumber, { explanation: explanationText || '' });
+                    return;
+                }
                 var result = JSON.parse(raw);
                 if (!result || !Array.isArray(result.questions)) return;
                 for (var i = 0; i < result.questions.length; i += 1) {
@@ -4020,13 +4083,17 @@
                         }
                     }
                 }
+                void queueExplanationFirebaseWrite(questionNumber, { explanation: explanationText || '' });
             } catch (_) {}
         }
 
         function persistExplanationTranslationToResult(questionNumber, translatedText, showBahasa) {
             try {
                 var raw = localStorage.getItem('toefl_section1_result');
-                if (!raw) return;
+                if (!raw) {
+                    void queueExplanationFirebaseWrite(questionNumber, { explanationId: translatedText || '', showBahasaExplanation: !!showBahasa });
+                    return;
+                }
                 var result = JSON.parse(raw);
                 if (!result || !Array.isArray(result.questions)) return;
                 for (var i = 0; i < result.questions.length; i += 1) {
@@ -4046,6 +4113,7 @@
                         }
                     }
                 }
+                void queueExplanationFirebaseWrite(questionNumber, { explanationId: translatedText || '', showBahasaExplanation: !!showBahasa });
             } catch (_) {}
         }
 
