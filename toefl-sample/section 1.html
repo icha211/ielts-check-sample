@@ -278,7 +278,8 @@
             <div class="dev-header-actions">
                 <button type="button" onclick="openExplanationFromDeveloper()" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">View Explanation</button>
                 <button class="mode-switch-btn" type="button" onclick="openUserPreviewFromDeveloper()">Apply + Open User View</button>
-                <button class="btn-save" type="button" onclick="applyAndUpdateUserView(this)">Apply and Update View</button>
+                <button class="btn-save" type="button" onclick="applyAndUpdateUserView(this)">Apply and Generated View</button>
+                <button class="btn-save" type="button" onclick="saveAndUpdateUserView(this)">Save and Update</button>
             </div>
         </header>
 
@@ -1540,6 +1541,56 @@
             return lines.join("\n\n");
         }
 
+        function markExplanationCardUnsaved(questionNumber) {
+            const card = document.querySelector(`.explaination-card[data-question-number="${questionNumber}"]`);
+            if (!card) return;
+            card.classList.add("is-unsaved");
+            const badge = card.querySelector(".explanation-save-state");
+            if (badge) badge.hidden = false;
+        }
+
+        function markAllExplanationCardsSaved() {
+            document.querySelectorAll(".explaination-card.is-unsaved").forEach((card) => {
+                card.classList.remove("is-unsaved");
+                const badge = card.querySelector(".explanation-save-state");
+                if (badge) badge.hidden = true;
+            });
+        }
+
+        function explanationTextToHtml(value) {
+            return escapeHtml(String(value || "").trim()).replace(/\n/g, "<br>");
+        }
+
+        function applyExplanationCardToSchema(schema, partId, questionNumber, englishText) {
+            const model = schema && typeof schema === "object" ? schema : {};
+            const uid = `${partId}_${questionNumber}`;
+            const question = globalQuestions[uid] || {};
+            const options = question.options || {};
+            const correctLetter = String(globalAnswerKey[uid] || "").trim().toUpperCase();
+            const paragraphs = String(englishText || "").trim().split(/\n\s*\n/).filter(Boolean);
+            let headerTitle = String(model?.explanation_payload?.header_title || `Why (${correctLetter || "?"})?`);
+            if (paragraphs.length && /^why\b/i.test(paragraphs[0])) headerTitle = paragraphs.shift();
+
+            model.question_metadata = {
+                ...(model.question_metadata || {}),
+                question_number: questionNumber,
+                question_text: String(question.questionText || model?.question_metadata?.question_text || `Question ${questionNumber}`)
+            };
+            model.options_status = ["A", "B", "C", "D"].map((letter) => ({
+                letter,
+                text: String(options[letter] || ""),
+                is_correct_choice: letter === correctLetter,
+                is_user_answer: false
+            }));
+            model.explanation_payload = {
+                header_title: headerTitle,
+                main_explanation_html: explanationTextToHtml(paragraphs.join("\n\n")),
+                dialogue_blocks: [],
+                closing_analysis_html: ""
+            };
+            return model;
+        }
+
         function hydrateExplanationCardTextareas(partId, partData) {
             const part = PARTS.find((item) => Number(item.id) === Number(partId));
             if (!part) return;
@@ -2726,7 +2777,8 @@
             updateNextSectionButtonState();
         }
 
-        async function saveSectionDraft() {
+        async function saveSectionDraft(options = {}) {
+            const publishExplanationCards = Boolean(options.publishExplanationCards);
             const draft = { parts: {} };
             const existingDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
             PARTS.forEach((part) => {
@@ -2751,25 +2803,34 @@
                         ? existingDraft.parts[p].explanationTexts
                         : {})
                 };
-                for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
-                    const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
-                    const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
-                    const english = String(englishInput?.value || "").trim();
-                    const bahasa = String(bahasaInput?.value || "").trim();
-                    if (!english && !bahasa && !explanationTexts[questionNumber]) continue;
-                    explanationTexts[questionNumber] = {
-                        ...(explanationTexts[questionNumber] || {}),
-                        explanation: english,
-                        explanationId: bahasa,
-                        showBahasaExplanation: Boolean(bahasa)
-                    };
+                const explanationSchemas = {
+                    ...(existingDraft.parts?.[p]?.explanationSchemas && typeof existingDraft.parts[p].explanationSchemas === "object"
+                        ? existingDraft.parts[p].explanationSchemas
+                        : {})
+                };
+                if (publishExplanationCards) {
+                    for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
+                        const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
+                        const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
+                        const english = String(englishInput?.value || "").trim();
+                        const bahasa = String(bahasaInput?.value || "").trim();
+                        explanationTexts[questionNumber] = {
+                            ...(explanationTexts[questionNumber] || {}),
+                            explanation: english,
+                            explanationId: bahasa,
+                            showBahasaExplanation: Boolean(bahasa)
+                        };
+                        explanationSchemas[questionNumber] = applyExplanationCardToSchema(
+                            explanationSchemas[questionNumber], p, questionNumber, english
+                        );
+                    }
                 }
 
                 draft.parts[p] = {
                     questions: questionInputValue,
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
                     explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || "",
-                    explanationSchemas: existingDraft.parts?.[p]?.explanationSchemas || {},
+                    explanationSchemas: explanationSchemas,
                     explanationTexts: explanationTexts,
                     transcript: transcriptValue,
                     transcriptSegments: Array.isArray(existingDraft.parts?.[p]?.transcriptSegments) ? existingDraft.parts[p].transcriptSegments : [],
@@ -2799,7 +2860,15 @@
 
                 currentSetId = setId;
 
-                await toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType).catch((error) => console.warn("[ToeflSync] draft save failed:", error));
+                const draftSaved = await toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType)
+                    .then(() => true)
+                    .catch((error) => {
+                        console.warn("[ToeflSync] draft save failed:", error);
+                        return false;
+                    });
+                if (publishExplanationCards && !draftSaved) {
+                    throw new Error("Explanation draft could not be saved to Firebase.");
+                }
 
                 // Also save complete listening data to Firebase RTDB with audio URLs and content
                 const cloudflareFolder = folderUrl;
@@ -2837,7 +2906,13 @@
 
                 // CRITICAL: Await Firebase save to ensure audio URLs persist
                 console.log("[ListeningData] Saving complete listening data with audio URLs:", parts);
-                await saveCompleteListeningDataToFirebase(setId, metadata, parts).catch((error) => console.warn("[ListeningData] Firebase save failed:", error));
+                const completeDataSaved = await saveCompleteListeningDataToFirebase(setId, metadata, parts).catch((error) => {
+                    console.warn("[ListeningData] Firebase save failed:", error);
+                    return false;
+                });
+                if (publishExplanationCards && !completeDataSaved) {
+                    throw new Error("Published explanations could not be updated in Firebase.");
+                }
             }
         }
 
@@ -3321,7 +3396,10 @@
                     (_, index) => part.start + index
                 ).map((questionNumber) => `
                         <div class="dev-card explaination-card" data-question-number="${questionNumber}">
-                            <h3 class="dev-card-title">Explanation / Transcript</h3>
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                                <h3 class="dev-card-title" style="margin:0;">Explanation / Transcript</h3>
+                                <span class="explanation-save-state" hidden style="padding:4px 8px; border-radius:999px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-size:11px; font-weight:700;">Unsaved</span>
+                            </div>
                             <h2 class="dev-card-question-number">Question ${questionNumber}</h2>
                             <div style="font-size:12px; color:#475569; line-height:1.6;">
                                 Generated explanation can be edited in both Bahasa and English. If you want to provide your own explanation, please fill in the text areas below.
@@ -3334,7 +3412,7 @@
                                             <img src="https://hatscripts.github.io/circle-flags/flags/id.svg" width="18" height="18" alt="Indonesia Flag">
                                         </span>
                                     </div>
-                                    <textarea id="input-explanation-id-${questionNumber}" class="explanation-textarea" placeholder="Kenapa jawaban untuk pertanyaan ${questionNumber} benar?"></textarea>
+                                    <textarea id="input-explanation-id-${questionNumber}" class="explanation-textarea" placeholder="Kenapa jawaban untuk pertanyaan ${questionNumber} benar?" oninput="markExplanationCardUnsaved(${questionNumber})"></textarea>
                                 </div>
                                 <div style="min-width:250px;">
                                     <div class="format-toolbar header-bahas">
@@ -3343,7 +3421,7 @@
                                             <img src="https://hatscripts.github.io/circle-flags/flags/gb.svg" width="18" height="18" alt="UK Flag">
                                         </span>
                                     </div>
-                                    <textarea id="input-explanation-en-${questionNumber}" class="explanation-textarea" placeholder="Why is the answer to question ${questionNumber} correct?"></textarea>
+                                    <textarea id="input-explanation-en-${questionNumber}" class="explanation-textarea" placeholder="Why is the answer to question ${questionNumber} correct?" oninput="markExplanationCardUnsaved(${questionNumber})"></textarea>
                                 </div>
                             </div>
                         </div>`).join("");
@@ -3372,7 +3450,7 @@
                         </div>
                         ${explanationCardsHTML}
                     </div>
-                </div>`;
+                </div>`
             });
 
             const guideBtn = document.createElement("button");
@@ -4761,6 +4839,39 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             }
             try {
                 await updateUserView(true);
+            } finally {
+                applyUpdateInProgress = false;
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = originalText;
+                }
+            }
+        }
+
+        async function saveAndUpdateUserView(button) {
+            if (applyUpdateInProgress) return;
+            applyUpdateInProgress = true;
+            const originalText = button?.textContent || "Save and Update";
+            if (button) {
+                button.disabled = true;
+                button.textContent = "Saving...";
+            }
+            try {
+                await updateUserView(false);
+                await saveSectionDraft({ publishExplanationCards: true });
+                persistPreviewSectionResult();
+                localStorage.setItem(EDITOR_APPLY_SYNC_KEY, JSON.stringify({
+                    at: new Date().toISOString(),
+                    setId: String(currentSetId || ""),
+                    setDate: String((document.getElementById("set-date") || {}).value || ""),
+                    kind: "explanation-card-save"
+                }));
+                markAllExplanationCardsSaved();
+                showAutoSaveStatus("Explanation saved", true);
+            } catch (error) {
+                console.error("[Explanation Editor] Save failed:", error);
+                showAutoSaveStatus("Explanation save failed", false);
+                alert(String(error?.message || "Unable to save explanation changes."));
             } finally {
                 applyUpdateInProgress = false;
                 if (button) {
