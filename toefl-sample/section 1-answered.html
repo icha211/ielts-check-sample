@@ -3940,14 +3940,20 @@
                 if ((partData.answers || {})[number]) question.correctAnswer = partData.answers[number];
                 if ((partData.schemas || {})[number]) {
                     question.explanationSchema = JSON.stringify(partData.schemas[number]);
+                } else {
+                    question.explanationSchema = '';
                 }
                 var storedExplanation = (partData.explanations || {})[number];
                 if (storedExplanation && typeof storedExplanation === 'object') {
-                    if (storedExplanation.explanation) question.explanation = storedExplanation.explanation;
+                    question.explanation = String(storedExplanation.explanation || '');
                     if (storedExplanation.explanationId !== undefined) question.explanationId = storedExplanation.explanationId;
                     if (typeof storedExplanation.showBahasaExplanation === 'boolean') {
                         question.showBahasaExplanation = storedExplanation.showBahasaExplanation;
                     }
+                } else {
+                    question.explanation = '';
+                    question.explanationId = '';
+                    question.showBahasaExplanation = false;
                 }
             }
         }
@@ -4423,9 +4429,8 @@
             if (!schemaRendered) {
                 var explanationHost = document.getElementById('explainationTabContent');
                 if (explanationHost) {
-                    explanationHost.innerHTML = '<div class="explaination-ai-loading">Generating a Gemini AI explanation from the transcript...</div>';
+                    explanationHost.innerHTML = '<div class="explaination-ai-error">No published explanation is available for this question.</div>';
                 }
-                void generateMissingExplanation(q);
             }
             reviewDetailSteps = buildDetailSteps(q, explanation);
             reviewDetailOpenSteps = reviewDetailSteps.length ? [0] : [];

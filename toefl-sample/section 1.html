@@ -4721,12 +4721,6 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             });
             localStorage.setItem(DRAFT_KEY, JSON.stringify(localDraft));
 
-            await toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, fullSetDraft, currentTestType);
-            const schemasByPart = {};
-            Object.entries(fullSetDraft.parts || {}).forEach(([partId, partData]) => {
-                if (partData?.explanationSchemas) schemasByPart[partId] = partData.explanationSchemas;
-            });
-            await savePublishedExplanationSchemas(currentSetId, schemasByPart);
             if (failedQuestionNumbers.length) {
                 console.warn(`[AI Explanation] Deferred questions ${failedQuestionNumbers.join(", ")} until the Gemini service is reachable.`);
             }
@@ -4832,13 +4826,22 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         async function applyAndUpdateUserView(button) {
             if (applyUpdateInProgress) return;
             applyUpdateInProgress = true;
-            const originalText = button?.textContent || "Apply and Update View";
+            const originalText = button?.textContent || "Apply and Generated View";
             if (button) {
                 button.disabled = true;
                 button.textContent = "Generating explanations...";
             }
             try {
                 await updateUserView(true);
+                if (button) button.textContent = "Publishing explanations...";
+                await saveSectionDraft({ publishExplanationCards: true });
+                persistPreviewSectionResult();
+                markAllExplanationCardsSaved();
+                showAutoSaveStatus("Explanations generated and saved", true);
+            } catch (error) {
+                console.error("[AI Explanation] Generate and publish failed:", error);
+                showAutoSaveStatus("Explanation publish failed", false);
+                alert(String(error?.message || "Unable to generate and save explanations."));
             } finally {
                 applyUpdateInProgress = false;
                 if (button) {
