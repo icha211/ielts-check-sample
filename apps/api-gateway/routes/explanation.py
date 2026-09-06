@@ -31,17 +31,21 @@ def _build_prompt(payload: dict) -> str:
     transcript = str(payload.get("isolated_transcript_block") or "").strip()
     options = payload.get("options_array") or {}
 
-    return f"""You are a TOEFL ITP listening tutor. Produce a concise explanation using only the supplied transcript evidence.
+    return f"""You are Gemini acting as an expert TOEFL ITP listening tutor. Produce a complete, question-specific explanation using only the supplied transcript evidence.
 
 Rules:
 - Return valid JSON only, matching the requested schema.
 - Do not invent dialogue or facts.
+- Explain why the correct option answers the exact question, not merely why it resembles a transcript phrase.
+- Explicitly connect the decisive transcript evidence to the correct option by paraphrase.
+- Explain the trap in every incorrect option using the supplied question and transcript.
+- Include at least one dialogue block whenever transcript evidence is available.
 - Quote only lines present in the transcript.
 - Use <mark style=\"background-color: #FFDE00; color: #000000; font-weight: 500;\">...</mark> only around short exact transcript phrases that are decisive evidence.
 - Use <strong>...</strong> only for one or two important explanatory words that are not quoted transcript text.
 - Do not use yellow marks for paraphrases, answer-option wording, or general explanation prose.
 - Use no more than two yellow transcript phrases per explanation.
-- Include one or two dialogue blocks that directly support the correct answer.
+- Keep all explanation text in clear English suitable for an intermediate TOEFL learner.
 
 Input:
 {json.dumps({
