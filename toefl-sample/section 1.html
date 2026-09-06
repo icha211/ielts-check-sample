@@ -4386,11 +4386,16 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
             for (let i = 0; i < candidates.length; i += 1) {
                 const endpoint = candidates[i];
-                try {
-                    const response = await fetch(endpoint, init);
-                    return { response, endpoint };
-                } catch (error) {
-                    lastError = error;
+                for (let attempt = 0; attempt < 2; attempt += 1) {
+                    try {
+                        const response = await fetch(endpoint, init);
+                        if (response.ok) return { response, endpoint };
+                        lastError = new Error(`AI endpoint returned HTTP ${response.status}`);
+                        break;
+                    } catch (error) {
+                        lastError = error;
+                        if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 1000));
+                    }
                 }
             }
 
