@@ -3607,7 +3607,6 @@
             var meta = model.question_metadata || {};
             var optionsStatus = Array.isArray(model.options_status) ? model.options_status : [];
             var payload = model.explanation_payload || {};
-            var dialogueBlocks = Array.isArray(payload.dialogue_blocks) ? payload.dialogue_blocks : [];
             var isCorrect = !!meta.user_was_correct;
             var badgeStyle = isCorrect ? '' : ' style="color:#dc2626;"';
 
@@ -3658,26 +3657,6 @@
             html += '<div class="heading">' + escapeHtml(String(payload.header_title || 'Why?')) + '</div>';
             html += '<div class="main-content">';
             html += '<div class="explanation-text">' + renderExplanationContent(payload.main_explanation_html || '') + '</div>';
-
-            for (var j = 0; j < dialogueBlocks.length; j += 1) {
-                var block = dialogueBlocks[j] || {};
-                var gender = String(block.speaker_gender || '').toLowerCase();
-                var iconContainerClass = gender === 'female' ? 'icon-container2' : 'icon-container';
-                var start = Number(block.start_sec || 0);
-                var end = Number(block.end_sec || (start + 8));
-                var speakerLabel = gender === 'female' ? 'female speaker' : 'male speaker';
-
-                html += '<div class="explanation-text">' + escapeHtml(String(block.introduction_label || '')) + '</div>';
-                html += '<div class="speaker">';
-                html += '<button type="button" class="' + iconContainerClass + '" onclick="playTranscriptSegment(' + start + ',' + end + ')" aria-label="Play ' + escapeHtml(speakerLabel) + ' line">';
-                html += '<i class="ph ph-speaker-high vector-icon" aria-hidden="true"></i>';
-                html += '<i class="ph ph-user vector-icon2" aria-hidden="true"></i>';
-                html += '</button>';
-                html += '<button type="button" class="' + (gender === 'female' ? 'quote-container2' : 'quote-container') + '" onclick="playTranscriptSegment(' + start + ',' + end + ')">';
-                html += '<div class="student-quote"><span class="student-quote-txt-container">' + String(block.quote_text_html || '') + '</span></div>';
-                html += '</button>';
-                html += '</div>';
-            }
 
             html += '<div class="explanation-text">' + String(payload.closing_analysis_html || '') + '</div>';
             html += '</div>';

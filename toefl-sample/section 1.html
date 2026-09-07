@@ -1521,6 +1521,29 @@
                 .trim();
         }
 
+        function isGenericExplanationFallback(value) {
+            const normalized = explanationHtmlToText(value).toLowerCase();
+            return !normalized
+                || normalized === "[evidence-based explanation]"
+                || normalized.includes("does not match the speaker's meaning or the transcript evidence")
+                || normalized.includes("does not match the speaker\u2019s meaning or the transcript evidence");
+        }
+
+        function hasUsableExplanationSchema(schema) {
+            const payload = schema?.explanation_payload || {};
+            if (isGenericExplanationFallback(payload.main_explanation_html)) return false;
+
+            const options = Array.isArray(schema?.options_status) ? schema.options_status : [];
+            const wrongOptions = options.filter((item) => item && !item.is_correct_choice);
+            const distractors = Array.isArray(payload.distractor_analysis) ? payload.distractor_analysis : [];
+            return wrongOptions.every((option) => {
+                const letter = String(option.letter || "").trim().toUpperCase();
+                const distractor = distractors.find((item) => String(item?.letter || "").trim().toUpperCase() === letter);
+                return Boolean(distractor && String(distractor.reason || "").trim())
+                    && !isGenericExplanationFallback(distractor.reason);
+            });
+        }
+
         function buildWhySectionTextFromSchema(schema) {
             const model = schema || {};
             const meta = model.question_metadata || {};
@@ -1551,7 +1574,7 @@
                 if (quote) explanationLines.push(`"${quote.replace(/^['"“”]+|['"“”]+$/g, "")}"`);
             });
             if (closing && explanationLines.indexOf(closing) === -1) explanationLines.push(closing);
-            lines.push(explanationLines.join(" ").trim() || "[Evidence-based explanation]");
+            lines.push(explanationLines.join(" ").trim());
             lines.push("", "**WHY THE OTHER OPTION IS INCORRECT**", "");
 
             const distractors = Array.isArray(payload.distractor_analysis) ? payload.distractor_analysis : [];
@@ -1560,8 +1583,8 @@
                 const letter = String(item.letter || "").trim().toUpperCase();
                 const distractor = distractors.find((entry) => String(entry?.letter || "").trim().toUpperCase() === letter) || {};
                 const optionText = String(item.text || distractor.text || "").trim();
-                const reason = String(distractor.reason || "This option does not match the speaker's meaning or the transcript evidence.").trim();
-                lines.push(`* **(${letter}) ${optionText}:** This option is incorrect because ${reason}`);
+                const reason = String(distractor.reason || "").trim();
+                if (reason) lines.push(`* **(${letter}) ${optionText}:** This option is incorrect because ${reason}`);
             });
 
             return lines.join("\n").trim();
@@ -2865,6 +2888,9 @@
                         const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
                         const english = String(englishInput?.value || "").trim();
                         const bahasa = String(bahasaInput?.value || "").trim();
+                        if (isGenericExplanationFallback(english)) {
+                            throw new Error(`Question ${questionNumber} still has a missing or generic explanation. Generate a specific explanation before publishing.`);
+                        }
                         explanationTexts[questionNumber] = {
                             ...(explanationTexts[questionNumber] || {}),
                             explanation: english,
@@ -4698,7 +4724,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 if (response && response.ok) {
                     try {
                         const data = await response.json();
-                        if (data && data.explanation_payload) return data;
+                        if (data && hasUsableExplanationSchema(data)) return data;
                     } catch {}
                 }
                 if (!response || (response.status !== 429 && response.status !== 502 && response.status !== 503)) return null;
@@ -4732,7 +4758,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 if (!qNum) continue;
                 const partId = Number(rq.partId || 0);
                 const savedSchema = fullSetDraft.parts?.[partId]?.explanationSchemas?.[qNum];
-                if (savedSchema && savedSchema.explanation_payload) {
+                if (savedSchema && hasUsableExplanationSchema(savedSchema)) {
                     rq.explanationSchema = JSON.stringify(savedSchema);
                     const englishInput = document.getElementById(`input-explanation-en-${qNum}`);
                     if (englishInput && !String(englishInput.value || "").trim()) {
@@ -4773,7 +4799,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             localStorage.setItem(DRAFT_KEY, JSON.stringify(localDraft));
 
             if (failedQuestionNumbers.length) {
-                console.warn(`[AI Explanation] Deferred questions ${failedQuestionNumbers.join(", ")} until the Gemini service is reachable.`);
+                throw new Error(`Gemini returned incomplete explanations for question(s): ${failedQuestionNumbers.join(", ")}. No generic fallback was published.`);
             }
 
             return result;
@@ -5159,6 +5185,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 } catch (error) {
                     console.error("[AI Explanation] Automatic generation failed:", error);
                     alert(String(error?.message || "Automatic explanation generation failed. Apply again to retry."));
+                    throw error;
                 }
             }
         }
