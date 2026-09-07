@@ -3446,6 +3446,23 @@
                 .replace(/<strong(?![^>]*\bstyle=)/gi, '<strong style="font-weight: 600;"');
         }
 
+        function parseDistractorReasonsFromMarkdown(text) {
+            var source = String(text || '').replace(/\r/g, '');
+            var marker = source.search(/\*{2}WHY THE OTHER OPTION IS INCORRECT\*{2}/i);
+            if (marker < 0) return [];
+            var section = source.slice(marker).replace(/^.*?\*{2}WHY THE OTHER OPTION IS INCORRECT\*{2}/i, '').trim();
+            var reasons = [];
+            var itemRegex = /^\s*\*\s*\*?\(([A-D])\)\s*([^:]+):\*?\s*(?:This option is incorrect because\s*)?([\s\S]*?)(?=\n\s*\*\s*\*?\([A-D]\)|$)/gim;
+            var match;
+            while ((match = itemRegex.exec(section))) {
+                reasons.push({
+                    letter: String(match[1] || '').toUpperCase(),
+                    reason: String(match[3] || '').trim()
+                });
+            }
+            return reasons;
+        }
+
         function buildExplanationSchemaFromQuestion(question, explanation, correctLtr) {
             var q = question || {};
             var options = q.options || {};
@@ -3651,6 +3668,7 @@
             html += '</div></section>';
 
             html += '<section class="explaination-why-section">';
+            html += '<div class="explaination-figma-divider" aria-hidden="true"></div>';
             html += '<div class="explaination-figma-why-block">';
             html += '<section class="explaination-correct-answer-card">';
             html += '<div class="explaination-icon-badge explaination-icon-badge--correct"><img src="https://www.figma.com/api/mcp/asset/d2807634-9c08-40d7-b19b-598f1ad81d0e.svg" alt=""></div>';
@@ -4417,6 +4435,12 @@
                             parsedSchema.explanation_payload.dialogue_blocks,
                             highlightTerms
                         );
+                        if (!Array.isArray(parsedSchema.explanation_payload.distractor_analysis)
+                            || !parsedSchema.explanation_payload.distractor_analysis.length) {
+                            parsedSchema.explanation_payload.distractor_analysis = parseDistractorReasonsFromMarkdown(
+                                getDisplayedExplanationText(q)
+                            );
+                        }
                         var host = document.getElementById('explainationTabContent');
                         if (host) host.innerHTML = renderExplanationFromSchema(parsedSchema);
                         schemaRendered = true;
