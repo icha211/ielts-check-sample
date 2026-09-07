@@ -3608,61 +3608,37 @@
             var optionsStatus = Array.isArray(model.options_status) ? model.options_status : [];
             var payload = model.explanation_payload || {};
             var isCorrect = !!meta.user_was_correct;
-            var badgeStyle = isCorrect ? '' : ' style="color:#dc2626;"';
+            var correctOption = optionsStatus.find(function(item) { return item && item.is_correct_choice; }) || {};
+            var distractors = Array.isArray(payload.distractor_analysis) ? payload.distractor_analysis : [];
+            var wrongOptions = optionsStatus.filter(function(item) { return item && !item.is_correct_choice; });
 
             var html = '';
-            html += '<div class="rounded-xl border border-gray-200 shadow-sm p-6">';
-
-            html += '<div class="explaination-figma-header">';
-            html += '<div class="explaination-figma-question-wrap">';
-            html += '<div class="explaination-figma-qnum ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + escapeHtml(String(meta.question_number || '-')) + '</div>';
-            html += '<div class="explaination-figma-qtext">' + escapeHtml(String(meta.question_text || '')) + '</div>';
-            html += '</div>';
-            html += '<b class="explaination-figma-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '"' + badgeStyle + '>' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>';
-            html += '</div>';
-
-            html += '<section class="explaination-answer-section">';
-            html += '<div class="explaination-figma-options">';
-            for (var i = 0; i < optionsStatus.length; i += 1) {
-                var item = optionsStatus[i] || {};
-                var optionStateClass = 'option';
-                if (item.is_user_answer && !item.is_correct_choice) optionStateClass += ' is-user-wrong';
-                if (item.is_correct_choice) optionStateClass += ' is-correct-answer';
-                if (item.is_user_answer || item.is_correct_choice) optionStateClass += ' option-selected';
-                var markerClass = 'explaination-figma-option-letter';
-                if (item.is_user_answer && !item.is_correct_choice) markerClass += ' is-user-wrong';
-                if (item.is_correct_choice) markerClass += ' is-correct-answer';
-                if (item.is_user_answer || item.is_correct_choice) markerClass += ' option-selected';
-
-                html += '<div class="explaination-figma-option ' + optionStateClass + '">';
-                html += '<div class="' + markerClass + '"><span class="option-marker">' + escapeHtml(String(item.letter || '')) + '</span></div>';
-                html += '<div class="explaination-figma-option-text option-answer-d"><span class="option-text">' + escapeHtml(String(item.text || '')) + '</span></div>';
-
-                if (item.is_user_answer && item.is_correct_choice) {
-                    html += '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">Your Answer - Correct</span><i class="ti ti-check" aria-hidden="true"></i></div>';
-                } else if (item.is_user_answer) {
-                    html += '<div class="explaination-figma-your-answer is-wrong"><span class="your-answer">Your Answer</span><i class="ti ti-x" aria-hidden="true"></i></div>';
-                } else if (item.is_correct_choice) {
-                    html += '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">Correct Answer</span><i class="ti ti-check" aria-hidden="true"></i></div>';
-                }
-
-                html += '</div>';
-            }
-            html += '</div>';
-            html += '</section>';
-
-            html += '<section class="explaination-why-section">';
-            html += '<div class="explaination-figma-divider" aria-hidden="true"></div>';
             html += '<div class="explaination-figma-why-block">';
-            html += '<div class="heading">' + escapeHtml(String(payload.header_title || 'Why?')) + '</div>';
-            html += '<div class="main-content">';
-            html += '<div class="explanation-text">' + renderExplanationContent(payload.main_explanation_html || '') + '</div>';
-
-            html += '<div class="explanation-text">' + String(payload.closing_analysis_html || '') + '</div>';
-            html += '</div>';
-            html += '</div>';
+            html += '<section class="explaination-correct-answer-card">';
+            html += '<div class="explaination-icon-badge explaination-icon-badge--correct"><img src="https://www.figma.com/api/mcp/asset/d2807634-9c08-40d7-b19b-598f1ad81d0e.svg" alt=""></div>';
+            html += '<div class="explaination-answer-copy"><div class="explaination-answer-text">' + escapeHtml(String(correctOption.letter || '')) + ' - ' + escapeHtml(String(correctOption.text || '')) + '</div></div>';
             html += '</section>';
-            html += '</div>';
+
+            html += '<section class="explaination-content-card">';
+            html += '<div class="explaination-icon-badge explaination-icon-badge--idea"><img src="https://www.figma.com/api/mcp/asset/394a3485-18e7-4eca-ba49-1ff372007d2f.svg" alt=""></div>';
+            html += '<div class="explaination-copy-column">';
+            html += '<h2>EXPLAINATION</h2><div class="explaination-accent" aria-hidden="true"></div>';
+            html += '<div class="explaination-content-text">' + renderExplanationContent(payload.main_explanation_html || '') + String(payload.closing_analysis_html || '') + '</div>';
+            html += '</div></section>';
+
+            html += '<section class="explaination-incorrect-section">';
+            html += '<div class="explaination-incorrect-heading"><div class="explaination-icon-badge explaination-icon-badge--incorrect"><img src="https://www.figma.com/api/mcp/asset/6f215457-1915-477d-b0d2-a12dd95b71e3.svg" alt=""></div><h2>WHY THE OTHER OPTION IS INCORRECT</h2></div>';
+            html += '<div class="explaination-incorrect-grid">';
+            for (var i = 0; i < wrongOptions.length; i += 1) {
+                var option = wrongOptions[i] || {};
+                var letter = String(option.letter || '').trim().toUpperCase();
+                var distractor = distractors.find(function(item) { return String(item?.letter || '').trim().toUpperCase() === letter; }) || {};
+                html += '<article class="explaination-incorrect-option">';
+                html += '<div class="explaination-option-heading"><div class="explaination-option-letter">' + escapeHtml(letter) + '</div><div class="explaination-option-title-group"><div class="explaination-option-title">' + escapeHtml(String(option.text || distractor.text || '')) + '</div><div class="explaination-option-accent" aria-hidden="true"></div></div></div>';
+                html += '<div class="explaination-option-reason">' + escapeHtml(String(distractor.reason || '')) + '</div>';
+                html += '</article>';
+            }
+            html += '</div></section></div>';
 
             return html;
         }
