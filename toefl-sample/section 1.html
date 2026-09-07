@@ -1522,23 +1522,49 @@
         }
 
         function buildWhySectionTextFromSchema(schema) {
+            const model = schema || {};
+            const meta = model.question_metadata || {};
             const payload = schema?.explanation_payload || {};
-            const lines = [];
-            const heading = explanationHtmlToText(payload.header_title || "");
+            const options = Array.isArray(model.options_status) ? model.options_status : [];
+            const correct = options.find((item) => item && item.is_correct_choice) || {};
+            const correctLetter = String(correct.letter || "").trim().toUpperCase();
+            const correctText = String(correct.text || "").trim();
+            const questionNumber = Number(meta.question_number || 0);
+            const lines = [
+                `## Question ${questionNumber || "[Number]"}`,
+                "",
+                `**Correct Answer:** ${correctLetter || "[Letter]"} - ${correctText || "[Text of the correct answer]"}`,
+                "",
+                "**EXPLAINATION**",
+                ""
+            ];
+            const explanationLines = [];
             const main = explanationHtmlToText(payload.main_explanation_html || "");
             const blocks = Array.isArray(payload.dialogue_blocks) ? payload.dialogue_blocks : [];
             const closing = explanationHtmlToText(payload.closing_analysis_html || "");
 
-            if (heading) lines.push(heading);
-            if (main) lines.push(main);
+            if (main) explanationLines.push(main);
             blocks.forEach((block) => {
                 const introduction = explanationHtmlToText(block?.introduction_label || "");
                 const quote = explanationHtmlToText(block?.quote_text_html || "");
-                if (introduction) lines.push(introduction);
-                if (quote) lines.push(quote);
+                if (introduction) explanationLines.push(introduction);
+                if (quote) explanationLines.push(`"${quote.replace(/^['"“”]+|['"“”]+$/g, "")}"`);
             });
-            if (closing) lines.push(closing);
-            return lines.join("\n\n");
+            if (closing && explanationLines.indexOf(closing) === -1) explanationLines.push(closing);
+            lines.push(explanationLines.join(" ").trim() || "[Evidence-based explanation]");
+            lines.push("", "**WHY THE OTHER OPTION IS INCORRECT**", "");
+
+            const distractors = Array.isArray(payload.distractor_analysis) ? payload.distractor_analysis : [];
+            const wrongOptions = options.filter((item) => item && !item.is_correct_choice);
+            wrongOptions.forEach((item) => {
+                const letter = String(item.letter || "").trim().toUpperCase();
+                const distractor = distractors.find((entry) => String(entry?.letter || "").trim().toUpperCase() === letter) || {};
+                const optionText = String(item.text || distractor.text || "").trim();
+                const reason = String(distractor.reason || "This option does not match the speaker's meaning or the transcript evidence.").trim();
+                lines.push(`* **(${letter}) ${optionText}:** This option is incorrect because ${reason}`);
+            });
+
+            return lines.join("\n").trim();
         }
 
         function markExplanationCardUnsaved(questionNumber) {
@@ -1561,13 +1587,37 @@
             return escapeHtml(String(value || "").trim()).replace(/\n/g, "<br>");
         }
 
+        function parseExplanationCardMarkdown(text) {
+            const source = String(text || "").replace(/\r/g, "").trim();
+            const explanationMarker = source.search(/\*{2}EXPLAINATION\*{2}/i);
+            const distractorMarker = source.search(/\*{2}WHY THE OTHER OPTION IS INCORRECT\*{2}/i);
+            const explanationStart = explanationMarker >= 0 ? explanationMarker + source.match(/\*{2}EXPLAINATION\*{2}/i)[0].length : 0;
+            const explanationEnd = distractorMarker >= 0 ? distractorMarker : source.length;
+            const explanationText = source.slice(explanationStart, explanationEnd).trim();
+            const distractorText = distractorMarker >= 0
+                ? source.slice(distractorMarker + source.match(/\*{2}WHY THE OTHER OPTION IS INCORRECT\*{2}/i)[0].length).trim()
+                : "";
+            const distractors = [];
+            const itemRegex = /^\*\s*\*?\(([A-D])\)\s*([^:]+):\*?\s*(?:This option is incorrect because\s*)?(.+)$/gim;
+            let match;
+            while ((match = itemRegex.exec(distractorText))) {
+                distractors.push({
+                    letter: String(match[1] || "").toUpperCase(),
+                    text: String(match[2] || "").trim(),
+                    reason: String(match[3] || "").trim()
+                });
+            }
+            return { explanationText, distractors };
+        }
+
         function applyExplanationCardToSchema(schema, partId, questionNumber, englishText) {
             const model = schema && typeof schema === "object" ? schema : {};
             const uid = `${partId}_${questionNumber}`;
             const question = globalQuestions[uid] || {};
             const options = question.options || {};
             const correctLetter = String(globalAnswerKey[uid] || "").trim().toUpperCase();
-            const paragraphs = String(englishText || "").trim().split(/\n\s*\n/).filter(Boolean);
+            const parsedMarkdown = parseExplanationCardMarkdown(englishText);
+            const paragraphs = parsedMarkdown.explanationText.split(/\n\s*\n/).filter(Boolean);
             let headerTitle = String(model?.explanation_payload?.header_title || `Why (${correctLetter || "?"})?`);
             if (paragraphs.length && /^why\b/i.test(paragraphs[0])) headerTitle = paragraphs.shift();
 
@@ -1586,6 +1636,7 @@
                 header_title: headerTitle,
                 main_explanation_html: explanationTextToHtml(paragraphs.join("\n\n")),
                 dialogue_blocks: [],
+                distractor_analysis: parsedMarkdown.distractors,
                 closing_analysis_html: ""
             };
             return model;

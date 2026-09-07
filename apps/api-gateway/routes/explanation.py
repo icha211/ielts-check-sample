@@ -39,6 +39,7 @@ Rules:
 - Explain why the correct option answers the exact question, not merely why it resembles a transcript phrase.
 - Explicitly connect the decisive transcript evidence to the correct option by paraphrase.
 - Explain the trap in every incorrect option using the supplied question and transcript.
+- Return one distractor-analysis item for every incorrect option, preserving its letter and exact option text.
 - Include at least one dialogue block whenever transcript evidence is available.
 - Quote only lines present in the transcript.
 - Use <mark style=\"background-color: #FFDE00; color: #000000; font-weight: 500;\">...</mark> only around short exact transcript phrases that are decisive evidence.
@@ -77,7 +78,10 @@ Required JSON schema:
         "introduction_label": "brief introduction",
         "quote_text_html": "exact supporting quote"
       }}
-    ],
+        ],
+        "distractor_analysis": [
+            {{"letter":"A","text":"option text","reason":"specific transcript-grounded reason this option is incorrect"}}
+        ],
     "closing_analysis_html": "brief conclusion connecting evidence to the correct option"
   }}
 }}
