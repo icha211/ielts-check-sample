@@ -167,6 +167,7 @@
                 <a id="view-explanation-btn" href="section 2-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">📖 View Explanation</a>
                 <button class="mode-switch-btn" type="button" onclick="openUserPreviewFromDeveloper()">�� Apply + Open User View</button>
                 <button class="btn-save" onclick="applyAndRefreshStructureView()">🔄 Terapkan & Update Tampilan</button>
+                <button class="btn-save" type="button" onclick="saveAndUpdateUserView(this)">Save and Update</button>
             </div>
         </header>
 
@@ -454,7 +455,12 @@
             if (window.toeflStorage) {
                 const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
                 const setId = await ensureCurrentSetId(setDate);
-                toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType).catch((e) => console.warn("[ToeflSync] draft save failed:", e));
+                try {
+                    await toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType);
+                } catch (error) {
+                    console.warn("[ToeflSync] draft save failed:", error);
+                    throw error;
+                }
             }
         }
 
@@ -733,6 +739,25 @@
             showAutoSaveStatus("Applied", true);
         }
 
+        async function saveAndUpdateUserView(button) {
+            if (button) button.disabled = true;
+            try {
+                await saveSectionMeta();
+                updateUserView(false);
+                populateQcCoreExplanationCards();
+                await saveSectionDraft();
+                persistPreviewSection2Result();
+                updateExplanationLink();
+                emitSection2EditorApplySync();
+                showAutoSaveStatus("Explanation saved and updated", true);
+            } catch (error) {
+                console.warn("[Save] Section 2 explanation save failed:", error);
+                showAutoSaveStatus("Save failed", false);
+            } finally {
+                if (button) button.disabled = false;
+            }
+        }
+
         function persistPreviewSection2Result() {
             const dateValue = ((document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0]);
             const questionUids = Object.keys(globalQuestions || {});
@@ -768,7 +793,11 @@
                     userAnswer: finalUserAnswer,
                     isCorrect,
                     isPartB: !!q.isPartB,
-                    explanation: String(globalExplanations[uid] || ""),
+                    explanation: String(
+                        (document.getElementById(`input-explanation-en-${qNum}`) || {}).value
+                        || globalExplanations[uid]
+                        || ""
+                    ).trim(),
                     setDate: dateValue
                 };
             }).sort((a, b) => Number(a.number || 0) - Number(b.number || 0));

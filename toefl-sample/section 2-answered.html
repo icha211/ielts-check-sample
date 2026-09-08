@@ -1190,7 +1190,62 @@
             return html;
         }
 
+        function renderSavedQcCoreMarkdown(markdown) {
+            var source = escapeHtml(String(markdown || '').trim());
+            if (!source) return '';
+            var lines = source.split(/\r?\n/);
+            var html = '';
+            var inList = false;
+
+            function closeList() {
+                if (inList) {
+                    html += '</ul>';
+                    inList = false;
+                }
+            }
+
+            for (var i = 0; i < lines.length; i += 1) {
+                var line = lines[i].trim();
+                if (!line) {
+                    closeList();
+                    continue;
+                }
+                if (/^\*\s+/.test(line)) {
+                    if (!inList) {
+                        html += '<ul class="section2-qc-core-list section2-qc-core-list--elim">';
+                        inList = true;
+                    }
+                    html += '<li>' + line.slice(2).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') + '</li>';
+                    continue;
+                }
+                closeList();
+                html += '<p>' + line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') + '</p>';
+            }
+            closeList();
+            return html;
+        }
+
+        function buildSavedQcCoreAnalysisBlock(question) {
+            var questionNumber = Number(question && question.number) || 0;
+            var isExpanded = qcCoreExpandState[questionNumber] !== false;
+            var savedText = String(question && question.explanation || '').trim();
+            if (!savedText) return '';
+            return '<section class="section2-qc-analysis ' + (isExpanded ? 'is-expanded' : 'is-collapsed') + '">'
+                + '<div class="section2-qc-core-banner">'
+                + '<button type="button" class="section2-qc-core-head" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" onclick="toggleQcCoreExpand(' + questionNumber + ')">'
+                + '<span style="display:inline-flex;align-items:center;gap:8px;"><img src="../asset/icon/light.png" alt="" style="width:16px;height:16px;object-fit:contain;">QC CORE ANALYSIS</span>'
+                + '<i class="ph ' + (isExpanded ? 'ph-caret-circle-up' : 'ph-caret-circle-down') + '" aria-hidden="true"></i>'
+                + '</button>'
+                + '</div>'
+                + '<div class="section2-qc-core-body">'
+                + renderSavedQcCoreMarkdown(savedText)
+                + '</div>'
+                + '</section>';
+        }
+
         function buildPartAAnalysisBlock(question, blueprint) {
+            var savedAnalysis = buildSavedQcCoreAnalysisBlock(question);
+            if (savedAnalysis) return savedAnalysis;
             var questionNumber = Number(question && question.number) || 0;
             var isExpanded = qcCoreExpandState[questionNumber] !== false;
             var correct = normalizeLetter(question && question.correctAnswer) || '-';
