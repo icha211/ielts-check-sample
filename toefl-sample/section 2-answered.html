@@ -620,6 +620,98 @@
             return null;
         }
 
+        function parseDraftAnswerKey(value) {
+            var answers = {};
+            var matcher = /(?:^|\n)\s*(\d{1,2})\.\s*([A-D])\b/gi;
+            var source = String(value || '');
+            var match;
+            while ((match = matcher.exec(source))) answers[Number(match[1])] = String(match[2]).toUpperCase();
+            return answers;
+        }
+
+        function parseDraftQuestionBlocks(value) {
+            var source = String(value || '').replace(/\r\n?/g, '\n');
+            var marker = /^\s*(\d{1,2})\.\s*/gm;
+            var matches = [];
+            var match;
+            while ((match = marker.exec(source))) {
+                matches.push({ number: Number(match[1]), start: match.index, contentStart: marker.lastIndex });
+            }
+
+            return matches.map(function (item, index) {
+                var end = index + 1 < matches.length ? matches[index + 1].start : source.length;
+                var content = source.slice(item.contentStart, end).trim();
+                var choiceMarker = /^\s*\(([A-D])\)\s*/gm;
+                var firstChoice = choiceMarker.exec(content);
+                var questionText = (firstChoice ? content.slice(0, firstChoice.index) : content).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+                var options = {};
+                if (firstChoice) {
+                    choiceMarker.lastIndex = 0;
+                    var choices = [];
+                    var choice;
+                    while ((choice = choiceMarker.exec(content))) choices.push({ letter: choice[1], start: choiceMarker.lastIndex, markerStart: choice.index });
+                    for (var choiceIndex = 0; choiceIndex < choices.length; choiceIndex += 1) {
+                        var nextStart = choiceIndex + 1 < choices.length ? choices[choiceIndex + 1].markerStart : content.length;
+                        options[choices[choiceIndex].letter] = content.slice(choices[choiceIndex].start, nextStart).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+                    }
+                }
+                return { number: item.number, questionText: questionText, options: options };
+            });
+        }
+
+        function buildReviewSourceFromDraft(draft, setDate) {
+            if (!draft || !isPlainObject(draft) || !draft.parts) return null;
+            var questions = [];
+            for (var partId = 1; partId <= 2; partId += 1) {
+                var part = draft.parts[partId] || draft.parts[String(partId)] || {};
+                var answers = parseDraftAnswerKey(part.answerKey);
+                var explanations = part.explanationTexts || {};
+                var parsedQuestions = parseDraftQuestionBlocks(part.questions);
+                for (var questionIndex = 0; questionIndex < parsedQuestions.length; questionIndex += 1) {
+                    var parsedQuestion = parsedQuestions[questionIndex];
+                    var explanationRecord = explanations[parsedQuestion.number] || explanations[String(parsedQuestion.number)] || {};
+                    var correctAnswer = answers[parsedQuestion.number] || '';
+                    questions.push({
+                        number: parsedQuestion.number,
+                        partId: partId,
+                        partName: partId === 1 ? 'Part A' : 'Part B',
+                        questionText: parsedQuestion.questionText || ('Question ' + parsedQuestion.number),
+                        options: parsedQuestion.options,
+                        correctAnswer: correctAnswer,
+                        userAnswer: correctAnswer,
+                        isCorrect: !!correctAnswer,
+                        explanation: String(firstNonEmpty(explanationRecord.explanation, explanationRecord.explanationId, part.explanation, '') || ''),
+                        materialTopic: explanationRecord.materialTopic || null,
+                        videoStepUrl: String(part.videoStep || '')
+                    });
+                }
+            }
+            if (!questions.length) return null;
+            return {
+                sectionTitle: 'Structure and Written Expression',
+                sectionKey: 'structure',
+                totalQuestions: questions.length,
+                rawScore: questions.filter(function (question) { return question.isCorrect; }).length,
+                scaledScore: 68,
+                submittedAt: String(setDate || ''),
+                questions: questions
+            };
+        }
+
+        async function loadReviewSourceFromUrl() {
+            var params = new URLSearchParams(window.location.search);
+            var setId = String(params.get('setId') || '').trim();
+            var testType = String(params.get('testType') || 'mocktest').trim().toLowerCase();
+            if (!setId || !window.toeflStorage || typeof toeflStorage.getDraftBySetIdAndType !== 'function') return null;
+            try {
+                var draft = await toeflStorage.getDraftBySetIdAndType(setId, testType === 'practicetest' ? 'practicetest' : 'mocktest');
+                return buildReviewSourceFromDraft(draft, params.get('setDate') || params.get('date'));
+            } catch (error) {
+                console.warn('Unable to load review draft for ' + setId, error);
+                return null;
+            }
+        }
+
         function questionStatus(question) {
             var user = String((question && question.userAnswer) || '').trim();
             if (!user) return 'unanswered';
@@ -3405,7 +3497,7 @@
         window.goToNextReviewQuestion = goToNextReviewQuestion;
         window.goToPreviousReviewQuestion = goToPreviousReviewQuestion;
 
-        function init() {
+        async function init() {
             initDarkMode();
             initTextSize();
             updateReviewFullScreenButton();
@@ -3420,7 +3512,7 @@
             loadSection2MaterialRecordsFromLocal();
             loadSection2MaterialRecordsFromFirebase();
 
-            var source = loadReviewSource();
+            var source = await loadReviewSourceFromUrl() || loadReviewSource();
             var result = normalizeReviewState(source);
             if (!result || !Array.isArray(result.questions) || !result.questions.length) {
                 result = buildPreviewReviewState();
