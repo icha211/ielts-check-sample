@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Section 2 Review - Structure | TOEFL ITP</title>
     <link rel="stylesheet" href="css/explaination.css" />
+    <style>
+        .section2-materi-lesson { width: 100%; }
+        .section2-materi-lesson .lesson-trail { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+        .section2-materi-lesson .topic-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 0 13px; border: 1px solid #dce6f0; border-radius: 16px; color: #5d7088; background: #fff; font: 600 11px "Plus Jakarta Sans", sans-serif; }
+        .section2-materi-lesson .topic-chip.primary { color: #fff; background: #005faa; border-color: #005faa; }
+        .section2-materi-lesson .lesson-heading { border-bottom: 1px solid #d1dce8; padding-bottom: 15px; margin-bottom: 18px; }
+        .section2-materi-lesson .lesson-heading h1 { margin: 0; color: #1b2532; font: 800 20px "Plus Jakarta Sans", sans-serif; }
+        .section2-materi-lesson .lesson-heading p { margin: 6px 0 0; color: #63738a; font-size: 13px; }
+        .section2-materi-lesson .lesson-document { max-width: 930px; font-size: 14px; line-height: 1.65; color: #111827; max-height: 480px; overflow: auto; }
+        .section2-materi-lesson .lesson-document h1, .section2-materi-lesson .lesson-document h2, .section2-materi-lesson .lesson-document h3 { color: #1f2937; font-family: "Plus Jakarta Sans", sans-serif; line-height: 1.3; }
+        .section2-materi-lesson .lesson-document h1 { font-size: 20px; } .section2-materi-lesson .lesson-document h2 { font-size: 17px; margin-top: 24px; } .section2-materi-lesson .lesson-document h3 { font-size: 15px; margin-top: 18px; }
+        .section2-materi-lesson .lesson-document p { margin: 9px 0; } .section2-materi-lesson .lesson-document ul, .section2-materi-lesson .lesson-document ol { padding-left: 24px; } .section2-materi-lesson .lesson-document li { margin: 5px 0; }
+        .section2-materi-lesson .lesson-document table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 13px; } .section2-materi-lesson .lesson-document th { background: #0070b8; color: #fff; } .section2-materi-lesson .lesson-document th, .section2-materi-lesson .lesson-document td { border: 1px solid #b8d2e7; padding: 8px; text-align: left; vertical-align: top; }
+        .section2-materi-lesson .lesson-document strong { font-weight: 700; } .section2-materi-lesson .lesson-document mark { background: #ffde00; padding: 0 2px; }
+        .section2-materi-empty { padding: 20px 0; color: #63738a; }
+    </style>
 </head>
 <body class="section2-review-page">
     <div class="explaination">
@@ -257,34 +273,21 @@
             var contentHost = host.querySelector('.frame-parent13') || host;
             var materialTopic = question && question.materialTopic;
             if (!materialTopic || !materialTopic.title) {
-                contentHost.innerHTML = '<div class="sparkle-duotone-1-wrapper"><img src="../asst/icon/instruction.svg" alt="Ask AI tutor"></div>'
-                    + '<div class="frame-parent14">'
-                    + '<div class="ask-ai-tutor-parent">'
-                    + '<div class="ask-ai-tutor">MATERI</div>'
-                    + '<div class="real-time-answer">No material topic has been linked to this question yet.</div>'
-                    + '</div>'
-                    + '<button type="button" class="section-caret-toggle" id="askTutorToggle" onclick="toggleCaretOnly(\'askTutorToggle\')" aria-label="Toggle ask ai tutor"></button>'
-                    + '</div>';
+                contentHost.innerHTML = '<div class="section2-materi-empty">No material topic has been linked to this question yet.</div>';
                 return;
             }
             var record = getSection2MaterialRecord(materialTopic);
             if (!record || !record.html) {
-                contentHost.innerHTML = '<div class="sparkle-duotone-1-wrapper"><img src="../asst/icon/instruction.svg" alt="Ask AI tutor"></div>'
-                    + '<div class="frame-parent14">'
-                    + '<div class="ask-ai-tutor-parent">'
-                    + '<div class="ask-ai-tutor">' + escapeHtml(materialTopic.module + ' ' + materialTopic.code + ' \u00b7 ' + materialTopic.title) + '</div>'
-                    + '<div class="real-time-answer">Upload a DOCX lesson for this topic from the Developer Materials Library, then reopen this page.</div>'
-                    + '</div>'
-                    + '<button type="button" class="section-caret-toggle" id="askTutorToggle" onclick="toggleCaretOnly(\'askTutorToggle\')" aria-label="Toggle ask ai tutor"></button>'
+                contentHost.innerHTML = '<div class="section2-materi-lesson">'
+                    + '<div class="lesson-trail"><span class="topic-chip primary">' + escapeHtml(materialTopic.code) + '</span><span class="topic-chip">' + escapeHtml(materialTopic.title) + '</span></div>'
+                    + '<div class="section2-materi-empty">Upload a DOCX lesson for this topic from the Developer Materials Library, then reopen this page.</div>'
                     + '</div>';
                 return;
             }
-            contentHost.innerHTML = '<div style="width:100%;">'
-                + '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">'
-                + '<span style="padding:4px 10px; border-radius:999px; background:#005faa; color:#fff; font-size:11px; font-weight:700;">' + escapeHtml(materialTopic.module + ' \u00b7 ' + materialTopic.code) + '</span>'
-                + '<strong style="font-size:14px; color:#0f2942;">' + escapeHtml(record.title || materialTopic.title) + '</strong>'
-                + '</div>'
-                + '<div class="section2-materi-lesson-doc" style="max-height:420px; overflow:auto; font-size:14px; line-height:1.6; color:#1f2937;">' + sanitizeMaterialHtml(record.html) + '</div>'
+            contentHost.innerHTML = '<div class="section2-materi-lesson">'
+                + '<div class="lesson-trail"><span class="topic-chip primary">' + escapeHtml(materialTopic.code) + '</span><span class="topic-chip">' + escapeHtml(record.title || materialTopic.title) + '</span></div>'
+                + '<div class="lesson-heading"><h1>' + escapeHtml(record.title || materialTopic.title) + '</h1><p>' + escapeHtml(record.fileName || (materialTopic.module + ' \u00b7 ' + materialTopic.code)) + '</p></div>'
+                + '<article class="lesson-document">' + sanitizeMaterialHtml(record.html) + '</article>'
                 + '</div>';
         }
 
