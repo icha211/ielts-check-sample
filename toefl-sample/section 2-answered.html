@@ -1296,15 +1296,33 @@
                     var chunk = chunks[i].trim();
                     if (!chunk) continue;
                     if (i > 0) output += '<span class="section2-qc-observe-plus" aria-hidden="true">+</span>';
-                    var roleMatch = chunk.match(/^(.*?)(?:\s*\((Subject|Verb)\))\s*$/i);
+                    // Allow trailing punctuation (e.g. a comma) right after the ")" so real-world
+                    // text like "_____(Subject), the first..." still gets boxed correctly.
+                    var roleMatch = chunk.match(/^(.*?)\s*\((Subject|Verb)\)\s*([,.;:]*)\s*$/i);
                     if (roleMatch) {
-                        output += '<span class="section2-qc-observe-token"><span class="section2-qc-observe-word">' + inlineText(roleMatch[1].trim()) + '</span><span class="section2-qc-observe-label">' + escapeHtml(roleMatch[2]) + '</span></span>';
+                        var word = roleMatch[1].trim();
+                        var trail = roleMatch[3] || '';
+                        output += '<span class="section2-qc-observe-token"><span class="section2-qc-observe-word">' + inlineText(word) + '</span><span class="section2-qc-observe-label">' + escapeHtml(roleMatch[2]) + '</span></span>';
+                        if (trail) output += '<span class="section2-qc-observe-plain">' + escapeHtml(trail) + '</span>';
                     } else {
                         output += '<span class="section2-qc-observe-plain">' + inlineText(chunk) + '</span>';
                     }
                 }
                 return output + '</div>';
             }
+
+            function renderKeyValueRow(label, value) {
+                return '<div class="section2-qc-elimination-row section2-qc-keyvalue-row">'
+                    + '<span class="section2-qc-elimination-choice"><strong>' + inlineText(label) + '</strong></span>'
+                    + '<span class="section2-qc-elimination-colon">:</span>'
+                    + '<span class="section2-qc-elimination-reason">' + inlineText(value) + '</span>'
+                    + '</div>';
+            }
+
+            // Header lines are matched loosely: with or without "**" bold markers, and with or
+            // without a space before the colon, so hand-edited explanations still get styled.
+            var headerRegex = /^\*{0,2}\s*([CORE])\s*-\s*(Concept|Observe\s*S-?V-?C|Requirement|Eliminate)\s*\*{0,2}\s*:\s*\*{0,2}\s*(.*)$/i;
+            var HEADER_LABELS = { c: 'C - Concept', o: 'O - Observe S-V-C', r: 'R - Requirement', e: 'E - Eliminate' };
 
             for (var i = 0; i < lines.length; i += 1) {
                 var line = lines[i].trim();
@@ -1313,9 +1331,14 @@
                     html += '<div class="section2-qc-core-question">' + inlineText(line) + '</div>';
                     continue;
                 }
-                if (/^\*\*O\s*-\s*Observe S-V-C:/i.test(line)) {
-                    html += '<p class="section2-qc-core-key">O - Observe S-V-C:</p>';
-                    if (i + 1 < lines.length && lines[i + 1].trim() && lines[i + 1].indexOf('+') >= 0) {
+                var headerMatch = line.match(headerRegex);
+                if (headerMatch) {
+                    var letterKey = headerMatch[1].toLowerCase();
+                    var headerLabel = HEADER_LABELS[letterKey] || (headerMatch[1] + ' - ' + headerMatch[2]);
+                    var inlineRest = String(headerMatch[3] || '').trim();
+                    html += '<p class="section2-qc-core-key">' + escapeHtml(headerLabel) + ':</p>';
+                    if (inlineRest) html += '<p>' + inlineText(inlineRest) + '</p>';
+                    if (letterKey === 'o' && !inlineRest && i + 1 < lines.length && lines[i + 1].trim() && lines[i + 1].indexOf('+') >= 0) {
                         html += renderObserveLine(lines[++i]);
                     }
                     continue;
@@ -1330,8 +1353,9 @@
                         + '</div>';
                     continue;
                 }
-                if (/^\*\*E\s*-\s*Eliminate:/i.test(line)) {
-                    html += '<p class="section2-qc-core-key">E - Eliminate:</p>';
+                var keyValueMatch = line.match(/^\*\s+\*\*([^*]+)\*\*\s*:\s*(.*)$/);
+                if (keyValueMatch) {
+                    html += renderKeyValueRow(keyValueMatch[1].trim(), keyValueMatch[2].trim());
                     continue;
                 }
                 html += '<p>' + inlineText(line) + '</p>';
