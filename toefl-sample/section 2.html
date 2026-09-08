@@ -1423,9 +1423,9 @@
         function activateInitialTab() {
             if (!isDeveloperMode()) return;
             const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
-            if (devButton) {
-                openTab({ currentTarget: devButton }, 'dev-view');
-            }
+            document.querySelectorAll(".tab-content").forEach((content) => content.classList.toggle("active", content.id === "dev-view"));
+            document.querySelectorAll(".tab-button").forEach((button) => button.classList.toggle("active", button === devButton));
+            if (devButton) devButton.setAttribute("aria-selected", "true");
         }
 
         function openSubTab(evt, tabName, btnClass) {
@@ -2279,6 +2279,7 @@
                 // Ensure user view renders even if coming from study-plan
                 // Call updateUserView with forced rendering to display questions
                 updateUserView();
+                activateInitialTab();
                 // If in user mode and coming from study-plan, ensure user-view is shown
                 if (!isDeveloperMode()) {
                     const userViewTab = document.getElementById("user-view");
