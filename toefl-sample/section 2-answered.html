@@ -1191,37 +1191,68 @@
         }
 
         function renderSavedQcCoreMarkdown(markdown) {
-            var source = escapeHtml(String(markdown || '').trim());
+            var source = String(markdown || '').trim();
             if (!source) return '';
             var lines = source.split(/\r?\n/);
             var html = '';
-            var inList = false;
 
-            function closeList() {
-                if (inList) {
-                    html += '</ul>';
-                    inList = false;
+            function inlineText(value) {
+                return escapeHtml(String(value || '')).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            }
+
+            function statusIcon(status) {
+                var isCorrect = String(status || '').toUpperCase() === 'BENAR';
+                var path = isCorrect ? 'M20 6 9 17l-5-5' : 'M18 6 6 18M6 6l12 12';
+                return '<svg class="section2-qc-status-icon ' + (isCorrect ? 'is-correct' : 'is-wrong') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"></path></svg>';
+            }
+
+            function renderObserveLine(value) {
+                var chunks = String(value || '').split(/\s*\+\s*/);
+                var output = '<div class="section2-qc-observe-line">';
+                for (var i = 0; i < chunks.length; i += 1) {
+                    var chunk = chunks[i].trim();
+                    if (!chunk) continue;
+                    if (i > 0) output += '<span class="section2-qc-observe-plus" aria-hidden="true">+</span>';
+                    var roleMatch = chunk.match(/^(.*?)(?:\s*\((Subject|Verb)\))\s*$/i);
+                    if (roleMatch) {
+                        output += '<span class="section2-qc-observe-token"><span class="section2-qc-observe-word">' + inlineText(roleMatch[1].trim()) + '</span><span class="section2-qc-observe-label">' + escapeHtml(roleMatch[2]) + '</span></span>';
+                    } else {
+                        output += '<span class="section2-qc-observe-plain">' + inlineText(chunk) + '</span>';
+                    }
                 }
+                return output + '</div>';
             }
 
             for (var i = 0; i < lines.length; i += 1) {
                 var line = lines[i].trim();
-                if (!line) {
-                    closeList();
+                if (!line) continue;
+                if (/^Question\s*:/i.test(line)) {
+                    html += '<div class="section2-qc-core-question">' + inlineText(line) + '</div>';
                     continue;
                 }
-                if (/^\*\s+/.test(line)) {
-                    if (!inList) {
-                        html += '<ul class="section2-qc-core-list section2-qc-core-list--elim">';
-                        inList = true;
+                if (/^\*\*O\s*-\s*Observe S-V-C:/i.test(line)) {
+                    html += '<p class="section2-qc-core-key">O - Observe S-V-C:</p>';
+                    if (i + 1 < lines.length && lines[i + 1].trim() && lines[i + 1].indexOf('+') >= 0) {
+                        html += renderObserveLine(lines[++i]);
                     }
-                    html += '<li>' + line.slice(2).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') + '</li>';
                     continue;
                 }
-                closeList();
-                html += '<p>' + line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>') + '</p>';
+                var eliminationMatch = line.match(/^\*\s+\*\*([^*]+)\*\*\s*\((BENAR|SALAH)\)\s*:\s*(.*)$/i);
+                if (eliminationMatch) {
+                    html += '<div class="section2-qc-elimination-row">'
+                        + '<span class="section2-qc-elimination-icon">' + statusIcon(eliminationMatch[2]) + '</span>'
+                        + '<span class="section2-qc-elimination-choice"><strong>' + inlineText(eliminationMatch[1]) + '</strong></span>'
+                        + '<span class="section2-qc-elimination-colon">:</span>'
+                        + '<span class="section2-qc-elimination-reason">' + inlineText(eliminationMatch[3]) + '</span>'
+                        + '</div>';
+                    continue;
+                }
+                if (/^\*\*E\s*-\s*Eliminate:/i.test(line)) {
+                    html += '<p class="section2-qc-core-key">E - Eliminate:</p>';
+                    continue;
+                }
+                html += '<p>' + inlineText(line) + '</p>';
             }
-            closeList();
             return html;
         }
 
