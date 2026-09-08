@@ -524,7 +524,10 @@
                 const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
                 const setId = await ensureCurrentSetId(setDate);
                 try {
-                    await toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType);
+                    const savedRemotely = await toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType);
+                    if (savedRemotely === false) {
+                        throw new Error("Firebase draft save failed; data was kept in localStorage.");
+                    }
                 } catch (error) {
                     console.warn("[ToeflSync] draft save failed:", error);
                     throw error;
@@ -1079,7 +1082,7 @@
                                 </div>
                             </div>
                             <div style="margin-top:12px;">
-                                <div class="format-toolbar header-bahas"><span style="font-weight:bold; font-size:14px;"><img src="../asset/icon/video.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;"> Video Step-by-Step (Opsional)</span></div>
+                                <div class="format-toolbar header-bahas"><span style="font-weight:bold; font-size:14px;"><img src="../asst/icon/stepbystep tab.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;"> Video Step-by-Step (Opsional)</span></div>
                                 <textarea id="input-video-step-${p}" class="explanation-textarea" placeholder="Format penulisan:\n${p === 1 ? '1' : '16'}. https://www.youtube.com/watch?v=...\n${p === 1 ? '2' : '17'}. https://drive.google.com/file/d/.../preview"></textarea>
                             </div>
                         </div>

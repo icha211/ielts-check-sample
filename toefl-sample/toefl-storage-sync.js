@@ -712,10 +712,15 @@ class ToeflStorageSync {
        } catch (e) {
          this.isRemoteAvailable = false;
          console.warn(`[ToeflSync] Offline – ${testType} set draft ${setId} saved locally only:`, e.message);
+         const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+         local[setId] = draft || {};
+         localStorage.setItem(paths.draftsLocalKey, JSON.stringify(local));
+         return false;
        }
        const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
        local[setId] = draft || {};
        localStorage.setItem(paths.draftsLocalKey, JSON.stringify(local));
+       return true;
      }
 
      async getDraftBySetId(setId) {
