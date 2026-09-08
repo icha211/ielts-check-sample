@@ -395,7 +395,8 @@
             var correctAnswer = normalizeLetter(firstNonEmpty(raw.correctAnswer, raw.answerKey, review.correctAnswer, review.answerKey, review.correctChoice));
             var userAnswer = normalizeLetter(firstNonEmpty(raw.userAnswer, raw.selectedChoice, raw.submittedChoice, submission.userAnswer, submission.answer, submission.choice, review.userAnswer));
             var contextualExplanations = toParagraphArray(firstNonEmpty(review.contextualExplanations, raw.contextualExplanations, review.explanationBlocks, raw.explanationBlocks));
-            var explanation = normalizeText(firstNonEmpty(raw.explanation, review.explanation, review.reasoning, contextualExplanations.join('\n\n')));
+            var explanationSource = firstNonEmpty(raw.explanation, review.explanation, review.reasoning, contextualExplanations.join('\n\n'));
+            var explanation = String(explanationSource || '').replace(/\r\n?/g, '\n').trim();
             var videoStepUrl = normalizeText(firstNonEmpty(raw.videoStepUrl, raw.videoUrl, raw.stepVideoUrl, review.videoStepUrl, review.videoUrl));
 
             return {
