@@ -668,14 +668,65 @@
             }
         }
 
+        function buildQcCoreMarkdown(questionNumber, question, correctLetter) {
+            const stem = String(question?.questionText || `Question ${questionNumber}`).replace(/^\s*\d+[.)]?\s*/, '').trim();
+            const options = question?.options || {};
+            const correct = String(correctLetter || '').toUpperCase();
+            const correctText = String(options[correct] || '').trim();
+            const sentence = stem.replace(/_{3,}/, correctText || '_____');
+            const verbMatch = sentence.match(/\b(is|are|was|were|be|been|being|has|have|had|do|does|did|can|could|will|would|should|may|might|must|[a-z]+(?:ed|ing))\b/i);
+            const verb = verbMatch ? verbMatch[0] : 'belum terdeteksi';
+            const hasBlank = /_{3,}/.test(stem);
+            const subjectStatus = hasBlank ? '___ [Yang Dicari]' : 'tersedia pada kalimat';
+            const concept = Number(question?.partId) === 2 ? 'Written Expression & Subject-Verb Agreement' : 'Subject & Appositive';
+            const requirement = hasBlank
+                ? `Kalimat ini memiliki Verb (${verb}) namun belum memiliki Subject. Karena tidak ada Connector (seperti and, but, because), kita hanya butuh satu Subject (Kata Benda/Noun) untuk mengisi bagian yang kosong. Kita tidak boleh memilih opsi yang menambahkan Verb lagi.`
+                : `Kalimat ini perlu diperiksa berdasarkan hubungan Subject dan Verb. Fokuskan analisis pada kata yang diuji dan pastikan struktur kalimat tetap lengkap.`;
+            const elimination = Object.keys(options).sort().map((letter) => {
+                const text = String(options[letter] || '').trim();
+                if (letter === correct) return `* **(${letter}) ${text}** (BENAR): Ini adalah pilihan yang paling sesuai dengan kebutuhan struktur kalimat.`;
+                const reason = /\b(is|are|was|were|be|been|being)\b/i.test(text)
+                    ? 'Terdapat tambahan verb yang dapat menyebabkan Double Verb.'
+                    : /^(that|when|because|although|if|since|while)\b/i.test(text)
+                        ? 'Connector ini dapat mengubah slot menjadi anak kalimat (Dependent Clause).'
+                        : 'Pilihan ini tidak memenuhi fungsi gramatikal yang dibutuhkan pada slot tersebut.';
+                return `* **(${letter}) ${text}** (SALAH): ${reason}`;
+            }).join('\n');
+
+            return `Question:${questionNumber}\n**C - Concept:** ${concept}\n**O - Observe S-V-C:**\n${sentence.replace(verb, `${verb} (Verb)`).replace(correctText, `${correctText || '_____'} (Subject)`)}\n\n* **Subject**    : ${subjectStatus}\n* **Verb**       : ${verb}\n* **Compliance** : Periksa frasa penjelas dan connector agar tidak keliru menganggapnya sebagai bagian inti klausa.\n\n**R - Requirement:**\n${requirement}\n\n**E - Eliminate:**\n${elimination}`;
+        }
+
+        function populateQcCoreExplanationCards() {
+            const generated = {};
+            Object.keys(globalQuestions || {}).forEach((uid) => {
+                const parts = uid.split('_');
+                const partId = Number(parts[0]);
+                const questionNumber = Number(parts[1]);
+                const question = globalQuestions[uid];
+                const correctLetter = globalAnswerKey[uid];
+                if (!questionNumber || !question) return;
+                const input = document.getElementById(`input-explanation-en-${questionNumber}`);
+                if (!input || String(input.value || '').trim()) return;
+                const markdown = buildQcCoreMarkdown(questionNumber, question, correctLetter);
+                input.value = markdown;
+                generated[String(questionNumber)] = markdown;
+                markExplanationCardUnsaved(questionNumber);
+            });
+            try {
+                const existing = JSON.parse(localStorage.getItem('toefl_section2_qc_core_explanations') || '{}') || {};
+                localStorage.setItem('toefl_section2_qc_core_explanations', JSON.stringify(Object.assign(existing, generated)));
+            } catch (_) {}
+        }
+
         async function applyAndRefreshStructureView() {
             try {
                 await saveSectionMeta();
             } catch (error) {
                 console.warn("[Apply] saveSectionMeta failed:", error);
             }
-            saveSectionDraft();
             updateUserView(false);
+            populateQcCoreExplanationCards();
+            await saveSectionDraft();
             persistPreviewSection2Result();
             updateExplanationLink();
             emitSection2EditorApplySync();
