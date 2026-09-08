@@ -183,6 +183,8 @@
         var qcCoreExpandState = {};
         var observeAnalysisCache = {};
         var observeAnalysisPending = {};
+        var SECTION2_MATERIALS_KEY = "toefl_structure_materials_v1";
+        var section2MaterialRecords = {};
 
         function parseJsonSafe(raw, fallback) {
             try {
@@ -204,6 +206,86 @@
 
         function isPlainObject(value) {
             return !!value && typeof value === 'object' && !Array.isArray(value);
+        }
+
+        function loadSection2MaterialRecordsFromLocal() {
+            section2MaterialRecords = parseStorageJson(SECTION2_MATERIALS_KEY) || {};
+        }
+
+        async function loadSection2MaterialRecordsFromFirebase() {
+            loadSection2MaterialRecordsFromLocal();
+            try {
+                var remote = window.toeflStorage && typeof toeflStorage.getMaterialsLibrary === 'function'
+                    ? await toeflStorage.getMaterialsLibrary()
+                    : null;
+                if (remote && remote.records && typeof remote.records === 'object') {
+                    var decoded = {};
+                    Object.keys(remote.records).forEach(function (key) {
+                        var decodedKey = key;
+                        try { decodedKey = decodeURIComponent(key); } catch (_) {}
+                        decoded[decodedKey] = remote.records[key];
+                    });
+                    section2MaterialRecords = decoded;
+                }
+            } catch (_) {
+                // Keep the locally cached records if the remote fetch fails.
+            }
+            if (reviewCurrentQuestion) renderMateriTabDetail(reviewCurrentQuestion);
+        }
+
+        function getSection2MaterialRecord(materialTopic) {
+            if (!materialTopic || !materialTopic.module || !materialTopic.code) return null;
+            var topicId = materialTopic.module + '-' + materialTopic.code;
+            return section2MaterialRecords[topicId] || null;
+        }
+
+        function sanitizeMaterialHtml(value) {
+            var template = document.createElement('template');
+            template.innerHTML = String(value || '');
+            template.content.querySelectorAll('script, style, iframe, object, embed').forEach(function (node) { node.remove(); });
+            template.content.querySelectorAll('*').forEach(function (node) {
+                Array.prototype.slice.call(node.attributes).forEach(function (attribute) {
+                    if (/^on/i.test(attribute.name) || /javascript:/i.test(attribute.value)) node.removeAttribute(attribute.name);
+                });
+            });
+            return template.innerHTML;
+        }
+
+        function renderMateriTabDetail(question) {
+            var host = document.getElementById('partbPanelAsk');
+            if (!host) return;
+            var contentHost = host.querySelector('.frame-parent13') || host;
+            var materialTopic = question && question.materialTopic;
+            if (!materialTopic || !materialTopic.title) {
+                contentHost.innerHTML = '<div class="sparkle-duotone-1-wrapper"><img src="../asst/icon/instruction.svg" alt="Ask AI tutor"></div>'
+                    + '<div class="frame-parent14">'
+                    + '<div class="ask-ai-tutor-parent">'
+                    + '<div class="ask-ai-tutor">MATERI</div>'
+                    + '<div class="real-time-answer">No material topic has been linked to this question yet.</div>'
+                    + '</div>'
+                    + '<button type="button" class="section-caret-toggle" id="askTutorToggle" onclick="toggleCaretOnly(\'askTutorToggle\')" aria-label="Toggle ask ai tutor"></button>'
+                    + '</div>';
+                return;
+            }
+            var record = getSection2MaterialRecord(materialTopic);
+            if (!record || !record.html) {
+                contentHost.innerHTML = '<div class="sparkle-duotone-1-wrapper"><img src="../asst/icon/instruction.svg" alt="Ask AI tutor"></div>'
+                    + '<div class="frame-parent14">'
+                    + '<div class="ask-ai-tutor-parent">'
+                    + '<div class="ask-ai-tutor">' + escapeHtml(materialTopic.module + ' ' + materialTopic.code + ' \u00b7 ' + materialTopic.title) + '</div>'
+                    + '<div class="real-time-answer">Upload a DOCX lesson for this topic from the Developer Materials Library, then reopen this page.</div>'
+                    + '</div>'
+                    + '<button type="button" class="section-caret-toggle" id="askTutorToggle" onclick="toggleCaretOnly(\'askTutorToggle\')" aria-label="Toggle ask ai tutor"></button>'
+                    + '</div>';
+                return;
+            }
+            contentHost.innerHTML = '<div style="width:100%;">'
+                + '<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">'
+                + '<span style="padding:4px 10px; border-radius:999px; background:#005faa; color:#fff; font-size:11px; font-weight:700;">' + escapeHtml(materialTopic.module + ' \u00b7 ' + materialTopic.code) + '</span>'
+                + '<strong style="font-size:14px; color:#0f2942;">' + escapeHtml(record.title || materialTopic.title) + '</strong>'
+                + '</div>'
+                + '<div class="section2-materi-lesson-doc" style="max-height:420px; overflow:auto; font-size:14px; line-height:1.6; color:#1f2937;">' + sanitizeMaterialHtml(record.html) + '</div>'
+                + '</div>';
         }
 
         function escapeHtml(value) {
@@ -3198,6 +3280,7 @@
             renderExplainationTabDetail(question);
             ensureGeminiObserveAnalysis(question, deriveGrammarBlueprint(question));
             renderStepByStepTabDetail(question);
+            renderMateriTabDetail(question);
             renderSidebar(question);
             renderGlobalAiQcWidget(question);
 
@@ -3291,6 +3374,9 @@
 
             var featuresOverlay = document.getElementById('features-overlay');
             if (featuresOverlay) featuresOverlay.addEventListener('click', handleFeaturesOverlayClick);
+
+            loadSection2MaterialRecordsFromLocal();
+            loadSection2MaterialRecordsFromFirebase();
 
             var source = loadReviewSource();
             var result = normalizeReviewState(source);

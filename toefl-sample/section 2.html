@@ -477,6 +477,14 @@
             if (badge) badge.hidden = false;
         }
 
+        function clearAllExplanationCardsUnsaved() {
+            document.querySelectorAll(".explaination-card.is-unsaved").forEach((card) => {
+                card.classList.remove("is-unsaved");
+                const badge = card.querySelector(".explanation-save-state");
+                if (badge) badge.hidden = true;
+            });
+        }
+
         function hydrateGeneratedQcExplanations() {
             let generated = {};
             try {
@@ -811,6 +819,7 @@
             persistPreviewSection2Result();
             updateExplanationLink();
             emitSection2EditorApplySync();
+            clearAllExplanationCardsUnsaved();
             showAutoSaveStatus("Applied", true);
         }
 
@@ -824,6 +833,7 @@
                 persistPreviewSection2Result();
                 updateExplanationLink();
                 emitSection2EditorApplySync();
+                clearAllExplanationCardsUnsaved();
                 showAutoSaveStatus("Explanation saved and updated", true);
             } catch (error) {
                 console.warn("[Save] Section 2 explanation save failed:", error);
