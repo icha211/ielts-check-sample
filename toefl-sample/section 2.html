@@ -211,6 +211,72 @@
         let currentPackageDate = "";
         let lastValidSetDate = "";
         let forcedPracticeFocusPart = null;
+        let section2MaterialTopics = [];
+
+        const SECTION2_DEFAULT_MATERIAL_TOPICS = [
+            ['Module 1', [['1.1', 'Missing Subjects & Verbs'], ['1.2', 'Appositives (Noun Phrase Distractors)'], ['1.3', 'Present Participles (-ing) vs. Past Participles (-ed)'], ['1.4', 'Subject-Verb Agreement'], ['1.5', 'Tricky Singular Subjects']]],
+            ['Module 2', [['2.1', 'Coordinate Connectors'], ['2.2', 'Adverb Clauses'], ['2.3', 'Noun Clauses'], ['2.4', 'Adjective/Relative Clauses'], ['2.5', 'Reduced Clauses']]],
+            ['Module 3', [['3.1', 'Causative Verbs'], ['3.2', 'Active vs. Passive Voice'], ['3.3', 'Modals + Base Verbs'], ['3.4', 'Infinitives vs. Gerunds'], ['3.5', 'Time Markers & Tenses']]],
+            ['Module 4', [['4.1', 'Inversion with Negatives'], ['4.2', 'Inversion with Place Expressions'], ['4.3', 'Inversion in Conditionals']]],
+            ['Module 5', [['5.1', 'Parallel Structure'], ['5.2', 'Paired Conjunctions'], ['5.3', 'Comparatives & Superlatives'], ['5.4', 'Illogical Comparisons']]],
+            ['Module 6', [['6.1', 'Adjectives vs. Adverbs'], ['6.2', 'Noun Endings'], ['6.3', 'Singular/Plural Countability'], ['6.4', 'Pronoun Agreement']]],
+            ['Module 7', [['7.1', 'Dependent Prepositions'], ['7.2', 'Make vs. Do'], ['7.3', 'Like, Alike, and Unlike'], ['7.4', 'Another, Other, Others']]]
+        ];
+
+        function normalizeSection2MaterialTopics(topics) {
+            return (Array.isArray(topics) ? topics : []).map((topic) => ({
+                module: String(topic?.module || '').trim(),
+                code: String(topic?.code || '').trim(),
+                title: String(topic?.title || '').trim()
+            })).filter((topic) => topic.module && topic.code && topic.title);
+        }
+
+        function getSection2MaterialTopicsFromDefaults() {
+            return SECTION2_DEFAULT_MATERIAL_TOPICS.flatMap(([module, topics]) => topics.map(([code, title]) => ({ module, code, title })));
+        }
+
+        async function loadSection2MaterialTopics() {
+            const localCustom = safeParse(localStorage.getItem('toefl_structure_material_topics_v1'), []);
+            let remoteCustom = [];
+            try {
+                const remote = window.toeflStorage && typeof toeflStorage.getMaterialsLibrary === 'function'
+                    ? await toeflStorage.getMaterialsLibrary()
+                    : null;
+                remoteCustom = remote && Array.isArray(remote.customTopics) ? remote.customTopics : [];
+            } catch (_) {}
+            const topics = getSection2MaterialTopicsFromDefaults().concat(normalizeSection2MaterialTopics(localCustom), normalizeSection2MaterialTopics(remoteCustom));
+            const seen = {};
+            section2MaterialTopics = topics.filter((topic) => {
+                const key = topic.module + '-' + topic.code;
+                if (seen[key]) return false;
+                seen[key] = true;
+                return true;
+            });
+        }
+
+        function renderSection2MaterialOptions() {
+            document.querySelectorAll('.section2-material-topic-select').forEach((select) => {
+                const current = select.value;
+                select.innerHTML = '<option value="">Select material topic</option>' + section2MaterialTopics.map((topic) => {
+                    const value = encodeURIComponent(JSON.stringify(topic));
+                    return '<option value="' + value + '">' + escapeHtml(topic.module + ' · ' + topic.code + ' · ' + topic.title) + '</option>';
+                }).join('');
+                if (current) select.value = current;
+            });
+        }
+
+        function getSelectedSection2Material(questionNumber) {
+            const select = document.getElementById('section2-material-topic-' + questionNumber);
+            if (!select || !select.value) return null;
+            try { return JSON.parse(decodeURIComponent(select.value)); } catch (_) { return null; }
+        }
+
+        function updateSection2ConceptForCard(questionNumber) {
+            const input = document.getElementById(`input-explanation-en-${questionNumber}`);
+            const topic = getSelectedSection2Material(questionNumber);
+            if (!input || !topic || !String(input.value || '').trim()) return;
+            input.value = String(input.value).replace(/^\*\*C\s*-\s*Concept:\*\*.*$/m, `**C - Concept:** ${topic.title}`);
+        }
 
         function getStructurePracticeFocusPart() {
             const params = new URLSearchParams(window.location.search);
@@ -436,10 +502,12 @@
                 for (let questionNumber = part.start || (p === 1 ? 1 : 16); questionNumber <= (part.end || (p === 1 ? 15 : 40)); questionNumber += 1) {
                     const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
                     const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
+                    const materialTopic = getSelectedSection2Material(questionNumber);
                     if (englishInput || bahasaInput) {
                         explanationTexts[questionNumber] = {
                             explanation: String(englishInput?.value || "").trim(),
-                            explanationId: String(bahasaInput?.value || "").trim()
+                            explanationId: String(bahasaInput?.value || "").trim(),
+                            materialTopic: materialTopic
                         };
                     }
                 }
@@ -563,12 +631,15 @@
                     const saved = explanationTexts[questionNumber] || {};
                     const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
                     const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
+                    const topicSelect = document.getElementById(`section2-material-topic-${questionNumber}`);
                     if (englishInput && saved.explanation) englishInput.value = saved.explanation;
                     if (bahasaInput && saved.explanationId) bahasaInput.value = saved.explanationId;
+                    if (topicSelect && saved.materialTopic) topicSelect.value = encodeURIComponent(JSON.stringify(saved.materialTopic));
                 });
             });
 
             hydrateGeneratedQcExplanations();
+            renderSection2MaterialOptions();
 
             syncPartBRichEditorFromTextarea();
         }
@@ -684,7 +755,8 @@
             const verb = verbMatch ? verbMatch[0] : 'belum terdeteksi';
             const hasBlank = /_{3,}/.test(stem);
             const subjectStatus = hasBlank ? '___ [Yang Dicari]' : 'tersedia pada kalimat';
-            const concept = Number(question?.partId) === 2 ? 'Written Expression & Subject-Verb Agreement' : 'Subject & Appositive';
+            const materialTopic = getSelectedSection2Material(questionNumber);
+            const concept = materialTopic ? materialTopic.title : (Number(question?.partId) === 2 ? 'Written Expression & Subject-Verb Agreement' : 'Subject & Appositive');
             const requirement = hasBlank
                 ? `Kalimat ini memiliki Verb (${verb}) namun belum memiliki Subject. Karena tidak ada Connector (seperti and, but, because), kita hanya butuh satu Subject (Kata Benda/Noun) untuk mengisi bagian yang kosong. Kita tidak boleh memilih opsi yang menambahkan Verb lagi.`
                 : `Kalimat ini perlu diperiksa berdasarkan hubungan Subject dan Verb. Fokuskan analisis pada kata yang diuji dan pastikan struktur kalimat tetap lengkap.`;
@@ -793,6 +865,7 @@
                     userAnswer: finalUserAnswer,
                     isCorrect,
                     isPartB: !!q.isPartB,
+                    materialTopic: getSelectedSection2Material(qNum),
                     explanation: String(
                         (document.getElementById(`input-explanation-en-${qNum}`) || {}).value
                         || globalExplanations[uid]
@@ -951,6 +1024,12 @@
                                 <span class="explanation-save-state" hidden style="padding:4px 8px; border-radius:999px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-size:11px; font-weight:700;">Unsaved</span>
                             </div>
                             <h2 class="dev-card-question-number">Question ${questionNumber}</h2>
+                            <label style="display:grid; gap:6px; max-width:420px; font-size:12px; font-weight:700; color:#1e3a5f;">
+                                Material topic
+                                    <select id="section2-material-topic-${questionNumber}" class="section2-material-topic-select" onchange="updateSection2ConceptForCard(${questionNumber}); markExplanationCardUnsaved(${questionNumber})">
+                                    <option value="">Select material topic</option>
+                                </select>
+                            </label>
                             <div style="font-size:12px; color:#475569; line-height:1.6;">
                                 Generated QC Core Analysis can be edited in both Bahasa and English.
                             </div>
@@ -2180,7 +2259,9 @@
 
         window.onload = async () => {
             initAutoSave();
+            await loadSection2MaterialTopics();
             initStructure();
+            renderSection2MaterialOptions();
             hydrateGeneratedQcExplanations();
             syncPartBRichEditorFromTextarea();
             bindPartBRichPasteSupport();

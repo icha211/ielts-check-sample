@@ -394,6 +394,11 @@
             var options = toOptionMap(firstNonEmpty(raw.options, raw.choices, raw.answerChoices, submission.options, review.options, review.choices));
             var correctAnswer = normalizeLetter(firstNonEmpty(raw.correctAnswer, raw.answerKey, review.correctAnswer, review.answerKey, review.correctChoice));
             var userAnswer = normalizeLetter(firstNonEmpty(raw.userAnswer, raw.selectedChoice, raw.submittedChoice, submission.userAnswer, submission.answer, submission.choice, review.userAnswer));
+            var materialTopic = isPlainObject(raw.materialTopic) ? {
+                module: normalizeText(raw.materialTopic.module),
+                code: normalizeText(raw.materialTopic.code),
+                title: normalizeText(raw.materialTopic.title)
+            } : null;
             var contextualExplanations = toParagraphArray(firstNonEmpty(review.contextualExplanations, raw.contextualExplanations, review.explanationBlocks, raw.explanationBlocks));
             var explanationSource = firstNonEmpty(raw.explanation, review.explanation, review.reasoning, contextualExplanations.join('\n\n'));
             var explanation = String(explanationSource || '').replace(/\r\n?/g, '\n').trim();
@@ -407,6 +412,7 @@
                 options: options,
                 correctAnswer: correctAnswer,
                 userAnswer: userAnswer,
+                materialTopic: materialTopic,
                 isCorrect: typeof raw.isCorrect === 'boolean' ? raw.isCorrect : (!!userAnswer && userAnswer === correctAnswer),
                 explanation: explanation,
                 videoStepUrl: videoStepUrl,
@@ -1261,6 +1267,9 @@
             var questionNumber = Number(question && question.number) || 0;
             var isExpanded = qcCoreExpandState[questionNumber] !== false;
             var savedText = String(question && question.explanation || '').trim();
+            if (question && question.materialTopic && question.materialTopic.title) {
+                savedText = savedText.replace(/^\*\*C\s*-\s*Concept:\*\*.*$/m, '**C - Concept:** ' + question.materialTopic.title);
+            }
             if (!savedText) return '';
             return '<section class="section2-qc-analysis ' + (isExpanded ? 'is-expanded' : 'is-collapsed') + '">'
                 + '<div class="section2-qc-core-banner">'
@@ -1295,6 +1304,8 @@
             var normalizedStemAll = normalizeText((stemBefore || '') + ' ' + (stemAfter || ''));
             var descriptivePhrase = normalizeText((blueprint && blueprint.descriptivePhrase) || 'frasa diapit koma');
             var ruleLabel = normalizeText((blueprint && blueprint.ruleLabel) || 'Pilih opsi yang melengkapi Subject + Verb tanpa connector tambahan.');
+            var conceptTitle = normalizeText(question && question.materialTopic && question.materialTopic.title)
+                || (Number(question && question.partId) === 2 ? 'Written Expression & Subject-Verb Agreement' : 'Subject & Appositive');
             var letters = Object.keys((question && question.options) || {}).sort();
             var eliminationLines = '';
             var subjectText = '_____';
@@ -1645,7 +1656,7 @@
                 + '</div>'
                 + '</div>'
                 + '<div class="section2-qc-core-body">'
-                + '<p><span class="section2-qc-core-key">C - Concept</span> : <mark>Subject & Appositive</mark> (Subjek & Keterangan Tambahan)</p>'
+                + '<p><span class="section2-qc-core-key">C - Concept</span> : <mark>' + escapeHtml(conceptTitle) + '</mark></p>'
                 + '<p><span class="section2-qc-core-key">O - Observe S-V-C</span>:</p>'
                 + observeVisualHtml
                 + '<ul class="section2-qc-core-list">'
