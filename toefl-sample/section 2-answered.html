@@ -3330,7 +3330,17 @@
 
         function goToNextReviewQuestion() {
             if (!reviewResultData || !Array.isArray(reviewResultData.questions)) return;
-            var nextIndex = reviewQuestionIndex + 1;
+            var currentIndex = reviewQuestionIndex;
+            var currentNumber = Number(reviewCurrentQuestion && reviewCurrentQuestion.number || 0);
+            if (currentNumber) {
+                for (var i = 0; i < reviewResultData.questions.length; i += 1) {
+                    if (Number(reviewResultData.questions[i].number || 0) === currentNumber) {
+                        currentIndex = i;
+                        break;
+                    }
+                }
+            }
+            var nextIndex = currentIndex + 1;
             if (nextIndex >= reviewResultData.questions.length) return;
             renderQuestion(reviewResultData.questions[nextIndex], nextIndex);
         }
