@@ -1574,6 +1574,21 @@
                 + '</section>';
         }
 
+        function cacheQcCoreExplanation(questionNumber, host) {
+            if (!host || !questionNumber) return;
+            var body = host.querySelector('.section2-qc-core-body');
+            if (!body) return;
+            var text = String(body.innerText || body.textContent || '').replace(/\s+\n/g, '\n').replace(/\n\s+/g, '\n').trim();
+            if (!text) return;
+            try {
+                var cached = JSON.parse(localStorage.getItem('toefl_section2_qc_core_explanations') || '{}') || {};
+                cached[String(questionNumber)] = text;
+                localStorage.setItem('toefl_section2_qc_core_explanations', JSON.stringify(cached));
+            } catch (_) {
+                // Keep explanation rendering usable when localStorage is unavailable.
+            }
+        }
+
             function toggleQcCoreExpand(questionNumber) {
                 var key = Number(questionNumber) || Number(reviewCurrentQuestion && reviewCurrentQuestion.number) || 0;
                 if (!key) return;
@@ -2186,6 +2201,7 @@
             }
             if (Number(question.number) === 2) {
                 host.innerHTML = renderQuestionTwoExplanation(question);
+                cacheQcCoreExplanation(question.number, host);
                 return;
             }
             var correct = normalizeLetter(question.correctAnswer) || 'A';
@@ -2203,6 +2219,7 @@
                 + '<div class="explaination-figma-options">' + buildOptionMarkup(question, { selected: 'Jawaban Kamu', correct: 'Jawaban Benar' }) + '</div>'
                 + buildPartAAnalysisBlock(question, blueprint)
                 + '</div>';
+            cacheQcCoreExplanation(question.number, host);
         }
 
         function renderGlobalAiQcWidget(question) {

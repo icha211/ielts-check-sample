@@ -402,16 +402,52 @@
             updateUserView();
         }
 
+        function markExplanationCardUnsaved(questionNumber) {
+            const card = document.querySelector(`.explaination-card[data-question-number="${questionNumber}"]`);
+            if (!card) return;
+            card.classList.add("is-unsaved");
+            const badge = card.querySelector(".explanation-save-state");
+            if (badge) badge.hidden = false;
+        }
+
+        function hydrateGeneratedQcExplanations() {
+            let generated = {};
+            try {
+                generated = JSON.parse(localStorage.getItem("toefl_section2_qc_core_explanations") || "{}") || {};
+            } catch (_) {
+                generated = {};
+            }
+
+            Object.keys(generated).forEach((questionNumber) => {
+                const input = document.getElementById(`input-explanation-en-${questionNumber}`);
+                if (input && !String(input.value || "").trim() && String(generated[questionNumber] || "").trim()) {
+                    input.value = generated[questionNumber];
+                }
+            });
+        }
+
         async function saveSectionDraft() {
             syncPartBRichEditorToTextarea();
             const draft = { parts: {} };
             PARTS.forEach((part) => {
                 const p = part.id;
+                const explanationTexts = {};
+                for (let questionNumber = part.start || (p === 1 ? 1 : 16); questionNumber <= (part.end || (p === 1 ? 15 : 40)); questionNumber += 1) {
+                    const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
+                    const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
+                    if (englishInput || bahasaInput) {
+                        explanationTexts[questionNumber] = {
+                            explanation: String(englishInput?.value || "").trim(),
+                            explanationId: String(bahasaInput?.value || "").trim()
+                        };
+                    }
+                }
                 draft.parts[p] = {
                     questions: (document.getElementById(`input-magic-questions-${p}`) || {}).value || "",
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
                     explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || "",
-                    videoStep: (document.getElementById(`input-video-step-${p}`) || {}).value || ""
+                    videoStep: (document.getElementById(`input-video-step-${p}`) || {}).value || "",
+                    explanationTexts
                 };
             });
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
@@ -516,7 +552,17 @@
                 if (aEl && typeof row.answerKey === "string") aEl.value = row.answerKey;
                 if (eEl && typeof row.explanation === "string") eEl.value = row.explanation;
                 if (vEl && typeof row.videoStep === "string") vEl.value = row.videoStep;
+                const explanationTexts = row.explanationTexts || {};
+                Object.keys(explanationTexts).forEach((questionNumber) => {
+                    const saved = explanationTexts[questionNumber] || {};
+                    const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
+                    const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
+                    if (englishInput && saved.explanation) englishInput.value = saved.explanation;
+                    if (bahasaInput && saved.explanationId) bahasaInput.value = saved.explanationId;
+                });
             });
+
+            hydrateGeneratedQcExplanations();
 
             syncPartBRichEditorFromTextarea();
         }
@@ -815,6 +861,35 @@
                     ? `Contoh:\n1. The president _____ the election.\n(A) won\n(B) win\n(C) winning\n(D) is winning`
                     : `Contoh:\n5. Electrical <u>disturbances</u> on Earth are <u>frequently</u> caused <u>with</u> storms on the surface <u>of the sun</u>.`;
 
+                const firstQuestionNumber = p === 1 ? 1 : 16;
+                const lastQuestionNumber = p === 1 ? 15 : 40;
+                const explanationCardsHTML = Array.from({ length: lastQuestionNumber - firstQuestionNumber + 1 }, (_, index) => firstQuestionNumber + index)
+                    .map((questionNumber) => `
+                        <div class="dev-card explaination-card" data-question-number="${questionNumber}">
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                                <h3 class="dev-card-title" style="margin:0;">Explanation</h3>
+                                <span class="explanation-save-state" hidden style="padding:4px 8px; border-radius:999px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-size:11px; font-weight:700;">Unsaved</span>
+                            </div>
+                            <h2 class="dev-card-question-number">Question ${questionNumber}</h2>
+                            <div style="font-size:12px; color:#475569; line-height:1.6;">
+                                Generated QC Core Analysis can be edited in both Bahasa and English.
+                            </div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; margin-top:16px; align-items:start;">
+                                <div style="min-width:250px;">
+                                    <div class="format-toolbar header-bahas">
+                                        <span style="font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:6px;">Explanation in Bahasa <img src="https://hatscripts.github.io/circle-flags/flags/id.svg" width="18" height="18" alt="Indonesia Flag"></span>
+                                    </div>
+                                    <textarea id="input-explanation-id-${questionNumber}" class="explanation-textarea" placeholder="QC Core Analysis in Bahasa" oninput="markExplanationCardUnsaved(${questionNumber})"></textarea>
+                                </div>
+                                <div style="min-width:250px;">
+                                    <div class="format-toolbar header-bahas">
+                                        <span style="font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:6px;">Explanation in English <img src="https://hatscripts.github.io/circle-flags/flags/gb.svg" width="18" height="18" alt="UK Flag"></span>
+                                    </div>
+                                    <textarea id="input-explanation-en-${questionNumber}" class="explanation-textarea" placeholder="QC Core Analysis ${questionNumber}" oninput="markExplanationCardUnsaved(${questionNumber})"></textarea>
+                                </div>
+                            </div>
+                        </div>`).join("");
+
                 devContainer.innerHTML += `
                 <div id="dev-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
                     <div class="dev-container">
@@ -850,6 +925,7 @@
                             </div>
                         </div>
 
+                        ${explanationCardsHTML}
                     </div>
                 </div>`;
             });
@@ -2025,6 +2101,7 @@
         window.onload = async () => {
             initAutoSave();
             initStructure();
+            hydrateGeneratedQcExplanations();
             syncPartBRichEditorFromTextarea();
             bindPartBRichPasteSupport();
             applyViewMode();
