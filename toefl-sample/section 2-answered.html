@@ -3295,12 +3295,26 @@
             if (!question) return;
             reviewCurrentQuestion = question;
             document.getElementById('sectionReviewTitle').textContent = reviewResultData && reviewResultData.sectionTitle ? reviewResultData.sectionTitle : 'Structure and Written Expression';
-            renderExplainationTabDetail(question);
-            ensureGeminiObserveAnalysis(question, deriveGrammarBlueprint(question));
-            renderStepByStepTabDetail(question);
-            renderMateriTabDetail(question);
-            renderSidebar(question);
-            renderGlobalAiQcWidget(question);
+            try {
+                renderExplainationTabDetail(question);
+                ensureGeminiObserveAnalysis(question, deriveGrammarBlueprint(question));
+            } catch (error) {
+                console.error('Unable to render explanation for question ' + String(question.number || ''), error);
+                var explanationHost = document.getElementById('explainationTabContent');
+                if (explanationHost) explanationHost.innerHTML = '<div class="section2-empty-state">The explanation for this question could not be displayed. Please select another question and try again.</div>';
+            }
+            try {
+                renderStepByStepTabDetail(question);
+            } catch (error) {
+                console.error('Unable to render steps for question ' + String(question.number || ''), error);
+            }
+            try {
+                renderMateriTabDetail(question);
+                renderSidebar(question);
+                renderGlobalAiQcWidget(question);
+            } catch (error) {
+                console.error('Unable to render supporting review content for question ' + String(question.number || ''), error);
+            }
 
             if (reviewResultData && Array.isArray(reviewResultData.questions)) {
                 if (typeof indexHint === 'number') {
