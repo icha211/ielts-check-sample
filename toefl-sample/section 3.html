@@ -1324,16 +1324,23 @@
             const lineHeight = parseFloat(getComputedStyle(box).lineHeight) || 24;
             const columnRect = lineColumn.getBoundingClientRect();
             const visualLineTops = getPassageVisualLineTops(box);
+            const anchoredLineTops = getQuestionAnchoredLineTops(box, passageId);
             let firstMarkerTop = null;
 
-            for (let lineIndex = 4; lineIndex < visualLineTops.length; lineIndex += 5) {
-                const sourceLine = lineIndex + 1;
+            const maxLine = Math.max(
+                visualLineTops.length,
+                ...Object.keys(anchoredLineTops).map((lineNumber) => Number(lineNumber) || 0)
+            );
+
+            for (let sourceLine = 5; sourceLine <= maxLine; sourceLine += 5) {
+                const lineTop = anchoredLineTops[sourceLine] || visualLineTops[sourceLine - 1];
+                if (!Number.isFinite(lineTop)) continue;
                 const label = document.createElement('div');
                 label.className = 'passage-line-marker-fixed';
-                label.dataset.markerIndex = String(lineIndex);
+                label.dataset.markerIndex = String(sourceLine - 1);
                 label.textContent = `(${sourceLine})`;
                 lineColumn.appendChild(label);
-                const relativeTop = visualLineTops[lineIndex] - columnRect.top + (lineHeight / 2);
+                const relativeTop = lineTop - columnRect.top + (lineHeight / 2);
                 label.style.top = `${relativeTop}px`;
                 if (firstMarkerTop === null) firstMarkerTop = relativeTop;
             }
@@ -1368,6 +1375,26 @@
 
             range.detach();
             return tops.sort((left, right) => left - right);
+        }
+
+        function getPhraseTopInPassage(box, phrase) {
+            const match = findTextNodeForPhrase(box, phrase);
+            if (!match || match.index < 0) return null;
+            const range = document.createRange();
+            range.setStart(match.node, match.index);
+            range.setEnd(match.node, Math.min(match.node.length, match.index + 1));
+            const rect = Array.from(range.getClientRects()).find((item) => item && item.height > 0);
+            range.detach();
+            return rect ? rect.top : null;
+        }
+
+        function getQuestionAnchoredLineTops(box, passageId) {
+            const anchored = {};
+            getQuestionLineTargets(passageId).forEach((target) => {
+                const top = getPhraseTopInPassage(box, target.phrase);
+                if (Number.isFinite(top)) anchored[target.line] = top;
+            });
+            return anchored;
         }
 
         function renumberAllPassageMarkers() {
