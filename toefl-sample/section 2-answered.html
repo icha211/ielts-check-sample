@@ -655,11 +655,14 @@
             while ((marker = markerMatcher.exec(source))) {
                 markers.push({ letter: String(marker[1]).toUpperCase(), start: marker.index, contentStart: markerMatcher.lastIndex });
             }
-            if (markers.length !== 4) return options;
+            if (!markers.length) return options;
 
             for (var markerIndex = 0; markerIndex < markers.length; markerIndex += 1) {
                 var nextStart = markerIndex + 1 < markers.length ? markers[markerIndex + 1].start : source.length;
-                var optionText = normalizeText(source.slice(markers[markerIndex].contentStart, nextStart).replace(/<[^>]*>/g, ''));
+                var optionChunk = source.slice(markers[markerIndex].contentStart, nextStart);
+                var boldMatch = optionChunk.match(/\*\*\s*([\s\S]*?)\s*\*\*/);
+                if (!boldMatch) boldMatch = optionChunk.match(/<(?:strong|b)\b[^>]*>\s*([\s\S]*?)\s*<\/(?:strong|b)>/i);
+                var optionText = normalizeText((boldMatch ? boldMatch[1] : optionChunk).replace(/<[^>]*>/g, '').replace(/\*\*/g, ''));
                 if (optionText) options[markers[markerIndex].letter] = optionText;
             }
             return options;
