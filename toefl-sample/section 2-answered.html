@@ -2023,6 +2023,43 @@
                 + '</span>';
         }
 
+        function buildPartBReviewSentenceHtml(question) {
+            var source = String(question && question.questionText || '').replace(/^\s*\d+[.)]?\s+/, '');
+            var optionMap = question && question.options || {};
+            var userAnswer = normalizeLetter(question && question.userAnswer);
+            var correctAnswer = normalizeLetter(question && question.correctAnswer);
+            var optionLetters = Object.keys(optionMap).sort();
+            var matches = [];
+            var searchFrom = 0;
+            var lowerSource = source.toLowerCase();
+
+            for (var index = 0; index < optionLetters.length; index += 1) {
+                var letter = optionLetters[index];
+                var optionText = normalizeText(optionMap[letter]);
+                if (!optionText) continue;
+                var start = lowerSource.indexOf(optionText.toLowerCase(), searchFrom);
+                if (start < 0) continue;
+                matches.push({ letter: letter, text: source.slice(start, start + optionText.length), start: start, end: start + optionText.length });
+                searchFrom = start + optionText.length;
+            }
+
+            if (!matches.length) return escapeHtml(source);
+
+            var html = '<span class="section2-partb-review-inline">';
+            var cursor = 0;
+            for (var matchIndex = 0; matchIndex < matches.length; matchIndex += 1) {
+                var match = matches[matchIndex];
+                var state = match.letter === correctAnswer ? ' is-correct' : (match.letter === userAnswer ? ' is-wrong' : '');
+                html += escapeHtml(source.slice(cursor, match.start));
+                html += '<span class="section2-partb-review-option' + state + '">'
+                    + '<span class="section2-partb-review-word">' + escapeHtml(match.text) + '</span>'
+                    + '<span class="section2-partb-review-letter">' + escapeHtml(match.letter) + '</span>'
+                    + '</span>';
+                cursor = match.end;
+            }
+            return html + escapeHtml(source.slice(cursor)) + '</span>';
+        }
+
         function renderPartBQuestion16Explanation(question) {
             var displayQuestion = buildPartBQuestion16DisplayQuestion(question);
             return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q16 section2-q16-exact section2-aiqc-host">'
@@ -2030,7 +2067,9 @@
                 + '<div class="section2-q16-stem-row">'
                 + '<div class="section2-q16-number">' + escapeHtml(String(displayQuestion.number || 16)) + '</div>'
                 + '<div class="section2-q16-stem">'
-                + '<div class="section2-q16-sentence section2-q16-sentence--inline-options">' + buildPartBQuestion16SentenceHtml(displayQuestion) + '</div>'
+                + '</div>'
+                + '<div class="section2-q16-sentence section2-q16-sentence--inline-options">' + buildPartBReviewSentenceHtml(displayQuestion) + '</div>'
+                + '</div>'
                 + '</div>'
                 + '</div>'
                 + '<b class="section2-q16-status ' + (displayQuestion.isCorrect ? 'is-correct' : 'is-wrong') + '">' + (displayQuestion.isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
@@ -2171,8 +2210,7 @@
                 + '<div class="section2-q16-stem-row">'
                 + '<div class="section2-q16-number">' + escapeHtml(numberLabel) + '</div>'
                 + '<div class="section2-q16-stem">'
-                + '<div class="section2-q16-sentence">' + buildHighlightedSentenceHtml() + '</div>'
-                + '<div class="section2-q16-word-row">' + optionOrder.map(renderWordCard).join('') + '</div>'
+                + '<div class="section2-q16-sentence section2-q16-sentence--inline-options">' + buildPartBReviewSentenceHtml(displayQuestion) + '</div>'
                 + '</div>'
                 + '</div>'
                 + '<b class="section2-q16-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
