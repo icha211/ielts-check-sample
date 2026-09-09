@@ -58,4 +58,19 @@ Karena ini adalah tipe soal Written Expression (Mencari letak kesalahan), secara
 *   **(C) has created** (BENAR): Verb dalam bentuk Present Perfect Tense (has + Verb 3) ini sudah terpasang dengan tepat. Subjek inti kalimat adalah growth (Tunggal), sehingga penggunaan kata bantu has (Tunggal) sudah sangat sesuai dengan aturan Subject-Verb Agreement.
 *   **(D) employment** (BENAR): Kata ini adalah Noun (kata benda) yang berfungsi sebagai penjelas (noun adjunct) untuk kata opportunities, membentuk frasa employment opportunities (peluang kerja). Penggunaannya logis dan tepat.
 
-**Seha
+**C - Concept:** Conditional Sentences
+**O - Observe S-V-C:**
+If + the team (Subject) + had practiced (Verb) + more diligently, + they (Subject) + certainly + will have won (Verb) + the championship.
+
+* **Subject**    : team (Subjek Clause 1), they (Subjek Clause 2)
+* **Verb**       : had practiced (Verb Clause 1), will have won (Verb Clause 2)
+* **Compliance** : Kalimat ini adalah kalimat majemuk bertingkat bersyarat. Terdapat konektor "If" di awal kalimat yang menggabungkan dua klausa: If Clause (Anak Kalimat) dan Main Clause (Induk Kalimat).
+
+**R - Requirement:**
+Karena ini adalah tipe soal Written Expression (Mencari letak kesalahan), secara kerangka dasar konektor dan S-V-C kalimat ini sudah lengkap (ada 2 Subjek dan 2 Verb). Tugas kita adalah menganalisis kecocokan gramatikal (tata bahasa), khususnya pola rumusan Conditional Sentence. Pada Conditional Type 3 (pengandaian masa lalu), rumusnya sangat mutlak: If + Past Perfect (had + V3), Subject + would/could/might have + V3.
+
+**E - Eliminate (Jawaban Yang Benar):**
+*   **(A) had practiced** (BENAR): Ini adalah bentuk Past Perfect Tense (had + Verb 3). Penggunaannya sudah tepat dan akurat sebagai pengisi If Clause dalam Conditional Type 3 untuk menyatakan kondisi yang tidak terjadi di masa lalu.
+*   **(B) certainly** (BENAR): Ini adalah Adverb (kata keterangan) yang diselipkan untuk memberikan penekanan makna ("pasti"). Posisinya tepat dan tidak merusak struktur utama kata kerja kalimat. Tidak ada kesalahan di sini.
+*   **(C) will have** (SALAH): Bagian ini menyalahi aturan paten Conditional Type 3. Karena klausa syaratnya menggunakan Past Perfect (had practiced), maka klausa utamanya wajib menggunakan pola would have. Penggunaan will have (Future Perfect) membuat tenses tidak sinkron. Seharusnya diubah menjadi would have ("...they certainly would have won...").
+*   **(D) championship** (BENAR): Kata ini adalah Noun (kata benda) yang berfungsi sempurna sebagai Objek dari kata kerja won (memenangkan kejuaraan). Penggunaannya sangat logis dan tepat.
