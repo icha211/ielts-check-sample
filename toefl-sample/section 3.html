@@ -350,6 +350,7 @@
             height: auto;
             align-self: start;
             width: 100%;
+            max-width: 100%;
             box-sizing: border-box;
             padding: 10px;
             border: 1px solid #000;
@@ -1376,6 +1377,103 @@
             }
         }
 
+        function getQuestionLineTargets(passageId) {
+            const targets = [];
+            Object.keys(globalQuestions || {}).forEach((uid) => {
+                const question = globalQuestions[uid] || {};
+                if (Number(question.passageId) !== Number(passageId)) return;
+                const text = String(question.questionText || '');
+                const matcher = /["“”]([^"“”]{1,80})["“”]\s+in\s+line\s+(\d{1,2})/gi;
+                let match;
+                while ((match = matcher.exec(text))) {
+                    targets.push({ phrase: match[1].trim(), line: Number(match[2]) });
+                }
+            });
+            return targets.filter((item) => item.phrase && item.line > 0);
+        }
+
+        function findTextNodeForPhrase(root, phrase) {
+            const target = String(phrase || '').toLowerCase();
+            if (!root || !target) return null;
+            const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                    return String(node.nodeValue || '').toLowerCase().includes(target) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+                }
+            });
+            const node = walker.nextNode();
+            if (!node) return null;
+            return { node, index: String(node.nodeValue || '').toLowerCase().indexOf(target) };
+        }
+
+        function getVisualLineForPhrase(box, phrase) {
+            const match = findTextNodeForPhrase(box, phrase);
+            if (!match || match.index < 0) return null;
+            const range = document.createRange();
+            range.setStart(match.node, match.index);
+            range.setEnd(match.node, Math.min(match.node.length, match.index + 1));
+            const rect = Array.from(range.getClientRects()).find((item) => item && item.height > 0);
+            range.detach();
+            if (!rect) return null;
+            const visualLineTops = getPassageVisualLineTops(box);
+            if (!visualLineTops.length) return null;
+            let bestIndex = 0;
+            let bestDistance = Infinity;
+            visualLineTops.forEach((top, index) => {
+                const distance = Math.abs(top - rect.top);
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    bestIndex = index;
+                }
+            });
+            return bestIndex + 1;
+        }
+
+        function scorePassageLineCalibration(box, targets) {
+            let score = 0;
+            let matched = 0;
+            targets.forEach((target) => {
+                const actualLine = getVisualLineForPhrase(box, target.phrase);
+                if (!actualLine) {
+                    score += 100;
+                    return;
+                }
+                matched += 1;
+                score += Math.abs(actualLine - target.line);
+            });
+            return { score, matched };
+        }
+
+        function calibratePassageBoxToQuestions(passageId) {
+            const box = document.getElementById(`display-passage-${passageId}`);
+            if (!box) return;
+            const targets = getQuestionLineTargets(passageId);
+            if (!targets.length) return;
+            const shell = box.closest('.passage-shell');
+            const availableWidth = shell ? Math.floor(shell.getBoundingClientRect().width - 54) : box.clientWidth;
+            if (!(availableWidth > 0)) return;
+            const minWidth = Math.max(360, Math.floor(availableWidth * 0.58));
+            let best = { width: availableWidth, score: Infinity, matched: 0 };
+
+            for (let width = availableWidth; width >= minWidth; width -= 4) {
+                box.style.width = `${width}px`;
+                box.style.marginLeft = 'auto';
+                box.style.marginRight = 'auto';
+                const current = scorePassageLineCalibration(box, targets);
+                if (current.matched > best.matched || (current.matched === best.matched && current.score < best.score)) {
+                    best = { width, score: current.score, matched: current.matched };
+                    if (current.score === 0 && current.matched === targets.length) break;
+                }
+            }
+
+            box.style.width = `${best.width}px`;
+            box.dataset.lineCalibrationScore = String(best.score);
+        }
+
+        function calibrateAllPassageBoxesToQuestions() {
+            const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
+            for (let p = 1; p <= maxPassages; p++) calibratePassageBoxToQuestions(p);
+        }
+
         function refreshSection3QuestionState() {
             document.querySelectorAll('#user-passages-container .question-item').forEach((card) => {
                 const checked = card.querySelector('.radio-group input[type="radio"]:checked');
@@ -1620,6 +1718,7 @@
 
                 document.getElementById(`display-questions-${p}`).innerHTML = cleanHtml;
             }
+            calibrateAllPassageBoxesToQuestions();
             renumberAllPassageMarkers();
             refreshSection3QuestionState();
             initReadingPassageScrollbars();
@@ -1807,6 +1906,7 @@
             }
             document.addEventListener("keydown", handleFeaturesMenuKeydown);
             window.addEventListener("resize", () => {
+                calibrateAllPassageBoxesToQuestions();
                 renumberAllPassageMarkers();
                 refreshReadingPassageScrollbars();
             });
