@@ -1456,7 +1456,7 @@
 
             // Header lines are matched loosely: with or without "**" bold markers, and with or
             // without a space before the colon, so hand-edited explanations still get styled.
-            var headerRegex = /^\*{0,2}\s*([CORE])\s*-\s*(Concept|Observe\s*S-?V-?C|Requirement|Eliminate)\s*\*{0,2}\s*:\s*\*{0,2}\s*(.*)$/i;
+            var headerRegex = /^\*{0,2}\s*([CORE])\s*-\s*(Concept|Observe\s*S-?V-?C|Requirement|Eliminate)(?:\s*\([^)]*\))?\s*\*{0,2}\s*:\s*\*{0,2}\s*(.*)$/i;
             var HEADER_LABELS = { c: 'C - Concept', o: 'O - Observe S-V-C', r: 'R - Requirement', e: 'E - Eliminate' };
 
             for (var i = 0; i < lines.length; i += 1) {
@@ -1478,7 +1478,7 @@
                     }
                     continue;
                 }
-                var eliminationMatch = line.match(/^\*\s+\*\*([^*]+)\*\*\s*\((BENAR|SALAH)\)\s*:\s*(.*)$/i);
+                var eliminationMatch = line.match(/^\s*\*\s+\*\*([^*]+)\*\*\s*\((BENAR|SALAH)\)\s*:\s*(.*)$/i);
                 if (eliminationMatch) {
                     html += '<div class="section2-qc-elimination-row">'
                         + '<span class="section2-qc-elimination-choice"><strong>' + inlineText(eliminationMatch[1]) + '</strong></span>'
