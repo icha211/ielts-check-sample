@@ -2060,20 +2060,22 @@
             return html + escapeHtml(source.slice(cursor)) + '</span>';
         }
 
+        function buildPartBReviewHeader(question, isCorrect) {
+            return '<div class="section2-q16-top">'
+                + '<div class="section2-q16-stem-row">'
+                + '<div class="section2-q16-number">' + escapeHtml(String(question && question.number || '-')) + '</div>'
+                + '<div class="section2-q16-stem">'
+                + '<div class="section2-q16-sentence section2-q16-sentence--inline-options">' + buildPartBReviewSentenceHtml(question) + '</div>'
+                + '</div>'
+                + '</div>'
+                + '<b class="section2-q16-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
+                + '</div>';
+        }
+
         function renderPartBQuestion16Explanation(question) {
             var displayQuestion = buildPartBQuestion16DisplayQuestion(question);
-            return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q16 section2-q16-exact section2-aiqc-host">'
-                + '<div class="section2-q16-top">'
-                + '<div class="section2-q16-stem-row">'
-                + '<div class="section2-q16-number">' + escapeHtml(String(displayQuestion.number || 16)) + '</div>'
-                + '<div class="section2-q16-stem">'
-                + '</div>'
-                + '<div class="section2-q16-sentence section2-q16-sentence--inline-options">' + buildPartBReviewSentenceHtml(displayQuestion) + '</div>'
-                + '</div>'
-                + '</div>'
-                + '</div>'
-                + '<b class="section2-q16-status ' + (displayQuestion.isCorrect ? 'is-correct' : 'is-wrong') + '">' + (displayQuestion.isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
-                + '</div>'
+            return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q16 section2-aiqc-host">'
+                + buildPartBReviewHeader(displayQuestion, displayQuestion.isCorrect)
                 + '<section class="section2-q16-why">'
                 + '<div class="section2-q16-divider" aria-hidden="true"></div>'
                 + '<h3 class="section2-q16-title">Why (C) is the word are need to be changed?</h3>'
@@ -2206,15 +2208,7 @@
             var whyStep3 = renderTextOrHtml(whyParagraphs[3] || ('Terapkan aturan grammar pada kata pilihan (' + correctAnswer + ') untuk memastikan kesesuaian struktur kalimat.'));
 
             return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q16 section2-aiqc-host">'
-                + '<div class="section2-q16-top">'
-                + '<div class="section2-q16-stem-row">'
-                + '<div class="section2-q16-number">' + escapeHtml(numberLabel) + '</div>'
-                + '<div class="section2-q16-stem">'
-                + '<div class="section2-q16-sentence section2-q16-sentence--inline-options">' + buildPartBReviewSentenceHtml(displayQuestion) + '</div>'
-                + '</div>'
-                + '</div>'
-                + '<b class="section2-q16-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
-                + '</div>'
+                + buildPartBReviewHeader(displayQuestion, isCorrect)
                 + '<section class="section2-q16-why">'
                 + '<div class="section2-q16-divider" aria-hidden="true"></div>'
                 + '<h3 class="section2-q16-title">Why (' + escapeHtml(correctAnswer) + ') is the word ' + escapeHtml(optionsText(correctAnswer)) + ' need to be changed?</h3>'
