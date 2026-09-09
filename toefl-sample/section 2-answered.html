@@ -1408,11 +1408,12 @@
             return html;
         }
 
-        function renderSavedQcCoreMarkdown(markdown) {
+        function renderSavedQcCoreMarkdown(markdown, options) {
             var source = String(markdown || '').trim();
             if (!source) return '';
             var lines = source.split(/\r?\n/);
             var html = '';
+            var preserveEliminateQualifier = !!(options && options.preserveEliminateQualifier);
 
             function inlineText(value) {
                 return escapeHtml(String(value || '')).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -1456,7 +1457,7 @@
 
             // Header lines are matched loosely: with or without "**" bold markers, and with or
             // without a space before the colon, so hand-edited explanations still get styled.
-            var headerRegex = /^\*{0,2}\s*([CORE])\s*-\s*(Concept|Observe\s*S-?V-?C|Requirement|Eliminate)(?:\s*\([^)]*\))?\s*\*{0,2}\s*:\s*\*{0,2}\s*(.*)$/i;
+            var headerRegex = /^\*{0,2}\s*([CORE])\s*-\s*(Concept|Observe\s*S-?V-?C|Requirement|Eliminate)(\s*\([^)]*\))?\s*\*{0,2}\s*:\s*\*{0,2}\s*(.*)$/i;
             var HEADER_LABELS = { c: 'C - Concept', o: 'O - Observe S-V-C', r: 'R - Requirement', e: 'E - Eliminate' };
 
             for (var i = 0; i < lines.length; i += 1) {
@@ -1470,7 +1471,9 @@
                 if (headerMatch) {
                     var letterKey = headerMatch[1].toLowerCase();
                     var headerLabel = HEADER_LABELS[letterKey] || (headerMatch[1] + ' - ' + headerMatch[2]);
-                    var inlineRest = String(headerMatch[3] || '').trim();
+                    var qualifier = String(headerMatch[3] || '').trim();
+                    if (letterKey === 'e' && preserveEliminateQualifier && qualifier) headerLabel += ' ' + qualifier;
+                    var inlineRest = String(headerMatch[4] || '').trim();
                     html += '<p class="section2-qc-core-key">' + escapeHtml(headerLabel) + ':</p>';
                     if (inlineRest) html += '<p>' + inlineText(inlineRest) + '</p>';
                     if (letterKey === 'o' && !inlineRest && i + 1 < lines.length && lines[i + 1].trim() && lines[i + 1].indexOf('+') >= 0) {
@@ -1514,7 +1517,7 @@
                 + '</button>'
                 + '</div>'
                 + '<div class="section2-qc-core-body">'
-                + renderSavedQcCoreMarkdown(savedText)
+                + renderSavedQcCoreMarkdown(savedText, { preserveEliminateQualifier: Number(question && question.partId) === 2 })
                 + '</div>'
                 + '</section>';
         }
