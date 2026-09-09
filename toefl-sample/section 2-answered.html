@@ -468,7 +468,9 @@
             var review = isPlainObject(raw.aiReviews) ? raw.aiReviews : (isPlainObject(raw.aiReview) ? raw.aiReview : (isPlainObject(mappedReview) ? mappedReview : {}));
             var submission = isPlainObject(raw.userSubmissions) ? raw.userSubmissions : (isPlainObject(raw.userSubmission) ? raw.userSubmission : raw);
 
+            var rawQuestionText = String(firstNonEmpty(raw.questionText, raw.prompt, raw.stem, review.questionText, review.prompt) || ('Question ' + number)).trim();
             var options = toOptionMap(firstNonEmpty(raw.options, raw.choices, raw.answerChoices, submission.options, review.options, review.choices));
+            if (!Object.keys(options).length) options = parseDraftPartBInlineOptions(rawQuestionText);
             var correctAnswer = normalizeLetter(firstNonEmpty(raw.correctAnswer, raw.answerKey, review.correctAnswer, review.answerKey, review.correctChoice));
             var userAnswer = normalizeLetter(firstNonEmpty(raw.userAnswer, raw.selectedChoice, raw.submittedChoice, submission.userAnswer, submission.answer, submission.choice, review.userAnswer));
             var materialTopic = isPlainObject(raw.materialTopic) ? {
@@ -485,7 +487,7 @@
                 number: number,
                 partId: Number(firstNonEmpty(raw.partId, raw.part, review.partId, submission.partId) || (number <= 15 ? 1 : 2)),
                 partName: normalizeText(firstNonEmpty(raw.partName, raw.partLabel, review.partName, review.partLabel, number <= 15 ? 'Part A' : 'Part B')),
-                questionText: String(firstNonEmpty(raw.questionText, raw.prompt, raw.stem, review.questionText, review.prompt) || ('Question ' + number)).trim(),
+                questionText: rawQuestionText.replace(/<[^>]*>/g, '').replace(/\s*\([A-D]\)\s*/gi, ' ').replace(/\s+/g, ' ').trim(),
                 options: options,
                 correctAnswer: correctAnswer,
                 userAnswer: userAnswer,
@@ -630,6 +632,39 @@
             return answers;
         }
 
+        function parseDraftPartBInlineOptions(value) {
+            var source = String(value || '');
+            var options = {};
+            var underlineMatcher = /<u\b[^>]*>([\s\S]*?)<\/u>/gi;
+            var underlined;
+            var letters = ['A', 'B', 'C', 'D'];
+            var index = 0;
+
+            while ((underlined = underlineMatcher.exec(source)) && index < letters.length) {
+                var text = normalizeText(String(underlined[1] || '').replace(/<[^>]*>/g, ''));
+                if (text) options[letters[index]] = text;
+                index += 1;
+            }
+
+            if (Object.keys(options).length === 4) return options;
+
+            options = {};
+            var markerMatcher = /\(([A-D])\)\s*/gi;
+            var markers = [];
+            var marker;
+            while ((marker = markerMatcher.exec(source))) {
+                markers.push({ letter: String(marker[1]).toUpperCase(), start: marker.index, contentStart: markerMatcher.lastIndex });
+            }
+            if (markers.length !== 4) return options;
+
+            for (var markerIndex = 0; markerIndex < markers.length; markerIndex += 1) {
+                var nextStart = markerIndex + 1 < markers.length ? markers[markerIndex + 1].start : source.length;
+                var optionText = normalizeText(source.slice(markers[markerIndex].contentStart, nextStart).replace(/<[^>]*>/g, ''));
+                if (optionText) options[markers[markerIndex].letter] = optionText;
+            }
+            return options;
+        }
+
         function parseDraftQuestionBlocks(value) {
             var source = String(value || '').replace(/\r\n?/g, '\n');
             var marker = /^\s*(\d{1,2})\.\s*/gm;
@@ -656,6 +691,8 @@
                         options[choices[choiceIndex].letter] = content.slice(choices[choiceIndex].start, nextStart).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
                     }
                 }
+                if (!Object.keys(options).length) options = parseDraftPartBInlineOptions(content);
+                questionText = questionText.replace(/\s*\([A-D]\)\s*/gi, ' ').replace(/\s+/g, ' ').trim();
                 return { number: item.number, questionText: questionText, options: options };
             });
         }
