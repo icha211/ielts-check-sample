@@ -358,7 +358,7 @@
             box-shadow: none;
             color: #000;
             font: 400 16px/1.42 "Times New Roman", Times, serif;
-            text-align: left;
+            text-align: justify;
             overflow: visible;
             word-break: normal;
             overflow-wrap: break-word;
@@ -1309,48 +1309,31 @@
         function renumberPassageLineMarkers(passageId) {
             const box = document.getElementById(`display-passage-${passageId}`);
             if (!box) return;
-            const paragraphs = Array.from(box.querySelectorAll('p'));
             const lineColumn = box.closest('.passage-shell')?.querySelector('.passage-line-column');
             const lineTextLabel = lineColumn?.querySelector('.passage-line-text');
-            const fixedLabels = [
-                document.getElementById(`line-marker-${passageId}-0`),
-                document.getElementById(`line-marker-${passageId}-1`),
-                document.getElementById(`line-marker-${passageId}-2`)
-            ].filter(Boolean);
+            const sourceMarkers = Array.from(box.querySelectorAll('.line-marker[data-source-line]'));
 
-            if (!fixedLabels.length || !paragraphs.length || !lineColumn) return;
+            if (!sourceMarkers.length || !lineColumn) return;
+
+            lineColumn.querySelectorAll('.passage-line-marker-fixed').forEach((marker) => marker.remove());
 
             const lineHeight = parseFloat(getComputedStyle(box).lineHeight) || 24;
-            const boxRect = box.getBoundingClientRect();
-            const boxTop = boxRect.top + 10;
             const columnRect = lineColumn.getBoundingClientRect();
+            let firstMarkerTop = null;
 
-            const syncLabelToParagraph = (label, paragraph) => {
-                if (!label || !paragraph) return;
+            sourceMarkers.forEach((marker, index) => {
+                const paragraph = marker.closest('p');
+                const label = document.createElement('div');
+                label.className = 'passage-line-marker-fixed';
+                label.dataset.markerIndex = String(index);
+                label.textContent = `(${marker.dataset.sourceLine || ''})`;
+                lineColumn.appendChild(label);
+                if (!paragraph) return;
                 const paragraphTop = paragraph.getBoundingClientRect().top;
-                const lineNumber = Math.max(1, Math.round((paragraphTop - boxTop) / lineHeight) + 1);
                 const relativeTop = paragraphTop - columnRect.top;
-                label.textContent = `(${lineNumber})`;
                 label.style.top = `${relativeTop}px`;
-                return relativeTop;
-            };
-
-            const syncFirstLabelToParagraphLine = (label, paragraph, targetLine) => {
-                if (!label || !paragraph) return;
-                const paragraphTop = paragraph.getBoundingClientRect().top;
-                const relativeTop = (paragraphTop - columnRect.top) + ((Math.max(1, targetLine) - 1) * lineHeight);
-                label.textContent = `(${targetLine})`;
-                label.style.top = `${relativeTop}px`;
-                return relativeTop;
-            };
-
-            const firstParagraph = paragraphs[0];
-            const secondParagraph = paragraphs[1];
-            const thirdParagraph = paragraphs[2];
-
-            const firstMarkerTop = syncFirstLabelToParagraphLine(fixedLabels[0], firstParagraph, 5);
-            syncLabelToParagraph(fixedLabels[1], secondParagraph);
-            syncLabelToParagraph(fixedLabels[2], thirdParagraph);
+                if (firstMarkerTop === null) firstMarkerTop = relativeTop;
+            });
 
             if (lineTextLabel && Number.isFinite(firstMarkerTop)) {
                 const lineTop = Math.max(0, firstMarkerTop - (lineHeight * 0.6));
@@ -1542,7 +1525,7 @@
                     // 1. Ubah enter tunggal menjadi <br>
                     let processedPara = para.trim().replace(/\n/g, '<br>');
                     // 2. Deteksi teks (1), (5), (14) di awal paragraf atau setelah <br>, lalu jadikan span
-                    processedPara = processedPara.replace(/(^|<br>)\s*\((\d+)\)\s*/g, '$1<span class="line-marker" data-source-line="$2">($2)</span>');
+                    processedPara = processedPara.replace(/(^|<br>)\s*(?:\*\*)?\((\d+)\)(?:\*\*)?\s*/g, '$1<span class="line-marker" data-source-line="$2"></span>');
                     return `<p>${processedPara}</p>`;
                 }).join('');
                 document.getElementById(`display-passage-${p}`).innerHTML = passageText;
