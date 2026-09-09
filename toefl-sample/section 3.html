@@ -368,6 +368,10 @@
             margin: 0 0 22px;
         }
 
+        .section3-layout #user-passages-container .passage-source-line {
+            display: inline;
+        }
+
         .section3-layout #user-passages-container .passage-box .line-marker {
             display: none;
         }
@@ -1311,9 +1315,9 @@
             if (!box) return;
             const lineColumn = box.closest('.passage-shell')?.querySelector('.passage-line-column');
             const lineTextLabel = lineColumn?.querySelector('.passage-line-text');
-            const sourceMarkers = Array.from(box.querySelectorAll('.line-marker[data-source-line]'));
+            const sourceLines = Array.from(box.querySelectorAll('.passage-source-line[data-source-line]'));
 
-            if (!sourceMarkers.length || !lineColumn) return;
+            if (!sourceLines.length || !lineColumn) return;
 
             lineColumn.querySelectorAll('.passage-line-marker-fixed').forEach((marker) => marker.remove());
 
@@ -1321,16 +1325,16 @@
             const columnRect = lineColumn.getBoundingClientRect();
             let firstMarkerTop = null;
 
-            sourceMarkers.forEach((marker, index) => {
-                const paragraph = marker.closest('p');
+            sourceLines.forEach((line, index) => {
+                const sourceLine = Number(line.dataset.sourceLine || 0);
+                if (!sourceLine || sourceLine % 5 !== 0) return;
                 const label = document.createElement('div');
                 label.className = 'passage-line-marker-fixed';
                 label.dataset.markerIndex = String(index);
-                label.textContent = `(${marker.dataset.sourceLine || ''})`;
+                label.textContent = `(${sourceLine})`;
                 lineColumn.appendChild(label);
-                if (!paragraph) return;
-                const paragraphTop = paragraph.getBoundingClientRect().top;
-                const relativeTop = paragraphTop - columnRect.top;
+                const lineTop = line.getBoundingClientRect().top;
+                const relativeTop = lineTop - columnRect.top;
                 label.style.top = `${relativeTop}px`;
                 if (firstMarkerTop === null) firstMarkerTop = relativeTop;
             });
@@ -1451,6 +1455,23 @@
         let globalPassages = {};
         let timerInterval;
 
+        function renderPassageParagraphHtml(paragraph, lineState) {
+            const lines = String(paragraph || '').split('\n');
+            const renderedLines = [];
+            for (const rawLine of lines) {
+                let line = rawLine.trim();
+                if (!line) continue;
+                const markerMatch = line.match(/^\s*(?:\*\*)?\((\d+)\)(?:\*\*)?\s*/);
+                if (markerMatch) {
+                    lineState.nextLine = Number(markerMatch[1]) || lineState.nextLine;
+                    line = line.slice(markerMatch[0].length);
+                }
+                renderedLines.push(`<span class="passage-source-line" data-source-line="${lineState.nextLine}">${line}</span>`);
+                lineState.nextLine += 1;
+            }
+            return renderedLines.length ? `<p>${renderedLines.join('<br>')}</p>` : '';
+        }
+
         function isReadingPassageScrollable(section) {
             return Boolean(section && section.scrollHeight > section.clientHeight + 1);
         }
@@ -1520,14 +1541,8 @@
                 let passageText = document.getElementById(`input-passage-${p}`).value;
                 
                 // SISTEM PENDETEKSI (AUTO-PARSE) NOMOR BARIS
-                passageText = passageText.split('\n\n').map(para => {
-                    if(para.trim() === '') return '';
-                    // 1. Ubah enter tunggal menjadi <br>
-                    let processedPara = para.trim().replace(/\n/g, '<br>');
-                    // 2. Deteksi teks (1), (5), (14) di awal paragraf atau setelah <br>, lalu jadikan span
-                    processedPara = processedPara.replace(/(^|<br>)\s*(?:\*\*)?\((\d+)\)(?:\*\*)?\s*/g, '$1<span class="line-marker" data-source-line="$2"></span>');
-                    return `<p>${processedPara}</p>`;
-                }).join('');
+                const passageLineState = { nextLine: 1 };
+                passageText = passageText.split(/\n\s*\n/).map(para => renderPassageParagraphHtml(para, passageLineState)).join('');
                 document.getElementById(`display-passage-${p}`).innerHTML = passageText;
                 globalPassages[p] = { title: document.getElementById(`input-title-${p}`).value || `Passage ${p}`, content: passageText };
 
