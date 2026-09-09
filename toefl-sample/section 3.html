@@ -998,6 +998,7 @@
             if (targetPanel) targetPanel.classList.add('active');
             updateHeaderProgress();
             renderSection3NavigatorDrawer();
+            refreshPassageLayout(target);
         }
 
         function getPassageQuestionUIDs(passageNumber) {
@@ -1499,6 +1500,14 @@
         function calibrateAllPassageBoxesToQuestions() {
             const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
             for (let p = 1; p <= maxPassages; p++) calibratePassageBoxToQuestions(p);
+        }
+
+        function refreshPassageLayout(passageNumber) {
+            requestAnimationFrame(() => {
+                calibratePassageBoxToQuestions(passageNumber);
+                renumberPassageLineMarkers(passageNumber);
+                refreshReadingPassageScrollbars();
+            });
         }
 
         function refreshSection3QuestionState() {
