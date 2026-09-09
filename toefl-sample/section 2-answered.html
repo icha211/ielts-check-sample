@@ -371,6 +371,7 @@
             ) || '').toLowerCase();
 
             if (!sectionKey) return true;
+            if (/^part\s+[abc]$/.test(sectionKey)) return true;
             return sectionKey.indexOf('structure') >= 0
                 || sectionKey.indexOf('written expression') >= 0
                 || sectionKey.indexOf('section 2') >= 0
@@ -2349,6 +2350,11 @@
             return key ? observeAnalysisCache[key] : null;
         }
 
+        function hasGeminiObserveAnalysisRun(question) {
+            var key = getObserveAnalysisKey(question);
+            return !!key && Object.prototype.hasOwnProperty.call(observeAnalysisCache, key);
+        }
+
         function parseGeminiObserveJson(rawText) {
             var source = String(rawText || '').trim();
             if (!source) return null;
@@ -2435,20 +2441,20 @@
         function ensureGeminiObserveAnalysis(question, blueprint) {
             if (!question || isPartBFigmaCase(question)) return;
             var key = getObserveAnalysisKey(question);
-            if (!key || observeAnalysisCache[key] || observeAnalysisPending[key]) return;
+            if (!key || hasGeminiObserveAnalysisRun(question) || observeAnalysisPending[key]) return;
             observeAnalysisPending[key] = true;
 
             requestGeminiObserveAnalysis(question, blueprint).then(function (analysis) {
-                if (analysis) observeAnalysisCache[key] = analysis;
-            }).catch(function () {
-                // Keep deterministic fallback when Gemini parsing fails.
-            }).finally(function () {
-                observeAnalysisPending[key] = false;
-                if (!reviewCurrentQuestion) return;
+                observeAnalysisCache[key] = analysis || null;
+                if (!analysis || !reviewCurrentQuestion) return;
                 var sameQuestionNumber = Number(reviewCurrentQuestion.number || 0) === Number(question.number || 0);
                 if (sameQuestionNumber && reviewExplainationTab === 'explaination') {
                     renderExplainationTabDetail(reviewCurrentQuestion);
                 }
+            }).catch(function () {
+                // Keep deterministic fallback when Gemini parsing fails.
+            }).finally(function () {
+                observeAnalysisPending[key] = false;
             });
         }
 
