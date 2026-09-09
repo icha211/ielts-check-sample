@@ -23,7 +23,7 @@
 
         .figma-header--listening .test-package-timer {
             width: auto;
-            gap: 24px;
+            gap: 16px;
             display: flex;
             align-items: center;
         }
@@ -226,14 +226,46 @@
         }
 
         .section3-layout #user-passages-container .passage-section {
+            position: relative;
             width: auto;
             min-width: 0;
             max-width: none;
             padding: 0;
             overflow-x: hidden;
             overflow-y: auto;
+            scrollbar-width: none;
             display: flex;
             flex-direction: column;
+        }
+
+        .section3-layout #user-passages-container .passage-section::-webkit-scrollbar {
+            display: none;
+        }
+
+        .section3-layout #user-passages-container .reading-passage-scrollbar-track {
+            position: absolute;
+            top: 4px;
+            right: 3px;
+            bottom: 4px;
+            width: 5px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.16);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            z-index: 2;
+        }
+
+        .section3-layout #user-passages-container .reading-passage-scrollbar-track.is-visible {
+            opacity: 1;
+        }
+
+        .section3-layout #user-passages-container .reading-passage-scrollbar-thumb {
+            position: absolute;
+            left: 0;
+            right: 0;
+            border-radius: 999px;
+            background: rgba(100, 116, 139, 0.6);
         }
 
         .section3-layout #user-passages-container .question-section {
@@ -1142,6 +1174,7 @@
                                 </div>
                                 <div class="passage-box" id="display-passage-${p}"></div>
                             </div>
+                            <div class="reading-passage-scrollbar-track" aria-hidden="true"><div class="reading-passage-scrollbar-thumb"></div></div>
                         </div>
                         <div class="question-section">
                             <div id="display-questions-${p}"></div>
@@ -1435,6 +1468,58 @@
         let globalPassages = {};
         let timerInterval;
 
+        function isReadingPassageScrollable(section) {
+            return Boolean(section && section.scrollHeight > section.clientHeight + 1);
+        }
+
+        function updateReadingPassageScrollThumb(section) {
+            const track = section?.querySelector('.reading-passage-scrollbar-track');
+            const thumb = section?.querySelector('.reading-passage-scrollbar-thumb');
+            if (!section || !track || !thumb) return;
+            if (!isReadingPassageScrollable(section)) {
+                track.classList.remove('is-visible');
+                return;
+            }
+            const trackHeight = track.clientHeight;
+            const thumbHeight = Math.max(24, (section.clientHeight / section.scrollHeight) * trackHeight);
+            const maxThumbTop = Math.max(0, trackHeight - thumbHeight);
+            const scrollRange = section.scrollHeight - section.clientHeight;
+            const scrollRatio = scrollRange > 0 ? section.scrollTop / scrollRange : 0;
+            thumb.style.height = `${thumbHeight}px`;
+            thumb.style.top = `${maxThumbTop * scrollRatio}px`;
+        }
+
+        function showReadingPassageScrollbar(section) {
+            const track = section?.querySelector('.reading-passage-scrollbar-track');
+            if (!section || !track) return;
+            if (!isReadingPassageScrollable(section)) {
+                track.classList.remove('is-visible');
+                return;
+            }
+            updateReadingPassageScrollThumb(section);
+            track.classList.add('is-visible');
+            if (section._readingScrollHideTimer) clearTimeout(section._readingScrollHideTimer);
+            section._readingScrollHideTimer = setTimeout(() => {
+                track.classList.remove('is-visible');
+            }, 1000);
+        }
+
+        function refreshReadingPassageScrollbars() {
+            document.querySelectorAll('#user-passages-container .passage-section').forEach((section) => {
+                updateReadingPassageScrollThumb(section);
+            });
+        }
+
+        function initReadingPassageScrollbars() {
+            document.querySelectorAll('#user-passages-container .passage-section').forEach((section) => {
+                if (!section || section.dataset.scrollbarBound === '1') return;
+                section.addEventListener('scroll', () => showReadingPassageScrollbar(section));
+                section.addEventListener('mouseenter', () => showReadingPassageScrollbar(section));
+                section.dataset.scrollbarBound = '1';
+                updateReadingPassageScrollThumb(section);
+            });
+        }
+
         function updateUserView(shouldSaveMeta = false) {
             if (shouldSaveMeta) {
                 saveSectionMeta();
@@ -1515,6 +1600,7 @@
             }
             renumberAllPassageMarkers();
             refreshSection3QuestionState();
+            initReadingPassageScrollbars();
             startTimer();
         }
 
@@ -1700,6 +1786,7 @@
             document.addEventListener("keydown", handleFeaturesMenuKeydown);
             window.addEventListener("resize", () => {
                 renumberAllPassageMarkers();
+                refreshReadingPassageScrollbars();
             });
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
