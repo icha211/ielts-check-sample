@@ -1315,34 +1315,58 @@
             if (!box) return;
             const lineColumn = box.closest('.passage-shell')?.querySelector('.passage-line-column');
             const lineTextLabel = lineColumn?.querySelector('.passage-line-text');
-            const sourceLines = Array.from(box.querySelectorAll('.passage-source-line[data-source-line]'));
 
-            if (!sourceLines.length || !lineColumn) return;
+            if (!lineColumn) return;
 
             lineColumn.querySelectorAll('.passage-line-marker-fixed').forEach((marker) => marker.remove());
 
             const lineHeight = parseFloat(getComputedStyle(box).lineHeight) || 24;
             const columnRect = lineColumn.getBoundingClientRect();
+            const visualLineTops = getPassageVisualLineTops(box);
             let firstMarkerTop = null;
 
-            sourceLines.forEach((line, index) => {
-                const sourceLine = Number(line.dataset.sourceLine || 0);
-                if (!sourceLine || sourceLine % 5 !== 0) return;
+            for (let lineIndex = 4; lineIndex < visualLineTops.length; lineIndex += 5) {
+                const sourceLine = lineIndex + 1;
                 const label = document.createElement('div');
                 label.className = 'passage-line-marker-fixed';
-                label.dataset.markerIndex = String(index);
+                label.dataset.markerIndex = String(lineIndex);
                 label.textContent = `(${sourceLine})`;
                 lineColumn.appendChild(label);
-                const lineTop = line.getBoundingClientRect().top;
-                const relativeTop = lineTop - columnRect.top;
+                const relativeTop = visualLineTops[lineIndex] - columnRect.top + (lineHeight / 2);
                 label.style.top = `${relativeTop}px`;
                 if (firstMarkerTop === null) firstMarkerTop = relativeTop;
-            });
+            }
 
             if (lineTextLabel && Number.isFinite(firstMarkerTop)) {
                 const lineTop = Math.max(0, firstMarkerTop - (lineHeight * 0.6));
                 lineTextLabel.style.top = `${lineTop}px`;
             }
+        }
+
+        function getPassageVisualLineTops(box) {
+            const tops = [];
+            const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT, {
+                acceptNode(node) {
+                    return String(node.nodeValue || '').trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+                }
+            });
+            const range = document.createRange();
+            let node;
+
+            while ((node = walker.nextNode())) {
+                const text = String(node.nodeValue || '');
+                for (let index = 0; index < text.length; index += 1) {
+                    if (!text[index].trim()) continue;
+                    range.setStart(node, index);
+                    range.setEnd(node, index + 1);
+                    const rect = Array.from(range.getClientRects()).find((item) => item && item.height > 0);
+                    if (!rect) continue;
+                    if (!tops.some((top) => Math.abs(top - rect.top) < 2)) tops.push(rect.top);
+                }
+            }
+
+            range.detach();
+            return tops.sort((left, right) => left - right);
         }
 
         function renumberAllPassageMarkers() {
