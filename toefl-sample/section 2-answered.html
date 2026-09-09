@@ -1519,6 +1519,34 @@
                 + '</section>';
         }
 
+            function buildPartBAnalysisBlock(question) {
+                var savedAnalysis = buildSavedQcCoreAnalysisBlock(question);
+                if (savedAnalysis) return savedAnalysis;
+
+                var questionNumber = Number(question && question.number) || 0;
+                var correctAnswer = normalizeLetter(question && question.correctAnswer) || '-';
+                var correctText = extractChoiceText(question && question.options, correctAnswer);
+                var isExpanded = qcCoreExpandState[questionNumber] !== false;
+                var summary = 'Tandai bagian (' + correctAnswer + ') ' + correctText + ' lalu periksa fungsi kata tersebut terhadap Subject, Verb, dan hubungan antar clause.';
+
+                return '<section class="section2-qc-analysis ' + (isExpanded ? 'is-expanded' : 'is-collapsed') + ' section2-partb-analysis">'
+                + '<div class="section2-qc-core-banner">'
+                + '<button type="button" class="section2-qc-core-head" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" onclick="toggleQcCoreExpand(' + questionNumber + ')">'
+                + '<span style="display:inline-flex;align-items:center;gap:8px;"><img src="../asset/icon/light.png" alt="" style="width:16px;height:16px;object-fit:contain;">QC CORE ANALYSIS</span>'
+                + '<i class="ph ' + (isExpanded ? 'ph-caret-circle-up' : 'ph-caret-circle-down') + '" aria-hidden="true"></i>'
+                + '</button>'
+                + '</div>'
+                + '<div class="section2-qc-core-body">'
+                + '<p class="section2-qc-core-key">C - Concept:</p>'
+                + '<p>Written Expression</p>'
+                + '<p class="section2-qc-core-key">O - Observe S-V-C:</p>'
+                + '<p>' + buildPartBReviewSentenceHtml(question) + '</p>'
+                + '<p class="section2-qc-core-key">R - Requirement:</p>'
+                + '<p>' + escapeHtml(summary) + '</p>'
+                + '</div>'
+                + '</section>';
+            }
+
         function buildPartAAnalysisBlock(question, blueprint) {
             var savedAnalysis = buildSavedQcCoreAnalysisBlock(question);
             if (savedAnalysis) return savedAnalysis;
@@ -2116,70 +2144,9 @@
 
         function renderPartBQuestion16Explanation(question) {
             var displayQuestion = buildPartBQuestion16DisplayQuestion(question);
-            var questionNumber = Number(displayQuestion.number) || 16;
             return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q16 section2-aiqc-host">'
                 + buildPartBReviewHeader(displayQuestion, displayQuestion.isCorrect)
-                + '<section class="section2-q16-why section2-qc-analysis is-expanded section2-partb-analysis">'
-                + '<div class="section2-qc-core-banner"><button type="button" class="section2-qc-core-head" aria-expanded="true" onclick="toggleQcCoreExpand(' + questionNumber + ')"><span style="display:inline-flex;align-items:center;gap:8px;"><img src="../asset/icon/light.png" alt="" style="width:16px;height:16px;object-fit:contain;">QC CORE ANALYSIS</span><i class="ph ph-caret-circle-up" aria-hidden="true"></i></button></div>'
-                + '<div class="section2-qc-core-body">'
-                + '<div class="section2-q16-divider" aria-hidden="true"></div>'
-                + '<h3 class="section2-q16-title">Why (C) is the word are need to be changed?</h3>'
-                + '<p class="section2-q16-copy">Untuk memahami mengapa pilihan (C) adalah kata yang salah dalam sentence ini, kita harus menggunakan rumus universal dalam soal grammar, yaitu mencari:</p>'
-                + '<div class="section2-q16-pill-row">'
-                + '<div class="section2-q16-pill"><span>1. Cari Subject & Main Verb</span></div>'
-                + '<div class="section2-q16-arrow">&rarr;</div>'
-                + '<div class="section2-q16-pill"><span>2. Pisahkan Clause</span><small>(Independent Clause/Dependent Clause)</small></div>'
-                + '<div class="section2-q16-arrow">&rarr;</div>'
-                + '<div class="section2-q16-pill"><span>3. Identifikasi Aturan Tata Bahasa</span></div>'
-                + '</div>'
-                + '<div class="section2-q16-point">'
-                + '<div class="section2-q16-point-title">1. Mencari Subject & Main Verb (Inti Kalimat)</div>'
-                + '<div class="section2-q16-point-body">'
-                + '<div class="section2-q16-analysis-diagram">'
-                + '<div class="section2-q16-analysis-top">'
-                + '<div class="section2-q16-bracket q16-bracket-prep">[ Prepositional Phrase ]</div>'
-                + '<div class="section2-q16-bracket q16-bracket-relative">[ Relative/Adjective Clause ]</div>'
-                + '<div class="section2-q16-bracket q16-bracket-place">[ Prepositional Phrase / Adverb of Place ]</div>'
-                + '</div>'
-                + '<div class="section2-q16-analysis-sentence">The <span class="is-underline">list</span> <span class="is-strike">of items</span> <span class="is-strike">that I need to purchase</span> <span class="is-underline">are</span> <span class="is-strike">on the desk</span>.</div>'
-                + '<div class="section2-q16-analysis-bottom">'
-                + '<div class="section2-q16-pointer q16-pointer-subject"><i class="ph ph-arrow-up"></i><span>Head Subject</span></div>'
-                + '<div class="section2-q16-pointer q16-pointer-verb"><i class="ph ph-arrow-up"></i><span>Main Verb</span></div>'
-                + '</div>'
-                + '</div>'
-                + 'Kata yang berada tepat sebelum main verb (purchase) maupun kata benda di dekatnya (items) bukanlah subjek sebenarnya. Soal ini menguji <b>Subject-Verb Agreement with Intervening Phrase</b>.'
-                + '</div>'
-                + '</div>'
-                + '<div class="section2-q16-point">'
-                + '<div class="section2-q16-point-title">2. Menganalisis Struktur Kalimat & Hubungan Antara Clause</div>'
-                + '<div class="section2-q16-point-body">'
-                + '<p>Mengapa ada kata items dan purchase sebelum kata are? Di sinilah pentingnya menganalisis struktur klausa agar kita tidak terkecoh oleh "kata-kata pengganggu" (distractors).</p>'
-                + '<p>Jika kita bedah, kalimat ini terdiri dari satu main clause dan dipenuhi oleh Frasa/Klausa Penjelas:</p>'
-                + '<ul class="section2-q16-clause-list">'
-                + '<li><span class="phrase">The list ... are on the desk</span><i class="ph ph-arrow-right"></i><span class="label">Independent Clause</span></li>'
-                + '<li><span class="phrase">of items</span><i class="ph ph-arrow-right"></i><span class="label">Prepositional Phrase</span></li>'
-                + '<li><span class="phrase">that i need to purchase</span><i class="ph ph-arrow-right"></i><span class="label">Dependent Clause</span></li>'
-                + '</ul>'
-                + '<p>Clause ini diawali oleh kata ganti that dan memiliki subject <span class="i">i</span> serta kata adjective <span class="i">need</span>. <span class="i">Fungsinya hanya menerangkan kata items</span>.</p>'
-                + '</div>'
-                + '</div>'
-                + '<div class="section2-q16-point">'
-                + '<div class="section2-q16-point-title">3. Mengidentifikasi Aturan Grammar & Menemukan Kesalahan</div>'
-                + '<div class="section2-q16-point-body">'
-                + '<p>Setelah diidentifikasi, kalimat ini memiliki <span class="i">list</span> = Subjek Utama dan <span class="i">are</span> = Main Verb.</p>'
-                + '<p>Struktur ini menggunakan aturan grammar: <b>Subject-Verb Agreement with Intervening Phrase</b>.</p>'
-                + '<p>Kita lihat opsi pilihan (C), kata kerja <span class="i">are</span> yang telah <span class="i">menyalahi aturan Subject-Verb Agreement</span>.</p>'
-                + '<p>Hal ini terjadi karena kalimat <span class="i">menggunakan are</span> (jamak), padahal subjek utamanya adalah list (tunggal).</p>'
-                + '<p><span class="i">Subjek tunggal wajib bertemu dengan kata kerja tunggal</span>.</p>'
-                + '</div>'
-                + '</div>'
-                + '<div class="section2-q16-conclusion section2-q16-conclusion-clean">'
-                + '<div class="section2-q16-conclusion-title">Seharusnya kalimat yang benar seperti apa?</div>'
-                + '<div class="section2-q16-correct-sentence">The list of items that I need to purchase <span class="i">is</span> on the desk.</div>'
-                + '<p class="section2-q16-copy">Karena kalimat ini wajib menggunakan <b>is</b> (tunggal), sehingga Singular Subject (The list) bertemu dengan Singular Verb (is). Oleh karena itu, opsi <b>(C) are</b> adalah jawaban yang salah dan harus diperbaiki menjadi <b>is</b>.</p>'
-                + '</div>'
-                + '</div>'
-                + '</section>'
+                + buildPartBAnalysisBlock(displayQuestion)
                 + '</div>';
         }
 
@@ -2255,29 +2222,7 @@
 
             return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q16 section2-aiqc-host">'
                 + buildPartBReviewHeader(displayQuestion, isCorrect)
-                + '<section class="section2-q16-why section2-qc-analysis is-expanded section2-partb-analysis">'
-                + '<div class="section2-qc-core-banner"><button type="button" class="section2-qc-core-head" aria-expanded="true" onclick="toggleQcCoreExpand(' + escapeHtml(numberLabel) + ')"><span style="display:inline-flex;align-items:center;gap:8px;"><img src="../asset/icon/light.png" alt="" style="width:16px;height:16px;object-fit:contain;">QC CORE ANALYSIS</span><i class="ph ph-caret-circle-up" aria-hidden="true"></i></button></div>'
-                + '<div class="section2-qc-core-body">'
-                + '<div class="section2-q16-divider" aria-hidden="true"></div>'
-                + '<h3 class="section2-q16-title">Why (' + escapeHtml(correctAnswer) + ') is the word ' + escapeHtml(optionsText(correctAnswer)) + ' need to be changed?</h3>'
-                + '<p class="section2-q16-copy">' + whyIntro + '</p>'
-                + '<div class="section2-q16-pill-row">'
-                + '<div class="section2-q16-pill"><span>1. Cari Subject & Main Verb</span></div>'
-                + '<div class="section2-q16-arrow">&rarr;</div>'
-                + '<div class="section2-q16-pill"><span>2. Pisahkan Clause</span><small>(Independent Clause/Dependent Clause)</small></div>'
-                + '<div class="section2-q16-arrow">&rarr;</div>'
-                + '<div class="section2-q16-pill"><span>3. Identifikasi Aturan Tata Bahasa</span></div>'
-                + '</div>'
-                + renderPoint('1. Mencari Subject & Main Verb (Inti Kalimat)', whyStep1)
-                + renderPoint('2. Menganalisis Struktur Kalimat & Hubungan Antara Clause', whyStep2)
-                + renderPoint('3. Mengidentifikasi Aturan Grammar & Menemukan Kesalahan', whyStep3)
-                + '<div class="section2-q16-conclusion">'
-                + '<div class="section2-q16-conclusion-title">Seharusnya kalimat yang benar seperti apa?</div>'
-                + '<div class="section2-q16-correct-sentence">' + buildCorrectedSentence() + '</div>'
-                + '<p class="section2-q16-copy">Perbaikan akhir mengikuti rule grammar utama pada sentence ini: subject, verb, dan fungsi clause harus tetap seimbang.</p>'
-                + '</div>'
-                + '</div>'
-                + '</section>'
+                + buildPartBAnalysisBlock(displayQuestion)
                 + '</div>';
         }
 
