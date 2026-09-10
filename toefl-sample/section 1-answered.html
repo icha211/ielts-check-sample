@@ -1813,7 +1813,8 @@
                 }
 
                 if (reviewCurrentAudioSourceKind === 'question-cloudflare') {
-                    setAudioStatus('Cloudflare question audio failed to load');
+                    setAudioStatus('Question clip unavailable. Loading full part audio...');
+                    loadAudioForPart(reviewCurrentPartId || 1);
                     return;
                 }
 
@@ -1992,8 +1993,12 @@
             var objectKey = String((question && question.questionAudioObjectKey) || record.objectKey || '').trim();
             var url = String((question && question.questionAudioUrl) || record.url || record.objectUrl || '').trim();
 
-            if (!url && !objectKey && group && reviewSetId) {
-                objectKey = 'audio/listening/sets/' + reviewSetId + '/question_set/part_' + partId + '/q_' + group.key + '.mp3';
+            if (!url && !objectKey && reviewSetId) {
+                if (group) {
+                    objectKey = 'audio/listening/sets/' + reviewSetId + '/question_set/part_' + partId + '/q_' + group.key + '.mp3';
+                } else if (isPartAQuestion) {
+                    objectKey = 'audio/listening/sets/' + reviewSetId + '/question_set/part_1/q_' + String(questionNumber).padStart(2, '0') + '.mp3';
+                }
             }
             if (!url && objectKey) {
                 url = REVIEW_R2_PUBLIC_BASE_URL.replace(/\/+$/, '') + '/' + objectKey.replace(/^\/+/, '');
