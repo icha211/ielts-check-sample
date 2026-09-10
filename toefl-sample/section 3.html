@@ -1424,7 +1424,7 @@
             return targets.filter((item) => item.phrase && item.line > 0);
         }
 
-        function correctQuestionLineReferences(passageId, questionText) {
+        function correctQuestionLineReferences(passageId, questionText, questionUID = "") {
             const box = document.getElementById(`display-passage-${passageId}`);
             if (!box) return questionText;
             return String(questionText || '').replace(/(["“”])([^"“”]{1,80})\1\s+in\s+line\s+(\d{1,2})/gi, (fullMatch, quote, phrase, lineNumber) => {
@@ -1438,7 +1438,7 @@
             Object.keys(globalQuestions || {}).forEach((uid) => {
                 const question = globalQuestions[uid];
                 if (!question) return;
-                const correctedText = correctQuestionLineReferences(question.passageId, question.questionText);
+                const correctedText = correctQuestionLineReferences(question.passageId, question.rawQuestionText, uid);
                 if (correctedText === question.questionText) return;
                 question.questionText = correctedText;
                 const stem = document.querySelector(`#q-container-${uid} .question-stem-text`);
@@ -1801,8 +1801,13 @@
                         if (openDiv) cleanHtml += `</div><div class="feedback" id="feedback-${currentUID}"></div></div>`;
                         let currentQuestionNum = qMatch[1];
                         currentUID = `${p}_${currentQuestionNum}`;
-                        const correctedQuestionText = correctQuestionLineReferences(p, qMatch[2]);
-                        globalQuestions[currentUID] = { questionText: correctedQuestionText, options: {}, passageId: p };
+                        const correctedQuestionText = correctQuestionLineReferences(p, qMatch[2], currentUID);
+                        globalQuestions[currentUID] = {
+                            questionText: correctedQuestionText,
+                            rawQuestionText: qMatch[2],
+                            options: {},
+                            passageId: p
+                        };
                         cleanHtml += `<div class="question-item" id="q-container-${currentUID}">`;
                         cleanHtml += `<div class="question-head">`;
                         cleanHtml += `<div class="question-index-pill">${currentQuestionNum}</div>`;
