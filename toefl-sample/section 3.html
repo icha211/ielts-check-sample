@@ -1428,7 +1428,7 @@
             const box = document.getElementById(`display-passage-${passageId}`);
             if (!box) return questionText;
             return String(questionText || '').replace(/(["“”])([^"“”]{1,80})\1\s+in\s+line\s+(\d{1,2})/gi, (fullMatch, quote, phrase, lineNumber) => {
-                const actualLine = getVisualLineForPhrase(box, phrase.trim());
+                const actualLine = getVisualLineForPhrase(box, phrase.trim(), Number(lineNumber));
                 if (!Number.isFinite(actualLine) || actualLine < 1) return fullMatch;
                 return `${quote}${phrase}${quote} in line ${actualLine}`;
             });
@@ -1495,14 +1495,50 @@
             return range;
         }
 
-        function getVisualLineForPhrase(box, phrase) {
+        function getVisualLineForPhrase(box, phrase, expectedLine = null) {
+            const visualLineTops = getPassageVisualLineTops(box);
+            if (!visualLineTops.length) return null;
+
+            const candidates = [];
+            const target = String(phrase || '').trim().toLowerCase();
+            const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
+            let node;
+            while ((node = walker.nextNode())) {
+                const value = String(node.nodeValue || '').toLowerCase();
+                let startIndex = value.indexOf(target);
+                while (startIndex >= 0) {
+                    const range = document.createRange();
+                    range.setStart(node, startIndex);
+                    range.setEnd(node, Math.min(node.length, startIndex + target.length));
+                    const rect = Array.from(range.getClientRects()).find((item) => item && item.height > 0);
+                    range.detach();
+                    if (rect) {
+                        let bestIndex = 0;
+                        let bestDistance = Infinity;
+                        visualLineTops.forEach((top, index) => {
+                            const distance = Math.abs(top - rect.top);
+                            if (distance < bestDistance) {
+                                bestDistance = distance;
+                                bestIndex = index;
+                            }
+                        });
+                        candidates.push(bestIndex + 1);
+                    }
+                    startIndex = value.indexOf(target, startIndex + Math.max(1, target.length));
+                }
+            }
+
+            if (candidates.length) {
+                return Number.isFinite(expectedLine)
+                    ? candidates.sort((left, right) => Math.abs(left - expectedLine) - Math.abs(right - expectedLine))[0]
+                    : candidates[0];
+            }
+
             const range = findPhraseRange(box, phrase);
             if (!range) return null;
             const rect = Array.from(range.getClientRects()).find((item) => item && item.height > 0);
             range.detach();
             if (!rect) return null;
-            const visualLineTops = getPassageVisualLineTops(box);
-            if (!visualLineTops.length) return null;
             let bestIndex = 0;
             let bestDistance = Infinity;
             visualLineTops.forEach((top, index) => {
