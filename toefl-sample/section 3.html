@@ -349,7 +349,7 @@
             min-height: 0;
             height: auto;
             align-self: start;
-            width: 100%;
+            width: 12.5cm;
             max-width: 100%;
             box-sizing: border-box;
             padding: 10px;
@@ -1474,27 +1474,9 @@
         function calibratePassageBoxToQuestions(passageId) {
             const box = document.getElementById(`display-passage-${passageId}`);
             if (!box) return;
-            const targets = getQuestionLineTargets(passageId);
-            if (!targets.length) return;
-            const shell = box.closest('.passage-shell');
-            const availableWidth = shell ? Math.floor(shell.getBoundingClientRect().width - 54) : box.clientWidth;
-            if (!(availableWidth > 0)) return;
-            const minWidth = Math.max(360, Math.floor(availableWidth * 0.58));
-            let best = { width: availableWidth, score: Infinity, matched: 0 };
-
-            for (let width = availableWidth; width >= minWidth; width -= 4) {
-                box.style.width = `${width}px`;
-                box.style.marginLeft = 'auto';
-                box.style.marginRight = 'auto';
-                const current = scorePassageLineCalibration(box, targets);
-                if (current.matched > best.matched || (current.matched === best.matched && current.score < best.score)) {
-                    best = { width, score: current.score, matched: current.matched };
-                    if (current.score === 0 && current.matched === targets.length) break;
-                }
-            }
-
-            box.style.width = `${best.width}px`;
-            box.dataset.lineCalibrationScore = String(best.score);
+            box.style.width = '12.5cm';
+            box.style.marginLeft = 'auto';
+            box.style.marginRight = 'auto';
         }
 
         function calibrateAllPassageBoxesToQuestions() {
