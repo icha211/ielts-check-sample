@@ -403,6 +403,37 @@
             return output;
         }
 
+        function parseStandardChoiceBlock(value) {
+            var source = String(value || '').replace(/\r\n?/g, '\n');
+            var markerMatcher = /(?:^|\n|\s)([A-D])\s*[.)]\s*/gi;
+            var markers = [];
+            var marker;
+
+            while ((marker = markerMatcher.exec(source))) {
+                markers.push({
+                    letter: String(marker[1] || '').toUpperCase(),
+                    start: marker.index,
+                    contentStart: markerMatcher.lastIndex
+                });
+            }
+
+            if (markers.length !== 4 || markers.map(function(item) { return item.letter; }).join('') !== 'ABCD') {
+                return { questionText: source.trim(), options: {} };
+            }
+
+            var options = {};
+            for (var index = 0; index < markers.length; index += 1) {
+                var nextStart = index + 1 < markers.length ? markers[index + 1].start : source.length;
+                var optionText = normalizeText(source.slice(markers[index].contentStart, nextStart));
+                if (optionText) options[markers[index].letter] = optionText;
+            }
+
+            return {
+                questionText: source.slice(0, markers[0].start).trim(),
+                options: options
+            };
+        }
+
         function toParagraphArray(source) {
             if (!source) return [];
             if (Array.isArray(source)) {
@@ -470,6 +501,11 @@
 
             var rawQuestionText = String(firstNonEmpty(raw.questionText, raw.prompt, raw.stem, review.questionText, review.prompt) || ('Question ' + number)).trim();
             var options = toOptionMap(firstNonEmpty(raw.options, raw.choices, raw.answerChoices, submission.options, review.options, review.choices));
+            if (!Object.keys(options).length) {
+                var standardChoices = parseStandardChoiceBlock(rawQuestionText);
+                options = standardChoices.options;
+                if (Object.keys(options).length) rawQuestionText = standardChoices.questionText;
+            }
             if (!Object.keys(options).length) options = parseDraftPartBInlineOptions(rawQuestionText);
             var correctAnswer = normalizeLetter(firstNonEmpty(raw.correctAnswer, raw.answerKey, review.correctAnswer, review.answerKey, review.correctChoice));
             var userAnswer = normalizeLetter(firstNonEmpty(raw.userAnswer, raw.selectedChoice, raw.submittedChoice, submission.userAnswer, submission.answer, submission.choice, review.userAnswer));
