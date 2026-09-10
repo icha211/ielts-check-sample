@@ -368,7 +368,7 @@
             background: #fff;
             box-shadow: none;
             color: #000;
-            font: 300 20px "Aptos", Aptos, sans-serif;
+            font: 300 18.67px "Aptos", Aptos, sans-serif;
             text-align: justify;
             overflow: visible;
             word-break: normal;
@@ -1434,6 +1434,18 @@
             });
         }
 
+        function refreshAllQuestionLineReferences() {
+            Object.keys(globalQuestions || {}).forEach((uid) => {
+                const question = globalQuestions[uid];
+                if (!question) return;
+                const correctedText = correctQuestionLineReferences(question.passageId, question.questionText);
+                if (correctedText === question.questionText) return;
+                question.questionText = correctedText;
+                const stem = document.querySelector(`#q-container-${uid} .question-stem-text`);
+                if (stem) stem.textContent = correctedText;
+            });
+        }
+
         function findTextNodeForPhrase(root, phrase) {
             const target = String(phrase || '').toLowerCase();
             if (!root || !target) return null;
@@ -1755,6 +1767,10 @@
             renumberAllPassageMarkers();
             refreshSection3QuestionState();
             initReadingPassageScrollbars();
+            requestAnimationFrame(() => {
+                refreshAllQuestionLineReferences();
+                renumberAllPassageMarkers();
+            });
             startTimer();
         }
 
