@@ -1438,12 +1438,35 @@
             Object.keys(globalQuestions || {}).forEach((uid) => {
                 const question = globalQuestions[uid];
                 if (!question) return;
-                const correctedText = correctQuestionLineReferences(question.passageId, question.rawQuestionText, uid);
-                if (correctedText === question.questionText) return;
-                question.questionText = correctedText;
-                const stem = document.querySelector(`#q-container-${uid} .question-stem-text`);
-                if (stem) stem.textContent = correctedText;
+                refreshQuestionLineReference(uid, question);
             });
+        }
+
+        function refreshQuestionLineReferencesForPassage(passageId) {
+            Object.keys(globalQuestions || {}).forEach((uid) => {
+                const question = globalQuestions[uid];
+                if (Number(question?.passageId) !== Number(passageId)) return;
+                refreshQuestionLineReference(uid, question);
+            });
+        }
+
+        function refreshQuestionLineReference(uid, question) {
+            const correctedText = correctQuestionLineReferences(question.passageId, question.rawQuestionText, uid);
+            if (correctedText === question.questionText) return;
+            question.questionText = correctedText;
+            const stem = document.querySelector(`#q-container-${uid} .question-stem-text`);
+            if (stem) stem.textContent = correctedText;
+        }
+
+        function isWordCharacter(character) {
+            return /[a-z0-9]/i.test(character || '');
+        }
+
+        function isWholePhraseMatch(text, start, phrase) {
+            const before = text[start - 1];
+            const after = text[start + phrase.length];
+            return !(isWordCharacter(before) && isWordCharacter(phrase[0]))
+                && !(isWordCharacter(after) && isWordCharacter(phrase[phrase.length - 1]));
         }
 
         function findTextNodeForPhrase(root, phrase) {
@@ -1489,7 +1512,7 @@
             while (matchIndex >= 0) {
                 const start = positions[matchIndex];
                 const end = positions[matchIndex + target.length - 1];
-                if (start && end) {
+                if (start && end && isWholePhraseMatch(normalized, matchIndex, target)) {
                     const range = document.createRange();
                     range.setStart(start.node, start.start);
                     range.setEnd(end.node, end.end);
@@ -1528,22 +1551,7 @@
                     ? candidates.sort((left, right) => Math.abs(left - expectedLine) - Math.abs(right - expectedLine))[0]
                     : candidates[0];
             }
-
-            const range = findPhraseRanges(box, phrase)[0];
-            if (!range) return null;
-            const rect = Array.from(range.getClientRects()).find((item) => item && item.height > 0);
-            range.detach();
-            if (!rect) return null;
-            let bestIndex = 0;
-            let bestDistance = Infinity;
-            visualLineTops.forEach((top, index) => {
-                const distance = Math.abs(top - rect.top);
-                if (distance < bestDistance) {
-                    bestDistance = distance;
-                    bestIndex = index;
-                }
-            });
-            return bestIndex + 1;
+            return null;
         }
 
         function scorePassageLineCalibration(box, targets) {
@@ -1578,6 +1586,7 @@
             requestAnimationFrame(() => {
                 calibratePassageBoxToQuestions(passageNumber);
                 renumberPassageLineMarkers(passageNumber);
+                refreshQuestionLineReferencesForPassage(passageNumber);
                 refreshReadingPassageScrollbars();
             });
         }
