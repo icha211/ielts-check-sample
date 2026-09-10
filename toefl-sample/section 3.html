@@ -1463,24 +1463,36 @@
             const target = String(phrase || '').trim().replace(/\s+/g, ' ').toLowerCase();
             if (!root || !target) return null;
             const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-            const textNodes = [];
+            const normalizedText = [];
+            const positions = [];
             let node;
             while ((node = walker.nextNode())) {
-                if (String(node.nodeValue || '').trim()) textNodes.push(node);
-            }
-            for (let startIndex = 0; startIndex < textNodes.length; startIndex += 1) {
-                let combined = '';
-                for (let endIndex = startIndex; endIndex < textNodes.length; endIndex += 1) {
-                    combined += String(textNodes[endIndex].nodeValue || '').replace(/\s+/g, ' ');
-                    const matchIndex = combined.toLowerCase().indexOf(target);
-                    if (matchIndex < 0) continue;
-                    const range = document.createRange();
-                    range.setStart(textNodes[startIndex], 0);
-                    range.setEnd(textNodes[endIndex], textNodes[endIndex].length);
-                    return range;
+                const value = String(node.nodeValue || '');
+                let whitespacePending = false;
+                for (let index = 0; index < value.length; index += 1) {
+                    if (/\s/.test(value[index])) {
+                        whitespacePending = true;
+                        continue;
+                    }
+                    if (whitespacePending && normalizedText.length) {
+                        normalizedText.push(' ');
+                        positions.push({ node, start: index, end: index });
+                    }
+                    normalizedText.push(value[index].toLowerCase());
+                    positions.push({ node, start: index, end: index + 1 });
+                    whitespacePending = false;
                 }
             }
-            return null;
+            const normalized = normalizedText.join('');
+            const matchIndex = normalized.indexOf(target);
+            if (matchIndex < 0) return null;
+            const start = positions[matchIndex];
+            const end = positions[matchIndex + target.length - 1];
+            if (!start || !end) return null;
+            const range = document.createRange();
+            range.setStart(start.node, start.start);
+            range.setEnd(end.node, end.end);
+            return range;
         }
 
         function getVisualLineForPhrase(box, phrase) {
