@@ -1459,9 +1459,9 @@
             return { node, index: String(node.nodeValue || '').toLowerCase().indexOf(target) };
         }
 
-        function findPhraseRange(root, phrase) {
+        function findPhraseRanges(root, phrase) {
             const target = String(phrase || '').trim().replace(/\s+/g, ' ').toLowerCase();
-            if (!root || !target) return null;
+            if (!root || !target) return [];
             const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
             const normalizedText = [];
             const positions = [];
@@ -1484,49 +1484,41 @@
                 }
             }
             const normalized = normalizedText.join('');
-            const matchIndex = normalized.indexOf(target);
-            if (matchIndex < 0) return null;
-            const start = positions[matchIndex];
-            const end = positions[matchIndex + target.length - 1];
-            if (!start || !end) return null;
-            const range = document.createRange();
-            range.setStart(start.node, start.start);
-            range.setEnd(end.node, end.end);
-            return range;
+            const ranges = [];
+            let matchIndex = normalized.indexOf(target);
+            while (matchIndex >= 0) {
+                const start = positions[matchIndex];
+                const end = positions[matchIndex + target.length - 1];
+                if (start && end) {
+                    const range = document.createRange();
+                    range.setStart(start.node, start.start);
+                    range.setEnd(end.node, end.end);
+                    ranges.push(range);
+                }
+                matchIndex = normalized.indexOf(target, matchIndex + Math.max(1, target.length));
+            }
+            return ranges;
         }
 
         function getVisualLineForPhrase(box, phrase, expectedLine = null) {
             const visualLineTops = getPassageVisualLineTops(box);
             if (!visualLineTops.length) return null;
 
-            const candidates = [];
-            const target = String(phrase || '').trim().toLowerCase();
-            const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
-            let node;
-            while ((node = walker.nextNode())) {
-                const value = String(node.nodeValue || '').toLowerCase();
-                let startIndex = value.indexOf(target);
-                while (startIndex >= 0) {
-                    const range = document.createRange();
-                    range.setStart(node, startIndex);
-                    range.setEnd(node, Math.min(node.length, startIndex + target.length));
-                    const rect = Array.from(range.getClientRects()).find((item) => item && item.height > 0);
-                    range.detach();
-                    if (rect) {
-                        let bestIndex = 0;
-                        let bestDistance = Infinity;
-                        visualLineTops.forEach((top, index) => {
-                            const distance = Math.abs(top - rect.top);
-                            if (distance < bestDistance) {
-                                bestDistance = distance;
-                                bestIndex = index;
-                            }
-                        });
-                        candidates.push(bestIndex + 1);
+            const candidates = findPhraseRanges(box, phrase).map((range) => {
+                const rect = Array.from(range.getClientRects()).find((item) => item && item.height > 0);
+                range.detach();
+                if (!rect) return null;
+                let bestIndex = 0;
+                let bestDistance = Infinity;
+                visualLineTops.forEach((top, index) => {
+                    const distance = Math.abs(top - rect.top);
+                    if (distance < bestDistance) {
+                        bestDistance = distance;
+                        bestIndex = index;
                     }
-                    startIndex = value.indexOf(target, startIndex + Math.max(1, target.length));
-                }
-            }
+                });
+                return bestIndex + 1;
+            }).filter((line) => Number.isFinite(line));
 
             if (candidates.length) {
                 return Number.isFinite(expectedLine)
@@ -1534,7 +1526,7 @@
                     : candidates[0];
             }
 
-            const range = findPhraseRange(box, phrase);
+            const range = findPhraseRanges(box, phrase)[0];
             if (!range) return null;
             const rect = Array.from(range.getClientRects()).find((item) => item && item.height > 0);
             range.detach();
