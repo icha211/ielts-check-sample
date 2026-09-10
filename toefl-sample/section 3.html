@@ -1414,7 +1414,7 @@
             Object.keys(globalQuestions || {}).forEach((uid) => {
                 const question = globalQuestions[uid] || {};
                 if (Number(question.passageId) !== Number(passageId)) return;
-                const text = String(question.questionText || '');
+            const text = String(question.rawQuestionText || question.questionText || '');
                 const matcher = /["“”]([^"“”]{1,80})["“”]\s+in\s+line\s+(\d{1,2})/gi;
                 let match;
                 while ((match = matcher.exec(text))) {
@@ -1504,21 +1504,24 @@
             const visualLineTops = getPassageVisualLineTops(box);
             if (!visualLineTops.length) return null;
 
-            const candidates = findPhraseRanges(box, phrase).map((range) => {
-                const rect = Array.from(range.getClientRects()).find((item) => item && item.height > 0);
+            const candidates = [];
+            findPhraseRanges(box, phrase).forEach((range) => {
+                const rects = Array.from(range.getClientRects()).filter((item) => item && item.height > 0);
                 range.detach();
-                if (!rect) return null;
-                let bestIndex = 0;
-                let bestDistance = Infinity;
-                visualLineTops.forEach((top, index) => {
-                    const distance = Math.abs(top - rect.top);
-                    if (distance < bestDistance) {
-                        bestDistance = distance;
-                        bestIndex = index;
-                    }
+                rects.forEach((rect) => {
+                    let bestIndex = 0;
+                    let bestDistance = Infinity;
+                    visualLineTops.forEach((top, index) => {
+                        const distance = Math.abs(top - rect.top);
+                        if (distance < bestDistance) {
+                            bestDistance = distance;
+                            bestIndex = index;
+                        }
+                    });
+                    const line = bestIndex + 1;
+                    if (!candidates.includes(line)) candidates.push(line);
                 });
-                return bestIndex + 1;
-            }).filter((line) => Number.isFinite(line));
+            });
 
             if (candidates.length) {
                 return Number.isFinite(expectedLine)
