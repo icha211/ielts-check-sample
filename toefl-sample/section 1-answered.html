@@ -2427,20 +2427,28 @@
             var targetPartId = inferPartIdFromQuestion(reviewCurrentQuestion);
             var questionAudio = getReviewQuestionAudioRecord(reviewCurrentQuestion);
             if (questionAudio && questionAudio.url) {
-                var questionAudioKey = getReviewQuestionAudioSourceKey(questionAudio);
-                if (reviewCurrentAudioKey !== questionAudioKey || !reviewAudio || !reviewAudio.src) {
-                    setReviewAudioSource(questionAudio.url, 'Ready from Cloudflare for ' + questionAudio.label, questionAudioKey, targetPartId, [], 'question-cloudflare');
-                }
-                if (!reviewAudio) return;
-                reviewAudio.currentTime = 0;
-                reviewAudio.muted = reviewVolumeLevel <= 0;
-                reviewAudio.volume = reviewVolumeLevel;
-                reviewAudio.play().then(function() {
-                    setAudioStatus('Playing ' + questionAudio.label + ' audio');
-                    startReviewWaveform();
-                    updatePlayPauseIcon();
+                reviewPendingTranscriptSegmentPlay = {
+                    requestId: reviewPlaybackRequestId,
+                    partId: Number(targetPartId || 0),
+                    startSeconds: Number(startSeconds || 0),
+                    endSeconds: Number(endSeconds || 0),
+                    allowPart1Fallback: false
+                };
+                getCloudflareQuestionAudioSource(questionAudio.objectKey, questionAudio.url).then(function(source) {
+                    if (Number(reviewPlaybackRequestId || 0) !== Number(reviewPendingTranscriptSegmentPlay && reviewPendingTranscriptSegmentPlay.requestId)) return;
+                    if (!source || !source.url) {
+                        clearPendingTranscriptSegmentPlay();
+                        setAudioStatus('Transcript audio not found');
+                        return;
+                    }
+                    var questionAudioKey = getReviewQuestionAudioSourceKey(questionAudio);
+                    if (reviewCurrentAudioKey !== questionAudioKey || !reviewAudio || !reviewAudio.src) {
+                        setReviewAudioSource(source.url, 'Ready from Cloudflare for ' + questionAudio.label, questionAudioKey, targetPartId, source.fallbackUrls, 'question-cloudflare');
+                    }
+                    if (!tryPlayPendingTranscriptSegmentPlay()) setAudioStatus('Loading transcript segment...');
                 }).catch(function() {
-                    setAudioStatus('Click the main play button to start ' + questionAudio.label + ' audio');
+                    clearPendingTranscriptSegmentPlay();
+                    setAudioStatus('Transcript audio not found');
                 });
                 return;
             }

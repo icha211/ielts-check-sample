@@ -18,6 +18,61 @@ Kalimat ini sudah memiliki Verb (flew) namun belum memiliki Subject. Karena tida
 *   **(C) That Sally Ride** (SALAH): Penambahan konektor That di awal kalimat mengubahnya menjadi anak kalimat (Noun Clause/Dependent Clause), sehingga kalimat utama kehilangan Subject yang utuh.
 *   **(D) It was Sally Ride** (SALAH): Terdapat subject It dan verb was. Ini akan menciptakan Double Subject dan Double Verb dalam satu klausa utama tanpa konektor.
 
+Question:2
+**C - Concept:** Subject-Verb Agreement & Sentence Structure
+**O - Observe S-V-C:**
+Because of its incredibly dense and toxic atmosphere, + Venus (Subject) + ________ (Verb) + the hottest planet in our solar system.
+
+* **Subject**    : Venus
+* **Verb**       : ___ [Yang Dicari]
+* **Compliance** : Bagian awal (Because of...) adalah klausa preposisi penjelas sebab. Kalimat utama memiliki subjek tunggal (Venus), sehingga membutuhkan satu finite verb bentuk tunggal untuk melengkapi klausa tersebut.
+
+**R - Requirement:**
+Kalimat sudah memiliki Subject (Venus) tetapi belum memiliki Verb utama. Kita membutuhkan satu Verb tunggal (singular) untuk melengkapi kalimat. Opsi yang menambahkan subjek ganda (pronoun 'it') atau menggunakan kata kerja non-finis (participle 'being') harus dieliminasi.
+
+**E - Eliminate:**
+*   **(A) being** (SALAH): Merupakan present participle (non-finite verb) dan tidak dapat berdiri sendiri sebagai kata kerja utama (predicate) dalam sebuah kalimat.
+*   **(B) is** (BENAR): Merupakan singular verb yang tepat untuk melengkapi subjek tunggal Venus.
+*   **(C) is it** (SALAH): Menggunakan susunan inversi dan menambahkan pronoun "it" yang menciptakan double subject serta membuat struktur kalimat menjadi tidak logis.
+*   **(D) it is** (SALAH): Menambahkan pronoun "it" sebagai subjek ganda (double subject) setelah kata Venus.
+
+Question:3
+**C - Concept:** Subject-Verb Agreement & Sentence Structure
+**O - Observe S-V-C:**
+The primarily nocturnal + behavior (Subject) + of most species of owls + ________ (Verb) + them to avoid direct competition with daytime predators.
+
+* **Subject**    : behavior
+* **Verb**       : ___ [Yang Dicari]
+* **Compliance** : Frasa "of most species of owls" adalah prepositional phrase yang menerangkan subjek. Subjek utamanya adalah kata benda tunggal/uncountable yaitu behavior (The primarily nocturnal behavior), sehingga membutuhkan singular verb.
+
+**R - Requirement:**
+Kalimat sudah memiliki Subject (behavior) tetapi belum memiliki Verb utama. Kita membutuhkan satu singular verb (kata kerja bentuk tunggal) yang tepat. Opsi yang menggunakan kata kerja non-finis (participle), kata kerja jamak (plural verb), atau menambahkan double subject harus dieliminasi.
+
+**E - Eliminate:**
+*   **(A) allowing** (SALAH): Merupakan present participle (non-finite verb) sehingga tidak bisa berfungsi sebagai kata kerja utama (predicate).
+*   **(B) allow** (SALAH): Merupakan plural verb (kata kerja bentuk jamak). Opsi ini terkecoh oleh kata owls/species, padahal subjek utamanya adalah behavior (tunggal).
+*   **(C) it allows** (SALAH): Menambahkan pronoun "it" yang menghasilkan double subject karena subjek The primarily nocturnal behavior sudah ada.
+*   **(D) allows** (BENAR): Merupakan singular verb yang sesuai dengan subjek tunggal behavior (Third-person singular present).
+
+Question: 4
+**C - Concept:** Clauses & Cause-and-Effect Connectors
+**O - Observe S-V-C:**
+Most plant leaves (Subject 1) + appear (Verb 1) + green to the human eye + ________ (Connector) + they (Subject 2) + contain (Verb 2) + a high concentration of the pigment chlorophyll.
+
+* **Subject 1 & Verb 1** : Most plant leaves + appear
+* **Subject 2 & Verb 2** : they + contain
+* **Connector**          : ___ [Yang Dicari]
+* **Compliance**         : Kalimat ini terdiri dari dua klausa utuh (Clause 1 dan Clause 2). Hubungan antara klausa pertama (hasil) dan klausa kedua (sebab) adalah hubungan sebab-akibat (cause-and-effect).
+
+**R - Requirement:**
+Kalimat memiliki dua pasang Subject dan Verb (dua klausa), sehingga membutuhkan satu Adverbial Connector / Subordinating Conjunction yang menunjukkan alasan/sebab untuk menghubungkan kedua klausa tersebut secara logis.
+
+**E - Eliminate:**
+*   **(A) because** (BENAR): Merupakan subordinating conjunction yang berfungsi menghubungkan dua klausa dan menyatakan hubungan sebab-akibat (alasan).
+*   **(B) that** (SALAH): Merupakan relative pronoun/conjunction yang digunakan untuk relative clause atau noun clause, bukan untuk menunjukkan hubungan sebab-akibat antar dua klausa independen.
+*   **(C) during** (SALAH): Merupakan preposisi (preposition) yang hanya boleh diikuti oleh Noun/Noun Phrase, bukan oleh klausa utuh (Subject + Verb).
+*   **(D) so** (SALAH): Merupakan coordinating conjunction yang menyatakan akibat/hasil (effect), bukan alasan/sebab (cause). Secara makna juga terbalik karena klausa kedua adalah alasannya.
+
 
 Respond from the website if see this:
 _____(Subject), + the first American woman in space, + flew (Verb) + aboard the space shuttle Challenger in 1983.
