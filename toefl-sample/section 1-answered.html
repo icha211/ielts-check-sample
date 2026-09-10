@@ -2427,6 +2427,11 @@
             var targetPartId = inferPartIdFromQuestion(reviewCurrentQuestion);
             var questionAudio = getReviewQuestionAudioRecord(reviewCurrentQuestion);
             if (questionAudio && questionAudio.url) {
+                var questionAudioKey = getReviewQuestionAudioSourceKey(questionAudio);
+                if (reviewAudio && reviewCurrentAudioKey === questionAudioKey && reviewAudio.readyState >= 1) {
+                    playTranscriptSegment(startSeconds, endSeconds);
+                    return;
+                }
                 reviewPendingTranscriptSegmentPlay = {
                     requestId: reviewPlaybackRequestId,
                     partId: Number(targetPartId || 0),
@@ -2441,7 +2446,6 @@
                         setAudioStatus('Transcript audio not found');
                         return;
                     }
-                    var questionAudioKey = getReviewQuestionAudioSourceKey(questionAudio);
                     if (reviewCurrentAudioKey !== questionAudioKey || !reviewAudio || !reviewAudio.src) {
                         setReviewAudioSource(source.url, 'Ready from Cloudflare for ' + questionAudio.label, questionAudioKey, targetPartId, source.fallbackUrls, 'question-cloudflare');
                     }
