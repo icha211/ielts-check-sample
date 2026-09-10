@@ -1424,6 +1424,16 @@
             return targets.filter((item) => item.phrase && item.line > 0);
         }
 
+        function correctQuestionLineReferences(passageId, questionText) {
+            const box = document.getElementById(`display-passage-${passageId}`);
+            if (!box) return questionText;
+            return String(questionText || '').replace(/(["“”])([^"“”]{1,80})\1\s+in\s+line\s+(\d{1,2})/gi, (fullMatch, quote, phrase, lineNumber) => {
+                const actualLine = getVisualLineForPhrase(box, phrase.trim());
+                if (!Number.isFinite(actualLine) || actualLine < 1) return fullMatch;
+                return `${quote}${phrase}${quote} in line ${actualLine}`;
+            });
+        }
+
         function findTextNodeForPhrase(root, phrase) {
             const target = String(phrase || '').toLowerCase();
             if (!root || !target) return null;
@@ -1718,11 +1728,12 @@
                         if (openDiv) cleanHtml += `</div><div class="feedback" id="feedback-${currentUID}"></div></div>`;
                         let currentQuestionNum = qMatch[1];
                         currentUID = `${p}_${currentQuestionNum}`;
-                        globalQuestions[currentUID] = { questionText: qMatch[2], options: {}, passageId: p };
+                        const correctedQuestionText = correctQuestionLineReferences(p, qMatch[2]);
+                        globalQuestions[currentUID] = { questionText: correctedQuestionText, options: {}, passageId: p };
                         cleanHtml += `<div class="question-item" id="q-container-${currentUID}">`;
                         cleanHtml += `<div class="question-head">`;
                         cleanHtml += `<div class="question-index-pill">${currentQuestionNum}</div>`;
-                        cleanHtml += `<div class="question-stem-text">${qMatch[2]}</div>`;
+                        cleanHtml += `<div class="question-stem-text">${correctedQuestionText}</div>`;
                         cleanHtml += `</div>`;
                         cleanHtml += `<div class="radio-group">`;
                         openDiv = true;
