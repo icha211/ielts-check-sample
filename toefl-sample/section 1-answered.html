@@ -1982,6 +1982,17 @@
             return null;
         }
 
+        function buildReviewQuestionAudioObjectKey(partId, questionNumber) {
+            if (!reviewSetId) return '';
+            var group = getReviewAudioGroup(partId, questionNumber);
+            var base = 'audio/listening/sets/' + reviewSetId + '/question_set/part_' + String(partId) + '/q_';
+            if (group) return base + group.key + '.mp3';
+            if (partId === 1 && questionNumber >= 1 && questionNumber <= 30) {
+                return base + String(questionNumber).padStart(2, '0') + '.mp3';
+            }
+            return '';
+        }
+
         function getReviewQuestionAudioRecord(question) {
             var partId = inferPartIdFromQuestion(question);
             var questionNumber = Number((question && question.number) || 0);
@@ -1990,19 +2001,14 @@
             if (!isPartAQuestion && !group) return null;
 
             var record = (question && question.questionAudio && typeof question.questionAudio === 'object') ? question.questionAudio : {};
-            var objectKey = String((question && question.questionAudioObjectKey) || record.objectKey || '').trim();
-            var url = String((question && question.questionAudioUrl) || record.url || record.objectUrl || '').trim();
-
-            if (!url && !objectKey && reviewSetId) {
-                if (group) {
-                    objectKey = 'audio/listening/sets/' + reviewSetId + '/question_set/part_' + partId + '/q_' + group.key + '.mp3';
-                } else if (isPartAQuestion) {
-                    objectKey = 'audio/listening/sets/' + reviewSetId + '/question_set/part_1/q_' + String(questionNumber).padStart(2, '0') + '.mp3';
-                }
-            }
-            if (!url && objectKey) {
-                url = REVIEW_R2_PUBLIC_BASE_URL.replace(/\/+$/, '') + '/' + objectKey.replace(/^\/+/, '');
-            }
+            var savedUrl = String((question && question.questionAudioUrl) || record.url || record.objectUrl || '').trim();
+            // The canonical question_set path always wins so a stale saved record
+            // can never point a question at another question's clip.
+            var objectKey = buildReviewQuestionAudioObjectKey(partId, questionNumber)
+                || String((question && question.questionAudioObjectKey) || record.objectKey || '').trim();
+            var url = objectKey
+                ? (REVIEW_R2_PUBLIC_BASE_URL.replace(/\/+$/, '') + '/' + objectKey.replace(/^\/+/, ''))
+                : savedUrl;
             if (!url) return null;
 
             return {
@@ -2010,8 +2016,21 @@
                 objectKey: objectKey,
                 partId: partId,
                 questionNumber: questionNumber,
+                fallbackUrls: (savedUrl && savedUrl !== url) ? [savedUrl] : [],
                 label: group ? ('Questions ' + group.key) : ('Question ' + String(questionNumber))
             };
+        }
+
+        // Transcript timings are stored against the full part recording, while the
+        // review player loads the per-question/per-group clip, so rebase to 0.
+        function getReviewQuestionClipOffset(question) {
+            var segments = getQuestionTranscriptSegments(question);
+            var min = Infinity;
+            for (var i = 0; i < segments.length; i += 1) {
+                var start = Number((segments[i] || {}).start);
+                if (isFinite(start) && start < min) min = start;
+            }
+            return isFinite(min) ? Math.max(0, min) : 0;
         }
 
         function getReviewQuestionAudioSourceKey(questionAudio) {
@@ -2031,7 +2050,7 @@
                         'Ready from Cloudflare for ' + questionAudio.label,
                         sourceKey,
                         partId,
-                        cloudflareSource.fallbackUrls,
+                        (cloudflareSource.fallbackUrls || []).concat(questionAudio.fallbackUrls || []),
                         'question-cloudflare'
                     );
                 } else {
@@ -2433,15 +2452,18 @@
             var questionAudio = getReviewQuestionAudioRecord(reviewCurrentQuestion);
             if (questionAudio && questionAudio.url) {
                 var questionAudioKey = getReviewQuestionAudioSourceKey(questionAudio);
+                var clipOffset = getReviewQuestionClipOffset(reviewCurrentQuestion);
+                var clipStart = Math.max(0, Number(startSeconds || 0) - clipOffset);
+                var clipEnd = Math.max(clipStart + 0.001, Number(endSeconds || 0) - clipOffset);
                 if (reviewAudio && reviewCurrentAudioKey === questionAudioKey && reviewAudio.readyState >= 1) {
-                    playTranscriptSegment(startSeconds, endSeconds);
+                    playTranscriptSegment(clipStart, clipEnd);
                     return;
                 }
                 reviewPendingTranscriptSegmentPlay = {
                     requestId: reviewPlaybackRequestId,
                     partId: Number(targetPartId || 0),
-                    startSeconds: Number(startSeconds || 0),
-                    endSeconds: Number(endSeconds || 0),
+                    startSeconds: clipStart,
+                    endSeconds: clipEnd,
                     allowPart1Fallback: false
                 };
                 getCloudflareQuestionAudioSource(questionAudio.objectKey, questionAudio.url).then(function(source) {
@@ -2452,7 +2474,7 @@
                         return;
                     }
                     if (reviewCurrentAudioKey !== questionAudioKey || !reviewAudio || !reviewAudio.src) {
-                        setReviewAudioSource(source.url, 'Ready from Cloudflare for ' + questionAudio.label, questionAudioKey, targetPartId, source.fallbackUrls, 'question-cloudflare');
+                        setReviewAudioSource(source.url, 'Ready from Cloudflare for ' + questionAudio.label, questionAudioKey, targetPartId, (source.fallbackUrls || []).concat(questionAudio.fallbackUrls || []), 'question-cloudflare');
                     }
                     if (!tryPlayPendingTranscriptSegmentPlay()) setAudioStatus('Loading transcript segment...');
                 }).catch(function() {
