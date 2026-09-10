@@ -430,6 +430,14 @@
             return output;
         }
 
+        function parseAnswerOptionLine(rawLine) {
+            const match = String(rawLine || "")
+                .replace(/\u00a0/g, " ")
+                .match(/^\s*\(?\s*([A-D])\s*\)?\s*[.)]?\s+(.+?)\s*$/i);
+            if (!match) return null;
+            return { letter: match[1].toUpperCase(), text: match[2] };
+        }
+
         async function handleSetDateChange() {
             const dateInput = document.getElementById("set-date");
             const selectedDate = dateInput?.value;
@@ -1915,7 +1923,7 @@
                     if (!rawLine) continue;
                     
                     let qMatch = rawLine.match(/^(?:<[^>]+>)*(\d+)[\.\)]?\s+(.*)/);
-                    let isOption = rawLine.match(/^[\(]?([A-D])[\.\)]?\s+(.*)/i);
+                    let isOption = parseAnswerOptionLine(rawLine);
 
                     if (qMatch && !isOption) {
                         if (openDiv) cleanHtml += `</div><div class="feedback" id="feedback-${currentUID}"></div></div></div>`;
@@ -2079,14 +2087,14 @@
                             openDiv = true;
                         }
                     } else if (isOption && openDiv) {
-                        let letter = isOption[1].toUpperCase();
+                        let letter = isOption.letter;
                         if (globalQuestions[currentUID] && !globalQuestions[currentUID].isPartB) {
-                            globalQuestions[currentUID].options[letter] = isOption[2];
+                            globalQuestions[currentUID].options[letter] = isOption.text;
                         }
                         cleanHtml += `<label class="a-parent">
                             <input type="radio" name="q_${currentUID}" value="${letter.toLowerCase()}" onchange="refreshStructurePartAState()"> 
                             <span class="option-letter">(${letter})</span> 
-                            <span class="option-text">${isOption[2]}</span>
+                            <span class="option-text">${isOption.text}</span>
                         </label>`;
                     }
                 }
