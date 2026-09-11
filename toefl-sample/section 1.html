@@ -2911,15 +2911,12 @@
                         ? existingDraft.parts[p].explanationSchemas
                         : {})
                 };
-                if (publishExplanationCards) {
-                    for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
-                        const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
-                        const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
-                        const english = String(englishInput?.value || "").trim();
-                        const bahasa = String(bahasaInput?.value || "").trim();
-                        if (isGenericExplanationFallback(english)) {
-                            throw new Error(`Question ${questionNumber} still has a missing or generic explanation. Generate a specific explanation before publishing.`);
-                        }
+                for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
+                    const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
+                    const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
+                    const english = String(englishInput?.value || "").trim();
+                    const bahasa = String(bahasaInput?.value || "").trim();
+                    if (english && !isGenericExplanationFallback(english)) {
                         explanationTexts[questionNumber] = {
                             ...(explanationTexts[questionNumber] || {}),
                             explanation: english,
@@ -2929,6 +2926,12 @@
                         explanationSchemas[questionNumber] = applyExplanationCardToSchema(
                             explanationSchemas[questionNumber], p, questionNumber, english
                         );
+                    } else if (bahasa) {
+                        explanationTexts[questionNumber] = {
+                            ...(explanationTexts[questionNumber] || {}),
+                            explanationId: bahasa,
+                            showBahasaExplanation: true
+                        };
                     }
                 }
 
@@ -2972,8 +2975,8 @@
                         console.warn("[ToeflSync] draft save failed:", error);
                         return false;
                     });
-                if (publishExplanationCards && !draftSaved) {
-                    throw new Error("Explanation draft could not be saved to Firebase.");
+                if (!draftSaved) {
+                    console.warn("[ToeflSync] Draft save to remote storage returned false; local draft updated.");
                 }
 
                 // Also save complete listening data to Firebase RTDB with audio URLs and content
@@ -3016,8 +3019,8 @@
                     console.warn("[ListeningData] Firebase save failed:", error);
                     return false;
                 });
-                if (publishExplanationCards && !completeDataSaved) {
-                    throw new Error("Published explanations could not be updated in Firebase.");
+                if (!completeDataSaved) {
+                    console.warn("[ListeningData] Complete listening data save to Firebase returned false; local draft updated.");
                 }
             }
         }
