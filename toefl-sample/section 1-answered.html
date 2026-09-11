@@ -346,6 +346,9 @@
                             <img src="../asst/icon/explaination tab.png" alt="Explaination tab icon">
                             <span>Explaination</span>
                         </button>
+                        <button type="button" class="ai-generate-btn" id="aiGenerateExplanationBtn" onclick="generateMissingExplanation(reviewCurrentQuestion)" aria-label="Generate AI explanation">
+                            <span id="aiGenBtnLabel">Generate AI</span>
+                        </button>
                     </div>
 
                     <div class="section-explaination-panels">
@@ -494,6 +497,36 @@
         var reviewTranscriptViewMode = 'full';
 
         var reviewExplainationTab = 'explaination';
+
+        function getReviewResultStorageKey(setId) {
+            var normalizedSetId = String(setId || '').trim();
+            return normalizedSetId
+                ? 'toefl_section1_result_' + encodeURIComponent(normalizedSetId)
+                : 'toefl_section1_result';
+        }
+
+        function readReviewResultFromStorage() {
+            var params = new URLSearchParams(window.location.search || '');
+            var requestedSetId = String(params.get('setId') || '').trim();
+            var requestedSetDate = normalizeDateKey(params.get('setDate') || params.get('date') || '');
+            var keys = requestedSetId
+                ? [getReviewResultStorageKey(requestedSetId), 'toefl_section1_result']
+                : ['toefl_section1_result'];
+
+            for (var i = 0; i < keys.length; i += 1) {
+                try {
+                    var raw = localStorage.getItem(keys[i]);
+                    if (!raw) continue;
+                    var parsed = JSON.parse(raw);
+                    if (!parsed || !Array.isArray(parsed.questions)) continue;
+                    var storedSetId = String(parsed.setId || '').trim();
+                    if (requestedSetId && storedSetId !== requestedSetId) continue;
+                    if (requestedSetDate && normalizeDateKey(parsed.setDate || '') !== requestedSetDate) continue;
+                    return parsed;
+                } catch (_) {}
+            }
+            return null;
+        }
 
         // Parse URL parameters to get package date from study-plan
         var urlPackageDate = null;
@@ -4123,6 +4156,7 @@
             if (!segments.length) return null;
 
             return {
+                set_id: String(reviewSetId || '').trim(),
                 active_question_number: Number(q.number || 0),
                 question_text: String(q.questionText || '').trim(),
                 options_array: normalizeOptionsMap(q.options || {}),
@@ -4270,7 +4304,8 @@
         function persistExplanationSchemaToResult(questionNumber, schemaObject) {
             try {
                 var schemaText = JSON.stringify(schemaObject || {});
-                var raw = localStorage.getItem('toefl_section1_result');
+                var resultKey = getReviewResultStorageKey(reviewSetId);
+                var raw = localStorage.getItem(resultKey) || localStorage.getItem('toefl_section1_result');
                 if (!raw) {
                     void queueExplanationFirebaseWrite(questionNumber, { schema: schemaObject });
                     return;
@@ -4283,6 +4318,7 @@
                         break;
                     }
                 }
+                localStorage.setItem(resultKey, JSON.stringify(result));
                 localStorage.setItem('toefl_section1_result', JSON.stringify(result));
                 if (reviewResultData && Array.isArray(reviewResultData.questions)) {
                     for (var j = 0; j < reviewResultData.questions.length; j += 1) {
@@ -4298,7 +4334,8 @@
 
         function persistExplanationToResult(questionNumber, explanationText) {
             try {
-                var raw = localStorage.getItem('toefl_section1_result');
+                var resultKey = getReviewResultStorageKey(reviewSetId);
+                var raw = localStorage.getItem(resultKey) || localStorage.getItem('toefl_section1_result');
                 if (!raw) {
                     void queueExplanationFirebaseWrite(questionNumber, { explanation: explanationText || '' });
                     return;
@@ -4311,6 +4348,7 @@
                         break;
                     }
                 }
+                localStorage.setItem(resultKey, JSON.stringify(result));
                 localStorage.setItem('toefl_section1_result', JSON.stringify(result));
                 if (reviewResultData && Array.isArray(reviewResultData.questions)) {
                     for (var j = 0; j < reviewResultData.questions.length; j += 1) {
@@ -4326,7 +4364,8 @@
 
         function persistExplanationTranslationToResult(questionNumber, translatedText, showBahasa) {
             try {
-                var raw = localStorage.getItem('toefl_section1_result');
+                var resultKey = getReviewResultStorageKey(reviewSetId);
+                var raw = localStorage.getItem(resultKey) || localStorage.getItem('toefl_section1_result');
                 if (!raw) {
                     void queueExplanationFirebaseWrite(questionNumber, { explanationId: translatedText || '', showBahasaExplanation: !!showBahasa });
                     return;
@@ -4340,6 +4379,7 @@
                         break;
                     }
                 }
+                localStorage.setItem(resultKey, JSON.stringify(result));
                 localStorage.setItem('toefl_section1_result', JSON.stringify(result));
                 if (reviewResultData && Array.isArray(reviewResultData.questions)) {
                     for (var j = 0; j < reviewResultData.questions.length; j += 1) {
@@ -4768,8 +4808,7 @@
             setSectionCaretIcon(document.getElementById('detailHeaderToggle'), true);
             setReviewExplainationTab('explaination');
 
-            var result = null;
-            try { var raw = localStorage.getItem('toefl_section1_result'); if (raw) result = JSON.parse(raw); } catch(_) {}
+            var result = readReviewResultFromStorage();
 
             if (!result || !Array.isArray(result.questions) || !result.questions.length) {
                 var explainHost = document.getElementById('explainationTabContent');
@@ -4791,11 +4830,18 @@
             var params = new URLSearchParams(window.location.search || '');
             reviewSetDate = String(urlPackageDate || result.setDate || params.get('setDate') || '');
             reviewSetId = await resolveReviewSetId(result);
+            if (reviewSetId) {
+                result.setId = reviewSetId;
+                try { localStorage.setItem(getReviewResultStorageKey(reviewSetId), JSON.stringify(result)); } catch (_) {}
+            }
             await hydrateReviewQuestionMetadata(result);
             renderReviewPackageLabel(reviewSetDate);
             if (reviewSetId && (!result.setId || String(result.setId) !== reviewSetId)) {
                 result.setId = reviewSetId;
-                try { localStorage.setItem('toefl_section1_result', JSON.stringify(result)); } catch (_) {}
+                try {
+                    localStorage.setItem(getReviewResultStorageKey(reviewSetId), JSON.stringify(result));
+                    localStorage.setItem('toefl_section1_result', JSON.stringify(result));
+                } catch (_) {}
             }
             await hydrateTranscriptFallbackMaps(result);
             refreshResultQuestionTranscriptSegments();
