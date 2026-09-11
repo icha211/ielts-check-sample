@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 import re
 import time
 
@@ -9,6 +10,58 @@ from google.genai import types
 
 
 router = APIRouter(tags=["explanation"])
+
+
+_REFERENCE_EXPLANATIONS_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "toefl-sample"
+    / "explaination_expected_section1.md"
+)
+
+
+def _load_reference_explanations() -> str:
+    try:
+        source = _REFERENCE_EXPLANATIONS_PATH.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+    compact_examples = []
+    question_blocks = re.findall(
+        r"^## Question\s+(\d+)\s*$([\s\S]*?)(?=^## Question\s+\d+\s*$|\Z)",
+        source,
+        flags=re.MULTILINE,
+    )
+    for question_number, block in question_blocks:
+        answer_match = re.search(r"\*\*Correct Answer:\*\*\s*([^\n]+)", block)
+        explanation_match = re.search(
+            r"\*\*EXPLAINATION\*\*\s*([\s\S]*?)(?=\n\s*\*\*WHY THE OTHER OPTION IS INCORRECT\*\*)",
+            block,
+        )
+        distractor_match = re.search(
+            r"\*\s+\*\*\(([A-D])\)\s+([^:]+):\*\*\s*([^\n]+)",
+            block,
+        )
+
+        def compact_text(value: str, limit: int) -> str:
+            text = re.sub(r"\s+", " ", str(value or "")).strip()
+            return text if len(text) <= limit else text[: limit - 3].rstrip() + "..."
+
+        answer = compact_text(answer_match.group(1) if answer_match else "", 150)
+        explanation = compact_text(explanation_match.group(1) if explanation_match else "", 190)
+        distractor = ""
+        if distractor_match:
+            distractor = "wrong " + distractor_match.group(1) + ": " + compact_text(distractor_match.group(3), 120)
+
+        compact_examples.append(
+            "Q{} | answer: {} | explanation: {}{}".format(
+                question_number,
+                answer,
+                explanation,
+                " | " + distractor if distractor else "",
+            )
+        )
+
+    return "\n".join(compact_examples)
 
 
 def _create_client() -> genai.Client:
@@ -30,6 +83,7 @@ def _build_prompt(payload: dict) -> str:
     user_letter = str(payload.get("user_selected_letter") or "").strip().upper()
     transcript = str(payload.get("isolated_transcript_block") or "").strip()
     options = payload.get("options_array") or {}
+    reference_explanations = _load_reference_explanations()
 
     return f"""You are Gemini acting as an expert TOEFL ITP listening tutor. Produce a complete, question-specific explanation using only the supplied transcript evidence.
 
@@ -47,6 +101,11 @@ Rules:
 - Do not use yellow marks for paraphrases, answer-option wording, or general explanation prose.
 - Use no more than two yellow transcript phrases per explanation.
 - Keep all explanation text in clear English suitable for an intermediate TOEFL learner.
+- Match the teaching style, level of detail, and distractor reasoning shown in the reference examples below.
+- Use the reference only as a style and structure guide. Do not copy its facts, answers, dialogue, or wording into the current question.
+
+REFERENCE EXPLANATION EXAMPLES (Questions 1-50):
+{reference_explanations or "No reference file is available; follow the rules and schema above."}
 
 Input:
 {json.dumps({
@@ -115,7 +174,7 @@ def generate_toefl_explanation(payload: dict) -> dict:
     if not transcript:
         raise HTTPException(status_code=400, detail="Transcript evidence is required")
 
-    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
     try:
         client = _create_client()
         last_error = None

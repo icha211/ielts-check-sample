@@ -6,7 +6,7 @@
  */
 
 class Section2AIExplanationGenerator {
-    static API_MODEL = "gemini-2.0-flash";
+    static API_MODEL = "gemini-3.5-flash";
     static GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models";
     static API_TIMEOUT = 30000; // 30 seconds
     
