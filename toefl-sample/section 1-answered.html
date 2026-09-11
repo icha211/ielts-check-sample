@@ -346,7 +346,7 @@
                             <img src="../asst/icon/explaination tab.png" alt="Explaination tab icon">
                             <span>Explaination</span>
                         </button>
-                        <button type="button" class="ai-generate-btn" id="aiGenerateExplanationBtn" onclick="generateMissingExplanation(reviewCurrentQuestion)" aria-label="Generate AI explanation">
+                        <button type="button" class="ai-generate-btn" id="aiGenerateExplanationBtn" onclick="generateMissingExplanation(reviewCurrentQuestion, true)" aria-label="Generate AI explanation">
                             <span id="aiGenBtnLabel">Generate AI</span>
                         </button>
                     </div>
@@ -4169,10 +4169,10 @@
             };
         }
 
-        async function generateMissingExplanation(question) {
+        async function generateMissingExplanation(question, forceRegenerate) {
             var q = question || {};
             var questionNumber = Number(q.number || 0);
-            if (!questionNumber || q.explanationSchema || reviewAiGenerationQuestion === questionNumber) return;
+            if (!questionNumber || (!forceRegenerate && q.explanationSchema) || reviewAiGenerationQuestion === questionNumber) return;
 
             var payload = buildReviewExplanationPayload(q);
             if (!payload || !payload.isolated_transcript_block) return;

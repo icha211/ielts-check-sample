@@ -90,16 +90,16 @@ def _build_prompt(payload: dict) -> str:
 Rules:
 - Return valid JSON only, matching the requested schema.
 - Do not invent dialogue or facts.
+- Write the explanation in the concise style of a polished TOEFL answer key.
+- The main explanation must be one short paragraph of 1-3 sentences, normally under 70 words.
+- Start directly with the evidence or meaning. Do not write meta-introductions such as "The question asks", "The dialogue shows", or "The correct answer is".
+- Use one short decisive transcript phrase only when it improves clarity; do not repeat the full dialogue.
 - Explain why the correct option answers the exact question, not merely why it resembles a transcript phrase.
-- Explicitly connect the decisive transcript evidence to the correct option by paraphrase.
-- Explain the trap in every incorrect option using the supplied question and transcript.
+- Explain the trap in every incorrect option using one direct sentence, normally under 30 words.
 - Return one distractor-analysis item for every incorrect option, preserving its letter and exact option text.
-- Include at least one dialogue block whenever transcript evidence is available.
-- Quote only lines present in the transcript.
-- Use <mark style=\"background-color: #FFDE00; color: #000000; font-weight: 500;\">...</mark> only around short exact transcript phrases that are decisive evidence.
-- Use <strong>...</strong> only for one or two important explanatory words that are not quoted transcript text.
-- Do not use yellow marks for paraphrases, answer-option wording, or general explanation prose.
-- Use no more than two yellow transcript phrases per explanation.
+- Use at most one dialogue block, containing only the shortest decisive quote from the transcript.
+- Quote only a short line or phrase present in the transcript; never paste the full transcript.
+- Do not output HTML tags, inline styles, <mark>, <strong>, Markdown headings, or repeated labels inside explanation fields. Use plain text only.
 - Keep all explanation text in clear English suitable for an intermediate TOEFL learner.
 - Match the teaching style, level of detail, and distractor reasoning shown in the reference examples below.
 - Use the reference only as a style and structure guide. Do not copy its facts, answers, dialogue, or wording into the current question.
@@ -129,19 +129,19 @@ Required JSON schema:
   ],
   "explanation_payload": {{
     "header_title": "Why ({correct_letter})?",
-    "main_explanation_html": "clear evidence-based explanation",
+    "main_explanation_html": "one concise plain-text evidence-based explanation",
     "dialogue_blocks": [
       {{
         "speaker_name": "speaker name from transcript",
         "speaker_gender": "male, female, or neutral",
         "introduction_label": "brief introduction",
-        "quote_text_html": "exact supporting quote"
+        "quote_text_html": "short exact plain-text supporting quote"
       }}
         ],
         "distractor_analysis": [
-            {{"letter":"A","text":"option text","reason":"specific transcript-grounded reason this option is incorrect"}}
+            {{"letter":"A","text":"option text","reason":"one concise plain-text reason this option is incorrect"}}
         ],
-    "closing_analysis_html": "brief conclusion connecting evidence to the correct option"
+    "closing_analysis_html": "one short plain-text conclusion; do not repeat the main explanation"
   }}
 }}
 """

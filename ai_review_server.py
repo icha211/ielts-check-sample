@@ -470,11 +470,12 @@ You are given:
 STRICT RULES:
 - Use ONLY evidence inside isolated_transcript_block.
 - No hallucination, no generic placeholders, no unrelated dialogue.
-- Use this yellow mark tag ONLY around a short exact phrase quoted from isolated_transcript_block:
-    <mark style=\"background-color: #FFDE00; color: #000000; font-weight: 500;\">...<\/mark>
-- Use <strong>...</strong> only for one or two important explanatory words that are NOT transcript quotations.
-- Do not use yellow marks for paraphrases, answer-option wording, or general explanation prose.
-- Use yellow marks sparingly: at most two decisive transcript phrases per explanation.
+- Match the concise style of the reference answer key.
+- Write main_explanation_html as one direct paragraph of 1-3 sentences, normally under 70 words.
+- Start directly with the evidence or meaning. Do not write "The question asks", "The dialogue shows", or "The correct answer is".
+- Use one short decisive transcript phrase only when useful; never repeat the full transcript.
+- Keep every distractor reason to one direct sentence, normally under 30 words.
+- Do not output HTML tags, inline styles, <mark>, <strong>, Markdown headings, or repeated labels in explanation fields. Use plain text only.
 - Output VALID JSON ONLY. No markdown fences.
 
 INPUT:
@@ -506,22 +507,19 @@ OUTPUT SCHEMA (EXACT KEYS):
     ],
     "explanation_payload": {{
         "header_title": "Why ({correct_letter})?",
-        "main_explanation_html": "...",
+        "main_explanation_html": "one concise plain-text evidence-based explanation",
         "dialogue_blocks": [
             {{
                 "speaker_name": "Student",
                 "speaker_gender": "male",
-                "introduction_label": "For instance, if we look directly at the spoken dialogue, the Student clearly explains his situation by stating:",
-                "quote_text_html": "..."
-            }},
-            {{
-                "speaker_name": "Librarian",
-                "speaker_gender": "female",
-                "introduction_label": "The Librarian immediately solves this by responding:",
-                "quote_text_html": "..."
+                "introduction_label": "brief plain-text context label",
+                "quote_text_html": "short exact plain-text quote"
             }}
         ],
-        "closing_analysis_html": "..."
+        "distractor_analysis": [
+            {{"letter":"A","text":"option text","reason":"one concise plain-text reason this option is incorrect"}}
+        ],
+        "closing_analysis_html": "one short plain-text conclusion; do not repeat the main explanation"
     }}
 }}
 """
