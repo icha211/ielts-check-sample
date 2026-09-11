@@ -1532,6 +1532,17 @@
             });
         }
 
+        function needsConciseExplanationRefresh(schema) {
+            const payload = schema?.explanation_payload || {};
+            const main = explanationHtmlToText(payload.main_explanation_html || "");
+            const reasons = (Array.isArray(payload.distractor_analysis) ? payload.distractor_analysis : [])
+                .map((item) => explanationHtmlToText(item?.reason || ""));
+            const combined = [main, ...reasons].join(" ");
+            return combined.length > 1800
+                || /the question asks|the dialogue shows|this option is incorrect because|<mark\b|<strong\b/i.test(combined)
+                || (main.split(/\s+/).filter(Boolean).length > 90);
+        }
+
         function buildWhySectionTextFromSchema(schema) {
             const model = schema || {};
             const meta = model.question_metadata || {};
@@ -1551,17 +1562,10 @@
             ];
             const explanationLines = [];
             const main = explanationHtmlToText(payload.main_explanation_html || "");
-            const blocks = Array.isArray(payload.dialogue_blocks) ? payload.dialogue_blocks : [];
             const closing = explanationHtmlToText(payload.closing_analysis_html || "");
 
             if (main) explanationLines.push(main);
-            blocks.forEach((block) => {
-                const introduction = explanationHtmlToText(block?.introduction_label || "");
-                const quote = explanationHtmlToText(block?.quote_text_html || "");
-                if (introduction) explanationLines.push(introduction);
-                if (quote) explanationLines.push(`"${quote.replace(/^['"“”]+|['"“”]+$/g, "")}"`);
-            });
-            if (closing && explanationLines.indexOf(closing) === -1) explanationLines.push(closing);
+            if (!main && closing) explanationLines.push(closing);
             lines.push(explanationLines.join(" ").trim());
             lines.push("", "**WHY THE OTHER OPTION IS INCORRECT**", "");
 
@@ -1572,7 +1576,7 @@
                 const distractor = distractors.find((entry) => String(entry?.letter || "").trim().toUpperCase() === letter) || {};
                 const optionText = String(item.text || distractor.text || "").trim();
                 const reason = String(distractor.reason || "").trim();
-                if (reason) lines.push(`* **(${letter}) ${optionText}:** This option is incorrect because ${reason}`);
+                if (reason) lines.push(`* **(${letter}) ${optionText}:** ${reason}`);
             });
 
             return lines.join("\n").trim();
@@ -4747,7 +4751,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 if (!qNum) continue;
                 const partId = Number(rq.partId || 0);
                 const savedSchema = fullSetDraft.parts?.[partId]?.explanationSchemas?.[qNum];
-                if (savedSchema && hasUsableExplanationSchema(savedSchema)) {
+                if (savedSchema && hasUsableExplanationSchema(savedSchema) && !needsConciseExplanationRefresh(savedSchema)) {
                     rq.explanationSchema = JSON.stringify(savedSchema);
                     const englishInput = document.getElementById(`input-explanation-en-${qNum}`);
                     if (englishInput && !String(englishInput.value || "").trim()) {
