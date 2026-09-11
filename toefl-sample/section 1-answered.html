@@ -3578,13 +3578,16 @@
             if (marker < 0) return [];
             var section = source.slice(marker).replace(/^.*?\*{2}WHY THE OTHER OPTION IS INCORRECT\*{2}/i, '').trim();
             var reasons = [];
-            var itemRegex = /^\s*\*\s*\*{0,2}\(([A-D])\)\s*([^:]+):\*{0,2}\s*(?:This option is incorrect because\s*)?([\s\S]*?)(?=\n\s*\*\s*\*{0,2}\([A-D]\)|$)/gim;
+            var itemRegex = /^\s*[\*\-]\s*\*{0,2}\(?([A-D])\)?\s*(?:([^:\*\n]+?)\s*(?::\*{0,2}|\*{0,2}:)|\*{0,2}:\*{0,2})?\s*(?:This option is incorrect because\s*)?([\s\S]*?)(?=\n\s*[\*\-]\s*\*{0,2}\(?[A-D]\)?|$)/gim;
             var match;
             while ((match = itemRegex.exec(section))) {
-                reasons.push({
-                    letter: String(match[1] || '').toUpperCase(),
-                    reason: String(match[3] || '').trim()
-                });
+                var reasonText = String(match[3] || '').trim();
+                if (reasonText && !/## Question|^\s*\[Text/i.test(reasonText)) {
+                    reasons.push({
+                        letter: String(match[1] || '').toUpperCase(),
+                        reason: reasonText
+                    });
+                }
             }
             return reasons;
         }
@@ -4557,9 +4560,38 @@
             
             var schemaRendered = false;
             try {
+                var parsedSchema = null;
                 if (q.explanationSchema) {
-                    var parsedSchema = JSON.parse(String(q.explanationSchema || '{}'));
-                    if (parsedSchema && parsedSchema.explanation_payload) {
+                    try { parsedSchema = JSON.parse(String(q.explanationSchema || '{}')); } catch (_) { parsedSchema = null; }
+                }
+                var displayedMarkdown = getDisplayedExplanationText(q);
+                if (parsedSchema && parsedSchema.explanation_payload) {
+                    var payload = parsedSchema.explanation_payload || {};
+                    var mainExp = String(payload.main_explanation_html || '').trim();
+                    var distractorsList = Array.isArray(payload.distractor_analysis) ? payload.distractor_analysis : [];
+
+                    // If main explanation is empty or generic, try extracting from displayed markdown
+                    if (!mainExp && displayedMarkdown) {
+                        var source = String(displayedMarkdown || '').replace(/\r/g, '');
+                        var expMarker = source.search(/\*{2}EXPLAINATION\*{2}/i);
+                        var distMarker = source.search(/\*{2}WHY THE OTHER OPTION IS INCORRECT\*{2}/i);
+                        if (expMarker >= 0) {
+                            var expStart = expMarker + source.match(/\*{2}EXPLAINATION\*{2}/i)[0].length;
+                            var expEnd = distMarker >= 0 ? distMarker : source.length;
+                            var extractedText = source.slice(expStart, expEnd).trim();
+                            if (extractedText && !/## Question|^\s*\[Text/i.test(extractedText)) {
+                                parsedSchema.explanation_payload.main_explanation_html = renderQuotedHighlights(extractedText);
+                                mainExp = parsedSchema.explanation_payload.main_explanation_html;
+                            }
+                        }
+                    }
+
+                    if (!distractorsList.length && displayedMarkdown) {
+                        parsedSchema.explanation_payload.distractor_analysis = parseDistractorReasonsFromMarkdown(displayedMarkdown);
+                        distractorsList = parsedSchema.explanation_payload.distractor_analysis;
+                    }
+
+                    if (mainExp || (distractorsList && distractorsList.length)) {
                         parsedSchema = applyUserAnswerStateToSchema(parsedSchema, q);
                         highlightTerms = getSchemaTranscriptHighlightTerms(parsedSchema, q.options[correctLtr] || '', getQuestionTranscriptSegments(q));
                         reviewTranscriptHighlightTerms = highlightTerms;
@@ -4568,14 +4600,28 @@
                             parsedSchema.explanation_payload.dialogue_blocks,
                             highlightTerms
                         );
-                        if (!Array.isArray(parsedSchema.explanation_payload.distractor_analysis)
-                            || !parsedSchema.explanation_payload.distractor_analysis.length) {
-                            parsedSchema.explanation_payload.distractor_analysis = parseDistractorReasonsFromMarkdown(
-                                getDisplayedExplanationText(q)
-                            );
-                        }
                         var host = document.getElementById('explainationTabContent');
                         if (host) host.innerHTML = renderExplanationFromSchema(parsedSchema);
+                        schemaRendered = true;
+                    }
+                } else if (displayedMarkdown) {
+                    // Try constructing schema from displayed markdown
+                    var source = String(displayedMarkdown || '').replace(/\r/g, '');
+                    var expMarker = source.search(/\*{2}EXPLAINATION\*{2}/i);
+                    var distMarker = source.search(/\*{2}WHY THE OTHER OPTION IS INCORRECT\*{2}/i);
+                    var extractedText = '';
+                    if (expMarker >= 0) {
+                        var expStart = expMarker + source.match(/\*{2}EXPLAINATION\*{2}/i)[0].length;
+                        var expEnd = distMarker >= 0 ? distMarker : source.length;
+                        extractedText = source.slice(expStart, expEnd).trim();
+                    }
+                    var extractedDistractors = parseDistractorReasonsFromMarkdown(displayedMarkdown);
+                    if (extractedText || extractedDistractors.length) {
+                        var builtSchema = buildExplanationSchemaFromQuestion(q, explanation, correctLtr);
+                        if (extractedText) builtSchema.explanation_payload.main_explanation_html = renderQuotedHighlights(extractedText);
+                        if (extractedDistractors.length) builtSchema.explanation_payload.distractor_analysis = extractedDistractors;
+                        var host = document.getElementById('explainationTabContent');
+                        if (host) host.innerHTML = renderExplanationFromSchema(builtSchema);
                         schemaRendered = true;
                     }
                 }

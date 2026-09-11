@@ -1514,7 +1514,10 @@
             return !normalized
                 || normalized === "[evidence-based explanation]"
                 || normalized.includes("does not match the speaker's meaning or the transcript evidence")
-                || normalized.includes("does not match the speaker\u2019s meaning or the transcript evidence");
+                || normalized.includes("does not match the speaker\u2019s meaning or the transcript evidence")
+                || normalized.includes("## question [number]")
+                || normalized.includes("[text of the correct answer]")
+                || normalized.includes("[letter]");
         }
 
         function hasUsableExplanationSchema(schema) {
@@ -1559,11 +1562,22 @@
             const model = schema || {};
             const meta = model.question_metadata || {};
             const payload = schema?.explanation_payload || {};
+            const main = explanationHtmlToText(payload.main_explanation_html || "");
+            const closing = explanationHtmlToText(payload.closing_analysis_html || "");
+            const distractors = Array.isArray(payload.distractor_analysis) ? payload.distractor_analysis : [];
+            if (!main && !closing && !distractors.length) {
+                return "";
+            }
+
             const options = Array.isArray(model.options_status) ? model.options_status : [];
             const correct = options.find((item) => item && item.is_correct_choice) || {};
             const correctLetter = String(correct.letter || "").trim().toUpperCase();
             const correctText = String(correct.text || "").trim();
             const questionNumber = Number(meta.question_number || 0);
+            if (!questionNumber && !correctLetter && !main) {
+                return "";
+            }
+
             const lines = [
                 `## Question ${questionNumber || "[Number]"}`,
                 "",
@@ -1573,15 +1587,12 @@
                 ""
             ];
             const explanationLines = [];
-            const main = explanationHtmlToText(payload.main_explanation_html || "");
-            const closing = explanationHtmlToText(payload.closing_analysis_html || "");
 
             if (main) explanationLines.push(main);
             if (!main && closing) explanationLines.push(closing);
             lines.push(explanationLines.join(" ").trim());
             lines.push("", "**WHY THE OTHER OPTION IS INCORRECT**", "");
 
-            const distractors = Array.isArray(payload.distractor_analysis) ? payload.distractor_analysis : [];
             const wrongOptions = options.filter((item) => item && !item.is_correct_choice);
             wrongOptions.forEach((item) => {
                 const letter = String(item.letter || "").trim().toUpperCase();
@@ -1625,7 +1636,7 @@
                 ? source.slice(distractorMarker + source.match(/\*{2}WHY THE OTHER OPTION IS INCORRECT\*{2}/i)[0].length).trim()
                 : "";
             const distractors = [];
-            const itemRegex = /^\*\s*\*?\(([A-D])\)\s*([^:]+):\*?\s*(?:This option is incorrect because\s*)?(.+)$/gim;
+            const itemRegex = /^\s*[\*\-]\s*\*{0,2}\(?([A-D])\)?\s*(?:([^:\*\n]+?)\s*(?::\*{0,2}|\*{0,2}:)|\*{0,2}:\*{0,2})?\s*(?:This option is incorrect because\s*)?([^\n]+)$/gim;
             let match;
             while ((match = itemRegex.exec(distractorText))) {
                 distractors.push({
@@ -1638,14 +1649,27 @@
         }
 
         function applyExplanationCardToSchema(schema, partId, questionNumber, englishText) {
-            const model = schema && typeof schema === "object" ? schema : {};
+            const rawText = String(englishText || "").trim();
+            if (!rawText || isGenericExplanationFallback(rawText)) {
+                return schema && hasUsableExplanationSchema(schema) ? schema : null;
+            }
+            const model = schema && typeof schema === "object" ? { ...schema } : {};
             const uid = `${partId}_${questionNumber}`;
             const question = globalQuestions[uid] || {};
             const options = question.options || {};
-            const correctLetter = String(globalAnswerKey[uid] || "").trim().toUpperCase();
-            const parsedMarkdown = parseExplanationCardMarkdown(englishText);
+            let correctLetter = String(globalAnswerKey[uid] || "").replace(/[^A-Za-z]/g, "").trim().toUpperCase();
+            if (!correctLetter) {
+                const answerMatch = rawText.match(/\*\*Correct Answer:\*\*\s*([A-D])/i);
+                if (answerMatch) correctLetter = answerMatch[1].toUpperCase();
+            }
+            const parsedMarkdown = parseExplanationCardMarkdown(rawText);
             const paragraphs = parsedMarkdown.explanationText.split(/\n\s*\n/).filter(Boolean);
-            let headerTitle = String(model?.explanation_payload?.header_title || `Why (${correctLetter || "?"})?`);
+
+            if (!paragraphs.length && !parsedMarkdown.distractors.length) {
+                return schema && hasUsableExplanationSchema(schema) ? schema : null;
+            }
+
+            let headerTitle = `Why (${correctLetter || "?"})?`;
             if (paragraphs.length && /^why\b/i.test(paragraphs[0])) headerTitle = paragraphs.shift();
 
             model.question_metadata = {
@@ -1662,9 +1686,9 @@
             model.explanation_payload = {
                 header_title: headerTitle,
                 main_explanation_html: explanationTextToHtml(paragraphs.join("\n\n")),
-                dialogue_blocks: [],
+                dialogue_blocks: Array.isArray(model?.explanation_payload?.dialogue_blocks) ? model.explanation_payload.dialogue_blocks : [],
                 distractor_analysis: parsedMarkdown.distractors,
-                closing_analysis_html: ""
+                closing_analysis_html: String(model?.explanation_payload?.closing_analysis_html || "")
             };
             return model;
         }
@@ -1678,7 +1702,8 @@
             for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
                 const savedText = texts[questionNumber] || texts[String(questionNumber)] || {};
                 const schema = schemas[questionNumber] || schemas[String(questionNumber)] || null;
-                const english = String(savedText?.explanation || "").trim() || buildWhySectionTextFromSchema(schema);
+                const rawExplanation = String(savedText?.explanation || "").trim();
+                const english = isGenericExplanationFallback(rawExplanation) ? "" : rawExplanation || buildWhySectionTextFromSchema(schema);
                 const bahasa = String(savedText?.explanationId || "").trim();
                 const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
                 const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
@@ -5004,7 +5029,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 if (!answerKeyElement || !explanationElement || !questionsElement || !displayElement) return;
 
                 answerKeyElement.value.split("\n").forEach((line) => {
-                    const match = line.match(/^(\d+)[\.\):\-]?\s+(.*)/);
+                    const match = line.match(/^\s*(\d+)\s*[\.\):\-]?\s*[\.\):\-]?\s*([A-Za-z])\b/);
                     if (match) globalAnswerKey[`${p}_${match[1]}`] = match[2].trim().toLowerCase();
                 });
 
