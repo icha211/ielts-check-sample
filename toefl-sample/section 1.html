@@ -1538,9 +1538,21 @@
             const reasons = (Array.isArray(payload.distractor_analysis) ? payload.distractor_analysis : [])
                 .map((item) => explanationHtmlToText(item?.reason || ""));
             const combined = [main, ...reasons].join(" ");
+            const mainSentenceCount = main.split(/[.!?]+/).map((part) => part.trim()).filter(Boolean).length;
+            const hasInvalidReason = reasons.some((reason) => {
+                const wordCount = reason.split(/\s+/).filter(Boolean).length;
+                return wordCount > 30
+                    || /this option is incorrect because|the question asks|the dialogue shows/i.test(reason);
+            });
             return combined.length > 1800
                 || /the question asks|the dialogue shows|this option is incorrect because|<mark\b|<strong\b/i.test(combined)
-                || (main.split(/\s+/).filter(Boolean).length > 90);
+                || (main.split(/\s+/).filter(Boolean).length > 70)
+                || mainSentenceCount > 3
+                || hasInvalidReason;
+        }
+
+        function hasConciseExplanationSchema(schema) {
+            return hasUsableExplanationSchema(schema) && !needsConciseExplanationRefresh(schema);
         }
 
         function buildWhySectionTextFromSchema(schema) {
@@ -4717,7 +4729,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 if (response && response.ok) {
                     try {
                         const data = await response.json();
-                        if (data && hasUsableExplanationSchema(data)) return data;
+                        if (data && hasConciseExplanationSchema(data)) return data;
                     } catch {}
                 }
                 if (!response || (response.status !== 429 && response.status !== 502 && response.status !== 503)) return null;
@@ -4751,7 +4763,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 if (!qNum) continue;
                 const partId = Number(rq.partId || 0);
                 const savedSchema = fullSetDraft.parts?.[partId]?.explanationSchemas?.[qNum];
-                if (savedSchema && hasUsableExplanationSchema(savedSchema) && !needsConciseExplanationRefresh(savedSchema)) {
+            if (savedSchema && hasConciseExplanationSchema(savedSchema)) {
                     rq.explanationSchema = JSON.stringify(savedSchema);
                     const englishInput = document.getElementById(`input-explanation-en-${qNum}`);
                     if (englishInput && !String(englishInput.value || "").trim()) {
