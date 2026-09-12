@@ -178,8 +178,7 @@ def build_explanation_prompt(payload: dict) -> str:
 RULES:
 1. Write all paragraph text and bullet reasons in pure plain text without any HTML formatting. You must use the exact Markdown asterisks shown in the structural template below for section headers and option bullet labels (**EXPLAINATION**, **WHY THE OTHER OPTION IS INCORRECT**, and * **([Letter]) [Option text]:**).
 2. Under **EXPLAINATION**, write EXACTLY ONE sentence (under 35 words). Start immediately with the transcript quote/clue linking directly to the answer (e.g., 'The woman states...', 'The man tells the woman...', or 'By pointing out...'). NEVER write narrative recaps (e.g., "The man asks...", "The woman responds...") and NEVER end with "making option X correct" or "Therefore...".
-3. Under **WHY THE OTHER OPTION IS INCORRECT**, write EXACTLY ONE sentence per wrong option (10 to 20 words maximum). State the direct factual contrast using contrast syntax (e.g., "The dialogue is about X, not Y" or "She explicitly states X, proving Y"). Never start with "While" or "Although".
-4. Write distractor reasons as exactly ONE sentence between 10 and 20 words. State the factual contrast directly without preamble (e.g., "Grocery stores sell packaged goods, not individual slices of pie and brewed coffee."). Do not use counter-arguments or words like "While", "Although", or "However".
+3. Under **WHY THE OTHER OPTION IS INCORRECT**, write EXACTLY ONE sentence per wrong option (10 to 20 words maximum). State the direct factual contrast using contrast syntax (e.g., "The dialogue is about X, not Y" or "She explicitly states X, proving Y"). Never start with "While", "Although", or "However".
 REFERENCE EXAMPLES:
 {reference_examples or "Follow the rules and format below."}
 
@@ -187,15 +186,15 @@ Use this EXACT structure:
 
 **EXPLAINATION**
 
-[1-2 sentence evidence-based explanation quoting the decisive transcript phrase]
+[1 sentence linking transcript quote directly to correct answer]
 
 **WHY THE OTHER OPTION IS INCORRECT**
 
-* **([Letter]) [Option text]:** [Direct factual reason]
-* **([Letter]) [Option text]:** [Direct factual reason]
-* **([Letter]) [Option text]:** [Direct factual reason]
+-* **([Letter]) [Option text]:** [Direct factual reason]
+-* **([Letter]) [Option text]:** [Direct factual reason]
+-* **([Letter]) [Option text]:** [Direct factual reason]
 
----
+----
 QUESTION DATA:
 
 Question: {question_text}
