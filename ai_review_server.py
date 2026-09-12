@@ -233,11 +233,11 @@ You must break down the explanation into exactly 4 logical steps that replicate 
 4. **Distractor Deconstruction**: Systematically eliminate all three wrong options by pointing out classic TOEFL traps (e.g., too narrow, out of context, factually reversed).
 
 ### COLOR & STYLING RULES:
-You must strictly embed inline styling HTML tags directly inside the text strings (`description`, `quote`, and `reasoning`) when referring to speakers or key vocabulary so the frontend can parse them:
+Do NOT output raw HTML tags. Instead, use these exact custom bracket tags so our backend parser can style them later:
 1. **Identify the exact roles**: Look at the transcript to see who the actors are (e.g., Student, Librarian, Man, Woman).
-2. **Male Speaker Styling**: Wrap the role name exactly in: <span style="color: #F3934F; font-weight: bold;">Role Name</span>
-3. **Female Speaker Styling**: Wrap the role name exactly in: <span style="color: #676CFF; font-weight: bold;">Role Name</span>
-4. **Key Clue Highlighting**: Wrap the exact target keywords/phrases from the audio or option text in: <mark style="background-color: #FFDE00; color: #000000; font-weight: 500;">highlighted text</mark>
+2. **Male Speaker Styling**: Wrap the role name exactly in: [MALE: Role Name]
+3. **Female Speaker Styling**: Wrap the role name exactly in: [FEMALE: Role Name]
+4. **Key Clue Highlighting**: Wrap the exact target keywords/phrases in: [HIGHLIGHT: highlighted text]
 
 ### DYNAMIC STRATEGY RULE:
 You must dynamically adjust the titles and analytical approach in Step 1 and Step 2 based on the question's focus:
@@ -254,13 +254,13 @@ Respond ONLY with a valid JSON object matching this schema. Do not include markd
 {{
   "step_1": {{
     "title": "Dynamic Title String",
-    "description": "Strategy text explaining what targeted information to listen for. Apply speaker color tags.",
-    "quote": "The raw quote containing the initial clue. Apply the yellow <mark> tag to the exact phrase."
+    "description": "Strategy text explaining what targeted information to listen for. Apply [MALE: ] or [FEMALE: ] tags.",
+    "quote": "The raw quote containing the initial clue. Apply the [HIGHLIGHT: ] tag to the exact phrase."
   }},
   "step_2": {{
     "title": "Dynamic Title String",
-    "description": "Context tracking text explaining how the surrounding dialogue supports the clue. Apply speaker color tags.",
-    "quote": "The contextual supporting raw quote. Apply the yellow <mark> tag to important keywords."
+    "description": "Context tracking text explaining how the surrounding dialogue supports the clue. Apply [MALE: ] or [FEMALE: ] tags.",
+    "quote": "The contextual supporting raw quote. Apply the [HIGHLIGHT: ] tag to important keywords."
   }},
   "step_3": {{
     "title": "Connect the Synonyms",
@@ -411,10 +411,10 @@ Requirements:
 4) step_4.title must be exactly "Eliminate the Wrong Answer".
 5) step_4.incorrect_options must contain exactly 3 objects.
 6) Each incorrect option reasoning must start with "because...".
-7) Preserve the required inline HTML styling:
-   - male speaker roles in <span style="color: #F3934F; font-weight: bold;">...</span>
-   - female speaker roles in <span style="color: #676CFF; font-weight: bold;">...</span>
-   - key phrases in <mark style="background-color: #FFDE00; color: #000000; font-weight: 500;">...</mark>
+7) Preserve the required custom styling tags:
+   - male speaker roles in [MALE: ...]
+   - female speaker roles in [FEMALE: ...]
+   - key phrases in [HIGHLIGHT: ...]
 8) Do not add markdown fences or commentary.
 
 OUTPUT TO REWRITE:
@@ -430,15 +430,14 @@ def build_translation_prompt(payload: dict) -> str:
 
 STRICT RULES:
 1) Keep the markdown structure EXACTLY the same.
-2) Keep these labels in English EXACTLY as-is so the app parser keeps working:
-   - Step headers (### Step 1:, ### Step 2:, ### Step 3: Why the other answers are wrong)
-   - "Test Tip:"
-   - "Note:"
-   - bullet syntax for wrong answers: - ❌ **(X) is wrong:**
-3) Translate ALL natural-language content into natural, beginner-friendly Indonesian, including the quoted transcript sentence in Step 1.
-4) Keep punctuation/markdown markers intact (quotes, *, **, bullet symbols) while translating the words inside them.
-5) Do not add extra sections, introductions, or conclusions.
-6) Output only the translated markdown.
+2) Keep these exact headers in English so the app parser keeps working:
+   - **EXPLAINATION**
+   - **WHY THE OTHER OPTION IS INCORRECT**
+3) Preserve the exact bullet syntax for wrong answers (e.g., * **(A) Option text:**). Do not translate the letter or the formatting.
+4) Translate ALL natural-language content into natural, beginner-friendly {target_language}.
+5) Keep punctuation and markdown markers intact (quotes, *, **) while translating the words inside them.
+6) Do not add extra sections, introductions, or conclusions.
+7) Output only the translated markdown.
 
 MARKDOWN TO TRANSLATE:
 {explanation_markdown}
@@ -849,6 +848,13 @@ class Handler(BaseHTTPRequestHandler):
 
                 if not step_timeline_has_required_shape(data):
                     raise ValueError("Model output did not match the required step timeline JSON schema")
+
+                # Convert plain-text tags back to HTML safely in the backend
+                json_string = json.dumps(data)
+                json_string = re.sub(r'\[MALE:\s*(.*?)\]', r'<span style="color: #F3934F; font-weight: bold;">\1</span>', json_string)
+                json_string = re.sub(r'\[FEMALE:\s*(.*?)\]', r'<span style="color: #676CFF; font-weight: bold;">\1</span>', json_string)
+                json_string = re.sub(r'\[HIGHLIGHT:\s*(.*?)\]', r'<mark style="background-color: #FFDE00; color: #000000; font-weight: 500;">\1</mark>', json_string)
+                data = json.loads(json_string)
 
                 self._send(200, data)
             except Exception as exc:
