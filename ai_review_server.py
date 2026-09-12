@@ -23,32 +23,6 @@ REPORT_SMTP_PASS = str(os.environ.get("REPORT_SMTP_PASS", "") or "").strip()
 REPORT_QUEUE_FILE = str(os.environ.get("REPORT_QUEUE_FILE", "data/report_issue_queue.jsonl") or "data/report_issue_queue.jsonl").strip()
 
 
-def _find_reference_file() -> Path | None:
-    candidates = [
-        Path(__file__).resolve().parent / "toefl-sample" / "explaination_expected_section1.md",
-        Path.cwd() / "toefl-sample" / "explaination_expected_section1.md",
-        Path(__file__).resolve().parents[1] / "toefl-sample" / "explaination_expected_section1.md" if len(Path(__file__).resolve().parents) > 1 else None,
-    ]
-    for c in candidates:
-        if c and c.exists():
-            return c
-    return None
-
-
-def _load_reference_explanations(max_examples: int = 3) -> str:
-    ref_file = _find_reference_file()
-    if not ref_file:
-        return ""
-    try:
-        source = ref_file.read_text(encoding="utf-8")
-    except OSError:
-        return ""
-
-    blocks = re.split(r"(?=^## Question\s+\d+)", source, flags=re.MULTILINE)
-    selected = [b.strip() for b in blocks if b.strip()][:max_examples]
-    return "\n\n".join(selected)
-
-
 def is_transient_model_error(exc: Exception) -> bool:
     msg = str(exc or "").upper()
     transient_markers = (
@@ -171,29 +145,27 @@ def build_explanation_prompt(payload: dict) -> str:
         f"  ({letter}) {text}" for letter, text in sorted(options.items())
     )
 
-    reference_examples = _load_reference_explanations(3)
-
     return f"""You are an expert TOEFL ITP listening tutor. Provide a concise, direct explanation for the following TOEFL ITP listening question.
 
-RULES:
-- Use EXACTLY two headers: **Explanation:** and **WHY THE OTHER OPTION IS INCORRECT:**.
-- Under **Explanation:**, write 1-2 direct sentences linking the transcript quote directly to the answer.
-- Under **WHY THE OTHER OPTION IS INCORRECT:**, create a bulleted list using `*   **[Letter]:**` for each incorrect choice (do not include the correct option in this list).
-- Keep each incorrect reason to 1 short, direct sentence starting with a clear factual contrast (e.g., "The dialogue is about...", "She explicitly states...", "There is no mention of...").
-REFERENCE EXAMPLES:
-{reference_examples or "Follow the rules and format below."}
+STRICT FORMATTING RULES:
+1. Do NOT write question titles (e.g. "## Question 1"), correct answer recaps, or any intro text.
+2. Do NOT use HTML tags like <mark>. Use standard quotation marks for quotes.
+3. Use EXACTLY these two headers:
+   **Explanation:**
+   **WHY THE OTHER OPTIONS ARE INCORRECT:**
+4. Under **Explanation:**, write EXACTLY 1 sentence linking the direct quote to the meaning.
+5. Under **WHY THE OTHER OPTIONS ARE INCORRECT:**, list ONLY the wrong choices using this exact bullet syntax:
+   * **[Letter]:** [1 direct sentence factual contrast, max 20 words]
 
-Use this EXACT structure:
+EXACT TARGET PATTERN:
+**Explanation:**
+The woman states the building is "across the street from the main library," which means the math building is located near the library.
 
-**EXPLAINATION**
+**WHY THE OTHER OPTIONS ARE INCORRECT:**
 
-[1 sentence linking transcript quote directly to correct answer]
-
-**WHY THE OTHER OPTION IS INCORRECT**
-
-* **([Letter]) [Option text]:** [1 direct sentence factual contrast, max 20 words]
-* **([Letter]) [Option text]:** [1 direct sentence factual contrast, max 20 words]
-* **([Letter]) [Option text]:** [1 direct sentence factual contrast, max 20 words]
+* **A:** The dialogue is only about asking for directions; it does not mention what the woman is studying.
+* **B:** She explicitly gives the location, proving she knows where the building is.
+* **D:** There is absolutely no mention of the library's operating hours or it being closed.
 ---
 QUESTION DATA:
 
@@ -308,24 +280,26 @@ def explanation_has_required_shape(text: str) -> bool:
     if not body:
         return False
 
-    if "**EXPLAINATION**" not in body and "**EXPLANATION**" not in body:
+    if "**Explanation:**" not in body and "**EXPLANATION**" not in body:
         return False
-    if "**WHY THE OTHER OPTION IS INCORRECT**" not in body:
+    if "WHY THE OTHER" not in body:
         return False
 
-    wrong_lines = re.findall(r"(?im)^\s*[*\-]\s*\*\*\(?[A-D]\)?.*:\*\*", body)
-    return len(wrong_lines) >= 3
+    wrong_lines = re.findall(r"(?im)^\s*[*\-]\s*\*\*[A-D]:?\*\*", body)
+    return len(wrong_lines) >= 1
 
 
 def build_explanation_fix_prompt(previous_output: str) -> str:
     return f"""Rewrite the output below so it strictly matches the required TOEFL explanation format.
 
 Requirements:
-1) Header 1 must be: **Explanation:**
-2) Header 2 must be: **WHY THE OTHER OPTION IS INCORRECT:**
-3) Bullet list syntax for incorrect choices must be exactly:
-   *   **[Letter]:** [One direct, factual reason]
-4) Strip all intro text or concluding meta-announcements.
+1) Exactly two section headers:
+   **EXPLAINATION**
+   **WHY THE OTHER OPTION IS INCORRECT**
+2) Under **EXPLAINATION**, write EXACTLY ONE direct sentence (under 35 words) linking the decisive transcript quote directly to the answer.
+3) Under **WHY THE OTHER OPTION IS INCORRECT**, include exactly 3 bullet points with this syntax:
+   * **([Letter]) [Option text]:** [1 direct sentence factual reason, max 20 words]
+4) Strip all HTML tags, meta-language ("This option is incorrect"), and setup sentences. State facts directly.
 
 OUTPUT TO REWRITE:
 {previous_output}
