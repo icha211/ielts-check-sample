@@ -450,6 +450,8 @@
                 .replace(/&lt;(\/?)mark(?: style=&quot;[^&]*&quot;)?&gt;/gi, '<$1mark>')
                 .replace(/<mark\s+style="[^"]*">/gi, '<mark>')
                 .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
+                .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
                 .replace(/"([^"]{1,})"/g, function (_, phrase) {
                     return '<strong>' + phrase + '</strong>';
                 })
@@ -3092,9 +3094,9 @@
         }
 
         function renderBoldInQuote(text) {
-            // Splits "some **bold** text" into normal/bold span runs
+            // Splits "some **bold** text" or "some *bold* text" into normal/bold span runs
             var parts = [];
-            var regex = /\*\*([^*]+)\*\*/g;
+            var regex = /\*{1,2}([^*\n]+)\*{1,2}/g;
             var rawText = String(text || '');
             var lastIndex = 0;
             var match;
@@ -3574,6 +3576,8 @@
                 .replace(/&lt;(\/?)mark(?: style=&quot;[^&]*&quot;)?&gt;/gi, '<$1mark>')
                 .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
                 .replace(/<mark\s+style="[^"]*">/gi, '<mark>')
+                .replace(/\*\*([^*\n]+)\*\*/g, '<strong style="font-weight: 600;">$1</strong>')
+                .replace(/\*([^*\n]+)\*/g, '<strong style="font-weight: 600;">$1</strong>')
                 .replace(/<strong(?![^>]*\bstyle=)/gi, '<strong style="font-weight: 600;"');
         }
 
