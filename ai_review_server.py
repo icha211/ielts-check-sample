@@ -176,7 +176,7 @@ def build_explanation_prompt(payload: dict) -> str:
     return f"""You are an expert TOEFL ITP listening tutor. Provide a concise, direct explanation for the following TOEFL ITP listening question.
 
 RULES:
-1. Write all paragraph text and bullet reasons in pure plain text without any HTML formatting. You must use the exact Markdown asterisks shown in the structural template below for section headers and option bullet labels (**EXPLAINATION**, **WHY THE OTHER OPTION IS INCORRECT**, and * **([Letter]) [Option text]:**).
+1. Write all paragraph text and bullet reasons in pure plain text without any HTML formatting (if highlight tags are needed, use ONLY plain `<mark>quote</mark>` tags without inline styles or attributes). You must use the exact Markdown asterisks shown in the structural template below for section headers and option bullet labels (**EXPLAINATION**, **WHY THE OTHER OPTION IS INCORRECT**, and * **([Letter]) [Option text]:**).
 2. Under **EXPLAINATION**, write EXACTLY ONE sentence (under 35 words). Start immediately with the transcript quote/clue linking directly to the answer (e.g., 'The woman states...', 'The man tells the woman...', or 'By pointing out...'). NEVER write narrative recaps (e.g., "The man asks...", "The woman responds...") and NEVER end with "making option X correct" or "Therefore...".
 3. Under **WHY THE OTHER OPTION IS INCORRECT**, write EXACTLY ONE sentence per wrong option (10 to 20 words maximum). State the direct factual contrast using contrast syntax (e.g., "The dialogue is about X, not Y" or "She explicitly states X, proving Y"). Never start with "While", "Although", or "However".
 REFERENCE EXAMPLES:
@@ -190,11 +190,11 @@ Use this EXACT structure:
 
 **WHY THE OTHER OPTION IS INCORRECT**
 
--* **([Letter]) [Option text]:** [Direct factual reason]
--* **([Letter]) [Option text]:** [Direct factual reason]
--* **([Letter]) [Option text]:** [Direct factual reason]
+* **([Letter]) [Option text]:** [Direct factual reason]
+* **([Letter]) [Option text]:** [Direct factual reason]
+* **([Letter]) [Option text]:** [Direct factual reason]
 
-----
+---
 QUESTION DATA:
 
 Question: {question_text}
@@ -577,6 +577,11 @@ def is_likely_same_quote(source_quote: str, translated_quote: str) -> bool:
     return bool(src) and src == dst
 
 
+def strip_html_attributes_from_mark(text: str) -> str:
+    """Strips all inline style attributes from <mark> tags, turning <mark style="..."> into <mark>."""
+    return re.sub(r'<mark\s+[^>]*>', '<mark>', str(text or ""))
+
+
 def parse_json_from_text(text: str) -> dict:
     text = text.strip()
     if text.startswith("{") and text.endswith("}"):
@@ -806,6 +811,9 @@ class Handler(BaseHTTPRequestHandler):
                     if retry_text:
                         text = retry_text
 
+                # Strip inline style attributes from <mark> tags automatically
+                text = strip_html_attributes_from_mark(text)
+
                 self._send_text(200, text)
             except Exception as exc:
                 self._send(500, {"error": friendly_model_error(exc)})
@@ -821,6 +829,7 @@ class Handler(BaseHTTPRequestHandler):
                 prompt = build_explanation_json_prompt(payload)
                 response = generate_with_retry(client, prompt)
                 text = (response.text or "").strip()
+                text = strip_html_attributes_from_mark(text)
                 data = parse_json_from_text(text)
                 self._send(200, data)
             except Exception as exc:
@@ -852,6 +861,7 @@ class Handler(BaseHTTPRequestHandler):
                 json_string = re.sub(r'\[MALE:\s*(.*?)\]', r'<span style="color: #F3934F; font-weight: bold;">\1</span>', json_string)
                 json_string = re.sub(r'\[FEMALE:\s*(.*?)\]', r'<span style="color: #676CFF; font-weight: bold;">\1</span>', json_string)
                 json_string = re.sub(r'\[HIGHLIGHT:\s*(.*?)\]', r'<mark>\1</mark>', json_string)
+                json_string = strip_html_attributes_from_mark(json_string)
                 data = json.loads(json_string)
 
                 self._send(200, data)
@@ -878,6 +888,8 @@ class Handler(BaseHTTPRequestHandler):
                     forced_quote = (quote_response.text or "").strip().strip('"').strip('“').strip('”').strip()
                     if forced_quote:
                         text = replace_first_markdown_quote(text, forced_quote)
+
+                text = strip_html_attributes_from_mark(text)
 
                 self._send_text(200, text)
             except Exception as exc:
