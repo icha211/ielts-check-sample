@@ -177,8 +177,8 @@ def build_explanation_prompt(payload: dict) -> str:
 
 RULES:
 1. Write all paragraph text and bullet reasons in pure plain text without any HTML formatting. You must use the exact Markdown asterisks shown in the structural template below for section headers and option bullet labels (**EXPLAINATION**, **WHY THE OTHER OPTION IS INCORRECT**, and * **([Letter]) [Option text]:**).
-2. Begin the EXPLAINATION section immediately with the speaker and a short direct quote from the transcript (e.g., The woman states the building is "across the street from the main library," which means the math building is located near the library.).
-3. Keep the EXPLAINATION section to exactly 1-2 direct sentences (under 45 words). Do not write setup sentences like "The man asks for the location" or "The question asks".
+2. Under **EXPLAINATION**, write EXACTLY ONE sentence (under 35 words). Start immediately with the transcript quote/clue linking directly to the answer (e.g., 'The woman states...', 'The man tells the woman...', or 'By pointing out...'). NEVER write narrative recaps (e.g., "The man asks...", "The woman responds...") and NEVER end with "making option X correct" or "Therefore...".
+3. Under **WHY THE OTHER OPTION IS INCORRECT**, write EXACTLY ONE sentence per wrong option (10 to 20 words maximum). State the direct factual contrast using contrast syntax (e.g., "The dialogue is about X, not Y" or "She explicitly states X, proving Y"). Never start with "While" or "Although".
 4. Write distractor reasons as exactly ONE sentence between 10 and 20 words. State the factual contrast directly without preamble (e.g., "Grocery stores sell packaged goods, not individual slices of pie and brewed coffee."). Do not use counter-arguments or words like "While", "Although", or "However".
 REFERENCE EXAMPLES:
 {reference_examples or "Follow the rules and format below."}
