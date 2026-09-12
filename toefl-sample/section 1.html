@@ -1498,11 +1498,16 @@
         }
 
         function explanationHtmlToText(value) {
-            const host = document.createElement("div");
-            host.innerHTML = String(value || "")
+            let str = String(value || "")
+                .replace(/<mark\s+style="[^"]*">/gi, "<mark>")
                 .replace(/<br\s*\/?>/gi, "\n")
                 .replace(/<\/p>|<\/div>/gi, "\n");
+            str = str.replace(/<mark>/gi, "___MARK_OPEN___").replace(/<\/mark>/gi, "___MARK_CLOSE___");
+            const host = document.createElement("div");
+            host.innerHTML = str;
             return String(host.textContent || "")
+                .replace(/___MARK_OPEN___/g, "<mark>")
+                .replace(/___MARK_CLOSE___/g, "</mark>")
                 .replace(/\u00a0/g, " ")
                 .replace(/[ \t]+\n/g, "\n")
                 .replace(/\n{3,}/g, "\n\n")
@@ -1548,7 +1553,7 @@
                     || /this option is incorrect because|the question asks|the dialogue shows/i.test(reason);
             });
             return combined.length > 1800
-                || /the question asks|the dialogue shows|this option is incorrect because|<mark\b|<strong\b/i.test(combined)
+                || /the question asks|the dialogue shows|this option is incorrect because/i.test(combined)
                 || (main.split(/\s+/).filter(Boolean).length > 70)
                 || mainSentenceCount > 3
                 || hasInvalidReason;
@@ -1622,7 +1627,9 @@
         }
 
         function explanationTextToHtml(value) {
-            return escapeHtml(String(value || "").trim()).replace(/\n/g, "<br>");
+            return escapeHtml(String(value || "").trim())
+                .replace(/&lt;(\/?)mark(?: style=&quot;[^&]*&quot;)?&gt;/gi, '<$1mark>')
+                .replace(/\n/g, "<br>");
         }
 
         function parseExplanationCardMarkdown(text) {

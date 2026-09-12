@@ -447,6 +447,9 @@
 
         function renderQuotedHighlights(v) {
             return escapeHtml(v)
+                .replace(/&lt;(\/?)mark(?: style=&quot;[^&]*&quot;)?&gt;/gi, '<$1mark>')
+                .replace(/<mark\s+style="[^"]*">/gi, '<mark>')
+                .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
                 .replace(/"([^"]{1,})"/g, function (_, phrase) {
                     return '<strong>' + phrase + '</strong>';
                 })
@@ -3568,6 +3571,9 @@
 
         function renderExplanationContent(html) {
             return String(html || '')
+                .replace(/&lt;(\/?)mark(?: style=&quot;[^&]*&quot;)?&gt;/gi, '<$1mark>')
+                .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
+                .replace(/<mark\s+style="[^"]*">/gi, '<mark>')
                 .replace(/<strong(?![^>]*\bstyle=)/gi, '<strong style="font-weight: 600;"');
         }
 
@@ -3819,7 +3825,7 @@
                 var distractor = distractors.find(function(item) { return String(item?.letter || '').trim().toUpperCase() === letter; }) || {};
                 html += '<article class="explaination-incorrect-option">';
                 html += '<div class="explaination-option-heading"><div class="explaination-option-letter">' + escapeHtml(letter) + '</div><div class="explaination-option-title-group"><div class="explaination-option-title">' + escapeHtml(String(option.text || distractor.text || '')) + '</div><div class="explaination-option-accent" aria-hidden="true"></div></div></div>';
-                html += '<div class="explaination-option-reason">' + escapeHtml(String(distractor.reason || '')) + '</div>';
+                html += '<div class="explaination-option-reason">' + renderExplanationContent(escapeHtml(String(distractor.reason || ''))) + '</div>';
                 html += '</article>';
             }
             html += '</div></section></div>';
@@ -3904,7 +3910,7 @@
                 var wrongText = sanitizeFigmaOptionText(options[wrongLetter] || '');
                 if (!wrongLetter || !wrongText) continue;
                 html += '<div class="step-figma-wrong-item">';
-                html += '<p class="step-figma-wrong-copy"><span class="step-figma-strong">(' + escapeHtml(wrongLetter) + ') is wrong: </span>' + escapeHtml(wrong.reason || 'It does not match the speaker\'s actual intent.') + '</p>';
+                html += '<p class="step-figma-wrong-copy"><span class="step-figma-strong">(' + escapeHtml(wrongLetter) + ') is wrong: </span>' + renderExplanationContent(escapeHtml(wrong.reason || 'It does not match the speaker\'s actual intent.')) + '</p>';
                 html += '<div class="step-figma-wrong-option"><div class="step-figma-option-answer"><span>(' + escapeHtml(wrongLetter) + ')</span><span>' + escapeHtml(wrongText) + '</span></div><div class="step-figma-wrong-badge"><b>Incorrect</b><i class="ph ph-x" aria-hidden="true"></i></div></div>';
                 html += '</div>';
             }

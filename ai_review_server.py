@@ -853,7 +853,7 @@ class Handler(BaseHTTPRequestHandler):
                 json_string = json.dumps(data)
                 json_string = re.sub(r'\[MALE:\s*(.*?)\]', r'<span style="color: #F3934F; font-weight: bold;">\1</span>', json_string)
                 json_string = re.sub(r'\[FEMALE:\s*(.*?)\]', r'<span style="color: #676CFF; font-weight: bold;">\1</span>', json_string)
-                json_string = re.sub(r'\[HIGHLIGHT:\s*(.*?)\]', r'<mark style="background-color: #FFDE00; color: #000000; font-weight: 500;">\1</mark>', json_string)
+                json_string = re.sub(r'\[HIGHLIGHT:\s*(.*?)\]', r'<mark>\1</mark>', json_string)
                 data = json.loads(json_string)
 
                 self._send(200, data)
