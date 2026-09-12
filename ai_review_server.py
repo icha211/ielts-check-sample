@@ -179,8 +179,7 @@ RULES:
 1. Write all paragraph text and bullet reasons in pure plain text without any HTML formatting. You must use the exact Markdown asterisks shown in the structural template below for section headers and option bullet labels (**EXPLAINATION**, **WHY THE OTHER OPTION IS INCORRECT**, and * **([Letter]) [Option text]:**).
 2. Begin the EXPLAINATION section immediately with the speaker and a short direct quote from the transcript (e.g., The woman states the building is "across the street from the main library," which means the math building is located near the library.).
 3. Keep the EXPLAINATION section to exactly 1-2 direct sentences (under 45 words). Do not write setup sentences like "The man asks for the location" or "The question asks".
-4. In WHY THE OTHER OPTION IS INCORRECT, write one direct factual sentence (10-25 words) for each wrong option stating facts directly (e.g., "The dialogue is only about asking for directions, not what the woman is studying." or "The library's operating hours are never mentioned in the transcript."). Never use meta-phrases like "The transcript provides no information", "The dialogue shows", or "This option is incorrect".
-
+4. Write distractor reasons as exactly ONE sentence between 10 and 20 words. State the factual contrast directly without preamble (e.g., "Grocery stores sell packaged goods, not individual slices of pie and brewed coffee."). Do not use counter-arguments or words like "While", "Although", or "However".
 REFERENCE EXAMPLES:
 {reference_examples or "Follow the rules and format below."}
 
@@ -469,7 +468,7 @@ GUIDELINES:
 1. Output pure plain text only for all string values. Despite the JSON keys ending in "_html", you must NOT use any tag syntax, markdown, or formatting whatsoever.
 2. Synthesize `main_explanation_html` into exactly 1 direct sentence (under 40 words) connecting the clue directly to the answer. Start directly with the evidence (e.g., "By pointing out [clue], the speaker implies [meaning]." or "The [speaker] states [clue], which means [meaning].").
 3. Do not recap the dialogue turn-by-turn or write setup phrases (e.g., do not write "The man states X. In response, the woman points out Y.").
-4. Write distractor reasons (10-25 words) by directly contrasting the option against the transcript context (e.g., "The dialogue is about X, not Y."). Do not write meta-commentary like "The woman does not suggest".
+4. In WHY THE OTHER OPTION IS INCORRECT, write exactly ONE short sentence (10–20 words maximum) per wrong choice. Start directly with the factual mismatch and ban concessive words (never start with "While", "Although", or "Even though").
 5. In `dialogue_blocks`, include only one short supporting quote from the dialogue.
 6. Set `closing_analysis_html` to an empty string "".
 7. Return valid JSON only, matching the exact schema below.
