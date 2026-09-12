@@ -58,17 +58,21 @@ def _build_prompt(payload: dict) -> str:
     user_letter = str(payload.get("user_selected_letter") or "").strip().upper()
     transcript = str(payload.get("isolated_transcript_block") or "").strip()
     options = payload.get("options_array") or {}
+    reference_examples = _load_reference_explanations(3)
 
     return f"""You are an expert TOEFL ITP listening tutor. Produce a complete, question-specific explanation using only the supplied transcript evidence.
 
 GUIDELINES:
-1. Write all text using standard alphanumeric characters, quotation marks, and basic punctuation only. Do not include any HTML tags (such as <mark>, <strong>, <span>, or <br>) or Markdown formatting in any string values.
-2. Begin `main_explanation_html` immediately with the speaker and a short direct quote from the transcript (e.g., The woman states the building is "across the street from the main library," which means the math building is located near the library.).
-3. Combine the quote and the explanation into exactly 1-2 direct sentences (under 45 words). Do not write setup sentences like "The man asks for the location" or "The question asks".
-4. Write objective distractor reasons (10-25 words each) stating facts directly (e.g., "The dialogue is only about asking for directions; it does not mention what the woman is studying." or "There is no mention of the library operating hours or it being closed."). Never use meta-phrases like "The transcript provides no information", "The dialogue shows", or "This option is incorrect".
+1. Output pure plain text only for all string values. Despite the JSON keys ending in "_html", you must NOT use any tag syntax, markdown, or formatting whatsoever.
+2. Synthesize `main_explanation_html` into exactly 1 direct sentence (under 40 words) connecting the clue directly to the answer. Start directly with the evidence (e.g., "By pointing out [clue], the speaker implies [meaning]." or "The [speaker] states [clue], which means [meaning].").
+3. Do not recap the dialogue turn-by-turn or write setup phrases (e.g., do not write "The man states X. In response, the woman points out Y.").
+4. Write distractor reasons (10-25 words) by directly contrasting the option against the transcript context (e.g., "The dialogue is about X, not Y."). Do not write meta-commentary like "The woman does not suggest".
 5. In `dialogue_blocks`, include only one short supporting quote from the dialogue.
 6. Set `closing_analysis_html` to an empty string "".
 7. Return valid JSON only, matching the exact schema below.
+
+REFERENCE EXAMPLES:
+{reference_examples}
 
 FEW-SHOT EXAMPLE 1:
 Input:
@@ -111,58 +115,9 @@ Output:
       }}
     ],
     "distractor_analysis": [
-      {{"letter": "A", "text": "She is studying math at the library.", "reason": "The dialogue is only about asking for directions; it does not mention what the woman is studying."}},
-      {{"letter": "B", "text": "She does not know where the building is.", "reason": "She explicitly gives the location, proving she knows where the building is."}},
-      {{"letter": "D", "text": "The library is closed right now.", "reason": "There is no mention of the library operating hours or it being closed."}}
-    ],
-    "closing_analysis_html": ""
-  }}
-}}
-
-FEW-SHOT EXAMPLE 2:
-Input:
-{{
-  "question_number": 2,
-  "question_text": "What will the speakers probably do next?",
-  "options": {{
-    "A": "Stay indoors for a while.",
-    "B": "Walk to the library in the rain.",
-    "C": "Borrow an umbrella.",
-    "D": "Go to a different building."
-  }},
-  "correct_option_letter": "A",
-  "user_selected_letter": "A",
-  "transcript": "Woman: It's starting to rain. Should we walk to the library now?\\nMan: Let's wait inside until the rain stops.\\nNarrator: What will the speakers probably do next?"
-}}
-
-Output:
-{{
-  "question_metadata": {{
-    "question_number": 2,
-    "question_text": "What will the speakers probably do next?",
-    "user_was_correct": true
-  }},
-  "options_status": [
-    {{"letter": "A", "text": "Stay indoors for a while.", "is_correct_choice": true, "is_user_answer": true}},
-    {{"letter": "B", "text": "Walk to the library in the rain.", "is_correct_choice": false, "is_user_answer": false}},
-    {{"letter": "C", "text": "Borrow an umbrella.", "is_correct_choice": false, "is_user_answer": false}},
-    {{"letter": "D", "text": "Go to a different building.", "is_correct_choice": false, "is_user_answer": false}}
-  ],
-  "explanation_payload": {{
-    "header_title": "Why (A)?",
-    "main_explanation_html": "The man states \\"Let's wait inside until the rain stops,\\" which indicates they will stay indoors for a while.",
-    "dialogue_blocks": [
-      {{
-        "speaker_name": "Man",
-        "speaker_gender": "male",
-        "introduction_label": "The man suggests:",
-        "quote_text_html": "Let's wait inside until the rain stops."
-      }}
-    ],
-    "distractor_analysis": [
-      {{"letter": "B", "text": "Walk to the library in the rain.", "reason": "The man explicitly suggests waiting inside until the rain stops rather than walking in the rain."}},
-      {{"letter": "C", "text": "Borrow an umbrella.", "reason": "There is no mention of borrowing or using an umbrella."}},
-      {{"letter": "D", "text": "Go to a different building.", "reason": "The speakers decide to stay in their current location rather than going to another building."}}
+      {{"letter": "A", "text": "She is studying math at the library.", "reason": "The dialogue is only about asking for directions, not what the woman is studying."}},
+      {{"letter": "B", "text": "She does not know where the building is.", "reason": "The woman explicitly provides the location, proving she knows where the building is."}},
+      {{"letter": "D", "text": "The library is closed right now.", "reason": "The library's operating hours are never mentioned in the transcript."}}
     ],
     "closing_analysis_html": ""
   }}
