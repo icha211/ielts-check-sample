@@ -12,7 +12,7 @@ from google import genai
 
 HOST = os.environ.get("AI_REVIEW_HOST", "0.0.0.0")
 PORT = int(os.environ.get("AI_REVIEW_PORT", "8787"))
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
 FALLBACK_MODEL = str(os.environ.get("GEMINI_FALLBACK_MODEL", "") or "").strip()
 REPORT_ISSUE_TO = str(os.environ.get("REPORT_ISSUE_TO", "quickcheck.edu@gmail.com") or "quickcheck.edu@gmail.com").strip()
 REPORT_SMTP_HOST = str(os.environ.get("REPORT_SMTP_HOST", "smtp.gmail.com") or "smtp.gmail.com").strip()
@@ -442,86 +442,94 @@ MARKDOWN TO TRANSLATE:
 
 
 def build_explanation_json_prompt(payload: dict) -> str:
-        q_num = int(payload.get("active_question_number") or 0)
-        question_text = str(payload.get("question_text") or "").strip()
-        correct_letter = str(payload.get("correct_option_letter") or "").strip().upper()
-        user_letter = str(payload.get("user_selected_letter") or "").strip().upper()
-        isolated_block = str(payload.get("isolated_transcript_block") or "").strip()
-        options_array = payload.get("options_array") or {}
+    q_num = int(payload.get("active_question_number") or 0)
+    question_text = str(payload.get("question_text") or "").strip()
+    correct_letter = str(payload.get("correct_option_letter") or "").strip().upper()
+    user_letter = str(payload.get("user_selected_letter") or "").strip().upper()
+    isolated_block = str(payload.get("isolated_transcript_block") or "").strip()
+    options_array = payload.get("options_array") or {}
 
-        options_map = {"A": "", "B": "", "C": "", "D": ""}
-        if isinstance(options_array, list):
-                for raw in options_array:
-                        text = str(raw or "").strip()
-                        m = re.match(r"^\(?([A-D])\)?[\).:\-\s]*(.+)$", text, flags=re.IGNORECASE)
-                        if m:
-                                options_map[str(m.group(1)).upper()] = str(m.group(2) or "").strip()
-        elif isinstance(options_array, dict):
-                for key in ("A", "B", "C", "D"):
-                        options_map[key] = str(options_array.get(key, "") or "").strip()
+    options_map = {"A": "", "B": "", "C": "", "D": ""}
+    if isinstance(options_array, list):
+        for raw in options_array:
+            text = str(raw or "").strip()
+            m = re.match(r"^\(?([A-D])\)?[\).:\-\s]*(.+)$", text, flags=re.IGNORECASE)
+            if m:
+                options_map[str(m.group(1)).upper()] = str(m.group(2) or "").strip()
+    elif isinstance(options_array, dict):
+        for key in ("A", "B", "C", "D"):
+            options_map[key] = str(options_array.get(key, "") or "").strip()
 
-        return f"""You are the primary content intelligence engine for a premium TOEFL ITP test preparation application.
+    return f"""You are an expert TOEFL ITP listening tutor. Produce a complete, question-specific explanation using only the supplied transcript evidence.
 
-You are given:
-1) question metadata
-2) options A-D
-3) an isolated transcript block that is the ONLY allowed evidence
+GUIDELINES:
+1. Format all strings as raw, unformatted plain text only.
+2. Begin `main_explanation_html` immediately with the transcript evidence (e.g., "The woman states...", "The man indicates...").
+3. Keep `main_explanation_html` to 1-2 direct sentences (under 50 words) linking the speaker's statement directly to the correct answer choice.
+4. Write concise, objective distractor reasons (10-25 words each) explaining specifically why each incorrect option fails based on the dialogue.
+5. In `dialogue_blocks`, include only one short supporting quote from the dialogue.
+6. Return valid JSON only, matching the exact schema below.
 
-STRICT RULES:
-- Use ONLY evidence inside isolated_transcript_block.
-- No hallucination, no generic placeholders, no unrelated dialogue.
-- Match the concise style of the reference answer key.
-- Write main_explanation_html as one direct paragraph of 1-3 sentences, normally under 70 words.
-- Start directly with the evidence or meaning. Do not write "The question asks", "The dialogue shows", or "The correct answer is".
-- Use one short decisive transcript phrase only when useful; never repeat the full transcript.
-- Keep every distractor reason to one direct sentence, normally under 30 words.
-- Do not output HTML tags, inline styles, <mark>, <strong>, Markdown headings, or repeated labels in explanation fields. Use plain text only.
-- Output VALID JSON ONLY. No markdown fences.
-
-INPUT:
-question_number: {q_num}
-question_text: {question_text}
-correct_option_letter: {correct_letter}
-user_selected_letter: {user_letter}
-options:
-    A: {options_map['A']}
-    B: {options_map['B']}
-    C: {options_map['C']}
-    D: {options_map['D']}
-
-isolated_transcript_block:
-{isolated_block}
-
-OUTPUT SCHEMA (EXACT KEYS):
+FEW-SHOT EXAMPLE:
+Input:
 {{
-    "question_metadata": {{
-        "question_number": {q_num},
-        "question_text": "{question_text}",
-        "user_was_correct": {str(user_letter == correct_letter).lower()}
-    }},
-    "options_status": [
-        {{"letter":"A","text":"{options_map['A']}","is_correct_choice":{str(correct_letter == 'A').lower()},"is_user_answer":{str(user_letter == 'A').lower()}}},
-        {{"letter":"B","text":"{options_map['B']}","is_correct_choice":{str(correct_letter == 'B').lower()},"is_user_answer":{str(user_letter == 'B').lower()}}},
-        {{"letter":"C","text":"{options_map['C']}","is_correct_choice":{str(correct_letter == 'C').lower()},"is_user_answer":{str(user_letter == 'C').lower()}}},
-        {{"letter":"D","text":"{options_map['D']}","is_correct_choice":{str(correct_letter == 'D').lower()},"is_user_answer":{str(user_letter == 'D').lower()}}}
-    ],
-    "explanation_payload": {{
-        "header_title": "Why ({correct_letter})?",
-        "main_explanation_html": "one concise plain-text evidence-based explanation",
-        "dialogue_blocks": [
-            {{
-                "speaker_name": "Student",
-                "speaker_gender": "male",
-                "introduction_label": "brief plain-text context label",
-                "quote_text_html": "short exact plain-text quote"
-            }}
-        ],
-        "distractor_analysis": [
-            {{"letter":"A","text":"option text","reason":"one concise plain-text reason this option is incorrect"}}
-        ],
-        "closing_analysis_html": "one short plain-text conclusion; do not repeat the main explanation"
-    }}
+  "question_number": 1,
+  "question_text": "What does the woman mean?",
+  "options": {{
+    "A": "She is studying math at the library.",
+    "B": "She does not know where the building is.",
+    "C": "The math building is located near the library.",
+    "D": "The library is closed right now."
+  }},
+  "correct_option_letter": "C",
+  "user_selected_letter": "C",
+  "transcript": "Man: Do you know where the math building is?\\nWoman: It's right across the street from the main library.\\nNarrator: What does the woman mean?"
 }}
+
+Output:
+{{
+  "question_metadata": {{
+    "question_number": 1,
+    "question_text": "What does the woman mean?",
+    "user_was_correct": true
+  }},
+  "options_status": [
+    {{"letter": "A", "text": "She is studying math at the library.", "is_correct_choice": false, "is_user_answer": false}},
+    {{"letter": "B", "text": "She does not know where the building is.", "is_correct_choice": false, "is_user_answer": false}},
+    {{"letter": "C", "text": "The math building is located near the library.", "is_correct_choice": true, "is_user_answer": true}},
+    {{"letter": "D", "text": "The library is closed right now.", "is_correct_choice": false, "is_user_answer": false}}
+  ],
+  "explanation_payload": {{
+    "header_title": "Why (C)?",
+    "main_explanation_html": "The woman states the building is across the street from the main library, which means the math building is located near the library.",
+    "dialogue_blocks": [
+      {{
+        "speaker_name": "Woman",
+        "speaker_gender": "female",
+        "introduction_label": "The woman gives directions:",
+        "quote_text_html": "It's right across the street from the main library."
+      }}
+    ],
+    "distractor_analysis": [
+      {{"letter": "A", "text": "She is studying math at the library.", "reason": "The dialogue is only about asking for directions; it does not mention what the woman is studying."}},
+      {{"letter": "B", "text": "She does not know where the building is.", "reason": "She explicitly gives the location, proving she knows where the building is."}},
+      {{"letter": "D", "text": "The library is closed right now.", "reason": "There is no mention of the library operating hours or it being closed."}}
+    ],
+    "closing_analysis_html": "Option (C) is the only choice supported by the woman's statement."
+  }}
+}}
+
+CURRENT INPUT:
+{json.dumps({
+    "question_number": q_num,
+    "question_text": question_text,
+    "options": options_map,
+    "correct_option_letter": correct_letter,
+    "user_selected_letter": user_letter,
+    "transcript": isolated_block,
+}, ensure_ascii=True)}
+
+JSON OUTPUT:
 """
 
 

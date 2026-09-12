@@ -83,31 +83,67 @@ def _build_prompt(payload: dict) -> str:
     user_letter = str(payload.get("user_selected_letter") or "").strip().upper()
     transcript = str(payload.get("isolated_transcript_block") or "").strip()
     options = payload.get("options_array") or {}
-    reference_explanations = _load_reference_explanations()
 
-    return f"""You are Gemini acting as an expert TOEFL ITP listening tutor. Produce a complete, question-specific explanation using only the supplied transcript evidence.
+    return f"""You are an expert TOEFL ITP listening tutor. Produce a complete, question-specific explanation using only the supplied transcript evidence.
 
-Rules:
-- Return valid JSON only, matching the requested schema.
-- Do not invent dialogue or facts.
-- Write the explanation in the concise style of a polished TOEFL answer key.
-- The main explanation must be one short paragraph of 1-3 sentences, normally under 70 words.
-- Start directly with the evidence or meaning. Do not write meta-introductions such as "The question asks", "The dialogue shows", or "The correct answer is".
-- Use one short decisive transcript phrase only when it improves clarity; do not repeat the full dialogue.
-- Explain why the correct option answers the exact question, not merely why it resembles a transcript phrase.
-- Explain the trap in every incorrect option using one direct sentence, normally under 30 words.
-- Return one distractor-analysis item for every incorrect option, preserving its letter and exact option text.
-- Use at most one dialogue block, containing only the shortest decisive quote from the transcript.
-- Quote only a short line or phrase present in the transcript; never paste the full transcript.
-- Do not output HTML tags, inline styles, <mark>, <strong>, Markdown headings, or repeated labels inside explanation fields. Use plain text only.
-- Keep all explanation text in clear English suitable for an intermediate TOEFL learner.
-- Match the teaching style, level of detail, and distractor reasoning shown in the reference examples below.
-- Use the reference only as a style and structure guide. Do not copy its facts, answers, dialogue, or wording into the current question.
+GUIDELINES:
+1. Format all strings as raw, unformatted plain text only.
+2. Begin `main_explanation_html` immediately with the transcript evidence (e.g., "The woman states...", "The man indicates...").
+3. Keep `main_explanation_html` to 1-2 direct sentences (under 50 words) linking the speaker's statement directly to the correct answer choice.
+4. Write concise, objective distractor reasons (10-25 words each) explaining specifically why each incorrect option fails based on the dialogue.
+5. In `dialogue_blocks`, include only one short supporting quote from the dialogue.
+6. Return valid JSON only, matching the exact schema below.
 
-REFERENCE EXPLANATION EXAMPLES (Questions 1-50):
-{reference_explanations or "No reference file is available; follow the rules and schema above."}
-
+FEW-SHOT EXAMPLE:
 Input:
+{{
+  "question_number": 1,
+  "question_text": "What does the woman mean?",
+  "options": {{
+    "A": "She is studying math at the library.",
+    "B": "She does not know where the building is.",
+    "C": "The math building is located near the library.",
+    "D": "The library is closed right now."
+  }},
+  "correct_option_letter": "C",
+  "user_selected_letter": "C",
+  "transcript": "Man: Do you know where the math building is?\\nWoman: It's right across the street from the main library.\\nNarrator: What does the woman mean?"
+}}
+
+Output:
+{{
+  "question_metadata": {{
+    "question_number": 1,
+    "question_text": "What does the woman mean?",
+    "user_was_correct": true
+  }},
+  "options_status": [
+    {{"letter": "A", "text": "She is studying math at the library.", "is_correct_choice": false, "is_user_answer": false}},
+    {{"letter": "B", "text": "She does not know where the building is.", "is_correct_choice": false, "is_user_answer": false}},
+    {{"letter": "C", "text": "The math building is located near the library.", "is_correct_choice": true, "is_user_answer": true}},
+    {{"letter": "D", "text": "The library is closed right now.", "is_correct_choice": false, "is_user_answer": false}}
+  ],
+  "explanation_payload": {{
+    "header_title": "Why (C)?",
+    "main_explanation_html": "The woman states the building is across the street from the main library, which means the math building is located near the library.",
+    "dialogue_blocks": [
+      {{
+        "speaker_name": "Woman",
+        "speaker_gender": "female",
+        "introduction_label": "The woman gives directions:",
+        "quote_text_html": "It's right across the street from the main library."
+      }}
+    ],
+    "distractor_analysis": [
+      {{"letter": "A", "text": "She is studying math at the library.", "reason": "The dialogue is only about asking for directions; it does not mention what the woman is studying."}},
+      {{"letter": "B", "text": "She does not know where the building is.", "reason": "She explicitly gives the location, proving she knows where the building is."}},
+      {{"letter": "D", "text": "The library is closed right now.", "reason": "There is no mention of the library operating hours or it being closed."}}
+    ],
+    "closing_analysis_html": "Option (C) is the only choice supported by the woman's statement."
+  }}
+}}
+
+CURRENT INPUT:
 {json.dumps({
     "question_number": question_number,
     "question_text": question_text,
@@ -117,33 +153,7 @@ Input:
     "transcript": transcript,
 }, ensure_ascii=True)}
 
-Required JSON schema:
-{{
-  "question_metadata": {{
-    "question_number": {question_number},
-    "question_text": "question text",
-    "user_was_correct": {str(user_letter == correct_letter).lower()}
-  }},
-  "options_status": [
-    {{"letter":"A","text":"option text","is_correct_choice":false,"is_user_answer":false}}
-  ],
-  "explanation_payload": {{
-    "header_title": "Why ({correct_letter})?",
-    "main_explanation_html": "one concise plain-text evidence-based explanation",
-    "dialogue_blocks": [
-      {{
-        "speaker_name": "speaker name from transcript",
-        "speaker_gender": "male, female, or neutral",
-        "introduction_label": "brief introduction",
-        "quote_text_html": "short exact plain-text supporting quote"
-      }}
-        ],
-        "distractor_analysis": [
-            {{"letter":"A","text":"option text","reason":"one concise plain-text reason this option is incorrect"}}
-        ],
-    "closing_analysis_html": "one short plain-text conclusion; do not repeat the main explanation"
-  }}
-}}
+JSON OUTPUT:
 """
 
 
