@@ -266,7 +266,7 @@
             <div class="dev-header-actions">
                 <button type="button" onclick="openExplanationFromDeveloper()" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">View Explanation</button>
                 <button class="mode-switch-btn" type="button" onclick="openUserPreviewFromDeveloper()">Apply + Open User View</button>
-                <button class="btn-save" type="button" onclick="applyAndUpdateUserView(this)">Apply and Generated View</button>
+                <button class="btn-save" type="button" onclick="applyAndUpdateUserView(this)" style="background:#0284c7; border-color:#0284c7; display:inline-flex; align-items:center; gap:6px;"><i class="ph ph-sparkle" aria-hidden="true"></i> Apply & Generate All Explanations</button>
                 <button class="btn-save" type="button" onclick="saveAndUpdateUserView(this)">Save and Update</button>
             </div>
         </header>
@@ -3507,7 +3507,12 @@
                         <div class="dev-card explaination-card" data-question-number="${questionNumber}">
                             <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
                                 <h3 class="dev-card-title" style="margin:0;">Explanation / Transcript</h3>
-                                <span class="explanation-save-state" hidden style="padding:4px 8px; border-radius:999px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-size:11px; font-weight:700;">Unsaved</span>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <button type="button" class="btn-generate-single-ai" onclick="generateExplanationForQuestionNumber(${questionNumber}, this)" style="display:inline-flex; align-items:center; gap:5px; padding:5px 11px; font-size:12px; font-weight:700; border-radius:6px; background:#f0f7ff; color:#0284c7; border:1px solid #bae6fd; cursor:pointer;" onmouseover="this.style.background='#e0f2fe'" onmouseout="this.style.background='#f0f7ff'">
+                                        <i class="ph ph-sparkle" aria-hidden="true"></i> Generate AI
+                                    </button>
+                                    <span class="explanation-save-state" hidden style="padding:4px 8px; border-radius:999px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-size:11px; font-weight:700;">Unsaved</span>
+                                </div>
                             </div>
                             <h2 class="dev-card-question-number">Question ${questionNumber}</h2>
                             <div style="font-size:12px; color:#475569; line-height:1.6;">
@@ -4660,17 +4665,15 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             ).replace(/\/+$/, "");
             const isSecurePage = window.location.protocol === "https:";
 
-            if (isSecurePage) {
-                pushEndpoint(`https://quickcheck-25590.web.app${path}`);
-                pushEndpoint(`${gatewayBase}${path}`);
-            } else {
+            // Priority: Cloud gateway / proxy first for high reliability, followed by local host options
+            pushEndpoint(`${gatewayBase}${path}`);
+            pushEndpoint(`https://quickcheck-25590.web.app${path}`);
+
+            if (!isSecurePage) {
                 pushLocalHost(params.get("aiHost"));
                 pushLocalHost(localStorage.getItem("ai_review_host"));
-                pushLocalHost(localStorage.getItem("toefl_storage_server_host"));
-                pushLocalHost(window.location.hostname);
                 pushLocalHost("127.0.0.1");
                 pushLocalHost("localhost");
-                pushEndpoint(`${gatewayBase}${path}`);
             }
 
             return endpoints;
@@ -4682,16 +4685,22 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
             for (let i = 0; i < candidates.length; i += 1) {
                 const endpoint = candidates[i];
-                for (let attempt = 0; attempt < 2; attempt += 1) {
-                    try {
-                        const response = await fetch(endpoint, init);
-                        if (response.ok) return { response, endpoint };
-                        lastError = new Error(`AI endpoint returned HTTP ${response.status}`);
-                        break;
-                    } catch (error) {
-                        lastError = error;
-                        if (attempt === 0) await new Promise((resolve) => setTimeout(resolve, 1000));
+                try {
+                    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+                    const timeoutId = controller ? setTimeout(() => controller.abort(), 18000) : null;
+                    const requestInit = {
+                        ...(init || {}),
+                        signal: controller ? controller.signal : (init && init.signal)
+                    };
+                    const response = await fetch(endpoint, requestInit).finally(() => {
+                        if (timeoutId) clearTimeout(timeoutId);
+                    });
+                    if (response && response.ok) {
+                        return { response, endpoint };
                     }
+                    lastError = new Error(`AI endpoint ${endpoint} returned HTTP ${response ? response.status : "unknown"}`);
+                } catch (error) {
+                    lastError = error;
                 }
             }
 
@@ -4757,7 +4766,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 if (response && response.ok) {
                     try {
                         const data = await response.json();
-                        if (data && hasConciseExplanationSchema(data)) return data;
+                        if (data && (hasUsableExplanationSchema(data) || data.explanation_payload)) return data;
                     } catch {}
                 }
                 if (!response || (response.status !== 429 && response.status !== 502 && response.status !== 503)) return null;
@@ -4766,15 +4775,119 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             return null;
         }
 
+        async function generateExplanationForQuestionNumber(questionNumber, button) {
+            const qNum = Number(questionNumber || 0);
+            if (!qNum) return;
+            const originalText = button ? button.innerHTML : "";
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = `<i class="ph ph-spinner" style="animation: spin 1s linear infinite;" aria-hidden="true"></i> Generating...`;
+            }
+            try {
+                // Ensure editor state is in sync
+                await saveSectionMeta().catch(() => {});
+                await saveSectionDraft().catch(() => {});
+                await updateUserView(false);
+
+                const result = buildPreviewSectionResult();
+                const question = (result?.questions || []).find((item) => Number(item?.number || 0) === qNum);
+                if (!question) {
+                    throw new Error(`Question ${qNum} not found in current question set. Please save questions first.`);
+                }
+
+                let fullSetDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
+                if (!fullSetDraft?.parts && window.toeflStorage && currentSetId) {
+                    fullSetDraft = await toeflStorage.getDraftBySetIdAndType(currentSetId, currentTestType).catch(() => ({}));
+                }
+
+                let payload = await compileActiveExplanationPayloadForQuestion(fullSetDraft, question, question);
+                if (!payload || !payload.isolated_transcript_block) {
+                    const explicitPart = Number(question.partId || 0);
+                    const partId = (explicitPart >= 1 && explicitPart <= 3) ? explicitPart : (qNum <= 30 ? 1 : (qNum <= 38 ? 2 : 3));
+                    const rawTranscript = String((document.getElementById(`input-transcript-${partId}`) || {}).value || "").trim();
+                    const isolated = extractIsolatedQuestionBlock(rawTranscript, qNum);
+                    if (isolated) {
+                        payload = {
+                            set_id: String(currentSetId || "").trim(),
+                            active_question_number: qNum,
+                            question_text: String(question.questionText || `Question ${qNum}`).trim(),
+                            options_array: buildOptionsArrayForSchema(question.options || {}),
+                            correct_option_letter: String(question.correctAnswer || "").toUpperCase(),
+                            user_selected_letter: String(question.userAnswer || question.correctAnswer || "").toUpperCase(),
+                            isolated_transcript_block: isolated
+                        };
+                    }
+                }
+
+                if (!payload || !payload.isolated_transcript_block) {
+                    throw new Error(`No transcript evidence found for Question ${qNum}. Please paste or upload the transcript in the Transcript section above.`);
+                }
+
+                const schema = await generateExplanationSchemaFromPayload(payload);
+                if (!schema) {
+                    throw new Error(`AI service could not generate an explanation for Question ${qNum}. Please verify your connection or AI server and try again.`);
+                }
+
+                const englishInput = document.getElementById(`input-explanation-en-${qNum}`);
+                const formattedWhy = buildWhySectionTextFromSchema(schema);
+                if (englishInput) {
+                    englishInput.value = formattedWhy;
+                }
+
+                const explicitPart = Number(question.partId || 0);
+                const partId = (explicitPart >= 1 && explicitPart <= 3) ? explicitPart : (qNum <= 30 ? 1 : (qNum <= 38 ? 2 : 3));
+                fullSetDraft.parts = fullSetDraft.parts || {};
+                fullSetDraft.parts[partId] = fullSetDraft.parts[partId] || {};
+                fullSetDraft.parts[partId].explanationSchemas = fullSetDraft.parts[partId].explanationSchemas || {};
+                fullSetDraft.parts[partId].explanationSchemas[qNum] = schema;
+                fullSetDraft.parts[partId].explanationTexts = fullSetDraft.parts[partId].explanationTexts || {};
+                fullSetDraft.parts[partId].explanationTexts[qNum] = {
+                    ...(fullSetDraft.parts[partId].explanationTexts[qNum] || {}),
+                    explanation: formattedWhy
+                };
+                localStorage.setItem(DRAFT_KEY, JSON.stringify(fullSetDraft));
+
+                await saveSectionDraft();
+                persistPreviewSectionResult();
+                showAutoSaveStatus(`Question ${qNum} explanation generated and saved`, true);
+            } catch (err) {
+                console.error(`[AI Explanation] Question ${qNum} generation failed:`, err);
+                alert(String(err?.message || "Failed to generate explanation."));
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = originalText || `<i class="ph ph-sparkle" aria-hidden="true"></i> Generate AI`;
+                }
+            }
+        }
+
         async function precomputeExplanationSchemasForResult(result) {
             if (!result || !Array.isArray(result.questions) || !result.questions.length) return result;
-            if (!window.toeflStorage || !currentSetId || typeof toeflStorage.saveDraftBySetIdAndType !== "function") return result;
 
             let fullSetDraft = null;
-            try {
-                fullSetDraft = await toeflStorage.getDraftBySetIdAndType(currentSetId, currentTestType);
-            } catch {
-                fullSetDraft = null;
+            if (window.toeflStorage && currentSetId && typeof toeflStorage.getDraftBySetIdAndType === "function") {
+                try {
+                    fullSetDraft = await toeflStorage.getDraftBySetIdAndType(currentSetId, currentTestType);
+                } catch {
+                    fullSetDraft = null;
+                }
+            }
+            if (!fullSetDraft || !fullSetDraft.parts) {
+                fullSetDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
+            }
+            if (!fullSetDraft || !fullSetDraft.parts) {
+                try {
+                    const firebaseData = await getCompleteListeningDataFromFirebase(currentSetId);
+                    if (firebaseData && firebaseData.parts) {
+                        fullSetDraft = { parts: {} };
+                        const rawParts = Array.isArray(firebaseData.parts) ? firebaseData.parts : Object.values(firebaseData.parts);
+                        rawParts.forEach((pData, idx) => {
+                            if (!pData) return;
+                            const pid = String(pData.partId || pData.id || idx || 1);
+                            fullSetDraft.parts[pid] = pData;
+                        });
+                    }
+                } catch (_) {}
             }
             if (!fullSetDraft || !fullSetDraft.parts) return result;
 
@@ -4789,9 +4902,9 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const rq = result.questions[i] || {};
                 const qNum = Number(rq.number || 0);
                 if (!qNum) continue;
-                const partId = Number(rq.partId || 0);
+                const partId = Number(rq.partId || (qNum <= 30 ? 1 : (qNum <= 38 ? 2 : 3)));
                 const savedSchema = fullSetDraft.parts?.[partId]?.explanationSchemas?.[qNum];
-            if (savedSchema && hasConciseExplanationSchema(savedSchema)) {
+                if (savedSchema && (hasUsableExplanationSchema(savedSchema) || savedSchema.explanation_payload)) {
                     rq.explanationSchema = JSON.stringify(savedSchema);
                     const englishInput = document.getElementById(`input-explanation-en-${qNum}`);
                     if (englishInput && !String(englishInput.value || "").trim()) {
@@ -4801,7 +4914,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 }
                 const questionItem = questionsByNum[qNum] || null;
                 const payload = await compileActiveExplanationPayloadForQuestion(fullSetDraft, questionItem, rq);
-                if (!payload) continue;
+                if (!payload || !payload.isolated_transcript_block) continue;
                 const schema = await generateExplanationSchemaFromPayload(payload);
                 if (!schema) {
                     failedQuestionNumbers.push(qNum);
@@ -4819,7 +4932,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                         explanation: buildWhySectionTextFromSchema(schema)
                     };
                 }
-                await new Promise((resolve) => setTimeout(resolve, 500));
+                await new Promise((resolve) => setTimeout(resolve, 300));
             }
 
             const localDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
@@ -4832,7 +4945,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             localStorage.setItem(DRAFT_KEY, JSON.stringify(localDraft));
 
             if (failedQuestionNumbers.length) {
-                throw new Error(`Gemini returned incomplete explanations for question(s): ${failedQuestionNumbers.join(", ")}. No generic fallback was published.`);
+                console.warn(`[AI Explanation] Could not generate AI explanations for question(s): ${failedQuestionNumbers.join(", ")}. Ensure transcripts exist and AI server is reachable.`);
             }
 
             return result;

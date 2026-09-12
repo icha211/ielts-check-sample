@@ -388,30 +388,23 @@
                 hosts.push(host);
             }
 
-            pushHost(params.get('aiHost'));
-            pushHost(localStorage.getItem('ai_review_host'));
-            pushHost(localStorage.getItem('toefl_storage_server_host'));
-            pushHost(window.location.hostname);
-
             var isSecurePage = window.location.protocol === 'https:';
             var isFilePage = window.location.protocol === 'file:';
-            if (isSecurePage || isFilePage) {
-                pushEndpoint('https://quickcheck-25590.web.app');
-            }
-            if (isSecurePage && typeof REVIEW_API_GATEWAY_URL !== 'undefined') {
+
+            if (typeof REVIEW_API_GATEWAY_URL !== 'undefined') {
                 pushEndpoint(REVIEW_API_GATEWAY_URL);
             }
-            if (!isFilePage) {
+            pushEndpoint('https://quickcheck-25590.web.app');
+
+            if (!isFilePage && !isSecurePage) {
+                pushHost(params.get('aiHost'));
+                pushHost(localStorage.getItem('ai_review_host'));
+                pushHost(localStorage.getItem('toefl_storage_server_host'));
                 pushHost('127.0.0.1');
                 pushHost('localhost');
-            }
-            hosts.forEach(function(host) {
-                if (!isFilePage && (!isSecurePage || host === '127.0.0.1' || host === 'localhost')) {
+                hosts.forEach(function(host) {
                     pushEndpoint('http://' + host + ':' + port);
-                }
-            });
-            if (!isSecurePage && !isFilePage && typeof REVIEW_API_GATEWAY_URL !== 'undefined') {
-                pushEndpoint(REVIEW_API_GATEWAY_URL);
+                });
             }
             return endpoints;
         }
@@ -428,7 +421,13 @@
             for (var i = 0; i < candidates.length; i += 1) {
                 var endpoint = candidates[i];
                 try {
-                    var response = await fetch(endpoint, init);
+                    var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                    var timeoutId = controller ? setTimeout(function() { controller.abort(); }, 18000) : null;
+                    var requestInit = Object.assign({}, init || {}, {
+                        signal: controller ? controller.signal : (init && init.signal)
+                    });
+                    var response = await fetch(endpoint, requestInit);
+                    if (timeoutId) clearTimeout(timeoutId);
                     if (response && response.ok) {
                         try {
                             var parsed = new URL(endpoint);
