@@ -157,7 +157,7 @@ STRICT FORMATTING RULES:
 5. Under **WHY THE OTHER OPTIONS ARE INCORRECT:**, list ONLY the wrong choices using this exact bullet syntax:
    * **[Letter]:** [1 direct sentence factual contrast, max 20 words]
 
-EXACT TARGET PATTERN:
+EXAMPLE:
 **Explanation:**
 The woman states the building is "across the street from the main library," which means the math building is located near the library.
 
