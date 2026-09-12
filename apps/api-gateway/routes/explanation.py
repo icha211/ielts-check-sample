@@ -19,49 +19,15 @@ _REFERENCE_EXPLANATIONS_PATH = (
 )
 
 
-def _load_reference_explanations() -> str:
+def _load_reference_explanations(max_examples: int = 3) -> str:
     try:
         source = _REFERENCE_EXPLANATIONS_PATH.read_text(encoding="utf-8")
     except OSError:
         return ""
 
-    compact_examples = []
-    question_blocks = re.findall(
-        r"^## Question\s+(\d+)\s*$([\s\S]*?)(?=^## Question\s+\d+\s*$|\Z)",
-        source,
-        flags=re.MULTILINE,
-    )
-    for question_number, block in question_blocks:
-        answer_match = re.search(r"\*\*Correct Answer:\*\*\s*([^\n]+)", block)
-        explanation_match = re.search(
-            r"\*\*EXPLAINATION\*\*\s*([\s\S]*?)(?=\n\s*\*\*WHY THE OTHER OPTION IS INCORRECT\*\*)",
-            block,
-        )
-        distractor_match = re.search(
-            r"\*\s+\*\*\(([A-D])\)\s+([^:]+):\*\*\s*([^\n]+)",
-            block,
-        )
-
-        def compact_text(value: str, limit: int) -> str:
-            text = re.sub(r"\s+", " ", str(value or "")).strip()
-            return text if len(text) <= limit else text[: limit - 3].rstrip() + "..."
-
-        answer = compact_text(answer_match.group(1) if answer_match else "", 150)
-        explanation = compact_text(explanation_match.group(1) if explanation_match else "", 190)
-        distractor = ""
-        if distractor_match:
-            distractor = "wrong " + distractor_match.group(1) + ": " + compact_text(distractor_match.group(3), 120)
-
-        compact_examples.append(
-            "Q{} | answer: {} | explanation: {}{}".format(
-                question_number,
-                answer,
-                explanation,
-                " | " + distractor if distractor else "",
-            )
-        )
-
-    return "\n".join(compact_examples)
+    blocks = re.split(r"(?=^## Question\s+\d+)", source, flags=re.MULTILINE)
+    selected = [b.strip() for b in blocks if b.strip()][:max_examples]
+    return "\n\n".join(selected)
 
 
 def _create_client() -> genai.Client:
@@ -83,16 +49,21 @@ def _build_prompt(payload: dict) -> str:
     user_letter = str(payload.get("user_selected_letter") or "").strip().upper()
     transcript = str(payload.get("isolated_transcript_block") or "").strip()
     options = payload.get("options_array") or {}
+    reference_examples = _load_reference_explanations(3)
 
     return f"""You are an expert TOEFL ITP listening tutor. Produce a complete, question-specific explanation using only the supplied transcript evidence.
 
 GUIDELINES:
-1. Format all strings as raw, unformatted plain text only.
-2. Begin `main_explanation_html` immediately with the transcript evidence (e.g., "The woman states...", "The man indicates...").
-3. Keep `main_explanation_html` to 1-2 direct sentences (under 50 words) linking the speaker's statement directly to the correct answer choice.
-4. Write concise, objective distractor reasons (10-25 words each) explaining specifically why each incorrect option fails based on the dialogue.
+1. Write all text using standard alphanumeric characters, quotation marks, and basic punctuation only. Strip all Markdown, asterisks, bolding, and HTML tags from your response.
+2. Begin `main_explanation_html` immediately with the speaker and a short direct quote from the transcript (e.g., The woman states the building is "across the street from the main library," which means the math building is located near the library.).
+3. Combine the quote and the explanation into exactly 1-2 direct sentences (under 45 words). Do not write setup sentences like "The man asks for the location" or "The question asks".
+4. Write objective distractor reasons (10-25 words each) stating facts directly (e.g., "The dialogue is only about asking for directions; it does not mention what the woman is studying." or "There is no mention of the library operating hours or it being closed."). Never use meta-phrases like "The transcript provides no information", "The dialogue shows", or "This option is incorrect".
 5. In `dialogue_blocks`, include only one short supporting quote from the dialogue.
-6. Return valid JSON only, matching the exact schema below.
+6. Set `closing_analysis_html` to an empty string "".
+7. Return valid JSON only, matching the exact schema below.
+
+REFERENCE EXAMPLES:
+{reference_examples or "Follow the rules and schema below."}
 
 FEW-SHOT EXAMPLE:
 Input:
@@ -125,7 +96,7 @@ Output:
   ],
   "explanation_payload": {{
     "header_title": "Why (C)?",
-    "main_explanation_html": "The woman states the building is across the street from the main library, which means the math building is located near the library.",
+    "main_explanation_html": "The woman states the building is \\"across the street from the main library,\\" which means the math building is located near the library.",
     "dialogue_blocks": [
       {{
         "speaker_name": "Woman",
@@ -139,7 +110,7 @@ Output:
       {{"letter": "B", "text": "She does not know where the building is.", "reason": "She explicitly gives the location, proving she knows where the building is."}},
       {{"letter": "D", "text": "The library is closed right now.", "reason": "There is no mention of the library operating hours or it being closed."}}
     ],
-    "closing_analysis_html": "Option (C) is the only choice supported by the woman's statement."
+    "closing_analysis_html": ""
   }}
 }}
 

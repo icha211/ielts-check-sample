@@ -7,6 +7,7 @@ import smtplib
 import time
 from email.message import EmailMessage
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
 
 from google import genai
 
@@ -20,6 +21,23 @@ REPORT_SMTP_PORT = int(os.environ.get("REPORT_SMTP_PORT", "587"))
 REPORT_SMTP_USER = str(os.environ.get("REPORT_SMTP_USER", "quickcheck.edu@gmail.com") or "quickcheck.edu@gmail.com").strip()
 REPORT_SMTP_PASS = str(os.environ.get("REPORT_SMTP_PASS", "") or "").strip()
 REPORT_QUEUE_FILE = str(os.environ.get("REPORT_QUEUE_FILE", "data/report_issue_queue.jsonl") or "data/report_issue_queue.jsonl").strip()
+
+_REFERENCE_EXPLANATIONS_PATH = (
+    Path(__file__).resolve().parent
+    / "toefl-sample"
+    / "explaination_expected_section1.md"
+)
+
+
+def _load_reference_explanations(max_examples: int = 3) -> str:
+    try:
+        source = _REFERENCE_EXPLANATIONS_PATH.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+    blocks = re.split(r"(?=^## Question\s+\d+)", source, flags=re.MULTILINE)
+    selected = [b.strip() for b in blocks if b.strip()][:max_examples]
+    return "\n\n".join(selected)
 
 
 def is_transient_model_error(exc: Exception) -> bool:
@@ -137,44 +155,37 @@ def build_prompt(payload: dict) -> str:
 def build_explanation_prompt(payload: dict) -> str:
     question_text = payload.get("questionText", "")
     options = payload.get("options", {})
-    correct_answer = payload.get("correctAnswer", "")
+    correct_answer = str(payload.get("correctAnswer", "")).strip().upper()
     transcript = payload.get("transcript", "")
 
     options_lines = "\n".join(
         f"  ({letter}) {text}" for letter, text in sorted(options.items())
     )
 
-    explanation_language = str(
-        payload.get("explanationLanguage")
-        or payload.get("targetLanguage")
-        or "Bahasa Indonesia"
-    ).strip()
+    reference_examples = _load_reference_explanations(3)
 
-    return f"""Please provide a step-by-step explanation for the following TOEFL ITP listening question.
+    return f"""You are an expert TOEFL ITP listening tutor. Provide a concise, direct explanation for the following TOEFL ITP listening question.
 
-IMPORTANT LANGUAGE RULE:
-- Write all explanatory content in {explanation_language}.
-- Keep only parser-critical markers in English exactly as written below (Step headers, "Test Tip:", "Note:", and "is wrong:").
+RULES:
+1. Write all text using standard plain text with basic punctuation and quotation marks only. Strip all Markdown, asterisks, bolding, and HTML tags from paragraphs.
+2. Begin the EXPLAINATION section immediately with the speaker and a short direct quote from the transcript (e.g., The woman states the building is "across the street from the main library," which means the math building is located near the library.).
+3. Keep the EXPLAINATION section to exactly 1-2 direct sentences (under 45 words). Do not write setup sentences like "The man asks for the location" or "The question asks".
+4. In WHY THE OTHER OPTION IS INCORRECT, write one direct factual sentence (10-25 words) for each wrong option. State facts directly without meta-phrases.
 
-CRITICAL RULE: Do not use generic headers like "Step 1: Find the Idiom" for every question. Instead, change the text of the step headers so they are perfectly customized to the specific question type (e.g., Idioms, Suggestions, Tone/Emotions, Main Topic, Details).
+REFERENCE EXAMPLES:
+{reference_examples or "Follow the rules and format below."}
 
-Use this EXACT Markdown structure, but change the bracketed text in the headers based on the question:
+Use this EXACT structure:
 
-### Step 1: [Custom Action Verb based on the question type]
-Look at the [man's/woman's] response: *"[Quote the sentence containing the clue with key words in **bold**]"*
+**EXPLAINATION**
 
-💡 **Test Tip:** [Provide a short, high-value beginner tip about listening cues or patterns specific to this question type].
+[1-2 sentence evidence-based explanation quoting the decisive transcript phrase]
 
-### Step 2: [Custom Question explaining the core meaning or concept]
-* **"[Key Term/Concept]"** [Explain the meaning, suggestion, or situation in simple English].
-* *Note: [Explain what a beginner might get confused by or why the literal words shouldn't be misinterpreted].*
+**WHY THE OTHER OPTION IS INCORRECT**
 
-### Step 3: Why the other answers are wrong
-The test tries to trick you by using words from the conversation out of context:
-
-* ❌ **([Letter]) is wrong:** [Explain the specific trap].
-* ❌ **([Letter]) is wrong:** [Explain the specific trap].
-* ❌ **([Letter]) is wrong:** [Explain the specific trap].
+* **([Letter]) [Option text]:** [Direct factual reason]
+* **([Letter]) [Option text]:** [Direct factual reason]
+* **([Letter]) [Option text]:** [Direct factual reason]
 
 ---
 QUESTION DATA:
@@ -189,7 +200,7 @@ Correct answer: ({correct_answer})
 Conversation transcript:
 {transcript}
 
-IMPORTANT: Output ONLY the three steps in the exact Markdown format above. No extra headings or text outside the three steps.
+Output ONLY the explanation in the format above.
 """
 
 
@@ -290,44 +301,28 @@ def explanation_has_required_shape(text: str) -> bool:
     if not body:
         return False
 
-    # Must have exactly Step 1/2/3 headings in markdown style.
-    step_headers = [m.group(1) for m in __import__("re").finditer(r"(?im)^\s*#{2,4}\s*Step\s*(\d+)\s*:\s*.+$", body)]
-    if step_headers != ["1", "2", "3"]:
+    if "**EXPLAINATION**" not in body and "**EXPLANATION**" not in body:
+        return False
+    if "**WHY THE OTHER OPTION IS INCORRECT**" not in body:
         return False
 
-    # Must include test tip marker.
-    if "test tip" not in body.lower():
-        return False
-
-    # Must include a Step 2 note line.
-    if "note:" not in body.lower():
-        return False
-
-    # Step 3 needs at least 3 wrong-option bullets like (A) is wrong: ...
-    wrong_lines = __import__("re").findall(r"(?im)^\s*[-*]\s*(?:❌\s*)?\*\*\(([A-D])\)\s*is\s*wrong\s*:\*\*\s*.+$", body)
+    wrong_lines = re.findall(r"(?im)^\s*[*\-]\s*\*\*\(?[A-D]\)?.*:\*\*", body)
     return len(wrong_lines) >= 3
 
 
 def build_explanation_fix_prompt(previous_output: str) -> str:
-    return f"""Rewrite the output below so it STRICTLY matches the required TOEFL explanation format.
-
-LANGUAGE REQUIREMENT:
-- Write explanatory content in Bahasa Indonesia.
-- Keep parser markers in English exactly as required.
+    return f"""Rewrite the output below so it strictly matches the required TOEFL explanation format.
 
 Requirements:
-1) Exactly 3 step headers in this order:
-   ### Step 1: ...
-   ### Step 2: ...
-   ### Step 3: Why the other answers are wrong
-2) Include a Test Tip line in Step 1 using: 💡 **Test Tip:** ...
-3) Step 3 must include exactly 3 bullet lines for wrong options, with this syntax:
-   - ❌ **(A) is wrong:** ...
-   - ❌ **(B) is wrong:** ...
-   - ❌ **(C) is wrong:** ...
-   (Use the actual wrong letters for this question.)
-4) Keep the explanation specific to the transcript and answer options. No generic filler.
-5) Output only the final markdown explanation.
+1) Exactly two section headers:
+   **EXPLAINATION**
+   **WHY THE OTHER OPTION IS INCORRECT**
+2) Under **EXPLAINATION**, write 1-2 direct sentences quoting the decisive transcript phrase.
+3) Under **WHY THE OTHER OPTION IS INCORRECT**, include exactly 3 bullet points with this syntax:
+   * **(A) [Option text]:** [Direct factual reason]
+   * **(B) [Option text]:** [Direct factual reason]
+   * **(C) [Option text]:** [Direct factual reason]
+4) Strip all HTML tags and meta-language. State facts directly.
 
 OUTPUT TO REWRITE:
 {previous_output}
@@ -460,15 +455,21 @@ def build_explanation_json_prompt(payload: dict) -> str:
         for key in ("A", "B", "C", "D"):
             options_map[key] = str(options_array.get(key, "") or "").strip()
 
+    reference_examples = _load_reference_explanations(3)
+
     return f"""You are an expert TOEFL ITP listening tutor. Produce a complete, question-specific explanation using only the supplied transcript evidence.
 
 GUIDELINES:
-1. Format all strings as raw, unformatted plain text only.
-2. Begin `main_explanation_html` immediately with the transcript evidence (e.g., "The woman states...", "The man indicates...").
-3. Keep `main_explanation_html` to 1-2 direct sentences (under 50 words) linking the speaker's statement directly to the correct answer choice.
-4. Write concise, objective distractor reasons (10-25 words each) explaining specifically why each incorrect option fails based on the dialogue.
+1. Write all text using standard alphanumeric characters, quotation marks, and basic punctuation only. Strip all Markdown, asterisks, bolding, and HTML tags from your response.
+2. Begin `main_explanation_html` immediately with the speaker and a short direct quote from the transcript (e.g., The woman states the building is "across the street from the main library," which means the math building is located near the library.).
+3. Combine the quote and the explanation into exactly 1-2 direct sentences (under 45 words). Do not write setup sentences like "The man asks for the location" or "The question asks".
+4. Write objective distractor reasons (10-25 words each) stating facts directly (e.g., "The dialogue is only about asking for directions; it does not mention what the woman is studying." or "There is no mention of the library operating hours or it being closed."). Never use meta-phrases like "The transcript provides no information", "The dialogue shows", or "This option is incorrect".
 5. In `dialogue_blocks`, include only one short supporting quote from the dialogue.
-6. Return valid JSON only, matching the exact schema below.
+6. Set `closing_analysis_html` to an empty string "".
+7. Return valid JSON only, matching the exact schema below.
+
+REFERENCE EXAMPLES:
+{reference_examples or "Follow the rules and schema below."}
 
 FEW-SHOT EXAMPLE:
 Input:
@@ -501,7 +502,7 @@ Output:
   ],
   "explanation_payload": {{
     "header_title": "Why (C)?",
-    "main_explanation_html": "The woman states the building is across the street from the main library, which means the math building is located near the library.",
+    "main_explanation_html": "The woman states the building is \\"across the street from the main library,\\" which means the math building is located near the library.",
     "dialogue_blocks": [
       {{
         "speaker_name": "Woman",
@@ -515,7 +516,7 @@ Output:
       {{"letter": "B", "text": "She does not know where the building is.", "reason": "She explicitly gives the location, proving she knows where the building is."}},
       {{"letter": "D", "text": "The library is closed right now.", "reason": "There is no mention of the library operating hours or it being closed."}}
     ],
-    "closing_analysis_html": "Option (C) is the only choice supported by the woman's statement."
+    "closing_analysis_html": ""
   }}
 }}
 
