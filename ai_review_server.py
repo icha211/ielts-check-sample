@@ -176,9 +176,9 @@ def build_explanation_prompt(payload: dict) -> str:
     return f"""You are an expert TOEFL ITP listening tutor. Provide a concise, direct explanation for the following TOEFL ITP listening question.
 
 RULES:
-1. Write all paragraph text and bullet reasons in pure plain text without any HTML formatting (if highlight tags are needed, use ONLY plain `<mark>quote</mark>` tags without inline styles or attributes). You must use the exact Markdown asterisks shown in the structural template below for section headers and option bullet labels (**EXPLAINATION**, **WHY THE OTHER OPTION IS INCORRECT**, and * **([Letter]) [Option text]:**).
-2. Under **EXPLAINATION**, write EXACTLY ONE sentence (under 35 words). Start immediately with the transcript quote/clue linking directly to the answer (e.g., 'The woman states...', 'The man tells the woman...', or 'By pointing out...'). NEVER write narrative recaps (e.g., "The man asks...", "The woman responds...") and NEVER end with "making option X correct" or "Therefore...".
-3. Under **WHY THE OTHER OPTION IS INCORRECT**, write EXACTLY ONE sentence per wrong option (10 to 20 words maximum). State the direct factual contrast using contrast syntax (e.g., "The dialogue is about X, not Y" or "She explicitly states X, proving Y"). Never start with "While", "Although", or "However".
+1. Write all paragraph text and bullet reasons in pure plain text without any HTML formatting or tag syntax. You must use the exact Markdown asterisks shown in the structural template below for section headers and option bullet labels (**EXPLAINATION**, **WHY THE OTHER OPTION IS INCORRECT**, and * **([Letter]) [Option text]:**).
+2. Under **EXPLAINATION**, write EXACTLY ONE sentence (under 35 words). Start immediately by linking the speaker's direct quote to the meaning (e.g., 'The woman states...', 'The man tells the woman...', or 'By pointing out...'). NEVER write narrative setup sentences (e.g., "The woman's statement directly indicates...", "When she says...") and NEVER end with "making option X correct" or "Therefore...".
+3. Under **WHY THE OTHER OPTION IS INCORRECT**, write EXACTLY ONE sentence per wrong option (10 to 20 words maximum). State the direct factual contrast (e.g., "The dialogue is about X, not Y" or "She explicitly states X, proving Y"). NEVER use words like "While", "Although", "However", "This option is incorrect", or "The transcript provides no information".
 REFERENCE EXAMPLES:
 {reference_examples or "Follow the rules and format below."}
 
@@ -190,10 +190,9 @@ Use this EXACT structure:
 
 **WHY THE OTHER OPTION IS INCORRECT**
 
-* **([Letter]) [Option text]:** [Direct factual reason]
-* **([Letter]) [Option text]:** [Direct factual reason]
-* **([Letter]) [Option text]:** [Direct factual reason]
-
+* **([Letter]) [Option text]:** [1 direct sentence factual contrast, max 20 words]
+* **([Letter]) [Option text]:** [1 direct sentence factual contrast, max 20 words]
+* **([Letter]) [Option text]:** [1 direct sentence factual contrast, max 20 words]
 ---
 QUESTION DATA:
 
@@ -324,12 +323,12 @@ Requirements:
 1) Exactly two section headers:
    **EXPLAINATION**
    **WHY THE OTHER OPTION IS INCORRECT**
-2) Under **EXPLAINATION**, write 1-2 direct sentences quoting the decisive transcript phrase.
+2) Under **EXPLAINATION**, write EXACTLY ONE direct sentence (under 35 words) quoting the decisive transcript phrase.
 3) Under **WHY THE OTHER OPTION IS INCORRECT**, include exactly 3 bullet points with this syntax:
-   * **(A) [Option text]:** [Direct factual reason]
-   * **(B) [Option text]:** [Direct factual reason]
-   * **(C) [Option text]:** [Direct factual reason]
-4) Strip all HTML tags and meta-language. State facts directly.
+   * **(A) [Option text]:** [Direct factual reason, max 20 words]
+   * **(B) [Option text]:** [Direct factual reason, max 20 words]
+   * **(C) [Option text]:** [Direct factual reason, max 20 words]
+4) Strip all HTML tags, meta-language ("This option is incorrect"), and setup sentences. State facts directly.
 
 OUTPUT TO REWRITE:
 {previous_output}
