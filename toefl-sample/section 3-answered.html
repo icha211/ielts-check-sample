@@ -176,82 +176,137 @@
 
         .component-34.section3-review-layout {
             max-width: 1438px;
-            grid-template-columns: 707px 731px;
-            column-gap: 0;
+            margin: 0 auto;
+            grid-template-columns: calc(16cm + 108px) minmax(320px, 1fr);
+            gap: 12px;
             min-height: 836px;
-            padding: 0;
+            padding: 10px 16px 14px;
             background: #fff;
+            box-sizing: border-box;
+            display: grid;
         }
 
         .section3-review-layout .left-col {
             min-height: 0;
+            display: flex;
+            flex-direction: column;
         }
 
         .section3-review-left {
-            background: #f4f7fb;
+            background: transparent;
             padding: 0;
             display: flex;
             justify-content: flex-start;
             align-items: stretch;
+            min-height: 0;
         }
 
-        .reading-passages-review {
-            width: 701px;
-            min-height: 836px;
+        .passage-section {
             border-radius: 8px;
-            background: #ffffff;
             border: 1px solid #d1dce8;
+            background: #fff;
             box-shadow: none;
+            position: relative;
+            width: calc(16cm + 108px);
+            flex: 0 0 calc(16cm + 108px);
+            min-width: 0;
+            max-width: none;
             padding: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            scrollbar-width: none;
             display: flex;
             flex-direction: column;
-            min-height: 0;
-            margin: 0;
+            min-height: 800px;
+            height: 100%;
+            box-sizing: border-box;
         }
 
-        .reading-passages-review .passage-header-block {
+        .passage-section::-webkit-scrollbar {
+            display: none;
+        }
+
+        .reading-passage-scrollbar-track {
+            position: absolute;
+            top: 4px;
+            right: 3px;
+            bottom: 4px;
+            width: 5px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.16);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            z-index: 2;
+        }
+
+        .reading-passage-scrollbar-track.is-visible {
+            opacity: 1;
+        }
+
+        .reading-passage-scrollbar-thumb {
+            position: absolute;
+            left: 0;
+            right: 0;
+            border-radius: 999px;
+            background: rgba(100, 116, 139, 0.6);
+        }
+
+        .passage-section .passage-header-block {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
-            gap: 5px;
-            padding: 30px 20px 12px;
+            gap: 4px;
+            padding: 18px 16px 10px;
             border-bottom: 1px solid #d1dce8;
             background: #fff;
         }
 
-        .reading-passages-review .passage-part-label {
-            font: 700 19px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        .passage-section .passage-part-label {
+            font: 600 18px/1.2 "Outfit", Arial, sans-serif;
             color: #000;
         }
 
-        .reading-passages-review .passage-heading {
+        .passage-section .passage-heading {
             position: static;
-            color: #7a8fa6;
-            font: 400 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
             margin: 0;
             padding: 0;
             background: transparent;
             border-bottom: 0;
+            color: #7a8fa6;
+            font: 500 14px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
         }
 
-        .reading-passages-review .passage-shell {
+        .passage-section .passage-shell {
             display: grid;
-            grid-template-columns: 44px minmax(0, 1fr);
-            gap: 0;
-            padding: 16px 20px 20px;
+            grid-template-columns: minmax(38px, max-content) minmax(0, calc(16cm + 22px));
+            gap: 10px;
+            width: 100%;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 18px 16px 16px;
+            height: auto;
+            min-height: 0;
+            flex: 0 0 auto;
             align-items: start;
+            justify-content: center;
+            box-sizing: border-box;
         }
 
-        .reading-passages-review .passage-line-column {
+        .passage-section .passage-line-column {
             position: relative;
-            min-height: 100%;
+            width: max-content;
+            min-width: 38px;
+            align-self: stretch;
+            min-height: 0;
             color: #000;
-            font-family: Arial, sans-serif;
+            font-family: "Times New Roman", Times, serif;
+            font-size: 16px;
             font-style: italic;
         }
 
-        .reading-passages-review .passage-line-text,
-        .reading-passages-review .passage-line-marker-fixed {
+        .passage-section .passage-line-text,
+        .passage-section .passage-line-marker-fixed {
             position: absolute;
             left: 0;
             width: 100%;
@@ -259,40 +314,66 @@
             white-space: nowrap;
         }
 
-        .reading-passages-review .passage-line-text {
+        .passage-section .passage-line-text {
             top: 0;
             transform: translateY(-100%);
             font-size: 16px;
             line-height: 1;
         }
 
-        .reading-passages-review .passage-line-marker-fixed {
+        .passage-section .passage-line-marker-fixed {
             font-size: 18px;
             transform: translateY(-50%);
         }
 
-        .reading-passages-review .passage-box {
-            width: 100%;
-            box-sizing: border-box;
+        .passage-section .passage-line-marker-fixed[data-marker-index="0"] { top: 25%; }
+        .passage-section .passage-line-marker-fixed[data-marker-index="1"] { top: 44%; }
+        .passage-section .passage-line-marker-fixed[data-marker-index="2"] { top: 63%; }
+
+        .passage-section .passage-box {
+            flex: none;
+            min-height: 0;
+            height: auto;
+            align-self: start;
+            width: 16cm;
+            max-width: none;
+            justify-self: stretch;
+            box-sizing: content-box;
             padding: 10px;
             border: 1px solid #000;
             border-radius: 0;
             background: #fff;
+            box-shadow: none;
             color: #000;
-            font: 400 18px/1.42 Arial, sans-serif;
-            text-align: left;
+            font: 300 18.67px "Aptos", Aptos, sans-serif;
+            text-align: justify;
             overflow: visible;
             word-break: normal;
             overflow-wrap: break-word;
-            min-height: 545px;
         }
 
-        .reading-passages-review .passage-box p {
-            margin: 0 0 18px;
+        .passage-section .passage-box p {
+            margin: 0 0 22px;
         }
 
-        .reading-passages-review .passage-box p:last-child {
+        .passage-section .passage-box p:last-child {
             margin-bottom: 0;
+        }
+
+        .passage-section .passage-source-line {
+            display: inline;
+        }
+
+        .passage-section .passage-box .line-marker {
+            display: none;
+        }
+
+        .passage-section .passage-box mark.passage-highlight {
+            background: #fef3c7;
+            color: #0f172a;
+            text-decoration: none;
+            padding: 0 4px;
+            border-radius: 999px;
         }
 
         .section3-review-right {
@@ -593,7 +674,7 @@
 
         <main class="component-34 section3-review-layout">
             <aside class="left-col section3-review-left">
-                <section class="reading-passages-review">
+                <div class="passage-section" id="reviewPassageSection">
                     <div class="passage-header-block">
                         <div class="passage-part-label" id="reviewPartTitle">PART 1</div>
                         <div class="passage-heading" id="reviewPassageHeading">Questions 1-10</div>
@@ -601,13 +682,14 @@
                     <div class="passage-shell">
                         <div class="passage-line-column" aria-hidden="true">
                             <div class="passage-line-text" id="reviewLineLabel">Line</div>
-                            <div class="passage-line-marker-fixed" id="reviewLineMarker0">(5)</div>
-                            <div class="passage-line-marker-fixed" id="reviewLineMarker1">(10)</div>
-                            <div class="passage-line-marker-fixed" id="reviewLineMarker2">(15)</div>
+                            <div class="passage-line-marker-fixed" data-marker-index="0" id="reviewLineMarker0">(5)</div>
+                            <div class="passage-line-marker-fixed" data-marker-index="1" id="reviewLineMarker1">(10)</div>
+                            <div class="passage-line-marker-fixed" data-marker-index="2" id="reviewLineMarker2">(15)</div>
                         </div>
                         <div class="passage-box" id="reviewPassageBox"></div>
                     </div>
-                </section>
+                    <div class="reading-passage-scrollbar-track" aria-hidden="true"><div class="reading-passage-scrollbar-thumb"></div></div>
+                </div>
             </aside>
 
             <section class="center-col section3-review-right">
@@ -880,6 +962,24 @@
             if (nextBtn) nextBtn.disabled = atEnd;
         }
 
+        function renderPassageParagraphHtml(paragraph, lineState) {
+            var lines = String(paragraph || '').split('\n');
+            var renderedLines = [];
+            for (var i = 0; i < lines.length; i += 1) {
+                var rawLine = lines[i];
+                var line = rawLine.trim();
+                if (!line) continue;
+                var markerMatch = line.match(/^\s*(?:\*\*)?\((\d+)\)(?:\*\*)?\s*/);
+                if (markerMatch) {
+                    lineState.nextLine = Number(markerMatch[1]) || lineState.nextLine;
+                    line = line.slice(markerMatch[0].length);
+                }
+                renderedLines.push('<span class="passage-source-line" data-source-line="' + lineState.nextLine + '">' + escapeHtml(line) + '</span>');
+                lineState.nextLine += 1;
+            }
+            return renderedLines.length ? '<p>' + renderedLines.join('<br>') + '</p>' : '';
+        }
+
         function renderPassageHtml(rawPassage) {
             var text = coerceText(rawPassage);
             if (!text) return '<p>No passage stored for this question.</p>';
@@ -887,11 +987,13 @@
             var appearsHtml = /<\s*(p|div|span|strong|em|ul|ol|li|br|h[1-6])\b/i.test(text);
             if (appearsHtml) return text;
 
+            var passageLineState = { nextLine: 1 };
             return text
                 .split(/\n\s*\n/)
                 .map(function (block) {
-                    return '<p>' + escapeHtml(block).replace(/\n/g, '<br>') + '</p>';
+                    return renderPassageParagraphHtml(block, passageLineState);
                 })
+                .filter(Boolean)
                 .join('');
         }
 
@@ -983,53 +1085,117 @@
             }).join('');
         }
 
+        function getPassageVisualLineTops(box) {
+            var tops = [];
+            var walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT, {
+                acceptNode: function(node) {
+                    return String(node.nodeValue || '').trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+                }
+            });
+            var range = document.createRange();
+            var node;
+
+            while ((node = walker.nextNode())) {
+                var text = String(node.nodeValue || '');
+                for (var index = 0; index < text.length; index += 1) {
+                    if (!text[index].trim()) continue;
+                    range.setStart(node, index);
+                    range.setEnd(node, index + 1);
+                    var rect = Array.from(range.getClientRects()).find(function(item) { return item && item.height > 0; });
+                    if (!rect) continue;
+                    if (!tops.some(function(top) { return Math.abs(top - rect.top) < 2; })) tops.push(rect.top);
+                }
+            }
+
+            range.detach();
+            return tops.sort(function(left, right) { return left - right; });
+        }
+
         function renumberPassageLineMarkers() {
             var box = document.getElementById('reviewPassageBox');
             if (!box) return;
 
             var lineColumn = box.closest('.passage-shell') && box.closest('.passage-shell').querySelector('.passage-line-column');
+            var lineTextLabel = document.getElementById('reviewLineLabel');
+
             if (!lineColumn) return;
 
-            var lineTextLabel = document.getElementById('reviewLineLabel');
-            var marker0 = document.getElementById('reviewLineMarker0');
-            var marker1 = document.getElementById('reviewLineMarker1');
-            var marker2 = document.getElementById('reviewLineMarker2');
-            var markers = [marker0, marker1, marker2].filter(Boolean);
-            if (!markers.length) return;
-
-            var paragraphs = Array.from(box.querySelectorAll('p'));
-            if (!paragraphs.length) paragraphs = [box];
+            lineColumn.querySelectorAll('.passage-line-marker-fixed').forEach(function(marker) { marker.remove(); });
 
             var lineHeight = parseFloat(getComputedStyle(box).lineHeight) || 24;
-            var boxRect = box.getBoundingClientRect();
             var columnRect = lineColumn.getBoundingClientRect();
-            var boxTop = boxRect.top + 10;
+            var visualLineTops = getPassageVisualLineTops(box);
+            var firstMarkerTop = null;
 
-            function syncFirstLabel(label, paragraph, targetLine) {
-                if (!label || !paragraph) return 0;
-                var paragraphTop = paragraph.getBoundingClientRect().top;
-                var relativeTop = (paragraphTop - columnRect.top) + ((Math.max(1, targetLine) - 1) * lineHeight);
-                label.textContent = '(' + targetLine + ')';
+            for (var sourceLine = 5; sourceLine <= visualLineTops.length; sourceLine += 5) {
+                var lineTop = visualLineTops[sourceLine - 1];
+                if (!Number.isFinite(lineTop)) continue;
+                var label = document.createElement('div');
+                label.className = 'passage-line-marker-fixed';
+                label.dataset.markerIndex = String(sourceLine - 1);
+                label.textContent = '(' + sourceLine + ')';
+                lineColumn.appendChild(label);
+                var relativeTop = lineTop - columnRect.top + (lineHeight / 2);
                 label.style.top = relativeTop + 'px';
-                return relativeTop;
+                if (firstMarkerTop === null) firstMarkerTop = relativeTop;
             }
 
-            function syncLabelToParagraph(label, paragraph) {
-                if (!label || !paragraph) return;
-                var paragraphTop = paragraph.getBoundingClientRect().top;
-                var lineNumber = Math.max(1, Math.round((paragraphTop - boxTop) / lineHeight) + 1);
-                var relativeTop = paragraphTop - columnRect.top;
-                label.textContent = '(' + lineNumber + ')';
-                label.style.top = relativeTop + 'px';
+            if (lineTextLabel && Number.isFinite(firstMarkerTop)) {
+                var lineTopPos = Math.max(0, firstMarkerTop - (lineHeight * 0.6));
+                lineTextLabel.style.top = lineTopPos + 'px';
             }
+        }
 
-            var firstTop = syncFirstLabel(marker0, paragraphs[0], 5);
-            syncLabelToParagraph(marker1, paragraphs[Math.min(1, paragraphs.length - 1)] || paragraphs[0]);
-            syncLabelToParagraph(marker2, paragraphs[Math.min(2, paragraphs.length - 1)] || paragraphs[0]);
+        function isReadingPassageScrollable(section) {
+            return Boolean(section && section.scrollHeight > section.clientHeight + 1);
+        }
 
-            if (lineTextLabel) {
-                lineTextLabel.style.top = Math.max(0, firstTop - (lineHeight * 0.6)) + 'px';
+        function updateReadingPassageScrollThumb(section) {
+            var track = section && section.querySelector('.reading-passage-scrollbar-track');
+            var thumb = section && section.querySelector('.reading-passage-scrollbar-thumb');
+            if (!section || !track || !thumb) return;
+            if (!isReadingPassageScrollable(section)) {
+                track.classList.remove('is-visible');
+                return;
             }
+            var trackHeight = track.clientHeight;
+            var thumbHeight = Math.max(24, (section.clientHeight / section.scrollHeight) * trackHeight);
+            var maxThumbTop = Math.max(0, trackHeight - thumbHeight);
+            var scrollRange = section.scrollHeight - section.clientHeight;
+            var scrollRatio = scrollRange > 0 ? section.scrollTop / scrollRange : 0;
+            thumb.style.height = thumbHeight + 'px';
+            thumb.style.top = (maxThumbTop * scrollRatio) + 'px';
+        }
+
+        function showReadingPassageScrollbar(section) {
+            var track = section && section.querySelector('.reading-passage-scrollbar-track');
+            if (!section || !track) return;
+            if (!isReadingPassageScrollable(section)) {
+                track.classList.remove('is-visible');
+                return;
+            }
+            updateReadingPassageScrollThumb(section);
+            track.classList.add('is-visible');
+            if (section._readingScrollHideTimer) clearTimeout(section._readingScrollHideTimer);
+            section._readingScrollHideTimer = setTimeout(function() {
+                track.classList.remove('is-visible');
+            }, 1000);
+        }
+
+        function refreshReadingPassageScrollbars() {
+            document.querySelectorAll('.passage-section').forEach(function(section) {
+                updateReadingPassageScrollThumb(section);
+            });
+        }
+
+        function initReadingPassageScrollbars() {
+            document.querySelectorAll('.passage-section').forEach(function(section) {
+                if (!section || section.dataset.scrollbarBound === '1') return;
+                section.addEventListener('scroll', function() { showReadingPassageScrollbar(section); });
+                section.addEventListener('mouseenter', function() { showReadingPassageScrollbar(section); });
+                section.dataset.scrollbarBound = '1';
+                updateReadingPassageScrollThumb(section);
+            });
         }
 
         function setSectionCaretIcon(toggleEl, isOpen) {
@@ -1260,7 +1426,10 @@
 
             var passageHtml = renderPassageHtml(passageRaw);
             passageBox.innerHTML = applyPhraseHighlightsToHtml(passageHtml, highlightPhrases);
-            requestAnimationFrame(renumberPassageLineMarkers);
+            requestAnimationFrame(function () {
+                renumberPassageLineMarkers();
+                refreshReadingPassageScrollbars();
+            });
         }
 
         function selectReviewQuestion(questionNumber) {
@@ -1329,6 +1498,7 @@
                 }
             }
             renderQuestion(firstQuestion, firstIndex);
+            initReadingPassageScrollbars();
 
             var featuresOverlay = document.getElementById('features-overlay');
             if (featuresOverlay) {
@@ -1337,7 +1507,10 @@
                 });
             }
 
-            window.addEventListener('resize', renumberPassageLineMarkers);
+            window.addEventListener('resize', function () {
+                renumberPassageLineMarkers();
+                refreshReadingPassageScrollbars();
+            });
         }
 
         window.addEventListener('DOMContentLoaded', init);
