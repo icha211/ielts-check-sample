@@ -611,7 +611,7 @@
         </div>
 
         <div class="dev-sub-nav" id="dev-sub-nav-container">
-            <button class="dev-sub-btn btn-guide" onclick="openSubTab(event, 'dev-guide', 'dev-sub-btn')">📖 Explanation P1-P5</button>
+            <button class="dev-sub-btn btn-guide" onclick="openSubTab(event, 'dev-explanation', 'dev-sub-btn')">📖 Explanation P1-P5</button>
         </div>
         
         <div id="dev-panels-container"></div>
@@ -783,6 +783,10 @@
                 if (bulkIdEl) bulkIdEl.value = "";
                 if (bulkEnEl) bulkEnEl.value = "";
             }
+            const allBulkIdEl = document.getElementById("input-bulk-explanation-id-all");
+            const allBulkEnEl = document.getElementById("input-bulk-explanation-en-all");
+            if (allBulkIdEl) allBulkIdEl.value = "";
+            if (allBulkEnEl) allBulkEnEl.value = "";
         }
 
         async function handleSetDateChange() {
@@ -825,7 +829,11 @@
         }
 
         async function saveSectionDraft() {
-            const draft = { passages: {} };
+            const draft = {
+                passages: {},
+                bulkExplanationId: (document.getElementById("input-bulk-explanation-id-all") || {}).value || "",
+                bulkExplanationEn: (document.getElementById("input-bulk-explanation-en-all") || {}).value || ""
+            };
             const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
             for (let p = 1; p <= maxPassages; p++) {
                 draft.passages[p] = {
@@ -886,6 +894,11 @@
             }
 
             if (!draft || typeof draft !== "object" || !draft.passages) return;
+
+            const allBulkIdEl = document.getElementById("input-bulk-explanation-id-all");
+            const allBulkEnEl = document.getElementById("input-bulk-explanation-en-all");
+            if (allBulkIdEl && typeof draft.bulkExplanationId === "string") allBulkIdEl.value = draft.bulkExplanationId;
+            if (allBulkEnEl && typeof draft.bulkExplanationEn === "string") allBulkEnEl.value = draft.bulkExplanationEn;
 
             const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
             for (let p = 1; p <= maxPassages; p++) {
@@ -1258,22 +1271,22 @@
             }
 
             devContainer.innerHTML += `
-            <div id="dev-guide" class="sub-content">
-                <div class="dev-container" style="max-width: 900px; padding-top: 10px;">
-                    <div class="dev-card explaination-card" data-part="${p}">
-                            <h3 class="dev-card-title" style="margin:0;">Bulk Explanation: Part ${p}</h3>
-                            <div style="font-size:12px; color:#475569; line-height:1.6;">Paste all Question blocks for this part. Each <strong>Question N</strong> block is automatically matched to Question N in the review page.</div>
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; margin-top:16px; align-items:start;">
-                                <div style="min-width:250px;">
-                                    <div class="format-toolbar header-bahas"><span style="font-weight:700; font-size:14px;">Explanation in Bahasa</span></div>
-                                    <textarea id="input-bulk-explanation-id-${p}" class="explanation-textarea" placeholder="**Question 1**\n\n- **Jawaban:** A - ...\n- **Paragraf:** Paragraf 1\n- **Kalimat Indikator:** &quot;...&quot;\n- **Alasan:** ...\n- **Kenapa opsi lain salah:** ..."></textarea>
-                                </div>
-                                <div style="min-width:250px;">
-                                    <div class="format-toolbar header-bahas"><span style="font-weight:700; font-size:14px;">Explanation in English</span></div>
-                                    <textarea id="input-bulk-explanation-en-${p}" class="explanation-textarea" placeholder="**Question 1**\n\n- **Answer:** A - ...\n- **Paragraph:** Paragraph 1\n- **Indicator Sentence:** &quot;...&quot;\n- **Reason:** ...\n- **Why other options are wrong:** ..."></textarea>
-                                </div>
+            <div id="dev-explanation" class="sub-content">
+                <div class="dev-container">
+                    <div class="dev-card explaination-card">
+                        <h3 class="dev-card-title" style="margin:0;">Bulk Explanation: All Parts 1-5</h3>
+                        <div style="font-size:12px; color:#475569; line-height:1.6;">Paste the complete document, using <strong>Passage 1</strong> through <strong>Passage 5</strong> and <strong>Question N</strong> headings. Each block is matched to its reading question in the review page.</div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; margin-top:16px; align-items:start;">
+                            <div style="min-width:250px;">
+                                <div class="format-toolbar header-bahas"><span style="font-weight:700; font-size:14px;">Explanation in Bahasa</span></div>
+                                <textarea id="input-bulk-explanation-id-all" class="explanation-textarea" placeholder="Passage 1\n\n**Question 1**\n- **Jawaban:** A - ...\n- **Paragraf:** Paragraf 1\n- **Kalimat Indikator:** &quot;...&quot;\n- **Alasan:** ...\n- **Kenapa opsi lain salah:** ..."></textarea>
+                            </div>
+                            <div style="min-width:250px;">
+                                <div class="format-toolbar header-bahas"><span style="font-weight:700; font-size:14px;">Explanation in English</span></div>
+                                <textarea id="input-bulk-explanation-en-all" class="explanation-textarea" placeholder="Passage 1\n\n**Question 1**\n- **Answer:** A - ...\n- **Paragraph:** Paragraph 1\n- **Indicator Sentence:** &quot;...&quot;\n- **Reason:** ...\n- **Why other options are wrong:** ..."></textarea>
                             </div>
                         </div>
+                    </div>
                 </div>
             </div>`;
         }
@@ -1735,6 +1748,18 @@
             return blocks;
         }
 
+        function parseAllBulkExplanations(rawText) {
+            const text = String(rawText || '').replace(/\r/g, '');
+            const blocks = {};
+            const passages = Array.from(text.matchAll(/^\s*(?:\*\*\s*)?(?:passage|part)\s+(\d+)\s*(?:\*\*)?\s*$/gim));
+            passages.forEach((match, index) => {
+                const start = match.index + match[0].length;
+                const end = index + 1 < passages.length ? passages[index + 1].index : text.length;
+                Object.assign(blocks, parseBulkExplanations(text.slice(start, end), Number(match[1])));
+            });
+            return blocks;
+        }
+
         function renderPassageParagraphHtml(paragraph, lineState) {
             const lines = String(paragraph || '').split('\n');
             const renderedLines = [];
@@ -1816,6 +1841,13 @@
             globalQuestions = {};
             globalPassages = {};
 
+            Object.assign(globalExplanations, parseAllBulkExplanations(
+                document.getElementById("input-bulk-explanation-id-all")?.value
+            ));
+            Object.assign(globalEnglishExplanations, parseAllBulkExplanations(
+                document.getElementById("input-bulk-explanation-en-all")?.value
+            ));
+
             const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
             for(let p=1; p<=maxPassages; p++) {
                 document.getElementById(`display-title-${p}`).innerText = document.getElementById(`input-title-${p}`).value || `Questions ${p}`;
@@ -1838,15 +1870,6 @@
                     if(m) { currentExpNum = `${p}_${m[1]}`; globalExplanations[currentExpNum] = m[2].trim(); }
                     else if(currentExpNum && l.trim()) globalExplanations[currentExpNum] += "<br>" + l.trim();
                 });
-
-                Object.assign(globalExplanations, parseBulkExplanations(
-                    document.getElementById(`input-bulk-explanation-id-${p}`)?.value,
-                    p
-                ));
-                Object.assign(globalEnglishExplanations, parseBulkExplanations(
-                    document.getElementById(`input-bulk-explanation-en-${p}`)?.value,
-                    p
-                ));
 
                 const lines = document.getElementById(`input-magic-questions-${p}`).value.split('\n');
                 let cleanHtml = '';

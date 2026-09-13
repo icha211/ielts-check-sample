@@ -1394,6 +1394,21 @@
             return blocks;
         }
 
+        function parseAllReadingBulkExplanations(rawText) {
+            var text = String(rawText || '').replace(/\r/g, '');
+            var blocks = {};
+            var passages = Array.from(text.matchAll(/^\s*(?:\*\*\s*)?(?:passage|part)\s+(\d+)\s*(?:\*\*)?\s*$/gim));
+            passages.forEach(function(match, index) {
+                var start = match.index + match[0].length;
+                var end = index + 1 < passages.length ? passages[index + 1].index : text.length;
+                var partBlocks = parseReadingBulkExplanations(text.slice(start, end), Number(match[1]));
+                Object.keys(partBlocks).forEach(function(questionNumber) {
+                    blocks[String(match[1]) + '_' + questionNumber] = partBlocks[questionNumber];
+                });
+            });
+            return blocks;
+        }
+
         async function hydrateReviewFromFirebase(result) {
             var params = new URLSearchParams(window.location.search);
             var setId = String(params.get('setId') || '').trim();
@@ -1410,6 +1425,8 @@
 
             var questions = [];
             var passages = {};
+            var allBahasa = parseAllReadingBulkExplanations(draft.bulkExplanationId);
+            var allEnglish = parseAllReadingBulkExplanations(draft.bulkExplanationEn);
             Object.keys(draft.passages).forEach(function(passageKey) {
                 var passageId = Number(passageKey);
                 var passage = draft.passages[passageKey] || {};
@@ -1423,8 +1440,8 @@
                     question.correctAnswer = answers[question.number] || '';
                     question.userAnswer = previousAnswers[key] || '';
                     question.isCorrect = question.userAnswer === question.correctAnswer;
-                    question.explanation = bahasa[question.number] || '';
-                    question.explanationEnglish = english[question.number] || '';
+                    question.explanation = allBahasa[key] || bahasa[question.number] || '';
+                    question.explanationEnglish = allEnglish[key] || english[question.number] || '';
                     questions.push(question);
                 });
             });
