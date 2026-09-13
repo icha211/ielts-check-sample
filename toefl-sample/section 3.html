@@ -589,7 +589,7 @@
         <header style="background:white; padding:10px 30px; display:flex; justify-content:space-between; border-bottom:1px solid #ccc; align-items: center;">
             <h2 style="color: var(--dev-color); margin:0; font-size: 18px;">TOEFL ITP | Content Manager</h2>
             <div style="display: flex; gap: 12px; align-items: center;">
-                <a href="section 3-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">📖 View Explanation</a>
+                <a id="view-explanation-link" href="section 3-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">📖 View Explanation</a>
                 <button class="btn-save" style="width:auto; margin:0;" onclick="updateUserView(true)">🔄 Update Tampilan Ujian</button>
                 <button class="btn-save" type="button" onclick="saveAndUpdateUserView(this)">Save and Update</button>
             </div>
@@ -692,6 +692,16 @@
             const query = params.toString();
             const hash = window.location.hash || "#dev-view";
             window.history.replaceState({}, "", `${window.location.pathname}?${query}${hash}`);
+            updateReviewLink();
+        }
+
+        function updateReviewLink() {
+            const link = document.getElementById("view-explanation-link");
+            if (!link) return;
+            const params = new URLSearchParams();
+            if (currentSetId) params.set("setId", currentSetId);
+            params.set("testType", currentTestType);
+            link.href = `section 3-answered.html?${params.toString()}`;
         }
 
         async function ensureCurrentSetId(setDate) {
@@ -954,6 +964,7 @@
             difficultyInput.value = stored.difficulty || "intermediate";
             lastValidSetDate = dateInput.value;
             updateHeaderPackageLabel(dateInput.value);
+            updateReviewLink();
         }
 
         async function saveSectionMeta() {

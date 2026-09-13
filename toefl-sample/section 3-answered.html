@@ -794,6 +794,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="toefl-storage-sync.js?v=20260801a"></script>
     <script>
         var reviewResultData = null;
         var reviewQuestionIndex = 0;
@@ -1354,6 +1355,84 @@
             return '-';
         }
 
+        function parseReadingDraftQuestions(rawQuestions, passageId) {
+            var questions = [];
+            var current = null;
+            String(rawQuestions || '').split('\n').forEach(function(line) {
+                var text = String(line || '').trim();
+                if (!text) return;
+                var questionMatch = text.match(/^(?:<[^>]+>)*(\d+)[.)]?\s+(.+)/);
+                var optionMatch = text.match(/^\(?([A-D])[.)]?\s+(.+)/i);
+                if (questionMatch && !optionMatch) {
+                    current = { number: Number(questionMatch[1]), passageId: Number(passageId), questionText: questionMatch[2], options: {} };
+                    questions.push(current);
+                } else if (optionMatch && current) {
+                    current.options[optionMatch[1].toUpperCase()] = optionMatch[2];
+                }
+            });
+            return questions;
+        }
+
+        function parseReadingAnswerKey(rawAnswerKey) {
+            var answers = {};
+            String(rawAnswerKey || '').split('\n').forEach(function(line) {
+                var match = String(line || '').trim().match(/^(\d+)[.)]?\s+([A-D])\b/i);
+                if (match) answers[Number(match[1])] = match[2].toLowerCase();
+            });
+            return answers;
+        }
+
+        function parseReadingBulkExplanations(rawText, passageId) {
+            var text = String(rawText || '').replace(/\r/g, '');
+            var blocks = {};
+            var matches = Array.from(text.matchAll(/^\s*(?:\*\*\s*)?question\s+(\d+)\s*(?:\*\*)?\s*$/gim));
+            matches.forEach(function(match, index) {
+                var start = match.index + match[0].length;
+                var end = index + 1 < matches.length ? matches[index + 1].index : text.length;
+                blocks[Number(match[1])] = text.slice(start, end).trim();
+            });
+            return blocks;
+        }
+
+        async function hydrateReviewFromFirebase(result) {
+            var params = new URLSearchParams(window.location.search);
+            var setId = String(params.get('setId') || '').trim();
+            var testType = String(params.get('testType') || 'mocktest').toLowerCase();
+            if (!setId || !window.toeflStorage || typeof window.toeflStorage.getDraftBySetIdAndType !== 'function') return result;
+
+            var draft = await window.toeflStorage.getDraftBySetIdAndType(setId, testType).catch(function() { return null; });
+            if (!draft || !draft.passages) return result;
+
+            var previousAnswers = {};
+            ((result && result.questions) || []).forEach(function(question) {
+                previousAnswers[String(question.passageId) + '_' + String(question.number)] = question.userAnswer || '';
+            });
+
+            var questions = [];
+            var passages = {};
+            Object.keys(draft.passages).forEach(function(passageKey) {
+                var passageId = Number(passageKey);
+                var passage = draft.passages[passageKey] || {};
+                var answers = parseReadingAnswerKey(passage.answerKey);
+                var bahasa = parseReadingBulkExplanations(passage.bulkExplanationId, passageId);
+                var english = parseReadingBulkExplanations(passage.bulkExplanationEn, passageId);
+                passages[passageId] = { title: passage.title || ('Passage ' + passageId), content: passage.passage || '' };
+                parseReadingDraftQuestions(passage.questions, passageId).forEach(function(question) {
+                    var key = String(passageId) + '_' + String(question.number);
+                    question.uid = key;
+                    question.correctAnswer = answers[question.number] || '';
+                    question.userAnswer = previousAnswers[key] || '';
+                    question.isCorrect = question.userAnswer === question.correctAnswer;
+                    question.explanation = bahasa[question.number] || '';
+                    question.explanationEnglish = english[question.number] || '';
+                    questions.push(question);
+                });
+            });
+
+            if (!questions.length) return result;
+            return Object.assign({}, result || {}, { setId: setId, testType: testType, totalQuestions: questions.length, questions: questions, passages: passages });
+        }
+
         function normalizeDateKey(value) {
             var raw = String(value || '').trim();
             if (!raw) return '';
@@ -1549,7 +1628,26 @@
             renderQuestion(reviewResultData.questions[prevIndex], prevIndex);
         }
 
-        function init() {
+        async function refreshReviewFromFirebase() {
+            if (!reviewResultData) return;
+            var refreshed = await hydrateReviewFromFirebase(reviewResultData);
+            if (!refreshed || !Array.isArray(refreshed.questions)) return;
+
+            var currentSignature = JSON.stringify(reviewResultData.questions);
+            var refreshedSignature = JSON.stringify(refreshed.questions);
+            if (currentSignature === refreshedSignature) return;
+
+            var activeQuestionNumber = Number(reviewResultData.questions[reviewQuestionIndex] && reviewResultData.questions[reviewQuestionIndex].number);
+            reviewResultData = refreshed;
+            buildPassageQuestionRanges(reviewResultData);
+            renderListeningScaledScore(reviewResultData);
+            var nextIndex = reviewResultData.questions.findIndex(function(question) {
+                return Number(question.number) === activeQuestionNumber;
+            });
+            renderQuestion(reviewResultData.questions[nextIndex >= 0 ? nextIndex : 0], nextIndex >= 0 ? nextIndex : 0);
+        }
+
+        async function init() {
             var result = null;
             try {
                 var raw = localStorage.getItem('toefl_section3_result');
@@ -1557,6 +1655,8 @@
             } catch (_) {
                 result = null;
             }
+
+            result = await hydrateReviewFromFirebase(result);
 
             if (!result || !Array.isArray(result.questions) || !result.questions.length) {
                 document.getElementById('reviewQuestionText').textContent = 'No review data found. Complete Section 3 first.';
@@ -1590,6 +1690,9 @@
             }
             renderQuestion(firstQuestion, firstIndex);
             initReadingPassageScrollbars();
+            if (new URLSearchParams(window.location.search).get('setId')) {
+                window.setInterval(refreshReviewFromFirebase, 3000);
+            }
 
             var featuresOverlay = document.getElementById('features-overlay');
             if (featuresOverlay) {
