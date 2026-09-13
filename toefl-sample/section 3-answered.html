@@ -610,6 +610,48 @@
             vertical-align: middle;
         }
 
+        .section3-structured-explanation {
+            border: 1px solid #d1dce8;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .section3-structured-answer {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 20px;
+            background: #003d46;
+            color: #fff;
+            font: 600 16px/1.4 'Plus Jakarta Sans', Arial, sans-serif;
+        }
+
+        .section3-structured-answer__icon,
+        .section3-structured-option__letter {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            color: #fff;
+            flex: 0 0 auto;
+        }
+
+        .section3-structured-answer__icon { width: 30px; height: 30px; background: #09a982; }
+        .section3-structured-body { padding: 16px 20px; }
+        .section3-structured-evidence { padding: 12px 20px; border-radius: 16px; background: #fdf3d6; color: #3a4a5c; }
+        .section3-structured-evidence__head { display: flex; justify-content: space-between; gap: 10px; color: #b45309; font: 600 14px/1.45 'Plus Jakarta Sans', Arial, sans-serif; }
+        .section3-structured-evidence__label { font-size: 12px; font-weight: 700; white-space: nowrap; }
+        .section3-structured-evidence p, .section3-structured-reason { margin: 8px 0 0; font: 400 12px/1.48 'Plus Jakarta Sans', Arial, sans-serif; }
+        .section3-structured-heading { margin: 18px 0 0; padding-bottom: 10px; border-bottom: 1px solid #d1dce8; color: #7a8fa6; font: 700 12px/1.48 'Plus Jakarta Sans', Arial, sans-serif; }
+        .section3-structured-options { display: grid; gap: 14px; margin-top: 14px; }
+        .section3-structured-option { display: flex; gap: 18px; padding-bottom: 14px; border-bottom: 1px solid #e5e5ea; }
+        .section3-structured-option:last-child { border-bottom: 0; padding-bottom: 0; }
+        .section3-structured-option__letter { width: 32px; height: 32px; background: #e63862; font: 700 19px/1 'Plus Jakarta Sans', Arial, sans-serif; }
+        .section3-structured-option__title { color: #082f5e; font: 600 14px/1.35 'Plus Jakarta Sans', Arial, sans-serif; }
+        .section3-structured-option__rule { width: 38px; height: 4px; margin: 8px 0; border-radius: 999px; background: #e63862; }
+        .section3-structured-option__reason { color: #000; font: 400 12px/1.34 'Plus Jakarta Sans', Arial, sans-serif; }
+
         .reading-passages-review .passage-box mark.passage-highlight {
             background: #fef3c7;
             color: #0f172a;
@@ -1095,9 +1137,34 @@
             return highlightInlinePhrase(text, phrase, 'question-highlight');
         }
 
-        function renderExplanationHtml(rawExplanation) {
+        function renderExplanationHtml(rawExplanation, question) {
             var text = coerceText(rawExplanation);
             if (!text) return 'No explanation provided.';
+
+            var normalized = text
+                .replace(/\*\*\s*kalimat\s+indikator\s*:\s*\*\*/gi, '**Kalimat Indikator:**')
+                .replace(/\*\*\s*kenapa\s+opsi\s+lain\s+salah\s*:\s*\*\*/gi, '**Kenapa opsi lain salah:**');
+            var fields = {};
+            var fieldMatches = Array.from(normalized.matchAll(/(?:^|\n)\s*(?:[-*]\s*)?\*\*([^*:\n]+):\*\*\s*/gim));
+            for (var fieldIndex = 0; fieldIndex < fieldMatches.length; fieldIndex += 1) {
+                var fieldName = fieldMatches[fieldIndex][1].replace(/\s+/g, ' ').trim().toLowerCase();
+                var fieldStart = fieldMatches[fieldIndex].index + fieldMatches[fieldIndex][0].length;
+                var fieldEnd = fieldIndex + 1 < fieldMatches.length ? fieldMatches[fieldIndex + 1].index : normalized.length;
+                fields[fieldName] = normalized.slice(fieldStart, fieldEnd).trim();
+            }
+            if (fields['kalimat indikator'] || fields['alasan'] || fields['kenapa opsi lain salah']) {
+                var answer = fields['jawaban'] || (normalizeLetter(question && question.correctAnswer) + ' - ' + findOptionText(question && question.options, normalizeLetter(question && question.correctAnswer)));
+                var paragraph = fields['paragraf'] || 'Reading passage';
+                var indicator = fields['kalimat indikator'] || '';
+                var reason = fields['alasan'] || '';
+                var incorrect = fields['kenapa opsi lain salah'] || '';
+                var optionMatches = Array.from(incorrect.matchAll(/(?:^|\n)\s*(?:[-*o]\s*)?\(?(?:opsi\s*)?([A-D])\)?\s*[:.-]+\s*([^\n]+(?:\n(?!\s*(?:[-*o]\s*)?\(?(?:opsi\s*)?[A-D]\)?\s*[:.-]))*)/gim));
+                var optionsHtml = optionMatches.map(function(match) {
+                    var letter = match[1].toUpperCase();
+                    return '<div class="section3-structured-option"><span class="section3-structured-option__letter">' + letter + '</span><div><div class="section3-structured-option__title">' + escapeHtml(findOptionText(question && question.options, letter)) + '</div><div class="section3-structured-option__rule"></div><div class="section3-structured-option__reason">' + escapeHtml(match[2].trim()) + '</div></div></div>';
+                }).join('');
+                return '<section class="section3-structured-explanation"><div class="section3-structured-answer"><span class="section3-structured-answer__icon">&#10003;</span><span>' + escapeHtml(answer) + '</span></div><div class="section3-structured-body">' + (indicator ? '<div class="section3-structured-evidence"><div class="section3-structured-evidence__head"><span>' + escapeHtml(paragraph) + '</span><span class="section3-structured-evidence__label">KALIMAT INDIKATOR</span></div><p>' + escapeHtml(indicator) + '</p></div>' : '') + (reason ? '<div class="section3-structured-heading">PENJELASAN</div><div class="section3-structured-reason">' + escapeHtml(reason) + '</div>' : '') + (optionsHtml ? '<div class="section3-structured-heading">KENAPA OPSI LAIN SALAH</div><div class="section3-structured-options">' + optionsHtml + '</div>' : '') + '</div></section>';
+            }
 
             var lines = text.split(/\n+/).map(function (line) { return line.trim(); }).filter(Boolean);
             if (!lines.length) return 'No explanation provided.';
@@ -1421,7 +1488,7 @@
             }
 
             renderOptionRows(question);
-            if (explanationEl) explanationEl.innerHTML = renderExplanationHtml(question.explanation);
+            if (explanationEl) explanationEl.innerHTML = renderExplanationHtml(question.explanation, question);
 
             if (reviewResultData && Array.isArray(reviewResultData.questions)) {
                 reviewQuestionIndex = typeof indexHint === 'number' ? indexHint : reviewQuestionIndex;
