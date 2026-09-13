@@ -1101,7 +1101,9 @@
             }
 
             var explanationText = coerceText(question && question.explanation);
-            var quoted = explanationText.match(/"([^"]+)"/g) || [];
+            var indicatorMatch = explanationText.match(/(?:^|\n)\s*(?:[-*]\s*)?\*\*(?:kalimat\s+indikator|indicator\s+sentence)\s*:\*\*\s*([\s\S]*?)(?=\n\s*(?:[-*]\s*)?\*\*[^*\n]+:\*\*|$)/i);
+            var indicatorText = indicatorMatch ? indicatorMatch[1] : '';
+            var quoted = indicatorText.match(/"([^"]+)"/g) || [];
             for (var q = 0; q < quoted.length; q += 1) {
                 var phrase = quoted[q].replace(/^"|"$/g, '').trim();
                 if (phrase && phrase.length >= 8 && phrase.length <= 120) phrases.push(phrase);
