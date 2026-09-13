@@ -12,6 +12,19 @@ The woman states the building is "across the street from the main library," whic
 * **(B) She doesn't know where the building is.:** She explicitly gives the location, proving she knows where the building is.
 * **(D) The library is closed right now.:** There is absolutely no mention of the library's operating hours or it being closed.
 
+
+
+Question 20
+•	Jawaban: D - the existence of mid-ocean ridges 
+•	Paragraf: Paragraf 1 dan 2 
+•	Kalimat Indikator: "To support his claim, Wegener pointed to the puzzle-like fit of the coastlines of South America and Africa, as well as matching geological formations and identical fossil records..." 
+•	Alasan: Pertanyaan meminta satu pengecualian (EXCEPT) dari hal-hal yang menjadi bukti awal Wegener. Keberadaan pegunungan tengah samudra ("mid-ocean ridges") tidak diketahui oleh Wegener dan baru ditemukan pada pertengahan abad ke-20 dengan teknologi sonar (Paragraf 2). 
+•	Kenapa opsi lain salah:
+* **(A) the matching shapes of continental coastlines:** Kesesuaian bentuk garis pantai (the matching shapes of continental coastlines) ada di dalam teks sebagai bukti yang dipakai Wegener, sehingga opsi ini salah untuk pengecualian. 
+* **(B) identical fossil records on different continents:** Rekam fosil identik (identical fossil records) juga digunakan Wegener. 
+* **(C) matching geological formations across oceans:** Formasi geologi yang serasi (matching geological formations) merupakan salah satu pilar argumen awal Wegener. 
+
+
 ## Question 2
 
 **Correct Answer:** A - Eat lunch together.
