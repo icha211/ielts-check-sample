@@ -591,6 +591,7 @@
             <div style="display: flex; gap: 12px; align-items: center;">
                 <a href="section 3-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">📖 View Explanation</a>
                 <button class="btn-save" style="width:auto; margin:0;" onclick="updateUserView(true)">🔄 Update Tampilan Ujian</button>
+                <button class="btn-save" type="button" onclick="saveAndUpdateUserView(this)">Save and Update</button>
             </div>
         </header>
 
@@ -833,9 +834,15 @@
             if (setId) {
                 localStorage.setItem(`${DRAFT_KEY}_${setId}`, JSON.stringify(draft));
             }
-            if (window.toeflStorage) {
-                toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType).catch((e) => console.warn("[ToeflSync] draft save failed:", e));
+            if (window.toeflStorage && typeof toeflStorage.saveDraftBySetIdAndType === "function") {
+                try {
+                    return await toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType);
+                } catch (error) {
+                    console.warn("[ToeflSync] draft save failed:", error);
+                    return false;
+                }
             }
+            return true;
         }
 
         async function loadSectionDraft() {
@@ -2026,8 +2033,8 @@
 
         async function performAutoSave() {
             try {
-                saveSectionDraft();
                 await saveSectionMeta();
+                await saveSectionDraft();
                 lastAutoSaveTime = Date.now();
                 showAutoSaveStatus("? Auto-saved", true);
             } catch (error) {
@@ -2045,23 +2052,37 @@
         }
 
         function initAutoSave() {
-            const fields = ['set-date', 'set-difficulty', 'input-magic-questions-1', 'input-answer-key-1', 'input-explanation-1', 'input-video-step-1'];
-            fields.forEach(fieldId => {
-                const el = document.getElementById(fieldId);
-                if (el) {
-                    el.addEventListener('input', triggerAutoSave);
-                    el.addEventListener('change', triggerAutoSave);
-                }
+            document.querySelectorAll('#dev-view input, #dev-view textarea, #dev-view select').forEach((element) => {
+                if (element.dataset.autoSaveBound === '1') return;
+                element.addEventListener('input', triggerAutoSave);
+                element.addEventListener('change', triggerAutoSave);
+                element.dataset.autoSaveBound = '1';
             });
             showAutoSaveStatus("Ready", true);
+        }
+
+        async function saveAndUpdateUserView(button) {
+            if (button) button.disabled = true;
+            showAutoSaveStatus("? Saving to Firebase...", true);
+            try {
+                await saveSectionMeta();
+                const savedRemotely = await saveSectionDraft();
+                updateUserView();
+                showAutoSaveStatus(savedRemotely ? "Saved to Firebase" : "Saved locally; Firebase unavailable", savedRemotely);
+            } catch (error) {
+                console.error("[SaveAndUpdate] Error:", error);
+                showAutoSaveStatus("? Save failed", false);
+            } finally {
+                if (button) button.disabled = false;
+            }
         }
         // ===== END AUTO-SAVE FUNCTIONALITY =====
 
         
 
         window.onload = async () => {
-            initAutoSave();
             initStructure();
+            initAutoSave();
             applyViewMode();
             activateInitialTab();
             bindUserToolbarActions();
