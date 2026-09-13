@@ -1679,10 +1679,10 @@
 
         function activateInitialTab() {
             if (!isDeveloperMode()) return;
-            const devButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'dev-view'"));
-            if (devButton) {
-                openTab({ currentTarget: devButton }, 'dev-view');
-            }
+            // No .tab-button toggles exist in this layout, so switch tabs directly.
+            document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+            const devView = document.getElementById("dev-view");
+            if (devView) devView.classList.add("active");
         }
 
         function openSubTab(evt, tabName, btnClass) {
