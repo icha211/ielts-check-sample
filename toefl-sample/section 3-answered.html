@@ -1075,7 +1075,10 @@
             if (!nextHtml || !Array.isArray(phrases) || !phrases.length) return nextHtml;
 
             for (var i = 0; i < phrases.length; i += 1) {
-                var phrase = coerceText(phrases[i]);
+                var phrase = coerceText(phrases[i])
+                    .replace(/^\.{2,}\s*/, '')
+                    .replace(/\s*\.{2,}$/, '')
+                    .trim();
                 if (!phrase) continue;
                 var pattern = new RegExp('(' + escapeRegExp(phrase) + ')', 'gi');
                 nextHtml = nextHtml.replace(pattern, '<mark class="passage-highlight">$1</mark>');
