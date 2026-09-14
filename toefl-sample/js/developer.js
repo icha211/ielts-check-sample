@@ -28,6 +28,7 @@ const MONTH_LABELS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "J
 const MODULES = ["listening", "structure", "reading"];
 let sectionSets = [];
 let pendingMaterialTopicId = "";
+let calendarYear = new Date().getFullYear();
 const MATERIALS_KEY = "toefl_structure_materials_v1";
 const MATERIAL_TOPICS_KEY = "toefl_structure_material_topics_v1";
 const HIDDEN_MATERIAL_TOPICS_KEY = "toefl_hidden_material_topics_v1";
@@ -769,7 +770,9 @@ async function handleLibrarySetDateChange(setId, moduleId, nextDate) {
 function renderMonthCalendar() {
     const host = document.getElementById("monthGrid");
     const now = new Date();
-    const year = now.getFullYear();
+    const year = calendarYear;
+    const yearLabel = document.getElementById("calendarYearLabel");
+    if (yearLabel) yearLabel.textContent = String(year);
 
     host.innerHTML = MONTH_LABELS.map((monthLabel, monthIndex) => {
         const { daysInMonth, completeDays, activeDays } = getMonthStats(year, monthIndex);
@@ -777,7 +780,7 @@ function renderMonthCalendar() {
         const ratio = `${String(activeDays).padStart(2, "0")}/${String(daysInMonth).padStart(2, "0")}`;
         const statusLabel = activeDays === 0 ? "Empty" : isComplete ? "Complete" : "In Progress";
         const cardClass = isComplete ? "month-card complete" : "month-card partial";
-        const activeClass = monthIndex === now.getMonth() ? " active" : "";
+        const activeClass = year === now.getFullYear() && monthIndex === now.getMonth() ? " active" : "";
 
         return `
             <button class="${cardClass}${activeClass}" type="button" data-month-index="${monthIndex}" data-year="${year}">
@@ -800,7 +803,12 @@ function renderMonthCalendar() {
         });
     });
 
-    renderMonthDetail(year, now.getMonth());
+    renderMonthDetail(year, year === now.getFullYear() ? now.getMonth() : 0);
+}
+
+function changeCalendarYear(delta) {
+    calendarYear += delta;
+    renderMonthCalendar();
 }
 
 function renderMonthDetail(year, monthIndex) {
@@ -976,6 +984,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (file) importData(file);
         event.target.value = "";
     });
+    document.getElementById("prevYearBtn").addEventListener("click", () => changeCalendarYear(-1));
+    document.getElementById("nextYearBtn").addEventListener("click", () => changeCalendarYear(1));
     
     // Test type tab switching
     document.querySelectorAll(".tab-btn").forEach((btn) => {
