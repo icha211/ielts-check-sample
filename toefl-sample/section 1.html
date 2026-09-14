@@ -286,8 +286,9 @@
             </div>
         </div>
 
-        <div class="dev-sub-nav" id="dev-sub-nav-container"></div>
-        <div id="dev-panels-container"></div>
+        <div class="dev-sub-nav" id="dev-sub-nav-container">
+            <button class="dev-sub-btn btn-guide" onclick="openSubTab(event, 'dev-explanation', 'dev-sub-btn')">📖 Explanation P1-P5</button>
+        </div>
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -1434,6 +1435,15 @@
         function applyDraftToEditorInputs(draft) {
             if (!draft || typeof draft !== "object" || !draft.parts) return;
 
+            const bulkExplanationIdInput = document.getElementById("input-bulk-explanation-id-all");
+            const bulkExplanationEnInput = document.getElementById("input-bulk-explanation-en-all");
+            if (bulkExplanationIdInput && typeof draft.bulkExplanationId === "string" && (draft.bulkExplanationId.trim() || !String(bulkExplanationIdInput.value || "").trim())) {
+                bulkExplanationIdInput.value = draft.bulkExplanationId;
+            }
+            if (bulkExplanationEnInput && typeof draft.bulkExplanationEn === "string" && (draft.bulkExplanationEn.trim() || !String(bulkExplanationEnInput.value || "").trim())) {
+                bulkExplanationEnInput.value = draft.bulkExplanationEn;
+            }
+
             PARTS.forEach((part) => {
                 const p = part.id;
                 const row = draft.parts[p] || {};
@@ -1493,7 +1503,6 @@
                         }
                     });
                 }
-                hydrateExplanationCardTextareas(p, row);
             });
         }
 
@@ -1610,6 +1619,33 @@
             return lines.join("\n").trim();
         }
 
+        // Splits a single Part's pasted text into per-question blocks keyed by "partId_questionNumber".
+        function parseListeningBulkExplanationBlocks(rawText, partId) {
+            const blocks = {};
+            const text = String(rawText || "").replace(/\r/g, "");
+            const matches = Array.from(text.matchAll(/^\s*#{0,6}\s*(?:\*\*\s*)?question\s+(\d+)\s*(?:\*\*)?\s*$/gim));
+            matches.forEach((match, index) => {
+                const contentStart = match.index + match[0].length;
+                const contentEnd = index + 1 < matches.length ? matches[index + 1].index : text.length;
+                const content = `${match[0].trim()}\n\n${text.slice(contentStart, contentEnd).trim()}`.trim();
+                if (content) blocks[`${partId}_${match[1]}`] = content;
+            });
+            return blocks;
+        }
+
+        // Splits the full bulk explanation document (Part 1-3) into per-question blocks.
+        function parseAllListeningBulkExplanations(rawText) {
+            const text = String(rawText || "").replace(/\r/g, "");
+            const blocks = {};
+            const parts = Array.from(text.matchAll(/^\s*#{0,6}\s*(?:\*\*\s*)?part\s+(\d+)\s*(?:\*\*)?\s*$/gim));
+            parts.forEach((match, index) => {
+                const start = match.index + match[0].length;
+                const end = index + 1 < parts.length ? parts[index + 1].index : text.length;
+                Object.assign(blocks, parseListeningBulkExplanationBlocks(text.slice(start, end), Number(match[1])));
+            });
+            return blocks;
+        }
+
         function markExplanationCardUnsaved(questionNumber) {
             const card = document.querySelector(`.explaination-card[data-question-number="${questionNumber}"]`);
             if (!card) return;
@@ -1700,26 +1736,6 @@
                 closing_analysis_html: String(model?.explanation_payload?.closing_analysis_html || "")
             };
             return model;
-        }
-
-        function hydrateExplanationCardTextareas(partId, partData) {
-            const part = PARTS.find((item) => Number(item.id) === Number(partId));
-            if (!part) return;
-            const schemas = partData?.explanationSchemas || {};
-            const texts = partData?.explanationTexts || {};
-
-            for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
-                const savedText = texts[questionNumber] || texts[String(questionNumber)] || {};
-                const schema = schemas[questionNumber] || schemas[String(questionNumber)] || null;
-                const rawExplanation = String(savedText?.explanation || "").trim();
-                const english = isGenericExplanationFallback(rawExplanation) ? "" : rawExplanation || buildWhySectionTextFromSchema(schema);
-                const bahasa = String(savedText?.explanationId || "").trim();
-                const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
-                const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
-
-                if (englishInput && english && !String(englishInput.value || "").trim()) englishInput.value = english;
-                if (bahasaInput && bahasa && !String(bahasaInput.value || "").trim()) bahasaInput.value = bahasa;
-            }
         }
 
         function hasEditorQuestionOrAnswerContent() {
@@ -2891,7 +2907,15 @@
 
         async function saveSectionDraft(options = {}) {
             const publishExplanationCards = Boolean(options.publishExplanationCards);
-            const draft = { parts: {} };
+            const bulkExplanationIdValue = (document.getElementById("input-bulk-explanation-id-all") || {}).value || "";
+            const bulkExplanationEnValue = (document.getElementById("input-bulk-explanation-en-all") || {}).value || "";
+            const draft = { 
+                parts: {} ,
+                bulkExplanationId: bulkExplanationIdValue,
+                bulkExplanationEn: bulkExplanationEnValue
+            };
+            const bulkEnglishByUid = parseAllListeningBulkExplanations(bulkExplanationEnValue);
+            const bulkBahasaByUid = parseAllListeningBulkExplanations(bulkExplanationIdValue);
             const existingDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
             PARTS.forEach((part) => {
                 const p = part.id;
@@ -2921,10 +2945,9 @@
                         : {})
                 };
                 for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
-                    const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
-                    const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
-                    const english = String(englishInput?.value || "").trim();
-                    const bahasa = String(bahasaInput?.value || "").trim();
+                    const uid = `${p}_${questionNumber}`;
+                    const english = String(bulkEnglishByUid[uid] || "").trim();
+                    const bahasa = String(bulkBahasaByUid[uid] || "").trim();
                     if (english && !isGenericExplanationFallback(english)) {
                         explanationTexts[questionNumber] = {
                             ...(explanationTexts[questionNumber] || {}),
@@ -3509,45 +3532,6 @@
 
                 const hintHTML = "Use smart paste: place question number lines (1., 2., ...) and ensure the last 4 lines of each block are options A-D.";
                 const placeholderQuestion = "1.\nMan: Did you finish reading the chapter for biology?\nWoman: I barely made a dent in it.\nNarrator: What does the woman mean?\n(A) She dropped the book.\n(B) She has not read much of the chapter.\n(C) She finished it quickly.\n(D) She damaged the book.";
-                const explanationCardsHTML = Array.from(
-                    { length: part.end - part.start + 1 },
-                    (_, index) => part.start + index
-                ).map((questionNumber) => `
-                        <div class="dev-card explaination-card" data-question-number="${questionNumber}">
-                            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                                <h3 class="dev-card-title" style="margin:0;">Explanation / Transcript</h3>
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <button type="button" class="btn-generate-single-ai" onclick="generateExplanationForQuestionNumber(${questionNumber}, this)" style="display:inline-flex; align-items:center; gap:5px; padding:5px 11px; font-size:12px; font-weight:700; border-radius:6px; background:#f0f7ff; color:#0284c7; border:1px solid #bae6fd; cursor:pointer;" onmouseover="this.style.background='#e0f2fe'" onmouseout="this.style.background='#f0f7ff'">
-                                        <i class="ph ph-sparkle" aria-hidden="true"></i> Generate AI
-                                    </button>
-                                    <span class="explanation-save-state" hidden style="padding:4px 8px; border-radius:999px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-size:11px; font-weight:700;">Unsaved</span>
-                                </div>
-                            </div>
-                            <h2 class="dev-card-question-number">Question ${questionNumber}</h2>
-                            <div style="font-size:12px; color:#475569; line-height:1.6;">
-                                Generated explanation can be edited in both Bahasa and English. If you want to provide your own explanation, please fill in the text areas below.
-                            </div>
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; margin-top:16px; align-items:start;">
-                                <div style="min-width:250px;">
-                                    <div class="format-toolbar header-bahas">
-                                        <span style="font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:6px;">
-                                            Explanation in Bahasa
-                                            <img src="https://hatscripts.github.io/circle-flags/flags/id.svg" width="18" height="18" alt="Indonesia Flag">
-                                        </span>
-                                    </div>
-                                    <textarea id="input-explanation-id-${questionNumber}" class="explanation-textarea" placeholder="Kenapa jawaban untuk pertanyaan ${questionNumber} benar?" oninput="markExplanationCardUnsaved(${questionNumber})"></textarea>
-                                </div>
-                                <div style="min-width:250px;">
-                                    <div class="format-toolbar header-bahas">
-                                        <span style="font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:6px;">
-                                            Explanation in English
-                                            <img src="https://hatscripts.github.io/circle-flags/flags/gb.svg" width="18" height="18" alt="UK Flag">
-                                        </span>
-                                    </div>
-                                    <textarea id="input-explanation-en-${questionNumber}" class="explanation-textarea" placeholder="Why is the answer to question ${questionNumber} correct?" oninput="markExplanationCardUnsaved(${questionNumber})"></textarea>
-                                </div>
-                            </div>
-                        </div>`).join("");
 
                 devContainer.innerHTML += `
                 <div id="dev-part-${part.id}" class="sub-content">
@@ -3571,28 +3555,25 @@
                                 </div>
                             </div>
                         </div>
-                        ${explanationCardsHTML}
                     </div>
                 </div>`
             });
 
-            const guideBtn = document.createElement("button");
-            guideBtn.className = "dev-sub-btn btn-guide";
-            guideBtn.onclick = (event) => openSubTab(event, "dev-guide", "dev-sub-btn");
-            guideBtn.innerText = "Cara Smart Paste";
-            devNavContainer.appendChild(guideBtn);
-
             devContainer.innerHTML += `
-            <div id="dev-guide" class="sub-content">
+            <div id="dev-explanation" class="sub-content">
                 <div class="dev-container">
-                    <div class="dev-card guide-card">
-                        <h2 class="dev-card-title">Cara Smart Paste</h2>
-                        <div style="background:#fef2f2; padding:16px; border-left:4px solid #ef4444; border-radius:4px;">
-                            <strong>Use this fast input format:</strong><br><br>
-                            1. Start each question with number + dot (example: <code>1.</code> or <code>25.</code>).<br>
-                            2. Put dialogue/transcript lines under it.<br>
-                            3. Keep the last 4 lines before next number as options A/B/C/D.<br><br>
-                            The parser automatically uses the last four lines as answer options.
+                    <div class="dev-card explaination-card">
+                        <h3 class="dev-card-title" style="margin:0;">Bulk Explanation: All Parts (A-C)</h3>
+                        <div style="font-size:12px; color:#475569; line-height:1.6;">Paste the complete document for all three parts at once, using <strong>Part 1</strong>, <strong>Part 2</strong>, <strong>Part 3</strong> headings followed by <strong>## Question N</strong> blocks in the same template used for AI-generated explanations. Each block is matched automatically to its question when you Save.</div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; margin-top:16px; align-items:start;">
+                            <div style="min-width:250px;">
+                                <div class="format-toolbar header-bahas"><span style="font-weight:700; font-size:14px;">Explanation in Bahasa</span></div>
+                                <textarea id="input-bulk-explanation-id-all" class="explanation-textarea" placeholder="Part 1\n\n## Question 1\n\n**Jawaban Benar:** A - ...\n\n**PENJELASAN**\n\n...\n\n**KENAPA OPSI LAIN SALAH**\n\n* **(B) ...:** ...\n\n## Question 2\n...\n\nPart 2\n\n## Question 31\n..."></textarea>
+                            </div>
+                            <div style="min-width:250px;">
+                                <div class="format-toolbar header-bahas"><span style="font-weight:700; font-size:14px;">Explanation in English</span></div>
+                                <textarea id="input-bulk-explanation-en-all" class="explanation-textarea" placeholder="Part 1\n\n## Question 1\n\n**Correct Answer:** A - ...\n\n**EXPLAINATION**\n\n...\n\n**WHY THE OTHER OPTION IS INCORRECT**\n\n* **(B) ...:** ...\n\n## Question 2\n...\n\nPart 2\n\n## Question 31\n..."></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -5558,7 +5539,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 'set-date', 'set-difficulty',
                 'input-magic-questions-1', 'input-answer-key-1', 'input-explanation-1', 'input-transcript-1', 'input-video-step-1',
                 'input-magic-questions-2', 'input-answer-key-2', 'input-explanation-2', 'input-transcript-2',
-                'input-magic-questions-3', 'input-answer-key-3', 'input-explanation-3', 'input-transcript-3'
+                'input-magic-questions-3', 'input-answer-key-3', 'input-explanation-3', 'input-transcript-3',
+                'input-bulk-explanation-id-all', 'input-bulk-explanation-en-all'
             ];
             fields.forEach(fieldId => {
                 const el = document.getElementById(fieldId);
