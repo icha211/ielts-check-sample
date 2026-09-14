@@ -2792,6 +2792,7 @@
                 if (!activeSegments.length) {
                     html += '<div class="transcript-modern-empty">No transcript available for this question.</div>';
                 } else {
+                    var pPrevSpeakerTag = '';
                     for (var pi = 0; pi < activeSegments.length; pi += 1) {
                         var pSeg = activeSegments[pi] || {};
                         var pStart = Number(pSeg.start || 0);
@@ -2805,9 +2806,13 @@
                         var pCardKey = ['plain', String(pSpeakerTag), String(pStart), String(pSeg.timestamp || ''), String(pSeg.text || '')].join('|');
                         var pEncodedCardKey = encodeURIComponent(pCardKey);
                         var pIsActive = reviewActiveTranscriptKey === pCardKey;
+                        // The transcript only states the speaker once when the same
+                        // speaker continues across paragraphs; don't repeat the label.
+                        var pShowLabel = pSpeakerTag !== pPrevSpeakerTag;
+                        pPrevSpeakerTag = pSpeakerTag;
 
                         html += '<p class="transcript-plain-line' + (pIsActive ? ' is-active' : '') + '" onclick="playTranscriptSegmentFromCard(\'' + pEncodedCardKey + '\',' + pStart + ',' + pEnd + ')">';
-                        html += '<span class="transcript-modern-speaker-label">' + pSpeakerLabel + '</span>: ' + pText;
+                        html += pShowLabel ? ('<span class="transcript-modern-speaker-label">' + pSpeakerLabel + '</span>: ' + pText) : pText;
                         html += '</p>';
                     }
                 }
