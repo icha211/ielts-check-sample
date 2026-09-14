@@ -540,6 +540,70 @@ async function deleteSet(setId, module) {
     }
 }
 
+// Deleted sets are archived rather than erased; this reads that archive so they can be restored.
+async function openRecoverModal() {
+    const modal = document.getElementById("recoverModal");
+    const label = document.getElementById("recoverTestTypeLabel");
+    if (label) label.textContent = currentTestType === "practicetest" ? "Practice Test" : "Mock Test";
+    if (modal) modal.style.display = "flex";
+    await renderRecoverList();
+}
+
+function closeRecoverModal() {
+    const modal = document.getElementById("recoverModal");
+    if (modal) modal.style.display = "none";
+}
+
+async function renderRecoverList() {
+    const listEl = document.getElementById("recoverList");
+    if (!listEl) return;
+    listEl.textContent = "Loading…";
+
+    try {
+        const items = await toeflStorage.getArchivedItems(currentTestType);
+        if (!items.length) {
+            listEl.innerHTML = `<div style="color:var(--muted); font-size:0.9rem;">No deleted sets found for this test type.</div>`;
+            return;
+        }
+
+        listEl.innerHTML = items.map((item) => {
+            const moduleLabel = MODULE_CONFIG[item.module]?.label || item.module || "Unknown";
+            const archivedAt = item._archivedAt ? new Date(item._archivedAt).toLocaleString() : "unknown time";
+            return `
+                <div class="module-option" style="cursor:default; justify-content:space-between;">
+                    <div>
+                        <div>${moduleLabel} — ${item.setDate || item.setId}</div>
+                        <div style="font-size:0.75rem; color:var(--muted); font-weight:400;">Deleted ${archivedAt}</div>
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-restore-set-id="${item.setId}">Restore</button>
+                </div>
+            `;
+        }).join("");
+
+        listEl.querySelectorAll("[data-restore-set-id]").forEach((button) => {
+            button.addEventListener("click", () => restoreSet(button.dataset.restoreSetId));
+        });
+    } catch (error) {
+        listEl.innerHTML = `<div style="color:var(--muted); font-size:0.9rem;">Failed to load archive: ${error?.message || "unknown error"}</div>`;
+    }
+}
+
+async function restoreSet(setId) {
+    if (!setId) return;
+    try {
+        const restored = await toeflStorage.restoreArchivedItem(setId, currentTestType);
+        if (!restored) {
+            toast("Restore failed: set not found in archive.");
+            return;
+        }
+        toast("Set restored. ✅");
+        await renderRecoverList();
+        await renderAll();
+    } catch (error) {
+        toast(`Restore failed: ${error?.message || "unknown error"}`);
+    }
+}
+
 function toggleExplanationOptions(force) {
     const menu = document.getElementById("explanationOptions");
     if (!menu) return;
@@ -979,6 +1043,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("exportBtn").addEventListener("click", exportData);
     document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+    document.getElementById("recoverBtn").addEventListener("click", openRecoverModal);
+    document.getElementById("closeRecoverModal").addEventListener("click", closeRecoverModal);
+    document.getElementById("recoverModal").addEventListener("click", (e) => {
+        if (e.target.id === "recoverModal") closeRecoverModal();
+    });
     document.getElementById("importFile").addEventListener("change", (event) => {
         const file = event.target.files[0];
         if (file) importData(file);
