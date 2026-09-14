@@ -438,6 +438,41 @@
             return { letter: match[1].toUpperCase(), text: match[2] };
         }
 
+        // Splits one bulk-pasted "Part A / Part B" document into { questionNumber: explanationText }.
+        function parseSection2BulkExplanationBlocks(rawText, partLabel) {
+            const text = String(rawText || "");
+            const partRegex = new RegExp(`\\*{0,2}Part\\s*${partLabel}\\*{0,2}`, "i");
+            const partMatch = partRegex.exec(text);
+            if (!partMatch) return {};
+            const start = partMatch.index + partMatch[0].length;
+            const nextPartRegex = /\*{0,2}Part\s*[AB]\*{0,2}/gi;
+            nextPartRegex.lastIndex = start;
+            const nextMatch = nextPartRegex.exec(text);
+            const end = nextMatch ? nextMatch.index : text.length;
+            const section = text.slice(start, end);
+
+            const blocks = {};
+            const questionRegex = /\*{0,2}Question\s+(\d+)\*{0,2}/gi;
+            const markers = [];
+            let qMatch;
+            while ((qMatch = questionRegex.exec(section)) !== null) {
+                markers.push({ number: Number(qMatch[1]), start: qMatch.index, after: questionRegex.lastIndex });
+            }
+            markers.forEach((marker, idx) => {
+                const blockEnd = idx < markers.length - 1 ? markers[idx + 1].start : section.length;
+                const content = section.slice(marker.after, blockEnd).trim();
+                if (content) blocks[marker.number] = content;
+            });
+            return blocks;
+        }
+
+        function parseAllSection2BulkExplanations(rawText) {
+            const blocks = {};
+            Object.assign(blocks, parseSection2BulkExplanationBlocks(rawText, "A"));
+            Object.assign(blocks, parseSection2BulkExplanationBlocks(rawText, "B"));
+            return blocks;
+        }
+
         async function handleSetDateChange() {
             const dateInput = document.getElementById("set-date");
             const selectedDate = dateInput?.value;
@@ -511,7 +546,15 @@
 
         async function saveSectionDraft() {
             syncPartBRichEditorToTextarea();
-            const draft = { parts: {} };
+            const bulkExplanationIdValue = (document.getElementById("input-bulk-explanation-id-all") || {}).value || "";
+            const bulkExplanationEnValue = (document.getElementById("input-bulk-explanation-en-all") || {}).value || "";
+            const bulkBahasaByNumber = parseAllSection2BulkExplanations(bulkExplanationIdValue);
+            const bulkEnglishByNumber = parseAllSection2BulkExplanations(bulkExplanationEnValue);
+            const draft = {
+                parts: {},
+                bulkExplanationId: bulkExplanationIdValue,
+                bulkExplanationEn: bulkExplanationEnValue
+            };
             PARTS.forEach((part) => {
                 const p = part.id;
                 const explanationTexts = {};
@@ -519,10 +562,12 @@
                     const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
                     const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
                     const materialTopic = getSelectedSection2Material(questionNumber);
-                    if (englishInput || bahasaInput) {
+                    const english = String(englishInput?.value || "").trim() || String(bulkEnglishByNumber[questionNumber] || "").trim();
+                    const bahasa = String(bahasaInput?.value || "").trim() || String(bulkBahasaByNumber[questionNumber] || "").trim();
+                    if (englishInput || bahasaInput || english || bahasa) {
                         explanationTexts[questionNumber] = {
-                            explanation: String(englishInput?.value || "").trim(),
-                            explanationId: String(bahasaInput?.value || "").trim(),
+                            explanation: english,
+                            explanationId: bahasa,
                             materialTopic: materialTopic
                         };
                     }
@@ -634,6 +679,11 @@
             }
 
             // Populate textareas with draft data
+            const bulkIdInput = document.getElementById("input-bulk-explanation-id-all");
+            const bulkEnInput = document.getElementById("input-bulk-explanation-en-all");
+            if (bulkIdInput && typeof draft.bulkExplanationId === "string") bulkIdInput.value = draft.bulkExplanationId;
+            if (bulkEnInput && typeof draft.bulkExplanationEn === "string") bulkEnInput.value = draft.bulkExplanationEn;
+
             PARTS.forEach((part) => {
                 const p = part.id;
                 const row = draft.parts[p] || {};
@@ -1035,40 +1085,7 @@
                     ? `Contoh:\n1. The president _____ the election.\n(A) won\n(B) win\n(C) winning\n(D) is winning`
                     : `Contoh:\n5. Electrical <u>disturbances</u> on Earth are <u>frequently</u> caused <u>with</u> storms on the surface <u>of the sun</u>.`;
 
-                const firstQuestionNumber = p === 1 ? 1 : 16;
-                const lastQuestionNumber = p === 1 ? 15 : 40;
-                const explanationCardsHTML = Array.from({ length: lastQuestionNumber - firstQuestionNumber + 1 }, (_, index) => firstQuestionNumber + index)
-                    .map((questionNumber) => `
-                        <div class="dev-card explaination-card" data-question-number="${questionNumber}">
-                            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                                <h3 class="dev-card-title" style="margin:0;">Explanation</h3>
-                                <span class="explanation-save-state" hidden style="padding:4px 8px; border-radius:999px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-size:11px; font-weight:700;">Unsaved</span>
-                            </div>
-                            <h2 class="dev-card-question-number">Question ${questionNumber}</h2>
-                            <label style="display:grid; gap:6px; max-width:420px; font-size:12px; font-weight:700; color:#1e3a5f;">
-                                Material topic
-                                    <select id="section2-material-topic-${questionNumber}" class="section2-material-topic-select" onchange="updateSection2ConceptForCard(${questionNumber}); markExplanationCardUnsaved(${questionNumber})">
-                                    <option value="">Select material topic</option>
-                                </select>
-                            </label>
-                            <div style="font-size:12px; color:#475569; line-height:1.6;">
-                                Generated QC Core Analysis can be edited in both Bahasa and English.
-                            </div>
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; margin-top:16px; align-items:start;">
-                                <div style="min-width:250px;">
-                                    <div class="format-toolbar header-bahas">
-                                        <span style="font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:6px;">Explanation in Bahasa <img src="https://hatscripts.github.io/circle-flags/flags/id.svg" width="18" height="18" alt="Indonesia Flag"></span>
-                                    </div>
-                                    <textarea id="input-explanation-id-${questionNumber}" class="explanation-textarea" placeholder="QC Core Analysis in Bahasa" oninput="markExplanationCardUnsaved(${questionNumber})"></textarea>
-                                </div>
-                                <div style="min-width:250px;">
-                                    <div class="format-toolbar header-bahas">
-                                        <span style="font-weight:700; font-size:14px; display:inline-flex; align-items:center; gap:6px;">Explanation in English <img src="https://hatscripts.github.io/circle-flags/flags/gb.svg" width="18" height="18" alt="UK Flag"></span>
-                                    </div>
-                                    <textarea id="input-explanation-en-${questionNumber}" class="explanation-textarea" placeholder="QC Core Analysis ${questionNumber}" oninput="markExplanationCardUnsaved(${questionNumber})"></textarea>
-                                </div>
-                            </div>
-                        </div>`).join("");
+                
 
                 devContainer.innerHTML += `
                 <div id="dev-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
@@ -1104,8 +1121,6 @@
                                 <textarea id="input-video-step-${p}" class="explanation-textarea" placeholder="Format penulisan:\n${p === 1 ? '1' : '16'}. https://www.youtube.com/watch?v=...\n${p === 1 ? '2' : '17'}. https://drive.google.com/file/d/.../preview"></textarea>
                             </div>
                         </div>
-
-                        ${explanationCardsHTML}
                     </div>
                 </div>`;
             });
@@ -1136,22 +1151,29 @@
                 }
             }
 
+            // Single combined Bulk Explanation tab shared by Part A and Part B (not per-part/per-question).
+            const explanationBtn = document.createElement('button');
+            explanationBtn.className = 'dev-sub-btn';
+            explanationBtn.onclick = (e) => openSubTab(e, 'dev-explanation', 'dev-sub-btn');
+            explanationBtn.innerText = '💡 Bulk Explanation';
+            devNavContainer.appendChild(explanationBtn);
+
             devContainer.innerHTML += `
-            <div id="dev-guide" class="sub-content">
+            <div id="dev-explanation" class="sub-content">
                 <div class="dev-container">
-                    <div class="dev-card guide-card">
-                        <h2 class="dev-card-title" style="font-size:22px; color:#d97706;">📖 Panduan Clickable Sentence</h2>
-                        
-                        <div style="background:#fef2f2; padding:20px; border-left:4px solid #ef4444; border-radius:4px; margin-bottom:20px;">
-                            <strong style="color:#b91c1c; font-size:16px;">🔥 Fitur Ajaib Part B (Written Expression):</strong><br><br>
-                            Sekarang Anda tidak perlu lelah mengetik ulang opsi A, B, C, D ke bawah. Cukup ketik kalimatnya, blok kata yang ingin dijadikan opsi, lalu tekan tombol <kbd>U Garis Bawah</kbd>.<br><br>
-                            Sistem akan otomatis mengatur jarak kalimat dan meletakkan huruf A, B, C, D persis di bawah garis bawah kata tersebut (seperti di kertas ujian asli).<br><br>
-                            
-                            <em>Contoh Pengetikan Anda:</em><br>
-                            <code>5. Electrical &lt;u&gt;disturbances&lt;/u&gt; on Earth are &lt;u&gt;frequently&lt;/u&gt; caused &lt;u&gt;with&lt;/u&gt; storms on the surface &lt;u&gt;of the sun&lt;/u&gt;.</code><br><br>
-                            
-                            <strong>TIPS:</strong> Jika Anda menandai kata/frasa opsi dengan <code>&lt;strong&gt;...&lt;/strong&gt;</code> pada format <code>(A)...(B)...(C)...(D)</code>, sistem akan membaca teks bold sebagai opsi jawaban yang bisa diklik (misal <code>(A) &lt;strong&gt;list&lt;/strong&gt; of items</code> maka opsi A adalah <strong>list</strong>).<br><br>
-                            Teks hasil *copy-paste* yang sudah ada huruf A, B, C manual seperti <code>(A) &lt;u&gt;word&lt;/u&gt;</code> atau <code>&lt;u&gt;word&lt;/u&gt; (A)</code> juga tetap dibersihkan otomatis agar tampilannya rapi.
+                    <div class="dev-card explaination-card">
+                        <h3 class="dev-card-title" style="margin:0;">Bulk Explanation: Part A and Part B</h3>
+                        <div style="font-size:12px; color:#475569; line-height:1.6;">Paste the complete document, using <strong>Part A</strong> and <strong>Part B</strong> and <strong>Question N</strong> headings. Each block is matched to its question by number.</div>
+                        <span class="explanation-save-state" hidden style="padding:4px 8px; border-radius:999px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-size:11px; font-weight:700;">Unsaved</span>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; margin-top:16px; align-items:start;">
+                            <div style="min-width:250px;">
+                                <div class="format-toolbar header-bahas"><span style="font-weight:700; font-size:14px;">Explanation in Bahasa</span></div>
+                                <textarea id="input-bulk-explanation-id-all" class="explanation-textarea" placeholder="Part A\n\n**Question 1**\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**...\n Part B\n\n Question 16\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**..."></textarea>
+                            </div>
+                            <div style="min-width:250px;">
+                                <div class="format-toolbar header-bahas"><span style="font-weight:700; font-size:14px;">Explanation in English</span></div>
+                                <textarea id="input-bulk-explanation-en-all" class="explanation-textarea" placeholder="Part A\n\n**Question 1**\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**...\n Part B\n\n Question 16\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**...\n- **Reason:** ...\n- **Why other options are wrong:** ..."></textarea>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2228,7 +2250,9 @@
                 'input-magic-questions-2',
                 'input-answer-key-2',
                 'input-explanation-2',
-                'input-video-step-2'
+                'input-video-step-2',
+                'input-bulk-explanation-id-all',
+                'input-bulk-explanation-en-all'
             ];
 
             fields.forEach(fieldId => {
