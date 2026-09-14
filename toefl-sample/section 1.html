@@ -3107,6 +3107,18 @@
                             };
                         });
                         console.log("[ListeningData] Loaded complete listening data from Firebase for setId", currentSetId);
+
+                        // The complete-listening-data payload only stores per-part
+                        // explanation fields; the bulk explanation textareas are saved
+                        // separately on the drafts_v2 record, so pull them in here too
+                        // or they silently vanish on refresh even though save succeeded.
+                        if (window.toeflStorage && typeof toeflStorage.getDraftBySetIdAndType === "function") {
+                            try {
+                                const typedDraft = await toeflStorage.getDraftBySetIdAndType(currentSetId, currentTestType);
+                                if (typedDraft && typeof typedDraft.bulkExplanationId === "string") draft.bulkExplanationId = typedDraft.bulkExplanationId;
+                                if (typedDraft && typeof typedDraft.bulkExplanationEn === "string") draft.bulkExplanationEn = typedDraft.bulkExplanationEn;
+                            } catch (_) {}
+                        }
                     }
                 } catch (error) {
                     console.warn("[ListeningData] Failed to load from Firebase, falling back to local storage:", error);
