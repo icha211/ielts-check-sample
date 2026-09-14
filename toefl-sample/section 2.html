@@ -438,38 +438,24 @@
             return { letter: match[1].toUpperCase(), text: match[2] };
         }
 
-        // Splits one bulk-pasted "Part A / Part B" document into { questionNumber: explanationText }.
-        function parseSection2BulkExplanationBlocks(rawText, partLabel) {
+        // Splits a bulk-pasted document into { questionNumber: explanationText }. The question
+        // number alone routes each block to Part A (1-15) or Part B (16-40), so "Part A"/"Part B"
+        // headings are optional; headings like "Question 16", "Question: 16", or "**Question 16**"
+        // are all accepted since developers paste each part's questions separately.
+        function parseAllSection2BulkExplanations(rawText) {
             const text = String(rawText || "");
-            const partRegex = new RegExp(`\\*{0,2}Part\\s*${partLabel}\\*{0,2}`, "i");
-            const partMatch = partRegex.exec(text);
-            if (!partMatch) return {};
-            const start = partMatch.index + partMatch[0].length;
-            const nextPartRegex = /\*{0,2}Part\s*[AB]\*{0,2}/gi;
-            nextPartRegex.lastIndex = start;
-            const nextMatch = nextPartRegex.exec(text);
-            const end = nextMatch ? nextMatch.index : text.length;
-            const section = text.slice(start, end);
-
             const blocks = {};
-            const questionRegex = /\*{0,2}Question\s+(\d+)\*{0,2}/gi;
+            const questionRegex = /\*{0,2}Question\s*:?\s*(\d+)\*{0,2}/gi;
             const markers = [];
             let qMatch;
-            while ((qMatch = questionRegex.exec(section)) !== null) {
+            while ((qMatch = questionRegex.exec(text)) !== null) {
                 markers.push({ number: Number(qMatch[1]), start: qMatch.index, after: questionRegex.lastIndex });
             }
             markers.forEach((marker, idx) => {
-                const blockEnd = idx < markers.length - 1 ? markers[idx + 1].start : section.length;
-                const content = section.slice(marker.after, blockEnd).trim();
+                const blockEnd = idx < markers.length - 1 ? markers[idx + 1].start : text.length;
+                const content = text.slice(marker.after, blockEnd).trim();
                 if (content) blocks[marker.number] = content;
             });
-            return blocks;
-        }
-
-        function parseAllSection2BulkExplanations(rawText) {
-            const blocks = {};
-            Object.assign(blocks, parseSection2BulkExplanationBlocks(rawText, "A"));
-            Object.assign(blocks, parseSection2BulkExplanationBlocks(rawText, "B"));
             return blocks;
         }
 
