@@ -191,7 +191,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="toefl-storage-sync.js?v=20260801a"></script>
+    <script src="toefl-storage-sync.js?v=20260915b"></script>
     <script>
         const PARTS = [
             { id: 1, name: "Part A: Structure", range: "Questions 1-15", instr: "<strong>Directions</strong>: These questions are incomplete sentences. Beneath each sentence you will see four words or phrases, marked (A), (B), (C), and (D). Choose the one word or phrase that best completes the sentence." },
@@ -366,10 +366,10 @@
         async function resolveSetRecordByDate(setDate, filterTestType = null) {
             const testTypeToCheck = filterTestType || currentTestType;
             try {
-                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
-                    const records = await toeflStorage.getSetRecords();
+                if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
+                    const records = await toeflStorage.getSetRecordsByTestType(testTypeToCheck);
                     const match = (records || [])
-                        .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate && item.testType === testTypeToCheck)
+                        .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
                     if (match) return match;
                 }
@@ -379,7 +379,7 @@
 
             const local = getStoredSetMap();
             return Object.values(local)
-                .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate && item.testType === testTypeToCheck)
+                .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 

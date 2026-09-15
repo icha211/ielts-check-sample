@@ -14,6 +14,8 @@
  */
 
 const TOEFL_FIREBASE_URL = "https://quickcheck-25590-default-rtdb.asia-southeast1.firebasedatabase.app";
+const TOEFL_FIREBASE_API_KEY = "AIzaSyBtaZOok-Kj91qzCo_6ClCZ8Lfgam7qRxg";
+const TOEFL_FIREBASE_AUTH_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signUp";
 const TOEFL_STORAGE_BUCKET = "quickcheck-25590.firebasestorage.app";
 const TOEFL_STORAGE_BASE = `https://firebasestorage.googleapis.com/v0/b/${TOEFL_STORAGE_BUCKET}/o`;
 const AUDIO_CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -46,6 +48,7 @@ class ToeflStorageSync {
     this._practiceTestDraftsLocalKey = "toefl_developer_practicetest_drafts_v2";
     this._lastStorageError = "";
     this._lastUploadInfo = null;
+    this._authPromise = null;
   }
 
   _getPathsForTestType(testType = "mocktest") {
@@ -194,6 +197,51 @@ class ToeflStorageSync {
     return `${this._base}/${path}.json`;
   }
 
+  async _getAuthToken(forceRefresh = false) {
+    const tokenKey = "toefl_firebase_id_token";
+    const expiryKey = "toefl_firebase_id_token_expiry";
+    const storedToken = String(localStorage.getItem(tokenKey) || "");
+    const storedExpiry = Number(localStorage.getItem(expiryKey) || 0);
+    if (!forceRefresh && storedToken && storedExpiry > Date.now() + 60000) {
+      return storedToken;
+    }
+
+    if (this._authPromise && !forceRefresh) return this._authPromise;
+    this._authPromise = (async () => {
+      const response = await fetch(`${TOEFL_FIREBASE_AUTH_URL}?key=${encodeURIComponent(TOEFL_FIREBASE_API_KEY)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ returnSecureToken: true })
+      });
+      if (!response.ok) throw new Error(`Firebase anonymous auth failed (${response.status})`);
+      const payload = await response.json();
+      const token = String(payload.idToken || "");
+      const expiresIn = Number(payload.expiresIn || 3600);
+      if (!token) throw new Error("Firebase anonymous auth returned no ID token");
+      localStorage.setItem(tokenKey, token);
+      localStorage.setItem(expiryKey, String(Date.now() + expiresIn * 1000));
+      return token;
+    })();
+
+    try {
+      return await this._authPromise;
+    } finally {
+      this._authPromise = null;
+    }
+  }
+
+  async _request(url, options = {}) {
+    const token = await this._getAuthToken();
+    const separator = url.includes("?") ? "&" : "?";
+    const response = await fetch(`${url}${separator}auth=${encodeURIComponent(token)}`, options);
+    if (response.status !== 401 && response.status !== 403) return response;
+
+    localStorage.removeItem("toefl_firebase_id_token");
+    localStorage.removeItem("toefl_firebase_id_token_expiry");
+    const refreshedToken = await this._getAuthToken(true);
+    return fetch(`${url}${separator}auth=${encodeURIComponent(refreshedToken)}`, options);
+  }
+
   _isFirebaseRtdbEnabled() {
     return true;
   }
@@ -210,7 +258,7 @@ class ToeflStorageSync {
   }
 
   async _get(path) {
-    const r = await fetch(this._url(path), { method: "GET" });
+    const r = await this._request(this._url(path), { method: "GET" });
     if (!r.ok) {
       if (r.status === 401 || r.status === 403) {
         this._lastStorageError = `Firebase GET failed (${r.status})`;
@@ -222,7 +270,7 @@ class ToeflStorageSync {
   }
 
   async _put(path, data) {
-    const r = await fetch(this._url(path), {
+    const r = await this._request(this._url(path), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
@@ -805,8 +853,8 @@ class ToeflStorageSync {
      async deleteSetForModule(module) {
        try {
          const [setRes, draftRes] = await Promise.all([
-           fetch(this._url(`${this._setsPath}/${module}`), { method: "DELETE" }),
-           fetch(this._url(`${this._draftsPath}/${module}`), { method: "DELETE" })
+           this._request(this._url(`${this._setsPath}/${module}`), { method: "DELETE" }),
+           this._request(this._url(`${this._draftsPath}/${module}`), { method: "DELETE" })
          ]);
          const setDeleteOk = setRes.ok || setRes.status === 404;
          const draftDeleteOk = draftRes.ok || draftRes.status === 404;
@@ -1706,7 +1754,7 @@ class ToeflStorageSync {
        }
 
        try {
-         await fetch(this._url(`toefl_itp/audio_urls/${setId}/part_${partId}`), { method: "DELETE" });
+         await this._request(this._url(`toefl_itp/audio_urls/${setId}/part_${partId}`), { method: "DELETE" });
        } catch {
          // Ignore URL index delete failure in best-effort cleanup
        }
@@ -1796,8 +1844,8 @@ class ToeflStorageSync {
       
          // Hard delete from archive (irreversible)
          const [setRes, draftRes] = await Promise.all([
-           fetch(this._url(archivePath), { method: "DELETE" }).catch(() => ({ ok: false })),
-           fetch(this._url(archiveDraftPath), { method: "DELETE" }).catch(() => ({ ok: false }))
+           this._request(this._url(archivePath), { method: "DELETE" }).catch(() => ({ ok: false })),
+           this._request(this._url(archiveDraftPath), { method: "DELETE" }).catch(() => ({ ok: false }))
          ]);
       
          console.log(`[ToeflSync] ⚠️ Permanently deleted ${setId} from archive (IRREVERSIBLE)`);

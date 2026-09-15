@@ -812,6 +812,20 @@ async function handleLibrarySetDateChange(setId, moduleId, nextDate) {
         }
     }
 
+    if (currentTestType === "mocktest" && selectedDate) {
+        const duplicate = sectionSets.find((item) =>
+            item &&
+            String(item.setId) !== String(setId) &&
+            item.module === moduleId &&
+            normalizeDateKey(item.setDate) === selectedDate
+        );
+        if (duplicate) {
+            toast(`A ${MODULE_CONFIG[moduleId]?.label || moduleId} mock test already exists on this date.`);
+            await renderAll();
+            return;
+        }
+    }
+
     const targetIndex = sectionSets.findIndex((item) => item && String(item.setId) === String(setId));
     if (targetIndex === -1) return;
 
