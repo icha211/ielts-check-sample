@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Section 2 Review - Structure | TOEFL ITP</title>
-    <link rel="stylesheet" href="css/explaination.css" />
+    <link rel="stylesheet" href="css/explaination.css?v=20260916a" />
     <style>
         .materials-tab { display: block; padding: 24px; }
         .section2-materi-lesson { width: 100%; }
@@ -180,7 +180,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="toefl-storage-sync.js?v=20260801a"></script>
+    <script src="toefl-storage-sync.js?v=20260916a"></script>
     <script>
         var STEP_TIPS_IMAGE = '../asst/icon/tipsboxsetp-bystep.png';
         var reviewResultData = null;
@@ -1541,6 +1541,53 @@
             return html;
         }
 
+        function buildCompleteSentenceBox(question, blueprint) {
+            var correctAnswer = normalizeLetter(question && question.correctAnswer);
+            var correctText = extractChoiceText(question && question.options, correctAnswer);
+            var savedText = String(question && question.explanation || '').replace(/\r\n?/g, '\n');
+            var sentence = String(firstNonEmpty(
+                question && question.completeSentence,
+                question && question.completedSentence,
+                question && question.filledSentenceText
+            ) || '').trim();
+            var rationale = String(firstNonEmpty(
+                question && question.completeSentenceExplanation,
+                question && question.completedSentenceExplanation
+            ) || '').trim();
+
+            if (!sentence) {
+                var explicitMatch = savedText.match(/Maka\s+kalimat\s+lengkapnya\s*:?\s*\n+\s*["“]?(.+?)["”]?\s*\n+\s*(Karena[\s\S]*?)(?=\n\s*\*{0,2}[CORE]\s*-|$)/i);
+                if (explicitMatch) {
+                    sentence = String(explicitMatch[1] || '').trim();
+                    rationale = rationale || String(explicitMatch[2] || '').trim();
+                }
+            }
+
+            if (!sentence) {
+                var source = normalizeText(question && question.questionText);
+                sentence = /_{2,}|\.{3,}/.test(source) ? injectChoiceIntoStem(source, correctText) : source;
+            }
+            if (!sentence) return '';
+
+            if (!rationale) {
+                var subject = normalizeText(blueprint && blueprint.subject);
+                var mainVerb = normalizeText(blueprint && blueprint.mainVerb);
+                rationale = subject && mainVerb
+                    ? 'Karena struktur kalimat membutuhkan ' + subject + ' sebagai Subject yang bertemu dengan Main Verb (' + mainVerb + ').'
+                    : 'Karena pilihan ini melengkapi struktur kalimat dengan tepat.';
+            }
+
+            var sentenceHtml = escapeHtml(sentence.replace(/^\s*["“]|["”]\s*$/g, '').trim());
+            var answerHtml = escapeHtml(correctText);
+            if (answerHtml) sentenceHtml = sentenceHtml.replace(new RegExp(escapeRegExp(answerHtml), 'i'), '<strong>' + answerHtml + '</strong>');
+
+            return '<section class="section2-complete-sentence-box">'
+                + '<h3>Maka kalimat lengkapnya</h3>'
+                + '<p class="section2-complete-sentence">&ldquo;' + sentenceHtml + '&rdquo;</p>'
+                + '<p class="section2-complete-rationale">' + escapeHtml(rationale) + '</p>'
+                + '</section>';
+        }
+
         function buildSavedQcCoreAnalysisBlock(question) {
             var questionNumber = Number(question && question.number) || 0;
             var isExpanded = qcCoreExpandState[questionNumber] !== false;
@@ -1549,6 +1596,9 @@
                 savedText = savedText.replace(/^\*\*C\s*-\s*Concept:\*\*.*$/m, '**C - Concept:** ' + question.materialTopic.title);
             }
             if (!savedText) return '';
+            var savedTextWithoutCompleteSentence = savedText
+                .replace(/Maka\s+kalimat\s+lengkapnya\s*:?\s*\n+[\s\S]*?(?=\n\s*\*{0,2}[CORE]\s*-|$)/i, '')
+                .trim();
             return '<section class="section2-qc-analysis ' + (isExpanded ? 'is-expanded' : 'is-collapsed') + '">'
                 + '<div class="section2-qc-core-banner">'
                 + '<button type="button" class="section2-qc-core-head" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" onclick="toggleQcCoreExpand(' + questionNumber + ')">'
@@ -1557,7 +1607,8 @@
                 + '</button>'
                 + '</div>'
                 + '<div class="section2-qc-core-body">'
-                + renderSavedQcCoreMarkdown(savedText, { preserveEliminateQualifier: Number(question && question.partId) === 2 })
+                + renderSavedQcCoreMarkdown(savedTextWithoutCompleteSentence, { preserveEliminateQualifier: Number(question && question.partId) === 2 })
+                + buildCompleteSentenceBox(question)
                 + '</div>'
                 + '</section>';
         }
@@ -1586,6 +1637,7 @@
                 + '<p>' + buildPartBReviewSentenceHtml(question) + '</p>'
                 + '<p class="section2-qc-core-key">R - Requirement:</p>'
                 + '<p>' + escapeHtml(summary) + '</p>'
+                + buildCompleteSentenceBox(question)
                 + '</div>'
                 + '</section>';
             }
@@ -1974,6 +2026,7 @@
                 + '<p>' + requirementLead + ' ' + escapeHtml(ruleLabel) + '</p>'
                 + '<p><span class="section2-qc-core-key">E - Eliminate</span>:</p>'
                 + '<ul class="section2-qc-core-list section2-qc-core-list--elim">' + eliminationLines + '</ul>'
+                + buildCompleteSentenceBox(question, { subject: subjectToken, mainVerb: mainVerb })
                 + '</div>'
                 + '</section>';
         }
