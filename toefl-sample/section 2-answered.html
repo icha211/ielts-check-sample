@@ -3740,17 +3740,20 @@
             renderReviewPackageLabel(result.submittedAt);
             renderListeningScaledScore(result);
 
+            var qParam = Number(params.get('q') || params.get('question') || params.get('questionNumber') || 0);
             var firstQuestion = result.questions[0];
             var firstIndex = 0;
-            if (!result.isPreview) {
-                for (var i = 0; i < result.questions.length; i += 1) {
-                    if (!result.questions[i].isCorrect) {
-                        firstQuestion = result.questions[i];
-                        firstIndex = i;
+
+            if (qParam > 0) {
+                for (var qIdx = 0; qIdx < result.questions.length; qIdx += 1) {
+                    if (Number(result.questions[qIdx].number) === qParam) {
+                        firstQuestion = result.questions[qIdx];
+                        firstIndex = qIdx;
                         break;
                     }
                 }
             }
+
             renderQuestion(firstQuestion, firstIndex);
         }
 
