@@ -1485,9 +1485,11 @@
                     var word = (match[1] || match[3] || '').trim();
                     var role = (match[2] || match[4] || '').trim();
                     var trail = (match[5] || '').trim();
+                    var isBlank = /^[_.\-—–\s]+$/.test(word);
+                    var wordClass = 'section2-qc-observe-word' + (!isBlank ? ' is-underlined' : '');
 
                     output += '<span class="section2-qc-observe-token">'
-                        + '<span class="section2-qc-observe-word">' + inlineText(word) + '</span>'
+                        + '<span class="' + wordClass + '">' + inlineText(word) + '</span>'
                         + '<span class="section2-qc-observe-label">' + escapeHtml(role) + '</span>'
                         + '</span>';
 
@@ -1986,8 +1988,10 @@
             for (var segmentIndex = 0; segmentIndex < observeSegments.length; segmentIndex += 1) {
                 var segment = observeSegments[segmentIndex];
                 if (segment.type === 'subject' || segment.type === 'verb') {
+                    var isBlank = /^[_.\-—–\s]+$/.test(String(segment.text || ''));
+                    var wordClass = 'section2-qc-observe-word' + (!isBlank ? ' is-underlined' : '');
                     observeColumnsHtml += '<span class="section2-qc-observe-token">'
-                        + '<span class="section2-qc-observe-word">' + inlineText(segment.text) + '</span>'
+                        + '<span class="' + wordClass + '">' + inlineText(segment.text) + '</span>'
                         + '<span class="section2-qc-observe-label">' + escapeHtml(segment.label) + '</span>'
                         + '</span>';
                 } else {
