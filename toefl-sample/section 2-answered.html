@@ -1464,24 +1464,48 @@
             }
 
             function renderObserveLine(value) {
-                var chunks = String(value || '').split(/\s*\+\s*/);
+                var raw = String(value || '').trim();
+                if (!raw) return '';
+                // Strip '+' separators if present in legacy format
+                var cleaned = raw.replace(/\s*\+\s*/g, ' ').replace(/\s+/g, ' ').trim();
+
+                var tokenRegex = /(?:\[([^\]\n]+?)\s*\(([^)]+)\)\]|([A-Za-z0-9_'\-—–]+(?:\s+[A-Za-z0-9_'\-—–]+){0,3})\s*\(([^)]+)\))([,.;:]*)/g;
                 var output = '<div class="section2-qc-observe-line">';
-                for (var i = 0; i < chunks.length; i += 1) {
-                    var chunk = chunks[i].trim();
-                    if (!chunk) continue;
-                    if (i > 0) output += '<span class="section2-qc-observe-plus" aria-hidden="true">+</span>';
-                    // Allow trailing punctuation (e.g. a comma) right after the ")" so real-world
-                    // text like "_____(Subject), the first..." still gets boxed correctly.
-                    var roleMatch = chunk.match(/^(.*?)\s*\((Subject|Verb)\)\s*([,.;:]*)\s*$/i);
-                    if (roleMatch) {
-                        var word = roleMatch[1].trim();
-                        var trail = roleMatch[3] || '';
-                        output += '<span class="section2-qc-observe-token"><span class="section2-qc-observe-word">' + inlineText(word) + '</span><span class="section2-qc-observe-label">' + escapeHtml(roleMatch[2]) + '</span></span>';
-                        if (trail) output += '<span class="section2-qc-observe-plain">' + escapeHtml(trail) + '</span>';
-                    } else {
-                        output += '<span class="section2-qc-observe-plain">' + inlineText(chunk) + '</span>';
+                var lastIndex = 0;
+                var match;
+                var hasMatches = false;
+
+                while ((match = tokenRegex.exec(cleaned)) !== null) {
+                    hasMatches = true;
+                    var matchStart = match.index;
+                    var plainBefore = cleaned.slice(lastIndex, matchStart).trim();
+                    if (plainBefore) {
+                        output += '<span class="section2-qc-observe-plain">' + inlineText(plainBefore) + '</span>';
                     }
+                    var word = (match[1] || match[3] || '').trim();
+                    var role = (match[2] || match[4] || '').trim();
+                    var trail = (match[5] || '').trim();
+
+                    output += '<span class="section2-qc-observe-token">'
+                        + '<span class="section2-qc-observe-word">' + inlineText(word) + '</span>'
+                        + '<span class="section2-qc-observe-label">' + escapeHtml(role) + '</span>'
+                        + '</span>';
+
+                    if (trail) {
+                        output += '<span class="section2-qc-observe-plain is-punctuation">' + escapeHtml(trail) + '</span>';
+                    }
+                    lastIndex = tokenRegex.lastIndex;
                 }
+
+                var remaining = cleaned.slice(lastIndex).trim();
+                if (remaining) {
+                    output += '<span class="section2-qc-observe-plain">' + inlineText(remaining) + '</span>';
+                }
+
+                if (!hasMatches) {
+                    output += '<span class="section2-qc-observe-plain">' + inlineText(cleaned) + '</span>';
+                }
+
                 return output + '</div>';
             }
 
@@ -1514,10 +1538,15 @@
                     if (letterKey === 'e' && preserveEliminateQualifier && qualifier) headerLabel += ' ' + qualifier;
                     var inlineRest = String(headerMatch[4] || '').trim();
                     html += '<p class="section2-qc-core-key">' + escapeHtml(headerLabel) + ':</p>';
-                    if (inlineRest) html += '<p>' + inlineText(inlineRest) + '</p>';
-                    if (letterKey === 'o' && !inlineRest && i + 1 < lines.length && lines[i + 1].trim() && lines[i + 1].indexOf('+') >= 0) {
-                        html += renderObserveLine(lines[++i]);
+                    if (letterKey === 'o') {
+                        if (inlineRest) {
+                            html += renderObserveLine(inlineRest);
+                        } else if (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].match(/^\s*[*#-]/) && !lines[i + 1].match(headerRegex)) {
+                            html += renderObserveLine(lines[++i]);
+                        }
+                        continue;
                     }
+                    if (inlineRest) html += '<p>' + inlineText(inlineRest) + '</p>';
                     continue;
                 }
                 var eliminationMatch = line.match(/^\s*\*\s+\*\*([^*]+)\*\*\s*\((BENAR|SALAH)\)\s*:\s*(.*)$/i);
@@ -1956,18 +1985,22 @@
             var observeColumnsHtml = '';
             for (var segmentIndex = 0; segmentIndex < observeSegments.length; segmentIndex += 1) {
                 var segment = observeSegments[segmentIndex];
-                if (segmentIndex > 0) observeColumnsHtml += renderObservePlainColumn('+');
                 if (segment.type === 'subject' || segment.type === 'verb') {
-                    observeColumnsHtml += renderObserveColumn(segment.text, segment.label, segment.color, 'center');
+                    observeColumnsHtml += '<span class="section2-qc-observe-token">'
+                        + '<span class="section2-qc-observe-word">' + inlineText(segment.text) + '</span>'
+                        + '<span class="section2-qc-observe-label">' + escapeHtml(segment.label) + '</span>'
+                        + '</span>';
                 } else {
-                    observeColumnsHtml += renderObservePlainColumn(segment.text);
+                    var plainTxt = String(segment.text || '').trim();
+                    if (plainTxt) {
+                        var isPunc = /^[,.;:]+$/.test(plainTxt);
+                        observeColumnsHtml += '<span class="section2-qc-observe-plain' + (isPunc ? ' is-punctuation' : '') + '">' + inlineText(plainTxt) + '</span>';
+                    }
                 }
             }
 
-            var observeVisualHtml = '<div style="display:flex; justify-content:center; width:100%; margin-top:8px; overflow-x:hidden;">'
-                + '<div style="display:grid; grid-template-rows:auto auto; grid-auto-flow:column; grid-auto-columns:max-content; column-gap:8px; row-gap:6px; align-items:start; justify-content:center; width:min(100%, 1100px);">'
+            var observeVisualHtml = '<div class="section2-qc-observe-line">'
                 + observeColumnsHtml
-                + '</div>'
                 + '</div>';
 
             var observedSubjectText = missingSubject ? '[KOSONG/BLANK]' : escapeHtml(subjectToken || '[TERSEDIA]');
