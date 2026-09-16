@@ -134,7 +134,7 @@
         </div>
 
         <main class="component-34">
-            <aside class="left-col">
+            <!-- <aside class="left-col">
                 <section class="property-1default grammar-review-sidebar" id="grammarReviewSidebar">
                     <div class="highlighter-1-parent">
                         <div class="highlighter-1"><img src="../asst/icon/highlight.svg" alt="Grammar highlight"></div>
@@ -142,7 +142,7 @@
                     </div>
                     <div class="section2-sidebar-cards" id="grammarSidebarCards"></div>
                 </section>
-            </aside>
+            </aside> -->
 
             <section class="center-col">
                 <section class="section-explaination section-explaination--tabs" id="partBExplainationTabs">
@@ -2174,6 +2174,7 @@
 
         function isPartBQuestion16FigmaCase(question) {
             if (!question) return false;
+            if (!reviewResultData || !reviewResultData.isPreview) return false;
             var questionNumber = Number(question.number || 0);
             return questionNumber === 16;
         }
@@ -2668,7 +2669,7 @@
                 host.innerHTML = renderPartBGenericExplanation(question);
                 return;
             }
-            if (Number(question.number) === 2) {
+            if (reviewResultData && reviewResultData.isPreview && Number(question.number) === 2) {
                 host.innerHTML = renderQuestionTwoExplanation(question);
                 cacheQcCoreExplanation(question.number, host);
                 return;
