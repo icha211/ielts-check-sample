@@ -1486,7 +1486,15 @@
             var preserveEliminateQualifier = !!(options && options.preserveEliminateQualifier);
 
             function inlineText(value) {
-                return escapeHtml(String(value || '')).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                var text = String(value || '');
+                // Convert literal HTML strong/b/u/em tags to safe markers or preserve them safely
+                return escapeHtml(text)
+                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                    .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
+                    .replace(/&lt;(\/?)b&gt;/gi, '<$1strong>')
+                    .replace(/&lt;(\/?)u&gt;/gi, '<$1u>')
+                    .replace(/&lt;(\/?)em&gt;/gi, '<$1em>')
+                    .replace(/&lt;(\/?)i&gt;/gi, '<$1em>');
             }
 
             function statusIcon(status) {

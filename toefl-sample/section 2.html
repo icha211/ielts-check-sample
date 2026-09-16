@@ -532,6 +532,7 @@
 
         async function saveSectionDraft() {
             syncPartBRichEditorToTextarea();
+            syncBulkExplanationRichEditorsToTextareas();
             const bulkExplanationIdValue = (document.getElementById("input-bulk-explanation-id-all") || {}).value || "";
             const bulkExplanationEnValue = (document.getElementById("input-bulk-explanation-en-all") || {}).value || "";
             const bulkBahasaByNumber = parseAllSection2BulkExplanations(bulkExplanationIdValue);
@@ -697,6 +698,7 @@
             renderSection2MaterialOptions();
 
             syncPartBRichEditorFromTextarea();
+            syncBulkExplanationRichEditorsFromTextareas();
         }
 
         async function loadSectionMeta() {
@@ -1142,16 +1144,24 @@
                 <div class="dev-container">
                     <div class="dev-card explaination-card">
                         <h3 class="dev-card-title" style="margin:0;">Bulk Explanation: Part A and Part B</h3>
-                        <div style="font-size:12px; color:#475569; line-height:1.6;">Paste the complete document, using <strong>Part A</strong> and <strong>Part B</strong> and <strong>Question N</strong> headings. Each block is matched to its question by number.</div>
+                        <div style="font-size:12px; color:#475569; line-height:1.6;">Paste the complete document, using <strong>Part A</strong> and <strong>Part B</strong> and <strong>Question N</strong> headings. Each block is matched to its question by number. Bold formatted text and (Ctrl+B) are fully preserved.</div>
                         <span class="explanation-save-state" hidden style="padding:4px 8px; border-radius:999px; background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; font-size:11px; font-weight:700;">Unsaved</span>
                         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:20px; margin-top:16px; align-items:start;">
                             <div style="min-width:250px;">
-                                <div class="format-toolbar header-bahas"><span style="font-weight:700; font-size:14px;">Explanation in Bahasa</span></div>
-                                <textarea id="input-bulk-explanation-id-all" class="explanation-textarea" placeholder="Part A\n\n**Question 1**\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**...\n\n Part B\n\n**Question 16**\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**..."></textarea>
+                                <div class="format-toolbar header-bahas">
+                                    <span style="font-weight:700; font-size:14px;">Explanation in Bahasa</span>
+                                    <button class="format-btn" type="button" title="Tebalkan Teks (Bold)" onclick="formatText('input-bulk-explanation-id-rich', '<strong>', '</strong>')" style="margin-left:auto; color:black;">B Bold (Ctrl+B)</button>
+                                </div>
+                                <div id="input-bulk-explanation-id-rich" class="smart-rich-editor" contenteditable="true" data-target-textarea="input-bulk-explanation-id-all" data-placeholder="Part A\n\n**Question 1**\n- C - Concept: ...\n- O - Observe S-V-C: ...\n- Subject: ...\n- Verb: ...\n- Compliance: ...\n- R - Requirement: ...\n- E - Eliminate:...\n\nPart B\n\n**Question 16**\n- C - Concept: ...\n- O - Observe S-V-C: ...\n- Subject: ...\n- Verb: ...\n- Compliance: ...\n- R - Requirement: ...\n- E - Eliminate:..."></div>
+                                <textarea id="input-bulk-explanation-id-all" class="explanation-textarea smart-textarea-hidden" placeholder="Part A\n\n**Question 1**\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**...\n\n Part B\n\n**Question 16**\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**..."></textarea>
                             </div>
                             <div style="min-width:250px;">
-                                <div class="format-toolbar header-bahas"><span style="font-weight:700; font-size:14px;">Explanation in English</span></div>
-                                <textarea id="input-bulk-explanation-en-all" class="explanation-textarea" placeholder="Part A\n\n**Question 1**\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**...\n\n Part B\n\n**Question 16**\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**...\n- **Reason:** ...\n- **Why other options are wrong:** ..."></textarea>
+                                <div class="format-toolbar header-bahas">
+                                    <span style="font-weight:700; font-size:14px;">Explanation in English</span>
+                                    <button class="format-btn" type="button" title="Tebalkan Teks (Bold)" onclick="formatText('input-bulk-explanation-en-rich', '<strong>', '</strong>')" style="margin-left:auto; color:black;">B Bold (Ctrl+B)</button>
+                                </div>
+                                <div id="input-bulk-explanation-en-rich" class="smart-rich-editor" contenteditable="true" data-target-textarea="input-bulk-explanation-en-all" data-placeholder="Part A\n\n**Question 1**\n- C - Concept: ...\n- O - Observe S-V-C: ...\n- Subject: ...\n- Verb: ...\n- Compliance: ...\n- R - Requirement: ...\n- E - Eliminate:...\n\nPart B\n\n**Question 16**\n- C - Concept: ...\n- O - Observe S-V-C: ...\n- Subject: ...\n- Verb: ...\n- Compliance: ...\n- R - Requirement: ...\n- E - Eliminate:...\n- Reason: ...\n- Why other options are wrong: ..."></div>
+                                <textarea id="input-bulk-explanation-en-all" class="explanation-textarea smart-textarea-hidden" placeholder="Part A\n\n**Question 1**\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**...\n\n Part B\n\n**Question 16**\n- **C - Concept:** ...\n- **O - Observe S-V-C:** ...\n- **Subject:** ...\n- **Verb:** ...\n- **Compliance:** ...\n- **R - Requirement:** ...\n **E - Eliminate:**...\n- **Reason:** ...\n- **Why other options are wrong:** ..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -1563,6 +1573,84 @@
             const textArea = document.getElementById('input-magic-questions-2');
             if (!editor || !textArea) return;
             editor.innerHTML = normalizePartBRichHtml(markupToRichEditorHtml(textArea.value || ''));
+        }
+
+        function syncBulkExplanationRichEditorsToTextareas() {
+            const idEditor = document.getElementById('input-bulk-explanation-id-rich');
+            const idTextarea = document.getElementById('input-bulk-explanation-id-all');
+            if (idEditor && idTextarea) {
+                let markup = '';
+                idEditor.childNodes.forEach((child) => {
+                    markup += htmlNodeToQuestionMarkup(child);
+                });
+                idTextarea.value = normalizeClipboardQuestionText(markup);
+            }
+
+            const enEditor = document.getElementById('input-bulk-explanation-en-rich');
+            const enTextarea = document.getElementById('input-bulk-explanation-en-all');
+            if (enEditor && enTextarea) {
+                let markup = '';
+                enEditor.childNodes.forEach((child) => {
+                    markup += htmlNodeToQuestionMarkup(child);
+                });
+                enTextarea.value = normalizeClipboardQuestionText(markup);
+            }
+        }
+
+        function syncBulkExplanationRichEditorsFromTextareas() {
+            const idEditor = document.getElementById('input-bulk-explanation-id-rich');
+            const idTextarea = document.getElementById('input-bulk-explanation-id-all');
+            if (idEditor && idTextarea) {
+                idEditor.innerHTML = normalizePartBRichHtml(markupToRichEditorHtml(idTextarea.value || ''));
+            }
+
+            const enEditor = document.getElementById('input-bulk-explanation-en-rich');
+            const enTextarea = document.getElementById('input-bulk-explanation-en-all');
+            if (enEditor && enTextarea) {
+                enEditor.innerHTML = normalizePartBRichHtml(markupToRichEditorHtml(enTextarea.value || ''));
+            }
+        }
+
+        function bindBulkExplanationRichPasteSupport() {
+            ['input-bulk-explanation-id', 'input-bulk-explanation-en'].forEach((prefix) => {
+                const editor = document.getElementById(`${prefix}-rich`);
+                const textArea = document.getElementById(`${prefix}-all`);
+                if (!editor || !textArea || editor.dataset.richPasteBound === '1') return;
+
+                editor.addEventListener('input', () => {
+                    syncBulkExplanationRichEditorsToTextareas();
+                });
+
+                editor.addEventListener('keydown', (event) => {
+                    if ((event.ctrlKey || event.metaKey) && (event.key === 'b' || event.key === 'B')) {
+                        event.preventDefault();
+                        document.execCommand('bold', false, null);
+                        syncBulkExplanationRichEditorsToTextareas();
+                    }
+                });
+
+                editor.addEventListener('paste', (event) => {
+                    const clipboard = event.clipboardData;
+                    if (!clipboard) return;
+
+                    event.preventDefault();
+                    const html = clipboard.getData('text/html') || '';
+                    const text = clipboard.getData('text/plain') || '';
+
+                    let insertHtml = '';
+                    if (html && /<(b|strong|u|span|div|p|li|br)\b/i.test(html)) {
+                        const converted = convertClipboardHtmlToQuestionMarkup(html, text);
+                        insertHtml = markupToRichEditorHtml(converted);
+                    } else {
+                        insertHtml = stripLiteralTagTextToHtml(text);
+                    }
+
+                    document.execCommand('insertHTML', false, normalizePartBRichHtml(insertHtml));
+                    syncBulkExplanationRichEditorsToTextareas();
+                });
+
+                editor.dataset.richPasteBound = '1';
+            });
         }
 
         function getPartBRichOptionMap() {
@@ -2245,11 +2333,23 @@
                 }
             });
 
-            // Also listen to the rich editor for Part B
+            // Also listen to the rich editor for Part B and Bulk Explanations
             const richEditor = document.getElementById('input-magic-questions-rich-2');
             if (richEditor) {
                 richEditor.addEventListener('input', triggerAutoSave);
                 richEditor.addEventListener('blur', triggerAutoSave);
+            }
+
+            const bulkIdRich = document.getElementById('input-bulk-explanation-id-rich');
+            if (bulkIdRich) {
+                bulkIdRich.addEventListener('input', triggerAutoSave);
+                bulkIdRich.addEventListener('blur', triggerAutoSave);
+            }
+
+            const bulkEnRich = document.getElementById('input-bulk-explanation-en-rich');
+            if (bulkEnRich) {
+                bulkEnRich.addEventListener('input', triggerAutoSave);
+                bulkEnRich.addEventListener('blur', triggerAutoSave);
             }
 
             showAutoSaveStatus("Ready", true);
@@ -2289,6 +2389,8 @@
             hydrateGeneratedQcExplanations();
             syncPartBRichEditorFromTextarea();
             bindPartBRichPasteSupport();
+            syncBulkExplanationRichEditorsFromTextareas();
+            bindBulkExplanationRichPasteSupport();
             applyViewMode();
             activateInitialTab();
             bindUserToolbarActions();
