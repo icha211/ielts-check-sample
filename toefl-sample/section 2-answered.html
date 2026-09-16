@@ -29,7 +29,7 @@
             <div class="frame-parent10">
                 <img class="frame-child" src="../asset/icon/logo.png" alt="QuickCheck logo">
                 <div class="listening-comprehension-parent">
-                    <div class="listening-comprehension" id="sectionReviewTitle">Structure and Written Expression</div>
+                    <div class="listening-comprehension" id="sectionReviewTitle">Section 2: Structure and Written Expression</div>
                     <div class="package-01-jan" id="reviewPackageLabel">Package 01 Jan</div>
                 </div>
             </div>
@@ -46,10 +46,6 @@
                     <div class="header-part-block" id="headerPartBlock1">
                         <div class="header-part-title" id="headerPartTitle1">PART B</div>
                         <div class="header-question-grid" id="headerPartGrid1"></div>
-                    </div>
-                    <div class="header-part-block" id="headerPartBlock2">
-                        <div class="header-part-title" id="headerPartTitle2">PART C</div>
-                        <div class="header-question-grid" id="headerPartGrid2"></div>
                     </div>
                 </div>
 
@@ -634,15 +630,30 @@
         }
 
         function loadReviewSource() {
+            var params = new URLSearchParams(window.location.search);
+            var dateParam = params.get('date') || params.get('setDate') || params.get('packageDate');
+
             var direct = parseStorageJson('toefl_section2_result');
-            if (direct) return direct;
+            if (direct) {
+                if (dateParam && (!direct.submittedAt || direct.submittedAt === '2026-01-01')) {
+                    direct.submittedAt = dateParam;
+                }
+                return direct;
+            }
+
+            var devDraft = parseStorageJson('toefl_section2_dev_draft_v1');
+            if (devDraft && devDraft.parts) {
+                var built = buildReviewSourceFromDraft(devDraft, dateParam);
+                if (built && built.questions && built.questions.length) return built;
+            }
 
             var userSubmissions = parseStorageJson('userSubmissions') || parseStorageJson('toefl_user_submissions');
             var aiReviews = parseStorageJson('aiReviews') || parseStorageJson('toefl_ai_reviews');
             if (userSubmissions || aiReviews) {
                 return {
-                    sectionTitle: 'Structure and Written Expression',
+                    sectionTitle: 'Section 2: Structure and Written Expression',
                     sectionKey: 'structure',
+                    submittedAt: dateParam || '',
                     userSubmissions: userSubmissions,
                     aiReviews: aiReviews
                 };
@@ -759,7 +770,7 @@
             }
             if (!questions.length) return null;
             return {
-                sectionTitle: 'Structure and Written Expression',
+                sectionTitle: 'Section 2: Structure and Written Expression',
                 sectionKey: 'structure',
                 totalQuestions: questions.length,
                 rawScore: questions.filter(function (question) { return question.isCorrect; }).length,
@@ -772,15 +783,44 @@
         async function loadReviewSourceFromUrl() {
             var params = new URLSearchParams(window.location.search);
             var setId = String(params.get('setId') || '').trim();
+            var dateParam = params.get('date') || params.get('setDate') || params.get('packageDate');
             var testType = String(params.get('testType') || 'mocktest').trim().toLowerCase();
-            if (!setId || !window.toeflStorage || typeof toeflStorage.getDraftBySetIdAndType !== 'function') return null;
-            try {
-                var draft = await toeflStorage.getDraftBySetIdAndType(setId, testType === 'practicetest' ? 'practicetest' : 'mocktest');
-                return buildReviewSourceFromDraft(draft, params.get('setDate') || params.get('date'));
-            } catch (error) {
-                console.warn('Unable to load review draft for ' + setId, error);
-                return null;
+
+            // 1. Try by setId if provided
+            if (setId && window.toeflStorage && typeof toeflStorage.getDraftBySetIdAndType === 'function') {
+                try {
+                    var draft = await toeflStorage.getDraftBySetIdAndType(setId, testType === 'practicetest' ? 'practicetest' : 'mocktest');
+                    if (draft && draft.parts) return buildReviewSourceFromDraft(draft, dateParam);
+                } catch (error) {
+                    console.warn('Unable to load review draft for setId ' + setId, error);
+                }
             }
+
+            // 2. Try resolving setId from dateParam via set records
+            if (dateParam && window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === 'function') {
+                try {
+                    var records = await toeflStorage.getSetRecordsByTestType(testType === 'practicetest' ? 'practicetest' : 'mocktest');
+                    var normDate = normalizeDateKey(dateParam);
+                    var matched = (records || []).find(function(r) {
+                        return normalizeDateKey(r.date || r.setDate) === normDate;
+                    });
+                    if (matched && matched.setId) {
+                        var draftByDate = await toeflStorage.getDraftBySetIdAndType(matched.setId, testType === 'practicetest' ? 'practicetest' : 'mocktest');
+                        if (draftByDate && draftByDate.parts) return buildReviewSourceFromDraft(draftByDate, dateParam);
+                    }
+                } catch (e) {
+                    console.warn('Unable to resolve set by date:', e);
+                }
+            }
+
+            // 3. Try local working draft from Section 2 editor
+            var devDraft = parseStorageJson('toefl_section2_dev_draft_v1');
+            if (devDraft && devDraft.parts) {
+                var built = buildReviewSourceFromDraft(devDraft, dateParam);
+                if (built && built.questions && built.questions.length) return built;
+            }
+
+            return null;
         }
 
         function questionStatus(question) {
@@ -1221,14 +1261,16 @@
             return escapeHtml(blueprint && blueprint.sentence || question && question.questionText || '');
         }
 
-        function buildPreviewReviewState() {
+        function buildPreviewReviewState(dateValue) {
             var questions = [];
-            var wrongSet = { 3: true, 4: true, 31: true, 34: true };
-            for (var number = 1; number <= 50; number += 1) {
+            var wrongSet = { 3: true, 4: true, 21: true, 24: true };
+            for (var number = 1; number <= 40; number += 1) {
+                var partId = number <= 15 ? 1 : 2;
+                var partName = number <= 15 ? 'Part A' : 'Part B';
                 questions.push({
                     number: number,
-                    partId: number <= 30 ? 1 : (number <= 38 ? 2 : 3),
-                    partName: number <= 30 ? 'Part A' : (number <= 38 ? 'Part B' : 'Part C'),
+                    partId: partId,
+                    partName: partName,
                     questionText: 'Question ' + number,
                     options: { A: 'Preview option A', B: 'Preview option B', C: 'Preview option C', D: 'Preview option D' },
                     correctAnswer: 'B',
@@ -1306,12 +1348,12 @@
             });
 
             return {
-                sectionTitle: 'Structure and Written Expression',
+                sectionTitle: 'Section 2: Structure and Written Expression',
                 sectionKey: 'structure',
-                totalQuestions: 50,
-                rawScore: 46,
+                totalQuestions: 40,
+                rawScore: 36,
                 scaledScore: 62,
-                submittedAt: '2026-01-01',
+                submittedAt: normalizeDateKey(dateValue) || '2026-09-16',
                 isPreview: true,
                 questions: questions
             };
@@ -3682,10 +3724,16 @@
             loadSection2MaterialRecordsFromLocal();
             loadSection2MaterialRecordsFromFirebase();
 
+            var params = new URLSearchParams(window.location.search);
+            var dateParam = params.get('date') || params.get('setDate') || params.get('packageDate');
+
             var source = await loadReviewSourceFromUrl() || loadReviewSource();
             var result = normalizeReviewState(source);
             if (!result || !Array.isArray(result.questions) || !result.questions.length) {
-                result = buildPreviewReviewState();
+                result = buildPreviewReviewState(dateParam);
+            }
+            if (dateParam && (!result.submittedAt || result.submittedAt === '2026-01-01')) {
+                result.submittedAt = dateParam;
             }
 
             reviewResultData = result;
