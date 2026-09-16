@@ -1469,7 +1469,7 @@
                 // Strip '+' separators if present in legacy format
                 var cleaned = raw.replace(/\s*\+\s*/g, ' ').replace(/\s+/g, ' ').trim();
 
-                var tokenRegex = /(?:\[([^\]\n]+?)\s*\(([^)]+)\)\]|([A-Za-z0-9_'\-—–]+(?:\s+[A-Za-z0-9_'\-—–]+){0,3})\s*\(([^)]+)\))([,.;:]*)/g;
+                var tokenRegex = /(?:\[([^\]\n]+?)\s*\(([^)\n]+)\)\]|([A-Za-z0-9_'\-—–*"]+(?:\s+[A-Za-z0-9_'\-—–*"]+){0,5})\s*\(([^)\n]+)\))([,.;:]*)/g;
                 var output = '<div class="section2-qc-observe-line">';
                 var lastIndex = 0;
                 var match;
@@ -1485,6 +1485,20 @@
                     var word = (match[1] || match[3] || '').trim();
                     var role = (match[2] || match[4] || '').trim();
                     var trail = (match[5] || '').trim();
+
+                    // If word ends with punctuation like comma/semicolon, move it to trail
+                    var wordPunc = word.match(/[,.;:]+$/);
+                    if (wordPunc) {
+                        trail = wordPunc[0] + trail;
+                        word = word.slice(0, -wordPunc[0].length).trim();
+                    }
+                    // If role ends with punctuation, move it to trail
+                    var rolePunc = role.match(/[,.;:]+$/);
+                    if (rolePunc) {
+                        trail = rolePunc[0] + trail;
+                        role = role.slice(0, -rolePunc[0].length).trim();
+                    }
+
                     var isBlank = /^[_.\-—–\s]+$/.test(word);
                     var wordClass = 'section2-qc-observe-word' + (!isBlank ? ' is-underlined' : '');
 
