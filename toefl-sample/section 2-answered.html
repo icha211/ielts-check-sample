@@ -233,6 +233,44 @@
             return section2MaterialRecords[topicId] || null;
         }
 
+        function normalizeMaterialMatchText(value) {
+            return normalizeText(value).toLowerCase().replace(/[&/,.:;()\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+        }
+
+        function extractConceptTitle(question) {
+            if (question && question.materialTopic && question.materialTopic.title) return normalizeText(question.materialTopic.title);
+            var sources = [question && question.explanation].concat((question && question.contextualExplanations) || []);
+            for (var i = 0; i < sources.length; i += 1) {
+                var text = String(sources[i] || '').replace(/<[^>]+>/g, ' ');
+                var match = text.match(/(?:^|\n|\r)\s*(?:\*{0,2}\s*)C\s*-\s*Concept\s*:\s*(?:\*{0,2}\s*)?([^\n\r]+)/i);
+                if (match && normalizeText(match[1])) return normalizeText(match[1]).replace(/[*!]+$/g, '').trim();
+            }
+            return '';
+        }
+
+        function resolveMaterialTopic(question) {
+            var explicit = question && question.materialTopic;
+            if (explicit && explicit.module && explicit.code) return explicit;
+
+            var concept = normalizeMaterialMatchText(extractConceptTitle(question));
+            if (!concept) return null;
+            var keys = Object.keys(section2MaterialRecords || {});
+            for (var i = 0; i < keys.length; i += 1) {
+                var key = keys[i];
+                var record = section2MaterialRecords[key] || {};
+                var recordTitle = normalizeMaterialMatchText(record.title || record.name || '');
+                if (!recordTitle || (recordTitle !== concept && recordTitle.indexOf(concept) < 0 && concept.indexOf(recordTitle) < 0)) continue;
+                var separator = key.lastIndexOf('-');
+                if (separator < 0) continue;
+                return {
+                    module: normalizeText(record.module || key.slice(0, separator)),
+                    code: normalizeText(record.code || key.slice(separator + 1)),
+                    title: normalizeText(record.title || record.name || extractConceptTitle(question))
+                };
+            }
+            return null;
+        }
+
         function sanitizeMaterialHtml(value) {
             var template = document.createElement('template');
             template.innerHTML = String(value || '');
@@ -248,7 +286,7 @@
         function renderMateriTabDetail(question) {
             var contentHost = document.getElementById('materialsTab');
             if (!contentHost) return;
-            var materialTopic = question && question.materialTopic;
+            var materialTopic = resolveMaterialTopic(question);
             if (!materialTopic || !materialTopic.title) {
                 contentHost.innerHTML = '<div class="section2-materi-empty">No material topic has been linked to this question yet.</div>';
                 return;
