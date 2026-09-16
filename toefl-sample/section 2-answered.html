@@ -1746,6 +1746,17 @@
                 + '</section>';
             }
 
+        function inlineText(value) {
+            var text = String(value || '');
+            text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            text = text.replace(/<b\b[^>]*>/gi, '<strong>').replace(/<\/b>/gi, '</strong>');
+            return escapeHtml(text)
+                .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
+                .replace(/&lt;(\/?)u&gt;/gi, '<$1u>')
+                .replace(/&lt;(\/?)em&gt;/gi, '<$1em>')
+                .replace(/&lt;(\/?)i&gt;/gi, '<$1em>');
+        }
+
         function buildPartAAnalysisBlock(question, blueprint) {
             var savedAnalysis = buildSavedQcCoreAnalysisBlock(question);
             if (savedAnalysis) return savedAnalysis;
