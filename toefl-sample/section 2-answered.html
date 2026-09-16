@@ -276,6 +276,11 @@
 
         function renderQuotedHighlights(value) {
             return escapeHtml(value)
+                .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
+                .replace(/&lt;(\/?)b&gt;/gi, '<$1strong>')
+                .replace(/&lt;(\/?)u&gt;/gi, '<$1u>')
+                .replace(/&lt;(\/?)em&gt;/gi, '<$1em>')
+                .replace(/&lt;(\/?)i&gt;/gi, '<$1em>')
                 .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
                 .replace(/"([^"]{1,})"/g, function (_, phrase) {
@@ -1487,18 +1492,20 @@
 
             function inlineText(value) {
                 var text = String(value || '');
-                // Convert literal HTML strong/b/u/em tags to safe markers or preserve them safely
+                // Convert markdown **bold** to <strong>bold</strong>
+                text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                // Normalize <b> to <strong>
+                text = text.replace(/<b\b[^>]*>/gi, '<strong>').replace(/<\/b>/gi, '</strong>');
+                // Escape non-markup and restore allowed tags
                 return escapeHtml(text)
-                    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
                     .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
-                    .replace(/&lt;(\/?)b&gt;/gi, '<$1strong>')
                     .replace(/&lt;(\/?)u&gt;/gi, '<$1u>')
                     .replace(/&lt;(\/?)em&gt;/gi, '<$1em>')
                     .replace(/&lt;(\/?)i&gt;/gi, '<$1em>');
             }
 
             function statusIcon(status) {
-                var isCorrect = String(status || '').toUpperCase() === 'BENAR';
+                var isCorrect = String(status || '').toUpperCase() === 'BENAR' || String(status || '').toUpperCase() === 'TRUE' || String(status || '').toUpperCase() === 'CORRECT';
                 var path = isCorrect ? 'M20 6 9 17l-5-5' : 'M18 6 6 18M6 6l12 12';
                 return '<svg class="section2-qc-status-icon ' + (isCorrect ? 'is-correct' : 'is-wrong') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"></path></svg>';
             }
@@ -1539,7 +1546,7 @@
                         role = role.slice(0, -rolePunc[0].length).trim();
                     }
 
-                    var isBlank = /^[_.\-—–\s]+$/.test(word);
+                    var isBlank = /^[_.\-—–\s]+$/.test(word.replace(/<[^>]+>/g, ''));
                     var wordClass = 'section2-qc-observe-word' + (!isBlank ? ' is-underlined' : '');
 
                     output += '<span class="section2-qc-observe-token">'
@@ -1574,15 +1581,15 @@
                     + '</div>';
             }
 
-            // Header lines are matched loosely: with or without "**" bold markers, and with or
-            // without a space before the colon, so hand-edited explanations still get styled.
-            var headerRegex = /^\*{0,2}\s*([CORE])\s*-\s*(Concept|Observe\s*S-?V-?C|Requirement|Eliminate)(\s*\([^)]*\))?\s*\*{0,2}\s*:\s*\*{0,2}\s*(.*)$/i;
+            // Header lines are matched loosely: with or without "**" or "<strong>" bold markers, and with or
+            // without a space before the colon, so rich/hand-edited explanations still get styled.
+            var headerRegex = /^(?:[-*•#>\s]|<\/?(?:strong|b|p|div|span|em)\b[^>]*>)*\*{0,2}\s*([CORE])\s*-\s*(Concept|Observe\s*S-?V-?C|Requirement|Eliminate)(\s*\([^)]*\))?\s*\*{0,2}\s*:\s*\*{0,2}(?:<\/(?:strong|b|span)>)?\s*(.*)$/i;
             var HEADER_LABELS = { c: 'C - Concept', o: 'O - Observe S-V-C', r: 'R - Requirement', e: 'E - Eliminate' };
 
             for (var i = 0; i < lines.length; i += 1) {
                 var line = lines[i].trim();
                 if (!line) continue;
-                if (/^Question\s*:/i.test(line)) {
+                if (/^(?:[-*•#>\s]|<\/?(?:strong|b|p|div|span)\b[^>]*>)*Question\s*:/i.test(line)) {
                     html += '<div class="section2-qc-core-question">' + inlineText(line) + '</div>';
                     continue;
                 }
@@ -1597,7 +1604,7 @@
                     if (letterKey === 'o') {
                         if (inlineRest) {
                             html += renderObserveLine(inlineRest);
-                        } else if (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].match(/^\s*[*#-]/) && !lines[i + 1].match(headerRegex)) {
+                        } else if (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].match(/^\s*[*#•-]/) && !lines[i + 1].match(headerRegex)) {
                             html += renderObserveLine(lines[++i]);
                         }
                         continue;
@@ -1605,19 +1612,20 @@
                     if (inlineRest) html += '<p>' + inlineText(inlineRest) + '</p>';
                     continue;
                 }
-                var eliminationMatch = line.match(/^\s*\*\s+\*\*([^*]+)\*\*\s*\((BENAR|SALAH)\)\s*:\s*(.*)$/i);
+                var eliminationMatch = line.match(/^(?:[-*•\s]|<\/?(?:strong|b|span)\b[^>]*>)*\*{0,2}\(?\s*([A-D])\s*\)?\s*(.*?)\s*\*{0,2}(?:<\/(?:strong|b|span)>)?\s*\((BENAR|SALAH|TRUE|FALSE|CORRECT|INCORRECT)\)\s*:\s*(.*)$/i);
                 if (eliminationMatch) {
+                    var choiceLabel = '(' + eliminationMatch[1].toUpperCase() + ') ' + eliminationMatch[2].replace(/<\/?(?:strong|b|span)\b[^>]*>/gi, '').trim();
                     html += '<div class="section2-qc-elimination-row">'
                         + '<span class="section2-qc-bullet" aria-hidden="true"></span>'
-                        + '<span class="section2-qc-elimination-choice"><strong>' + inlineText(eliminationMatch[1]) + '</strong></span>'
-                        + '<span class="section2-qc-elimination-icon">' + statusIcon(eliminationMatch[2]) + '</span>'
+                        + '<span class="section2-qc-elimination-choice"><strong>' + inlineText(choiceLabel) + '</strong></span>'
+                        + '<span class="section2-qc-elimination-icon">' + statusIcon(eliminationMatch[3]) + '</span>'
                         + '<span class="section2-qc-elimination-colon">:</span>'
-                        + '<span class="section2-qc-elimination-reason">' + inlineText(eliminationMatch[3]) + '</span>'
+                        + '<span class="section2-qc-elimination-reason">' + inlineText(eliminationMatch[4]) + '</span>'
                         + '</div>';
                     continue;
                 }
-                var keyValueMatch = line.match(/^\*\s+\*\*([^*]+)\*\*\s*:\s*(.*)$/);
-                if (keyValueMatch) {
+                var keyValueMatch = line.match(/^(?:[-*•\s]|<\/?(?:strong|b|span)\b[^>]*>)*\*{0,2}(Subject(?:\s+\d+)?|Verb(?:\s+\d+)?|Compliance|Connector|Requirement|Eliminate|Reason|Alasan|[A-Za-z\s]+?)\*{0,2}(?:<\/(?:strong|b|span)>)?\s*:\s*(.*)$/i);
+                if (keyValueMatch && keyValueMatch[1].trim() && !/^Maka\s+kalimat/i.test(keyValueMatch[1])) {
                     html += renderKeyValueRow(keyValueMatch[1].trim(), keyValueMatch[2].trim());
                     continue;
                 }
@@ -1662,14 +1670,25 @@
                     : 'Karena pilihan ini melengkapi struktur kalimat dengan tepat.';
             }
 
-            var sentenceHtml = escapeHtml(sentence.replace(/^\s*["“]|["”]\s*$/g, '').trim());
-            var answerHtml = escapeHtml(correctText);
-            if (answerHtml) sentenceHtml = sentenceHtml.replace(new RegExp(escapeRegExp(answerHtml), 'i'), '<strong>' + answerHtml + '</strong>');
+            // Strip any raw tags or markdown asterisks from sentence so it is clean plain text
+            var cleanSentence = sentence
+                .replace(/&lt;[^&>]+&gt;/gi, '')
+                .replace(/<\/?(?:strong|b|u|i|em|span|mark|p|div)\b[^>]*>/gi, '')
+                .replace(/\*\*([^*]+)\*\*/g, '$1')
+                .replace(/^\s*["“]|["”]\s*$/g, '')
+                .trim();
+
+            var sentenceHtml = escapeHtml(cleanSentence);
+            var answerTarget = cleanSentence && correctText ? correctText.trim() : '';
+            if (answerTarget) {
+                var answerEscaped = escapeHtml(answerTarget);
+                sentenceHtml = sentenceHtml.replace(new RegExp('(^|\\s|["\'])(' + escapeRegExp(answerEscaped) + ')([\\s.,;:!?\'"]|$)', 'i'), '$1<strong>$2</strong>$3');
+            }
 
             return '<section class="section2-complete-sentence-box">'
                 + '<h3>Maka kalimat lengkapnya</h3>'
                 + '<p class="section2-complete-sentence">&ldquo;' + sentenceHtml + '&rdquo;</p>'
-                + '<p class="section2-complete-rationale">' + escapeHtml(rationale) + '</p>'
+                + '<p class="section2-complete-rationale">' + inlineText(rationale) + '</p>'
                 + '</section>';
         }
 

@@ -440,12 +440,12 @@
 
         // Splits a bulk-pasted document into { questionNumber: explanationText }. The question
         // number alone routes each block to Part A (1-15) or Part B (16-40), so "Part A"/"Part B"
-        // headings are optional; headings like "Question 16", "Question: 16", or "**Question 16**"
+        // headings are optional; headings like "Question 16", "Question: 16", "**Question 16**", or "<strong>Question 16</strong>"
         // are all accepted since developers paste each part's questions separately.
         function parseAllSection2BulkExplanations(rawText) {
             const text = String(rawText || "");
             const blocks = {};
-            const questionRegex = /\*{0,2}Question\s*:?\s*(\d+)\*{0,2}/gi;
+            const questionRegex = /(?:<[^>]+>|[*#>\s])*Question\s*:?\s*(\d+)(?:<[^>]+>|[*#\s])*/gi;
             const markers = [];
             let qMatch;
             while ((qMatch = questionRegex.exec(text)) !== null) {
