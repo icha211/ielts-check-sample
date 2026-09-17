@@ -3619,22 +3619,13 @@
                 source += '\n' + String((dialogueBlocks[blockIndex] || {}).quote_text_html || '');
             }
             source = decodeExplanationHtmlEntities(source);
-            var phrases = [];
-            var match;
-            var quotedPhrases = extractQuotedPhrasesFromText(source);
-            for (var quotedIndex = 0; quotedIndex < quotedPhrases.length; quotedIndex += 1) {
-                var quotedPhrase = String(quotedPhrases[quotedIndex] || '').trim();
-                if (quotedPhrase && phrases.indexOf(quotedPhrase) === -1) phrases.push(quotedPhrase);
-            }
-            var markRegex = /<mark\b[^>]*>([\s\S]*?)<\/mark>/gi;
-            while ((match = markRegex.exec(source))) {
-                var phrase = String(match[1] || '').replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '').replace(/\s+/g, ' ').trim();
-                var fragments = phrase.split(/\.{3}|\u2026/).map(function(item) {
-                    return String(item || '').replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '').trim();
-                }).filter(Boolean);
-                for (var fragmentIndex = 0; fragmentIndex < fragments.length; fragmentIndex += 1) {
-                    if (phrases.indexOf(fragments[fragmentIndex]) === -1) phrases.push(fragments[fragmentIndex]);
-                }
+            var phrases = getExplanationMarkedTerms(source);
+
+            // Only explicit <mark> text is treated as the authoritative highlight source.
+            // Plain quoted text elsewhere in the explanation is intentionally ignored to
+            // avoid highlighting non-indicator sentences or answer wording.
+            if (!phrases.length) {
+                return buildHighlightTermsFromAnswer(answerText);
             }
 
             var transcriptText = (Array.isArray(transcriptSegments) ? transcriptSegments : []).map(function(segment) {
@@ -3699,13 +3690,6 @@
         function getExplanationMarkedTerms(text) {
             var source = decodeExplanationHtmlEntities(text);
             var terms = [];
-            var quoted = extractQuotedPhrasesFromText(source);
-            for (var quoteIndex = 0; quoteIndex < quoted.length; quoteIndex += 1) {
-                var quotedPhrase = String(quoted[quoteIndex] || '').trim();
-                if (quotedPhrase && terms.indexOf(quotedPhrase) === -1) {
-                    terms.push(quotedPhrase);
-                }
-            }
             var markRegex = /<mark\b[^>]*>([\s\S]*?)<\/mark>/gi;
             var match;
             while ((match = markRegex.exec(source))) {
