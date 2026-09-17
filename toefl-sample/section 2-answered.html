@@ -1532,6 +1532,9 @@
             var lines = source.split(/\r?\n/);
             var html = '';
             var preserveEliminateQualifier = !!(options && options.preserveEliminateQualifier);
+            var optionAnswerTexts = (options && options.optionAnswerTexts || []).map(function (optionText) {
+                return normalizeText(optionText).replace(/<[^>]*>|\*+/g, '').toLowerCase();
+            }).filter(Boolean);
 
             function inlineText(value) {
                 var text = String(value || '');
@@ -1590,7 +1593,11 @@
                     }
 
                     var isBlank = /^[_.\-—–\s]+$/.test(word.replace(/<[^>]+>/g, ''));
-                    var wordClass = 'section2-qc-observe-word' + (!isBlank ? ' is-underlined' : '');
+                    var observedWordText = normalizeText(word).replace(/<[^>]*>|\*+/g, '').toLowerCase();
+                    var isOptionAnswer = optionAnswerTexts.indexOf(observedWordText) >= 0;
+                    var wordClass = 'section2-qc-observe-word'
+                        + (!isBlank ? ' is-underlined' : '')
+                        + (isOptionAnswer ? ' is-option-answer' : '');
 
                     output += '<span class="section2-qc-observe-token">'
                         + '<span class="' + wordClass + '">' + inlineText(word) + '</span>'
@@ -1760,7 +1767,14 @@
                 + '</div>'
                 + '</div>'
                 + '<div class="section2-qc-core-body">'
-                + renderSavedQcCoreMarkdown(savedTextWithoutCompleteSentence, { preserveEliminateQualifier: Number(question && question.partId) === 2 })
+                + renderSavedQcCoreMarkdown(savedTextWithoutCompleteSentence, {
+                    preserveEliminateQualifier: Number(question && question.partId) === 2,
+                    optionAnswerTexts: Number(question && question.partId) === 2
+                        ? Object.keys(question && question.options || {}).map(function (letter) {
+                            return extractChoiceText(question.options, letter);
+                        })
+                        : []
+                })
                 + buildCompleteSentenceBox(question)
                 + '</div>'
                 + '</section>';
