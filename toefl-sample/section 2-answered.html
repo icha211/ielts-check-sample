@@ -1509,9 +1509,14 @@
                     badgeHtml = '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">' + escapeHtml(correctLabel) + '</span><i class="ph ph-check" aria-hidden="true"></i></div>';
                 }
 
-                html += '<div class="' + classes.join(' ') + '">'
+                var markerClasses = ['explaination-figma-option-letter'];
+                if (selected && !isCorrectChoice) markerClasses.push('is-user-wrong');
+                if (isCorrectChoice) markerClasses.push('is-correct-answer');
+                if (selected) markerClasses.push('option-selected');
+
+                html += '<div class="' + classes.join(' ') + '">' 
+                    + '<div class="' + markerClasses.join(' ') + '"><span class="option-marker">' + escapeHtml(letter) + '</span></div>'
                     + '<div class="explaination-figma-option-text option-answer-d">'
-                    + '<span class="option-marker">(' + escapeHtml(letter) + ')</span>'
                     + '<span class="option-text">' + escapeHtml(text) + '</span>'
                     + '</div>'
                     + badgeHtml
