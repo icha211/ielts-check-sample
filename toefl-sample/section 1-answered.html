@@ -3610,6 +3610,23 @@
             return phrases.length ? phrases.slice(0, 2) : buildHighlightTermsFromAnswer(answerText);
         }
 
+        function getExplanationMarkedTerms(text) {
+            var source = String(text || '');
+            var terms = [];
+            var markRegex = /<mark\b[^>]*>([\s\S]*?)<\/mark>/gi;
+            var match;
+            while ((match = markRegex.exec(source))) {
+                var phrase = String(match[1] || '')
+                    .replace(/<[^>]*>/g, ' ')
+                    .replace(/&[^;]+;/g, ' ')
+                    .replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                if (phrase && terms.indexOf(phrase) === -1) terms.push(phrase);
+            }
+            return terms;
+        }
+
         function renderExplanationContent(html) {
             return String(html || '')
                 .replace(/&lt;(\/?)mark(?: style=&quot;[^&]*&quot;)?&gt;/gi, '<$1mark>')
@@ -4727,6 +4744,13 @@
                     }
                 }
             } catch (_) {}
+            var markedExplanationTerms = getExplanationMarkedTerms(getDisplayedExplanationText(q));
+            if (markedExplanationTerms.length) {
+                highlightTerms = highlightTerms.concat(markedExplanationTerms.filter(function(term) {
+                    return highlightTerms.indexOf(term) === -1;
+                }));
+            }
+            reviewTranscriptHighlightTerms = highlightTerms;
             if (!schemaRendered) {
                 var explanationHost = document.getElementById('explainationTabContent');
                 if (explanationHost) {
