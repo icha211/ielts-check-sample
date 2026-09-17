@@ -1556,6 +1556,25 @@
                 return '<svg class="section2-qc-status-icon ' + (isCorrect ? 'is-correct' : 'is-wrong') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"></path></svg>';
             }
 
+            function renderObservePlainText(value) {
+                var sourceText = String(value || '');
+                if (!optionAnswerTexts.length) return inlineText(sourceText);
+                var choices = optionAnswerTexts.slice().sort(function (left, right) { return right.length - left.length; });
+                var matcher = new RegExp('(^|[^A-Za-z0-9])(' + choices.map(escapeRegExp).join('|') + ')(?=$|[^A-Za-z0-9])', 'gi');
+                var output = '';
+                var cursor = 0;
+                var found;
+
+                while ((found = matcher.exec(sourceText)) !== null) {
+                    var prefix = found[1] || '';
+                    var matchStart = found.index + prefix.length;
+                    output += inlineText(sourceText.slice(cursor, matchStart));
+                    output += '<span class="section2-qc-observe-option-highlight">' + inlineText(found[2]) + '</span>';
+                    cursor = matcher.lastIndex;
+                }
+                return output + inlineText(sourceText.slice(cursor));
+            }
+
             function renderObserveLine(value) {
                 var raw = String(value || '').trim();
                 if (!raw) return '';
@@ -1573,7 +1592,7 @@
                     var matchStart = match.index;
                     var plainBefore = cleaned.slice(lastIndex, matchStart).trim();
                     if (plainBefore) {
-                        output += '<span class="section2-qc-observe-plain">' + inlineText(plainBefore) + '</span>';
+                        output += '<span class="section2-qc-observe-plain">' + renderObservePlainText(plainBefore) + '</span>';
                     }
                     var word = (match[1] || match[3] || '').trim();
                     var role = (match[2] || match[4] || '').trim();
@@ -1612,11 +1631,11 @@
 
                 var remaining = cleaned.slice(lastIndex).trim();
                 if (remaining) {
-                    output += '<span class="section2-qc-observe-plain">' + inlineText(remaining) + '</span>';
+                    output += '<span class="section2-qc-observe-plain">' + renderObservePlainText(remaining) + '</span>';
                 }
 
                 if (!hasMatches) {
-                    output += '<span class="section2-qc-observe-plain">' + inlineText(cleaned) + '</span>';
+                    output += '<span class="section2-qc-observe-plain">' + renderObservePlainText(cleaned) + '</span>';
                 }
 
                 return output + '</div>';
