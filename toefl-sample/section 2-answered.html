@@ -1532,9 +1532,9 @@
             var lines = source.split(/\r?\n/);
             var html = '';
             var preserveEliminateQualifier = !!(options && options.preserveEliminateQualifier);
-            var optionAnswerTexts = (options && options.optionAnswerTexts || []).map(function (optionText) {
-                return normalizeText(optionText).replace(/<[^>]*>|\*+/g, '').toLowerCase();
-            }).filter(Boolean);
+            var optionAnswerTexts = [normalizeText(options && options.correctOptionText)
+                .replace(/<[^>]*>|\*+/g, '')
+                .toLowerCase()].filter(Boolean);
 
             function inlineText(value) {
                 var text = String(value || '');
@@ -1788,11 +1788,9 @@
                 + '<div class="section2-qc-core-body">'
                 + renderSavedQcCoreMarkdown(savedTextWithoutCompleteSentence, {
                     preserveEliminateQualifier: Number(question && question.partId) === 2,
-                    optionAnswerTexts: Number(question && question.partId) === 2
-                        ? Object.keys(question && question.options || {}).map(function (letter) {
-                            return extractChoiceText(question.options, letter);
-                        })
-                        : []
+                    correctOptionText: Number(question && question.partId) === 2
+                        ? extractChoiceText(question && question.options, question && question.correctAnswer)
+                        : ''
                 })
                 + buildCompleteSentenceBox(question)
                 + '</div>'
