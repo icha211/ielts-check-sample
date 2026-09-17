@@ -4132,22 +4132,25 @@
                     question.options = storedQuestion.options;
                 }
                 if ((partData.answers || {})[number]) question.correctAnswer = partData.answers[number];
-                if ((partData.schemas || {})[number]) {
-                    question.explanationSchema = JSON.stringify(partData.schemas[number]);
-                } else {
-                    question.explanationSchema = '';
+                var storedSchema = (partData.schemas || {})[number];
+                if (storedSchema) {
+                    question.explanationSchema = typeof storedSchema === 'string'
+                        ? storedSchema
+                        : JSON.stringify(storedSchema);
                 }
                 var storedExplanation = (partData.explanations || {})[number];
                 if (storedExplanation && typeof storedExplanation === 'object') {
-                    question.explanation = String(storedExplanation.explanation || '');
-                    if (storedExplanation.explanationId !== undefined) question.explanationId = storedExplanation.explanationId;
+                    if (storedExplanation.explanation !== undefined && String(storedExplanation.explanation || '').trim()) {
+                        question.explanation = String(storedExplanation.explanation);
+                    }
+                    if (storedExplanation.explanationId !== undefined && String(storedExplanation.explanationId || '').trim()) {
+                        question.explanationId = storedExplanation.explanationId;
+                    }
                     if (typeof storedExplanation.showBahasaExplanation === 'boolean') {
                         question.showBahasaExplanation = storedExplanation.showBahasaExplanation;
                     }
-                } else {
-                    question.explanation = '';
-                    question.explanationId = '';
-                    question.showBahasaExplanation = false;
+                } else if (typeof storedExplanation === 'string' && storedExplanation.trim()) {
+                    question.explanation = storedExplanation;
                 }
             }
         }
