@@ -2710,7 +2710,18 @@
             // map each question to its conversation group, while Part A maps to its
             // three speaker lines.
             var activeSegments = questionSegments;
-            var terms = Array.isArray(highlightTerms) ? highlightTerms : reviewTranscriptHighlightTerms;
+            var terms = Array.isArray(highlightTerms) ? highlightTerms.slice() : (Array.isArray(reviewTranscriptHighlightTerms) ? reviewTranscriptHighlightTerms.slice() : []);
+            var explanationText = getDisplayedExplanationText(question || reviewCurrentQuestion || null) || (question && question.explanation) || '';
+            var explanationDerivedTerms = expandMarkedTermsForTranscript(getExplanationMarkedTerms(explanationText), questionSegments);
+            for (var termIndex = 0; termIndex < explanationDerivedTerms.length; termIndex += 1) {
+                var derivedTerm = String(explanationDerivedTerms[termIndex] || '').trim();
+                if (derivedTerm && terms.indexOf(derivedTerm) === -1) {
+                    terms.push(derivedTerm);
+                }
+            }
+            terms.sort(function(a, b) {
+                return String(b || '').length - String(a || '').length;
+            });
             var sharedQuestionPlaybackRange = null;
             if (partId === 1 && reviewTranscriptViewMode === 'question' && activeSegments.length) {
                 var sharedStart = Infinity;
@@ -3553,15 +3564,51 @@
         }
 
         function renderTranscriptTextWithMarks(text, terms) {
-            var html = escapeHtml(text || '');
-            var list = Array.isArray(terms) ? terms : [];
+            var source = String(text || '');
+            var list = Array.isArray(terms) ? terms.slice() : [];
+            list.sort(function(a, b) {
+                return String(b || '').length - String(a || '').length;
+            });
+
+            var ranges = [];
             for (var i = 0; i < list.length; i += 1) {
                 var term = String(list[i] || '').trim();
                 if (!term) continue;
-                var pattern = new RegExp('(' + escapeRegExp(term) + ')', 'ig');
-                html = html.replace(pattern, '<mark>$1</mark>');
+                var pattern = new RegExp(escapeRegExp(term), 'ig');
+                var match;
+                while ((match = pattern.exec(source))) {
+                    var start = match.index;
+                    var end = start + match[0].length;
+                    var overlap = false;
+                    for (var r = 0; r < ranges.length; r += 1) {
+                        var range = ranges[r];
+                        if (start < range.end && end > range.start) {
+                            overlap = true;
+                            break;
+                        }
+                    }
+                    if (!overlap) {
+                        ranges.push({ start: start, end: end });
+                    }
+                }
             }
-            return html;
+
+            if (!ranges.length) return escapeHtml(source);
+
+            ranges.sort(function(a, b) {
+                return a.start - b.start;
+            });
+
+            var output = '';
+            var cursor = 0;
+            for (var idx = 0; idx < ranges.length; idx += 1) {
+                var range = ranges[idx];
+                output += escapeHtml(source.slice(cursor, range.start));
+                output += '<mark>' + escapeHtml(source.slice(range.start, range.end)) + '</mark>';
+                cursor = range.end;
+            }
+            output += escapeHtml(source.slice(cursor));
+            return output;
         }
 
         function getSchemaTranscriptHighlightTerms(schema, answerText, transcriptSegments) {
@@ -3708,6 +3755,10 @@
                     }
                 }
             }
+
+            output.sort(function(a, b) {
+                return String(b || '').length - String(a || '').length;
+            });
             return output;
         }
 
