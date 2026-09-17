@@ -777,16 +777,20 @@
                 difficulty: difficultyInput.value || "intermediate",
                 updatedAt: new Date().toISOString()
             };
-            upsertLocalRecord(record);
-            updateEditorUrl(setId, setDate);
-            updateExplanationLink();
             if (window.toeflStorage && typeof toeflStorage.upsertSetRecord === "function") {
                 try {
                     await toeflStorage.upsertSetRecordWithType(record, currentTestType);
                 } catch (error) {
+                    if (error?.code === "DUPLICATE_SET_DATE") {
+                        alert("A test in this category already exists for this date. Open the existing set instead.");
+                        throw error;
+                    }
                     console.warn("[ToeflSync] set save failed:", error);
                 }
             }
+            upsertLocalRecord(record);
+            updateEditorUrl(setId, setDate);
+            updateExplanationLink();
         }
 
         function emitSection2EditorApplySync() {

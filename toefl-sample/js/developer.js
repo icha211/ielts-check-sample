@@ -1175,6 +1175,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             const difficulty = option.dataset.difficulty || "";
             const focus = option.dataset.focus || "";
             console.log("Selected module:", module, "difficulty:", difficulty, "focus:", focus, "for test type:", currentTestType);
+
+            const today = new Date().toISOString().slice(0, 10);
+            const existingToday = sectionSets.find((item) => item
+                && item.module === module
+                && (normalizeDateKey(item.setDate) === today || normalizeDateKey(item.updatedAt) === today));
+            if (existingToday) {
+                toast(`${MODULE_CONFIG[module]?.label || module} already has a ${currentTestType} set for today.`);
+                return;
+            }
+
             const modal = document.getElementById("moduleSelectionModal");
             if (modal) {
                 modal.style.display = "none";

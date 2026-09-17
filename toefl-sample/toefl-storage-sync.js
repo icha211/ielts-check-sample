@@ -566,9 +566,32 @@ class ToeflStorageSync {
     return this._normalizeRecord({ ...(local[setId] || {}), setId }, setId);
   }
 
+  async assertUniqueSetDate(record, testType = "mocktest") {
+    const normalized = this._normalizeRecord(record, record?.setId);
+    if (!normalized || !normalized.setDate) return true;
+
+    const wantedDate = normalized.setDate;
+    const wantedModule = normalized.module;
+    const wantedSetId = normalized.setId;
+    const records = await this.getSetRecordsByTestType(testType);
+    const duplicate = records.find((item) => item
+      && String(item.setId) !== wantedSetId
+      && String(item.module) === wantedModule
+      && String(item.setDate || "") === wantedDate);
+
+    if (duplicate) {
+      const error = new Error(`A ${wantedModule} ${testType} already exists for ${wantedDate}.`);
+      error.code = "DUPLICATE_SET_DATE";
+      error.duplicateSet = duplicate;
+      throw error;
+    }
+    return true;
+  }
+
   async upsertSetRecordWithType(record, testType = "mocktest") {
     const normalized = this._normalizeRecord(record, record?.setId);
     if (!normalized) throw new Error("Invalid set record");
+    await this.assertUniqueSetDate(normalized, testType);
     const paths = this._getPathsForTestType(testType);
     const payload = { ...normalized, _updatedAt: new Date().toISOString() };
     try {
