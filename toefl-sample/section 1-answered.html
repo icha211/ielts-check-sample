@@ -4089,6 +4089,16 @@
             return questions;
         }
 
+        function extractStoredExplanationForQuestion(rawText, questionNumber) {
+            var source = String(rawText || '').replace(/\r/g, '').trim();
+            var number = Number(questionNumber || 0);
+            if (!source || !number) return '';
+
+            var blockRegex = new RegExp('(?:^|\\n)\\s*(?:Question\\s*)?' + number + '\\s*(?:[.:)\\-]+)?[ \\t]*\\n?([\\s\\S]*?)(?=\\n\\s*(?:Question\\s*)?\\d+\\s*(?:[.:)\\-]+)?[ \\t]*\\n|$)', 'i');
+            var match = source.match(blockRegex);
+            return match ? String(match[1] || '').trim() : '';
+        }
+
         function parseStoredAnswerKey(answerKeyText) {
             var answerKey = {};
             var lines = String(answerKeyText || '').replace(/\r/g, '').split('\n');
@@ -4118,7 +4128,8 @@
                     questions: parseStoredPartQuestions(part.questions),
                     answers: parseStoredAnswerKey(part.answerKey),
                     schemas: part.explanationSchemas || {},
-                    explanations: part.explanationTexts || {}
+                    explanations: part.explanationTexts || {},
+                    bulkExplanation: String(part.explanation || '')
                 };
             }
 
@@ -4151,6 +4162,10 @@
                     }
                 } else if (typeof storedExplanation === 'string' && storedExplanation.trim()) {
                     question.explanation = storedExplanation;
+                }
+                if (!String(question.explanation || '').trim() && partData.bulkExplanation) {
+                    var bulkExplanation = extractStoredExplanationForQuestion(partData.bulkExplanation, number);
+                    if (bulkExplanation) question.explanation = bulkExplanation;
                 }
             }
         }
@@ -4675,6 +4690,12 @@
                         if (extractedDistractors.length) builtSchema.explanation_payload.distractor_analysis = extractedDistractors;
                         var host = document.getElementById('explainationTabContent');
                         if (host) host.innerHTML = renderExplanationFromSchema(builtSchema);
+                        schemaRendered = true;
+                    } else if (String(displayedMarkdown).trim()) {
+                        var plainSchema = buildExplanationSchemaFromQuestion(q, explanation, correctLtr);
+                        plainSchema.explanation_payload.main_explanation_html = renderQuotedHighlights(displayedMarkdown);
+                        var plainHost = document.getElementById('explainationTabContent');
+                        if (plainHost) plainHost.innerHTML = renderExplanationFromSchema(plainSchema);
                         schemaRendered = true;
                     }
                 }
