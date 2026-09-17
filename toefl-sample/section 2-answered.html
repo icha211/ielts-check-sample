@@ -1668,7 +1668,7 @@
                     continue;
                 }
                 var keyValueMatch = line.match(/^(?:[-*•\s]|<\/?(?:strong|b|span)\b[^>]*>)*\*{0,2}(Subject(?:\s+\d+)?|Verb(?:\s+\d+)?|Compliance|Connector|Requirement|Eliminate|Reason|Alasan|[A-Za-z\s]+?)\*{0,2}(?:<\/(?:strong|b|span)>)?\s*:\s*(.*)$/i);
-                if (keyValueMatch && keyValueMatch[1].trim() && !/^Maka\s+kalimat/i.test(keyValueMatch[1])) {
+                if (keyValueMatch && keyValueMatch[1].trim() && !/^Maka\s+(?:perbaikan\s+)?kalimat/i.test(keyValueMatch[1])) {
                     html += renderKeyValueRow(keyValueMatch[1].trim(), keyValueMatch[2].trim());
                     continue;
                 }
@@ -1692,7 +1692,7 @@
             ) || '').trim();
 
             if (!sentence) {
-                var explicitMatch = savedText.match(/Maka\s+kalimat\s+lengkapnya\s*:?\s*\n+\s*["“]?(.+?)["”]?\s*\n+\s*(Karena[\s\S]*?)(?=\n\s*\*{0,2}[CORE]\s*-|$)/i);
+                var explicitMatch = savedText.match(/Maka\s+(?:perbaikan\s+)?kalimat\s+lengkapnya\s*:?\s*\n+\s*["“]?([\s\S]+?)["”]?\s*\n+\s*(Karena[\s\S]*?)(?=\n\s*\*{0,2}[CORE]\s*-|$)/i);
                 if (explicitMatch) {
                     sentence = String(explicitMatch[1] || '').trim();
                     rationale = rationale || String(explicitMatch[2] || '').trim();
@@ -1717,11 +1717,11 @@
             var cleanSentence = sentence
                 .replace(/&lt;[^&>]+&gt;/gi, '')
                 .replace(/<\/?(?:strong|b|u|i|em|span|mark|p|div)\b[^>]*>/gi, '')
-                .replace(/\*\*([^*]+)\*\*/g, '$1')
                 .replace(/^\s*["“]|["”]\s*$/g, '')
                 .trim();
 
-            var sentenceHtml = escapeHtml(cleanSentence);
+            var sentenceHtml = escapeHtml(cleanSentence)
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
             var answerTarget = cleanSentence && correctText ? correctText.trim() : '';
             if (answerTarget) {
                 var answerEscaped = escapeHtml(answerTarget);
@@ -1744,7 +1744,7 @@
             }
             if (!savedText) return '';
             var savedTextWithoutCompleteSentence = savedText
-                .replace(/Maka\s+kalimat\s+lengkapnya\s*:?\s*\n+[\s\S]*?(?=\n\s*\*{0,2}[CORE]\s*-|$)/i, '')
+                .replace(/Maka\s+(?:perbaikan\s+)?kalimat\s+lengkapnya\s*:?\s*\n+[\s\S]*?(?=\n\s*\*{0,2}[CORE]\s*-|$)/i, '')
                 .trim();
             return '<section class="section2-qc-analysis ' + (isExpanded ? 'is-expanded' : 'is-collapsed') + '">'
                 + '<div class="section2-qc-core-banner">'
