@@ -3653,6 +3653,7 @@
             return String(value || '')
                 .replace(/&ldquo;|&rdquo;/gi, '"')
                 .replace(/&lsquo;|&rsquo;/gi, "'")
+                .replace(/&hellip;|&#8230;|&#x2026;/gi, '\u2026')
                 .replace(/&lt;/gi, '<')
                 .replace(/&gt;/gi, '>')
                 .replace(/&quot;/gi, '"')
@@ -3672,10 +3673,17 @@
                     .replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '')
                     .replace(/\s+/g, ' ')
                     .trim();
-                var fragments = phrase.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
-                fragments = fragments.map(function(item) {
-                    return String(item || '').replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '').trim();
-                }).filter(Boolean);
+                var fragments = [];
+                var omissionParts = phrase.split(/\s*(?:\.{3,}|\u2026)\s*/);
+                for (var omissionIndex = 0; omissionIndex < omissionParts.length; omissionIndex += 1) {
+                    var sentences = String(omissionParts[omissionIndex] || '').match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
+                    for (var sentenceIndex = 0; sentenceIndex < sentences.length; sentenceIndex += 1) {
+                        var fragment = String(sentences[sentenceIndex] || '')
+                            .replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '')
+                            .trim();
+                        if (fragment) fragments.push(fragment);
+                    }
+                }
                 for (var fragmentIndex = 0; fragmentIndex < fragments.length; fragmentIndex += 1) {
                     if (terms.indexOf(fragments[fragmentIndex]) === -1) terms.push(fragments[fragmentIndex]);
                 }
@@ -3798,7 +3806,6 @@
                     header_title: 'Why (' + normalizedCorrect + ')?',
                     main_explanation_html: 'The correct choice is <strong>(' + escapeHtml(normalizedCorrect) + ') ' + escapeHtml(bestAnswerText || 'best answer') + '</strong> because ' + reasonHtml + '.',
                     dialogue_blocks: dialogueBlocks,
-                    closing_analysis_html: 'Because these dialogue clues align with the core idea of the correct option, the best match is <strong>(' + escapeHtml(normalizedCorrect) + ') ' + escapeHtml(bestAnswerText || '') + '</strong>.'
                 }
             };
         }
