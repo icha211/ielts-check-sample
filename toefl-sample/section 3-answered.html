@@ -1385,13 +1385,22 @@
         function updatePackageLabel(result) {
             var labelEl = document.getElementById('reviewPackageLabel');
             if (!labelEl) return;
-            var dateValue = String((result && result.submittedAt) || '').trim();
+            var params = new URLSearchParams(window.location.search || '');
+            var dateValue = String(
+                (result && (result.setDate || result.date)) ||
+                params.get('setDate') ||
+                params.get('date') ||
+                (result && result.submittedAt) ||
+                ''
+            ).trim();
             if (!dateValue) return;
-            var parsed = new Date(dateValue.length === 10 ? dateValue + 'T00:00:00' : dateValue);
+            var normalized = normalizeDateKey(dateValue);
+            if (!normalized) return;
+            var parsed = new Date(normalized + 'T00:00:00');
             if (isNaN(parsed.getTime())) return;
             var day = String(parsed.getDate()).padStart(2, '0');
-            var monthName = parsed.toLocaleString('en-US', { month: 'short' }) || 'Jan';
-            labelEl.textContent = 'Package ' + day + ' ' + monthName;
+            var monthName = parsed.toLocaleString('en-US', { month: 'long' }) || 'January';
+            labelEl.textContent = 'Package ' + day + ' ' + monthName + ' ' + parsed.getFullYear();
         }
 
         function findOptionText(options, letter) {
