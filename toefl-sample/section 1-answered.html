@@ -4119,6 +4119,33 @@
             if (!draft) {
                 try { draft = await window.toeflStorage.getDraftBySetId(reviewSetId); } catch (_) {}
             }
+            var localDraft = null;
+            try {
+                localDraft = JSON.parse(localStorage.getItem('toefl_section1_dev_draft_v1') || 'null');
+            } catch (_) {}
+
+            // A remote draft may contain questions but omit newer explanation fields.
+            // Merge those fields from the legacy/local editor draft before rendering.
+            if (localDraft && localDraft.parts) {
+                draft = draft && draft.parts ? draft : { parts: {} };
+                draft.parts = draft.parts || {};
+                for (var localPartId = 1; localPartId <= 3; localPartId += 1) {
+                    var remotePart = draft.parts[localPartId] || {};
+                    var localPart = localDraft.parts[localPartId] || {};
+                    var fieldNames = ['explanation', 'explanationTexts', 'explanationSchemas', 'questions', 'answerKey'];
+                    for (var fieldIndex = 0; fieldIndex < fieldNames.length; fieldIndex += 1) {
+                        var fieldName = fieldNames[fieldIndex];
+                        var remoteValue = remotePart[fieldName];
+                        var localValue = localPart[fieldName];
+                        var remoteEmpty = remoteValue === undefined || remoteValue === null ||
+                            (typeof remoteValue === 'string' && !remoteValue.trim()) ||
+                            (typeof remoteValue === 'object' && remoteValue && !Object.keys(remoteValue).length);
+                        if (remoteEmpty && localValue !== undefined) remotePart[fieldName] = localValue;
+                    }
+                    draft.parts[localPartId] = remotePart;
+                }
+            }
+
             if (!draft || !draft.parts) return;
 
             var byPart = {};
