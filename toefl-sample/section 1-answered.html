@@ -4884,9 +4884,14 @@
                 getQuestionTranscriptSegments(q)
             );
             if (markedExplanationTerms.length) {
-                highlightTerms = highlightTerms.concat(markedExplanationTerms.filter(function(term) {
-                    return highlightTerms.indexOf(term) === -1;
-                }));
+                highlightTerms = markedExplanationTerms.slice();
+                var answerFallbackTerms = buildHighlightTermsFromAnswer(q.options[correctLtr] || '');
+                for (var fallbackIndex = 0; fallbackIndex < answerFallbackTerms.length; fallbackIndex += 1) {
+                    var fallbackTerm = String(answerFallbackTerms[fallbackIndex] || '').trim();
+                    if (fallbackTerm && highlightTerms.indexOf(fallbackTerm) === -1) {
+                        highlightTerms.push(fallbackTerm);
+                    }
+                }
             }
             reviewTranscriptHighlightTerms = highlightTerms;
             if (!schemaRendered) {
