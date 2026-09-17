@@ -3577,7 +3577,12 @@
             var markRegex = /<mark\b[^>]*>([\s\S]*?)<\/mark>/gi;
             while ((match = markRegex.exec(source))) {
                 var phrase = String(match[1] || '').replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '').replace(/\s+/g, ' ').trim();
-                if (phrase && phrases.indexOf(phrase) === -1) phrases.push(phrase);
+                var fragments = phrase.split(/\.{3}|\u2026/).map(function(item) {
+                    return String(item || '').replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '').trim();
+                }).filter(Boolean);
+                for (var fragmentIndex = 0; fragmentIndex < fragments.length; fragmentIndex += 1) {
+                    if (phrases.indexOf(fragments[fragmentIndex]) === -1) phrases.push(fragments[fragmentIndex]);
+                }
             }
 
             var transcriptText = (Array.isArray(transcriptSegments) ? transcriptSegments : []).map(function(segment) {
@@ -3606,9 +3611,9 @@
                         if (found) break;
                     }
                 }
-                if (usablePhrases.length) return usablePhrases.slice(0, 2);
+                if (usablePhrases.length) return usablePhrases;
             }
-            return phrases.length ? phrases.slice(0, 2) : buildHighlightTermsFromAnswer(answerText);
+            return phrases.length ? phrases : buildHighlightTermsFromAnswer(answerText);
         }
 
         function decodeExplanationHtmlEntities(value) {
@@ -3632,9 +3637,47 @@
                     .replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '')
                     .replace(/\s+/g, ' ')
                     .trim();
-                if (phrase && terms.indexOf(phrase) === -1) terms.push(phrase);
+                var fragments = phrase.split(/\.{3}|\u2026/).map(function(item) {
+                    return String(item || '').replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '').trim();
+                }).filter(Boolean);
+                for (var fragmentIndex = 0; fragmentIndex < fragments.length; fragmentIndex += 1) {
+                    if (terms.indexOf(fragments[fragmentIndex]) === -1) terms.push(fragments[fragmentIndex]);
+                }
             }
             return terms;
+        }
+
+        function expandMarkedTermsForTranscript(markedTerms, transcriptSegments) {
+            var transcriptText = (Array.isArray(transcriptSegments) ? transcriptSegments : []).map(function(segment) {
+                return String((segment || {}).text || '');
+            }).join(' ');
+            var normalizedTranscript = normalizeSearchText(transcriptText);
+            var output = [];
+            var candidates = Array.isArray(markedTerms) ? markedTerms : [];
+
+            for (var candidateIndex = 0; candidateIndex < candidates.length; candidateIndex += 1) {
+                var candidate = String(candidates[candidateIndex] || '').trim();
+                if (!candidate) continue;
+                var normalizedCandidate = normalizeSearchText(candidate);
+                if (normalizedCandidate && normalizedTranscript.indexOf(normalizedCandidate) !== -1) {
+                    output.push(candidate);
+                    continue;
+                }
+
+                var words = normalizedCandidate.split(' ').filter(Boolean);
+                var foundWords = false;
+                for (var size = Math.min(8, words.length); size >= 3 && !foundWords; size -= 1) {
+                    for (var start = 0; start <= words.length - size; start += 1) {
+                        var shortened = words.slice(start, start + size).join(' ');
+                        if (normalizedTranscript.indexOf(shortened) !== -1) {
+                            if (output.indexOf(shortened) === -1) output.push(shortened);
+                            foundWords = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            return output;
         }
 
         function renderExplanationContent(html) {
@@ -4754,7 +4797,10 @@
                     }
                 }
             } catch (_) {}
-            var markedExplanationTerms = getExplanationMarkedTerms(getDisplayedExplanationText(q));
+            var markedExplanationTerms = expandMarkedTermsForTranscript(
+                getExplanationMarkedTerms(getDisplayedExplanationText(q)),
+                getQuestionTranscriptSegments(q)
+            );
             if (markedExplanationTerms.length) {
                 highlightTerms = highlightTerms.concat(markedExplanationTerms.filter(function(term) {
                     return highlightTerms.indexOf(term) === -1;
