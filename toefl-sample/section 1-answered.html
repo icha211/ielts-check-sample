@@ -1461,10 +1461,6 @@
             }).join(' ');
         }
 
-        function hasTranscriptSpeakerPrefix(value) {
-            return /^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student(?:\s*[a-z])?|manager|facilities\s+manager|librarian|host|interviewer)\s*:/i.test(String(value || '').trim());
-        }
-
         function parseTranscriptSpeakerLine(rawLine) {
             var line = String(rawLine || '').replace(/\*\*/g, '').trim();
             var speakerMatch = line.match(/^([A-Za-z][A-Za-z\s]*(?:\([^)]+\))?)\s*:\s*(.*)$/i);
@@ -1500,7 +1496,7 @@
                     startsNewParagraph = segments.length > 0;
                     continue;
                 }
-                var hasSpeakerPrefix = hasTranscriptSpeakerPrefix(line);
+                var hasSpeakerPrefix = /^[A-Za-z][A-Za-z\s]*(?:\([^)]+\))?\s*:/.test(line);
 
                 if (!hasSpeakerPrefix && segments.length > 0) {
                     var previous = segments[segments.length - 1];
@@ -1632,7 +1628,7 @@
                 }
 
                 var timedSpeakerMatch = line.match(/^(?:\[)?(\d{1,2}:\d{2}(?::\d{2})?(?:[\.,]\d+)?)(?:\])?\s*(?:-->|[-\u2013\u2014])?\s*(.+)$/);
-                if (timedSpeakerMatch && hasTranscriptSpeakerPrefix(timedSpeakerMatch[2])) {
+                if (timedSpeakerMatch && /^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)\s*:/i.test(timedSpeakerMatch[2])) {
                     var timedTimestamp = String(timedSpeakerMatch[1] || '').replace(',', '.');
                     var timedStart = parseTimestampToSeconds(timedTimestamp);
                     var timedLine = parseTranscriptSpeakerLine(timedSpeakerMatch[2]);
@@ -1666,7 +1662,7 @@
                     continue;
                 }
 
-                if (hasTranscriptSpeakerPrefix(line)) {
+                if (/^(?:man|woman|narrator|narr|speaker\s*[a-z]|professor|student|host|interviewer)\s*:/i.test(line)) {
                     var plainLine = parseTranscriptSpeakerLine(line);
                     var estimatedStart = Array.isArray(map[0]) ? map[0].length * 8 : 0;
                     pushSegment(currentQuestion, '', estimatedStart, estimatedStart + 8, plainLine.speaker, plainLine.text, plainLine.speakerLabel);
@@ -2802,6 +2798,7 @@
                 if (!activeSegments.length) {
                     html += '<div class="transcript-modern-empty">No transcript available for this question.</div>';
                 } else {
+                    var pPrevSpeakerTag = '';
                     for (var pi = 0; pi < activeSegments.length; pi += 1) {
                         var pSeg = activeSegments[pi] || {};
                         var pStart = Number(pSeg.start || 0);
@@ -2815,8 +2812,13 @@
                         var pCardKey = ['plain', String(pSpeakerTag), String(pStart), String(pSeg.timestamp || ''), String(pSeg.text || '')].join('|');
                         var pEncodedCardKey = encodeURIComponent(pCardKey);
                         var pIsActive = reviewActiveTranscriptKey === pCardKey;
+                        // The transcript only states the speaker once when the same
+                        // speaker continues across paragraphs; don't repeat the label.
+                        var pShowLabel = pSpeakerTag !== pPrevSpeakerTag;
+                        pPrevSpeakerTag = pSpeakerTag;
+
                         html += '<p class="transcript-plain-line' + (pIsActive ? ' is-active' : '') + '" onclick="playTranscriptSegmentFromCard(\'' + pEncodedCardKey + '\',' + pStart + ',' + pEnd + ')">';
-                        html += '<span class="transcript-modern-speaker-label">' + pSpeakerLabel + '</span>: ' + pText;
+                        html += pShowLabel ? ('<span class="transcript-modern-speaker-label">' + pSpeakerLabel + '</span>: ' + pText) : pText;
                         html += '</p>';
                     }
                 }
@@ -3651,7 +3653,6 @@
             return String(value || '')
                 .replace(/&ldquo;|&rdquo;/gi, '"')
                 .replace(/&lsquo;|&rsquo;/gi, "'")
-                .replace(/&hellip;|&#8230;|&#x2026;/gi, '\u2026')
                 .replace(/&lt;/gi, '<')
                 .replace(/&gt;/gi, '>')
                 .replace(/&quot;/gi, '"')
@@ -3671,17 +3672,9 @@
                     .replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '')
                     .replace(/\s+/g, ' ')
                     .trim();
-                var fragments = [];
-                var omissionParts = phrase.split(/\s*(?:\.{3,}|\u2026)\s*/);
-                for (var omissionIndex = 0; omissionIndex < omissionParts.length; omissionIndex += 1) {
-                    var sentences = String(omissionParts[omissionIndex] || '').match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [];
-                    for (var sentenceIndex = 0; sentenceIndex < sentences.length; sentenceIndex += 1) {
-                        var fragment = String(sentences[sentenceIndex] || '')
-                            .replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '')
-                            .trim();
-                        if (fragment) fragments.push(fragment);
-                    }
-                }
+                var fragments = phrase.split(/\.{3}|\u2026/).map(function(item) {
+                    return String(item || '').replace(/^\s*["\u201c\u201d]+|["\u201c\u201d]+\s*$/g, '').trim();
+                }).filter(Boolean);
                 for (var fragmentIndex = 0; fragmentIndex < fragments.length; fragmentIndex += 1) {
                     if (terms.indexOf(fragments[fragmentIndex]) === -1) terms.push(fragments[fragmentIndex]);
                 }
@@ -3802,7 +3795,9 @@
                 options_status: optionsStatus,
                 explanation_payload: {
                     header_title: 'Why (' + normalizedCorrect + ')?',
+                    main_explanation_html: 'The correct choice is <strong>(' + escapeHtml(normalizedCorrect) + ') ' + escapeHtml(bestAnswerText || 'best answer') + '</strong> because ' + reasonHtml + '.',
                     dialogue_blocks: dialogueBlocks,
+                    closing_analysis_html: 'Because these dialogue clues align with the core idea of the correct option, the best match is <strong>(' + escapeHtml(normalizedCorrect) + ') ' + escapeHtml(bestAnswerText || '') + '</strong>.'
                 }
             };
         }
@@ -3984,10 +3979,7 @@
         function renderExplainationTabDetail(question, explanation, correctLtr) {
             var host = document.getElementById('explainationTabContent');
             if (!host) return;
-            var highlightTerms = expandMarkedTermsForTranscript(
-                getExplanationMarkedTerms(getDisplayedExplanationText(question)),
-                getQuestionTranscriptSegments(question)
-            );
+            var highlightTerms = buildHighlightTermsFromAnswer((question && question.options && question.options[correctLtr]) || '');
             reviewTranscriptHighlightTerms = highlightTerms;
             var schema = buildExplanationSchemaFromQuestion(question, explanation, correctLtr);
             host.innerHTML = renderExplanationFromSchema(schema);
@@ -4716,10 +4708,7 @@
 
                 var translatedExplanation = parseExplanationSegments(question.explanationId);
                 var correctAnswer = String(question.correctAnswer || 'B').trim().toUpperCase() || 'B';
-                var highlightTerms = expandMarkedTermsForTranscript(
-                    getExplanationMarkedTerms(question.explanationId),
-                    getQuestionTranscriptSegments(question)
-                );
+                var highlightTerms = buildHighlightTermsFromAnswer(question.options[correctAnswer] || '');
                 reviewTranscriptHighlightTerms = highlightTerms;
                 renderExplainationTabDetail(question, translatedExplanation, correctAnswer);
                 renderTranscriptCards(question, highlightTerms);
@@ -4758,7 +4747,7 @@
 
             var detailSub = document.getElementById('detailSub');
             if (detailSub) detailSub.textContent = 'Why ' + (correctLtr||'B') + ' is correct? Proof Transcribe';
-            var highlightTerms = [];
+            var highlightTerms = buildHighlightTermsFromAnswer(q.options[correctLtr] || '');
             reviewTranscriptHighlightTerms = highlightTerms;
             
             var schemaRendered = false;

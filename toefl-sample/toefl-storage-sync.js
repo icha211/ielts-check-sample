@@ -16,6 +16,7 @@
 const TOEFL_FIREBASE_URL = "https://quickcheck-25590-default-rtdb.asia-southeast1.firebasedatabase.app";
 const TOEFL_FIREBASE_API_KEY = "AIzaSyBtaZOok-Kj91qzCo_6ClCZ8Lfgam7qRxg";
 const TOEFL_FIREBASE_AUTH_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signUp";
+const TOEFL_FIREBASE_REFRESH_URL = "https://securetoken.googleapis.com/v1/token";
 const TOEFL_STORAGE_BUCKET = "quickcheck-25590.firebasestorage.app";
 const TOEFL_STORAGE_BASE = `https://firebasestorage.googleapis.com/v0/b/${TOEFL_STORAGE_BUCKET}/o`;
 const AUDIO_CACHE_CONTROL = "public, max-age=31536000, immutable";
@@ -200,6 +201,8 @@ class ToeflStorageSync {
   async _getAuthToken(forceRefresh = false) {
     const tokenKey = "toefl_firebase_id_token";
     const expiryKey = "toefl_firebase_id_token_expiry";
+    const refreshTokenKey = "toefl_firebase_refresh_token";
+    const authModeKey = "toefl_firebase_auth_mode";
     const storedToken = String(localStorage.getItem(tokenKey) || "");
     const storedExpiry = Number(localStorage.getItem(expiryKey) || 0);
     if (!forceRefresh && storedToken && storedExpiry > Date.now() + 60000) {
@@ -208,6 +211,25 @@ class ToeflStorageSync {
 
     if (this._authPromise && !forceRefresh) return this._authPromise;
     this._authPromise = (async () => {
+      const refreshToken = String(localStorage.getItem(refreshTokenKey) || "");
+      if (localStorage.getItem(authModeKey) === "developer" && refreshToken) {
+        const refreshResponse = await fetch(`${TOEFL_FIREBASE_REFRESH_URL}?key=${encodeURIComponent(TOEFL_FIREBASE_API_KEY)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ grant_type: "refresh_token", refresh_token: refreshToken })
+        });
+        if (!refreshResponse.ok) throw new Error(`Firebase developer session refresh failed (${refreshResponse.status})`);
+        const refreshed = await refreshResponse.json();
+        const refreshedToken = String(refreshed.id_token || "");
+        const refreshedRefreshToken = String(refreshed.refresh_token || refreshToken);
+        const refreshedExpiresIn = Number(refreshed.expires_in || 3600);
+        if (!refreshedToken) throw new Error("Firebase developer session refresh returned no ID token");
+        localStorage.setItem(tokenKey, refreshedToken);
+        localStorage.setItem(refreshTokenKey, refreshedRefreshToken);
+        localStorage.setItem(expiryKey, String(Date.now() + refreshedExpiresIn * 1000));
+        return refreshedToken;
+      }
+
       const response = await fetch(`${TOEFL_FIREBASE_AUTH_URL}?key=${encodeURIComponent(TOEFL_FIREBASE_API_KEY)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
