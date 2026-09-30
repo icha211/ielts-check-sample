@@ -9,6 +9,342 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
+    <style>
+        .progress-q-circle {
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        border: 1px solid #d1dce8;
+        background: #e8eef5;
+        color: #fff;
+        font: 400 10px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 1px;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    /* Default unanswered/idle circle */
+    .progress-q-circle:not(.is-answered):not(.is-current):not(.is-correct):not(.is-incorrect) {
+        background: #7a8fa6;
+        border-color: #d1dce8;
+        color: #fff;
+    }
+
+    /* Current active question -> Blue */
+    .progress-q-circle.is-current {
+        background: #005FAA;
+        border-color: #fff;
+        color: #fff;
+        box-shadow: 0 0 0 2px #005FAA;
+    }
+
+    /* Answered prior to check */
+    .progress-q-circle.is-answered {
+        background: #005FAA;
+        color: #fff;
+        border-color: #fff;
+        box-shadow: 0 0 2px #005FAA;
+    }
+
+    /* Correct post-instant check -> Green */
+    .progress-q-circle.is-correct {
+        background: #0d9488;
+        color: #fff;
+        border-color: #fff;
+        box-shadow: 0 0 2px #0d9488;
+    }
+
+    /* Incorrect post-instant check -> Red */
+    .progress-q-circle.is-incorrect {
+        background: #dc2626;
+        color: #fff;
+        border-color: #fff;
+        box-shadow: 0 0 2px #dc2626;
+    }
+
+    .progress-q-circle:hover {
+        border-color: #fff;
+    }
+
+    /* Part Chip Layout */
+    .progress-part-chip {
+        border: none;
+        border-radius: 0;
+        background: transparent;
+        width: auto;
+        min-width: 33px;
+        height: 28px;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .progress-part-chip.active {
+        width: max-content;
+        min-width: max-content;
+        height: auto;
+        align-items: center;
+        cursor: default;
+        padding: 0;
+        box-shadow: none;
+    }
+
+    .reading-part-circles {
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: center;
+        gap: 4px;
+        padding-top: 4px;
+    }
+
+    .progress-part-chip.active .progress-part-title {
+        height: 21px;
+        width: 100%;
+        border-bottom: 1px solid #d1dce8;
+        font: 700 14px/18px "Plus Jakarta Sans", Arial, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    /* ===== Practice: instant feedback layout ===== */
+    .instant-progress { display: flex; align-items: center; gap: 10px; }
+
+    #instant-question-host { padding: 24px 16px 40px; }
+
+    .instant-card {
+        width: min(922px, 100%);
+        margin: 0 auto;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+    }
+
+    .instant-card__tabs {
+        display: flex;
+        align-items: stretch;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .instant-card__tab {
+        flex: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 14px 10px;
+        border: 0;
+        background: #fff;
+        color: #7a8fa6;
+        cursor: pointer;
+        font: 600 13px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        border-bottom: 3px solid transparent;
+    }
+
+    .instant-card__tab img { width: 18px; height: 18px; object-fit: contain; }
+    .instant-card__tab.is-active { color: #005faa; border-bottom-color: #005faa; }
+
+    .instant-card__body { padding: 20px 24px 22px; display: grid; gap: 18px; }
+    .instant-panel[hidden] { display: none; }
+
+    .instant-question { display: grid; gap: 14px; }
+
+    .instant-question-head { display: flex; align-items: center; gap: 14px; }
+    .instant-question-head .question-number-badge { flex: 0 0 auto; }
+
+    .instant-question-title {
+        flex: 1;
+        margin: 0;
+        color: #0f172a;
+        font: 400 16px/1.45 "Times New Roman", Times, serif;
+    }
+
+    .instant-verdict {
+        font: 600 15px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+    }
+
+    .instant-verdict.is-correct { color: #0d9488; }
+    .instant-verdict.is-incorrect { color: #dc2626; }
+
+    .question-number-badge.is-selected { background: #005FAA; border-color: #fff; color: #fff; box-shadow: 0 0 4px #0EA5E9; }
+    .question-number-badge.is-correct { background: #0d9488; border-color: #fff; color: #fff; box-shadow: 0 0 4px #0d9488; }
+    .question-number-badge.is-incorrect { background: #DC2626; border-color: #fff; color: #fff; box-shadow: 0 0 4px #DC2626; }
+
+    .instant-options { display: grid; gap: 10px; }
+
+    .instant-options label {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        width: 100%;
+        min-height: 44px;
+        padding: 9px 16px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        cursor: pointer;
+        font: 400 15px/1.4 "Times New Roman", Times, serif;
+        transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .instant-options label.selected { border-color: #005faa; background: rgba(14, 165, 233, 0.16); box-shadow: 0 4px 4px rgba(14, 165, 233, 0.22); }
+    .instant-options label.is-correct { border-color: #0d9488; background: #d7f5ee; }
+    .instant-options label.is-incorrect { border-color: #fca5a5; background: #fef2f2; }
+    .instant-options label.is-locked { cursor: default; }
+
+    .instant-option-letter {
+        flex: 0 0 auto;
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        color: #64748b;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font: 400 13px/1 "Times New Roman", Times, serif;
+    }
+
+    .instant-options label.selected .instant-option-letter { background: #005FAA; border-color: #005faa; color: #fff; }
+    .instant-options label.is-correct .instant-option-letter { background: #0d9488; border-color: #0d9488; color: #fff; }
+
+    .instant-option-text { flex: 1; min-width: 0; }
+
+    .instant-option-tag {
+        flex: 0 0 auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #0d9488;
+        font: 500 13px/1 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .instant-option-tag.is-wrong { color: #dc2626; }
+
+    /* Part B renders the sentence inline with the four underlined choices. */
+    .instant-partb-sentence {
+        margin: 0;
+        color: #0f172a;
+        font: 400 16px/2.1 "Times New Roman", Times, serif;
+    }
+
+    .instant-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        padding-top: 16px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 10px 18px;
+        cursor: pointer;
+        font: 600 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .btn-action.primary { background: #0d9488; color: #fff; }
+    .btn-action.secondary { background: #94a3b8; color: #fff; }
+    .btn-action:hover { filter: brightness(1.06); }
+
+    /* QC C.O.R.E analysis panel */
+    .qc-core { border: 1px solid #dbe4f0; border-radius: 12px; overflow: hidden; }
+
+    .qc-core__head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        background: #4f46e5;
+        color: #fff;
+        font: 700 12px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: 0.06em;
+    }
+
+    .qc-core__body { padding: 16px 18px; display: grid; gap: 16px; background: #fff; }
+    .qc-core__block { display: grid; gap: 6px; }
+
+    .qc-core__label {
+        color: #6366f1;
+        font: 600 12px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: 0.02em;
+    }
+
+    .qc-core__text {
+        color: #0f172a;
+        font: 400 13px/1.6 "Plus Jakarta Sans", Arial, sans-serif;
+        text-align: justify;
+    }
+
+    .qc-core__concept mark { background: #fde047; padding: 1px 5px; border-radius: 3px; font-weight: 600; }
+
+    .qc-core__rows { display: grid; gap: 4px; }
+
+    .qc-core__row {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 8px;
+        font: 400 13px/1.6 "Plus Jakarta Sans", Arial, sans-serif;
+        color: #0f172a;
+    }
+
+    .qc-core__row strong { font-weight: 600; }
+
+    .qc-core__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+
+    .qc-core__item {
+        display: grid;
+        grid-template-columns: 200px 18px 1fr;
+        gap: 10px;
+        align-items: start;
+        font: 400 13px/1.55 "Plus Jakarta Sans", Arial, sans-serif;
+        color: #0f172a;
+    }
+
+    .qc-core__item-mark { font-weight: 700; }
+    .qc-core__item.is-correct .qc-core__item-mark { color: #0d9488; }
+    .qc-core__item.is-incorrect .qc-core__item-mark { color: #dc2626; }
+
+    .instant-empty-state,
+    .instant-empty {
+        margin: 0;
+        padding: 20px;
+        color: #94a3b8;
+        text-align: center;
+        font: 400 13px/1.5 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .instant-video-frame {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border: 0;
+        border-radius: 12px;
+        background: #0f172a;
+    }
+
+    @media (max-width: 720px) {
+        .qc-core__item { grid-template-columns: 1fr; }
+        .qc-core__row { grid-template-columns: 1fr; }
+    }
+    </style>
 </head>
 <body>
 
@@ -36,6 +372,7 @@
                 </div>
             </div>
             <div class="progressbar-final">
+                <div class="instant-progress" id="instant-progress-dots" style="display:none;"></div>
                 <div class="progress-bar-question">
                     <div class="progress-bar-question-inner">
                         <div class="progressbar-wrapper">
@@ -127,6 +464,7 @@
         </div>
         <div class="section2-layout">
             <div id="user-passages-container" style="flex: 1; overflow-y: auto; position: relative;">
+                <div id="instant-question-host" style="display:none;"></div>
             </div>
             <aside class="question-navigator" id="question-navigator">
                 <div class="question-navigator__panel">
@@ -152,6 +490,68 @@
                     <button class="navigator-action-btn next-question" id="navigator-next-question" type="button">Next Question</button>
                     <button class="navigator-action-btn next-section" id="navigator-next-section" type="button">Next Section</button>
                 </div>
+
+                <!-- <div class="instruction-popup" id="onboarding-overlay" aria-hidden="true">
+                    <div class="instruction-popup__backdrop"></div>
+                    <div class="instruction-popup__title">Instruction</div>
+
+                    <div class="instruction-popup__content">
+                        <div class="instruction-list">
+                            <article class="instruction-item instruction-item--play">
+                                <div class="instruction-item__icon-wrap" aria-hidden="true">
+                                    <i class="ph ph-play instruction-item__icon" aria-hidden="true"></i>
+                                </div>
+                                <div class="instruction-item__content">
+                                    <h3 class="instruction-item__heading">Start The Listening</h3>
+                                    <p class="instruction-item__text">Click the Start button to begin. Note that the test environment is locked once active, if you exit or stop the session, your test will be terminated immediately and cannot be resumed.</p>
+                                </div>
+                            </article>
+
+                            <article class="instruction-item instruction-item--single">
+                                <div class="instruction-item__icon-wrap" aria-hidden="true">
+                                    <i class="ph ph-speaker-high instruction-item__icon" aria-hidden="true"></i>
+                                </div>
+                                <div class="instruction-item__content">
+                                    <h3 class="instruction-item__heading">Single Play ONLY</h3>
+                                    <p class="instruction-item__text">The audio for the entire section will play once only. There are no replay, rewind, or pause functions available. This matches authentic TOEFL ITP conditions.</p>
+                                </div>
+                            </article>
+
+                            <article class="instruction-item instruction-item--navigator">
+                                <div class="instruction-item__icon-wrap" aria-hidden="true">
+                                    <i class="ph ph-squares-four instruction-item__icon" aria-hidden="true"></i>
+                                </div>
+                                <div class="instruction-item__content">
+                                    <h3 class="instruction-item__heading">Question Navigator</h3>
+                                    <p class="instruction-item__text">Read each question and its four answer choices carefully. You must progress through the session as the audio dictates. You cannot jump ahead or return to previous questions.</p>
+                                </div>
+                            </article>
+
+                            <article class="instruction-item instruction-item--time">
+                                <div class="instruction-item__icon-wrap" aria-hidden="true">
+                                    <i class="ph ph-clock instruction-item__icon" aria-hidden="true"></i>
+                                </div>
+                                <div class="instruction-item__content">
+                                    <h3 class="instruction-item__heading">Time Management</h3>
+                                    <p class="instruction-item__text">Monitor the countdown timer in the top bar. The test will automatically transition to the next phase once the audio concludes or the time limit is reached.</p>
+                                </div>
+                            </article>
+                        </div>
+
+                        <div class="instruction-popup__cta">
+                            <div class="instruction-popup__cta-text">
+                                <div class="instruction-popup__ready">Are you ready?</div>
+                                <div class="instruction-popup__click">Click to Play</div>
+                            </div>
+                            <button class="instruction-popup__play-button" type="button" onclick="startFromOnboarding()">
+                                <span class="instruction-popup__play-icon" aria-hidden="true">
+                                    <i class="ph ph-play instruction-popup__play-icon-glyph icon-regular" aria-hidden="true"></i>
+                                    <i class="ph-fill ph-play instruction-popup__play-icon-glyph icon-filled" aria-hidden="true"></i>
+                                </span>
+                                <span class="instruction-popup__play-label">Play</span>
+                            </button>
+                        </div>
+                    </div> -->
             </aside>
         </div>
         <div class="user-sub-nav" id="user-sub-nav-container"></div>
@@ -165,7 +565,9 @@
             </div>
             <div style="display: flex; gap: 12px; align-items: center;">
                 <a id="view-explanation-btn" href="section 2-answered.html" style="display:inline-flex; align-items:center; gap:8px; padding:11px 14px; border-radius:8px; background:#fff; color:#1e3a5f; border:1px solid #cbd5e1; text-decoration:none; font-weight:700; font-size:14px; cursor:pointer; transition:all 0.2s ease;" onmouseover="this.style.background='#f0f4f8'" onmouseout="this.style.background='#fff'">📖 View Explanation</a>
-                <button class="mode-switch-btn" type="button" onclick="openUserPreviewFromDeveloper()">�� Apply + Open User View</button>
+                <button class="mode-switch-btn practice-preview-btn" type="button" onclick="openUserPreviewFromDeveloper('instant')">Preview: Instant Feedback</button>
+                <button class="mode-switch-btn practice-preview-btn" type="button" onclick="openUserPreviewFromDeveloper('full')">Preview: Full Test Mode</button>
+                <button class="mode-switch-btn" type="button" onclick="openUserPreviewFromDeveloper()">Apply + Open User View</button>
                 <button class="btn-save" onclick="applyAndRefreshStructureView()">🔄 Terapkan & Update Tampilan</button>
                 <button class="btn-save" type="button" onclick="saveAndUpdateUserView(this)">Save and Update</button>
             </div>
@@ -289,6 +691,29 @@
             return null;
         }
 
+        // Practice sets are per category, so focus+difficulty is what makes them distinct.
+        function getPracticeVariant() {
+            const params = new URLSearchParams(window.location.search);
+            const slug = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const focus = slug(params.get("focus")) || (forcedPracticeFocusPart ? `part${forcedPracticeFocusPart === 2 ? "b" : "a"}` : "");
+            const difficulty = slug(params.get("difficulty")) || slug((document.getElementById("set-difficulty") || {}).value);
+            return { focus, difficulty, slug: [focus, difficulty].filter(Boolean).join("-") };
+        }
+
+        function setRecordMatchesPracticeVariant(record, variant) {
+            if (currentTestType !== "practicetest" || !variant || !variant.slug) return true;
+            const slug = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const recordFocus = slug(record?.focus);
+            const recordDifficulty = slug(record?.difficulty);
+            // Sets saved before the category was persisted fall back to the id segment.
+            if (!recordFocus && !recordDifficulty) {
+                return String(record?.setId || "").toLowerCase().includes(`_${variant.slug}_`);
+            }
+            if (variant.focus && recordFocus && recordFocus !== variant.focus) return false;
+            if (variant.difficulty && recordDifficulty && recordDifficulty !== variant.difficulty) return false;
+            return true;
+        }
+
         // Mock Test owns day 1, 5, 9, 13... (every 4th day); Practice Test owns the days in between (e.g. 2-4, 6-8).
         function isMockTestDayNumber(day) {
             return ((day - 1) % 4) === 0;
@@ -354,10 +779,12 @@
             }
             
             // Only create new ID if no existing set found for this date/testType
+            const variant = getPracticeVariant();
             if (window.toeflStorage && typeof toeflStorage.createSetId === "function") {
-                currentSetId = toeflStorage.createSetId(MODULE_ID, setDate, currentTestType);
+                currentSetId = toeflStorage.createSetId(MODULE_ID, setDate, currentTestType, variant);
             } else {
-                currentSetId = `${currentTestType}_${MODULE_ID}_${Date.now()}`;
+                const suffix = currentTestType === "practicetest" && variant.slug ? `${variant.slug}_` : "";
+                currentSetId = `${currentTestType}_${MODULE_ID}_${suffix}${Date.now()}`;
             }
             console.log(`[SetIdempotency] Created new set for date ${setDate}:`, currentSetId);
             return currentSetId;
@@ -365,11 +792,13 @@
 
         async function resolveSetRecordByDate(setDate, filterTestType = null) {
             const testTypeToCheck = filterTestType || currentTestType;
+            const variant = getPracticeVariant();
             try {
                 if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
                     const records = await toeflStorage.getSetRecordsByTestType(testTypeToCheck);
                     const match = (records || [])
                         .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
+                        .filter((item) => setRecordMatchesPracticeVariant(item, variant))
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
                     if (match) return match;
                 }
@@ -380,15 +809,18 @@
             const local = getStoredSetMap();
             return Object.values(local)
                 .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
+                .filter((item) => setRecordMatchesPracticeVariant(item, variant))
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 
         async function resolveLatestSetRecord() {
+            const variant = getPracticeVariant();
             try {
                 if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
                     const records = await toeflStorage.getSetRecords();
                     const latest = (records || [])
                         .filter((item) => item && item.module === MODULE_ID)
+                        .filter((item) => setRecordMatchesPracticeVariant(item, variant))
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
                     if (latest) return latest;
                 }
@@ -751,6 +1183,7 @@
             lastValidSetDate = effectiveDate;
             updateHeaderPackageLabel(effectiveDate);
             updateExplanationLink();
+            syncPracticePreviewButtons();
             const requestedFocus = params.get("focus");
             if (forceBlankNew && (requestedFocus === "partA" || requestedFocus === "partB")) {
                 const targetPartId = requestedFocus === "partB" ? 2 : 1;
@@ -775,6 +1208,7 @@
                 label: MODULE_LABEL,
                 setDate,
                 difficulty: difficultyInput.value || "intermediate",
+                focus: getPracticeVariant().focus,
                 updatedAt: new Date().toISOString()
             };
             if (window.toeflStorage && typeof toeflStorage.upsertSetRecord === "function") {
@@ -963,21 +1397,529 @@
             }
         }
 
+        // Practice sets run either as an instant-feedback drill or as a full mock-style test.
+        function getSection2PracticeRunMode() {
+            const params = new URLSearchParams(window.location.search);
+            const raw = String(params.get("runMode") || params.get("practiceMode") || "").toLowerCase().trim();
+            if (raw === "instant" || raw === "instantfeedback" || raw === "instant feedback") return "instant";
+            if (raw === "full" || raw === "fulltest" || raw === "full test" || raw === "full test mode") return "full";
+            return "";
+        }
+
         function updateHeaderPackageLabel(dateString) {
             const label = document.getElementById("header-package-label");
             if (!label) return;
-            if (!dateString) {
-                label.textContent = "Package";
+
+            const params = new URLSearchParams(window.location.search);
+            const type = String(params.get("testType") || currentTestType || "").toLowerCase().trim();
+            const mode = getSection2PracticeRunMode();
+
+            let formattedDate = "";
+            if (dateString) {
+                const date = new Date(dateString);
+                if (!Number.isNaN(date.getTime())) {
+                    const day = String(date.getDate()).padStart(2, "0");
+                    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    formattedDate = `${day} ${months[date.getMonth()]}`;
+                }
+            }
+
+            if (type === "full_mock" || type === "full mock test") {
+                label.textContent = `Full Mock Test Package ${formattedDate}`.trim();
+            } else if (type === "mock" || type === "mocktest") {
+                label.textContent = `Mock Test ${formattedDate}`.trim();
+            } else if (type === "practice" || type === "practice test" || type === "practicetest") {
+                if (mode === "instant") {
+                    label.textContent = `Practice Test ${formattedDate} (Instant Feedback)`.replace(/\s{2,}/g, " ").trim();
+                } else if (mode === "full") {
+                    label.textContent = `Practice Test ${formattedDate} (Full Test Mode)`.replace(/\s{2,}/g, " ").trim();
+                } else {
+                    label.textContent = `Practice Test ${formattedDate}`.trim();
+                }
+            } else {
+                label.textContent = `Package ${formattedDate}`.trim();
+            }
+        }
+
+        // ===== Practice test: instant feedback engine =====
+        // Full Test Mode reuses the mock-test layout untouched; only instant mode
+        // swaps the stacked question list for a one-question-at-a-time card.
+        let instantOrder = [];
+        let instantIndex = 0;
+        let instantAnswers = {};
+        let instantChecked = {};
+        let instantRevealed = false;
+        let instantTab = "explaination";
+
+        function getPracticeRunMode() {
+            const params = new URLSearchParams(window.location.search);
+            const testType = String(params.get("testType") || currentTestType || "").toLowerCase();
+            if (!testType.includes("practice")) return "full";
+
+            const raw = String(params.get("runMode") || params.get("practiceMode") || "").toLowerCase().trim();
+            if (raw === "instant" || raw === "instantfeedback" || raw === "instant feedback") return "instant";
+            return "full";
+        }
+
+        function isInstantFeedbackMode() {
+            return getPracticeRunMode() === "instant";
+        }
+
+        function getPartIdFromUid(uid) {
+            return Number(String(uid || "").split("_")[0] || 0) || 0;
+        }
+
+        function getQuestionNumberFromUid(uid) {
+            return Number(String(uid || "").split("_")[1] || 0) || 0;
+        }
+
+        function buildInstantOrder() {
+            instantOrder = Object.keys(globalQuestions || {})
+                .filter((uid) => !forcedPracticeFocusPart || getPartIdFromUid(uid) === forcedPracticeFocusPart)
+                .sort((left, right) => getQuestionNumberFromUid(left) - getQuestionNumberFromUid(right));
+            if (instantIndex >= instantOrder.length) instantIndex = 0;
+        }
+
+        function applyPracticeRunMode() {
+            const instant = isInstantFeedbackMode();
+            document.body.classList.toggle("instant-feedback-mode", instant);
+
+            const navigatorPanel = document.getElementById("question-navigator");
+            const progressBlock = document.querySelector(".progressbar-final .progress-bar-question");
+            const dots = document.getElementById("instant-progress-dots");
+            const subNav = document.getElementById("user-sub-nav-container");
+            const container = document.getElementById("user-passages-container");
+            const host = document.getElementById("instant-question-host");
+
+            if (navigatorPanel) navigatorPanel.style.display = instant ? "none" : "";
+            if (progressBlock) progressBlock.style.display = instant ? "none" : "";
+            if (dots) dots.style.display = instant ? "flex" : "none";
+            if (instant && subNav) subNav.style.display = "none";
+            if (host) host.style.display = instant ? "" : "none";
+
+            // Directions stay visible in instant mode; only the stacked question list is hidden.
+            PARTS.forEach((part) => {
+                const list = document.getElementById(`display-questions-${part.id}`);
+                if (list) list.style.display = instant ? "none" : "";
+            });
+
+            if (!instant) {
+                if (host) host.innerHTML = "";
+                renderInstantProgressDots();
                 return;
             }
-            const date = new Date(dateString);
-            if (Number.isNaN(date.getTime())) {
-                label.textContent = "Package";
+
+            // The card must sit under the directions block, not above it.
+            if (container && host) container.appendChild(host);
+
+            buildInstantOrder();
+            instantRevealed = Boolean(instantChecked[instantOrder[instantIndex]]);
+            renderInstantQuestion();
+        }
+
+        // Only the part being drilled keeps its directions on screen.
+        function syncInstantPartVisibility() {
+            const activePartId = forcedPracticeFocusPart || getPartIdFromUid(instantOrder[instantIndex]) || PARTS[0].id;
+            PARTS.forEach((part) => {
+                const panel = document.getElementById(`user-part-${part.id}`);
+                if (!panel) return;
+                const isActive = part.id === activePartId;
+                panel.style.display = isActive ? "block" : "none";
+                panel.classList.toggle("active", isActive);
+            });
+        }
+
+        function getInstantCircleState(uid, index) {
+            const currentClass = index === instantIndex ? "is-current" : "";
+
+            if (instantChecked[uid]) {
+                const correct = String(globalAnswerKey[uid] || "").trim().toUpperCase();
+                const isCorrect = String(instantAnswers[uid] || "").toUpperCase() === correct;
+                return `${isCorrect ? "is-correct" : "is-incorrect"} ${currentClass}`.trim();
+            }
+
+            if (instantAnswers[uid]) return `is-answered ${currentClass}`.trim();
+            return currentClass;
+        }
+
+        // Question circles only exist for practice tests run in instant-feedback mode.
+        function renderInstantProgressDots() {
+            const host = document.getElementById("instant-progress-dots");
+            if (!host) return;
+            if (!isInstantFeedbackMode() || !instantOrder.length) {
+                host.innerHTML = "";
                 return;
             }
-            const day = String(date.getDate()).padStart(2, "0");
-            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            label.textContent = `Package ${day} ${months[date.getMonth()]}`;
+
+            const partId = forcedPracticeFocusPart || getPartIdFromUid(instantOrder[instantIndex]) || 1;
+            const partObj = PARTS.find((part) => part.id === partId) || {};
+            const partTitle = partObj.name ? partObj.name.split(":")[0].toUpperCase() : `PART ${partId}`;
+            const circles = instantOrder.map((uid, index) => {
+                const questionNumber = getQuestionNumberFromUid(uid) || index + 1;
+                return `<button type="button" class="progress-q-circle ${getInstantCircleState(uid, index)}" onclick="goToInstantQuestion(${index})" aria-label="Question ${questionNumber}">${questionNumber}</button>`;
+            }).join("");
+
+            host.innerHTML = `
+                <div class="progress-part-chip active">
+                    <span class="progress-part-title">${escapeHtml(partTitle)}</span>
+                    <div class="reading-part-circles">${circles}</div>
+                </div>`;
+        }
+
+        function goToInstantQuestion(index) {
+            if (index < 0 || index >= instantOrder.length) return;
+            instantIndex = index;
+            instantRevealed = Boolean(instantChecked[instantOrder[index]]);
+            instantTab = "explaination";
+            renderInstantQuestion();
+        }
+
+        function setInstantTab(tabName) {
+            instantTab = ["explaination", "step", "materi"].includes(tabName) ? tabName : "explaination";
+            renderInstantQuestion();
+        }
+
+        function selectInstantChoice(letter, uid) {
+            if (instantRevealed) return;
+            const targetUid = uid || instantOrder[instantIndex];
+            if (!targetUid) return;
+            instantAnswers[targetUid] = String(letter || "").toLowerCase();
+            renderInstantQuestion();
+        }
+
+        function checkInstantAnswer() {
+            const uid = instantOrder[instantIndex];
+            if (!uid) return;
+            if (!instantAnswers[uid]) {
+                alert("Please select an answer before checking.");
+                return;
+            }
+            instantChecked[uid] = true;
+            instantRevealed = true;
+            instantTab = "explaination";
+            renderInstantQuestion();
+        }
+
+        function skipInstantQuestion() {
+            instantRevealed = false;
+            nextInstantQuestion(true);
+        }
+
+        function nextInstantQuestion(skipping = false) {
+            if (!instantOrder.length) return;
+            if (instantIndex >= instantOrder.length - 1) {
+                if (!skipping) finishInstantPractice();
+                return;
+            }
+            instantIndex += 1;
+            instantTab = "explaination";
+            instantRevealed = Boolean(instantChecked[instantOrder[instantIndex]]) && !skipping;
+            renderInstantQuestion();
+            const container = document.getElementById("user-passages-container");
+            if (container) container.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function finishInstantPractice() {
+            // Mirror the picked answers onto the hidden mock-test radios so the shared
+            // result builder scores the attempt exactly like a full test.
+            instantOrder.forEach((uid) => {
+                const value = String(instantAnswers[uid] || "").toLowerCase();
+                document.querySelectorAll(`input[name="q_${uid}"]`).forEach((radio) => {
+                    radio.checked = Boolean(value) && String(radio.value || "").toLowerCase() === value;
+                });
+            });
+
+            clearInterval(timerInterval);
+            persistPreviewSection2Result();
+
+            const params = new URLSearchParams(window.location.search);
+            const dateValue = (document.getElementById("set-date") || {}).value || currentPackageDate;
+            if (currentSetId) params.set("setId", currentSetId);
+            if (dateValue) params.set("setDate", dateValue);
+            const query = params.toString();
+            window.location.href = `section 2-answered.html${query ? `?${query}` : ""}`;
+        }
+
+        function renderInstantQuestion() {
+            const host = document.getElementById("instant-question-host");
+            if (!host) return;
+
+            syncInstantPartVisibility();
+
+            const uid = instantOrder[instantIndex];
+            if (!uid) {
+                host.innerHTML = `<div class="instant-card"><div class="instant-card__body"><p class="instant-empty-state">No questions available for this practice set.</p></div></div>`;
+                renderInstantProgressDots();
+                return;
+            }
+
+            const question = globalQuestions[uid] || { questionText: "", options: {} };
+            const questionNumber = getQuestionNumberFromUid(uid);
+            const selected = String(instantAnswers[uid] || "").toUpperCase();
+            const correct = String(globalAnswerKey[uid] || "").trim().toUpperCase();
+            const isCorrect = instantRevealed && selected === correct;
+            const badgeState = instantRevealed
+                ? (isCorrect ? " is-correct" : " is-incorrect")
+                : (selected ? " is-selected" : "");
+
+            const optionsHtml = ["A", "B", "C", "D"].map((letter) => {
+                const classes = [];
+                if (!instantRevealed && selected === letter) classes.push("selected");
+                if (instantRevealed) classes.push("is-locked");
+                if (instantRevealed && letter === correct) classes.push("is-correct");
+                if (instantRevealed && letter === selected && letter !== correct) classes.push("is-incorrect");
+                const tag = instantRevealed && letter === selected
+                    ? `<span class="instant-option-tag${letter === correct ? "" : " is-wrong"}">Your Answer <i class="ph ph-${letter === correct ? "check" : "x"}" aria-hidden="true"></i></span>`
+                    : "";
+                const onClick = instantRevealed ? "" : ` onclick="selectInstantChoice('${letter}', '${uid}')"`;
+                return `
+                    <label class="${classes.join(" ")}"${onClick}>
+                        <span class="instant-option-letter">${letter}</span>
+                        <span class="instant-option-text">${escapeHtml(String((question.options || {})[letter] || ""))}</span>
+                        ${tag}
+                    </label>`;
+            }).join("");
+
+            const stem = String(question.questionText || `Question ${questionNumber}`).replace(/^\s*\d+[.)]?\s*/, "");
+            const stemHtml = question.isPartB
+                ? `<p class="instant-partb-sentence">${escapeHtml(stem)}</p>`
+                : `<p class="instant-question-title">${escapeHtml(stem).replace(/_{3,}/, '<span class="question-blank">_____</span>')}</p>`;
+
+            const isLast = instantIndex >= instantOrder.length - 1;
+            const actionsHtml = instantRevealed
+                ? `<button class="btn-action primary" type="button" onclick="nextInstantQuestion()">${isLast ? "Finish Practice" : "Next Question"} <i class="ph ph-caret-right" aria-hidden="true"></i></button>`
+                : `<button class="btn-action secondary" type="button" onclick="skipInstantQuestion()">Skip Question</button>
+                   <button class="btn-action primary" type="button" onclick="checkInstantAnswer()">Check Answer <i class="ph ph-caret-right" aria-hidden="true"></i></button>`;
+
+            const questionBlock = `
+                <article class="instant-question" id="q-instant-${uid}">
+                    <div class="instant-question-head">
+                        <div class="question-number-badge${badgeState}">${questionNumber}</div>
+                        ${stemHtml}
+                        ${instantRevealed ? `<span class="instant-verdict ${isCorrect ? "is-correct" : "is-incorrect"}">${isCorrect ? "CORRECT" : "INCORRECT"}</span>` : ""}
+                    </div>
+                    <div class="instant-options">${optionsHtml}</div>
+                </article>`;
+
+            host.innerHTML = `
+                <section class="instant-card">
+                    ${instantRevealed ? buildInstantTabsHtml() : ""}
+                    <div class="instant-card__body">
+                        ${questionBlock}
+                        ${instantRevealed ? buildInstantExplanationHtml(uid) : ""}
+                        <div class="instant-actions">${actionsHtml}</div>
+                    </div>
+                </section>`;
+
+            renderInstantProgressDots();
+        }
+
+        function buildInstantTabsHtml() {
+            const tabs = [
+                { key: "explaination", label: "Explanation", icon: "../asst/icon/explaination tab.png" },
+                { key: "step", label: "Video Step-by-Step", icon: "../asst/icon/stepbystep tab.png" },
+                { key: "materi", label: "Materi", icon: "../asst/icon/materials tab.png" }
+            ];
+            return `<div class="instant-card__tabs" role="tablist">${tabs.map((tab) => `
+                <button type="button" class="instant-card__tab${instantTab === tab.key ? " is-active" : ""}" role="tab" aria-selected="${instantTab === tab.key}" onclick="setInstantTab('${tab.key}')">
+                    <img src="${tab.icon}" alt="">
+                    <span>${tab.label}</span>
+                </button>`).join("")}</div>`;
+        }
+
+        // Explanation content comes from the same bulk-explanation input the mock test uses.
+        function getSection2ExplanationSource(partId, questionNumber, uid) {
+            const direct = String((document.getElementById(`input-explanation-en-${questionNumber}`) || {}).value || "").trim();
+            if (direct) return direct;
+
+            const bulkEnglish = parseAllSection2BulkExplanations((document.getElementById("input-bulk-explanation-en-all") || {}).value || "");
+            if (String(bulkEnglish[questionNumber] || "").trim()) return bulkEnglish[questionNumber];
+
+            const bulkBahasa = parseAllSection2BulkExplanations((document.getElementById("input-bulk-explanation-id-all") || {}).value || "");
+            if (String(bulkBahasa[questionNumber] || "").trim()) return bulkBahasa[questionNumber];
+
+            const draft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
+            const saved = draft?.parts?.[partId]?.explanationTexts?.[questionNumber] || {};
+            if (String(saved.explanation || "").trim()) return saved.explanation;
+            if (String(saved.explanationId || "").trim()) return saved.explanationId;
+
+            return String(globalExplanations[uid] || "").trim();
+        }
+
+        function markdownInlineToHtml(value) {
+            return escapeHtml(String(value || "").trim())
+                .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+                .replace(/&lt;(\/?)(strong|b|u|em|i)&gt;/gi, (_, closing, tag) => `<${closing}${tag === "b" ? "strong" : tag === "i" ? "em" : tag}>`)
+                .replace(/\n/g, "<br>");
+        }
+
+        // Splits a QC C.O.R.E block into its Concept / Observe / Requirement / Eliminate parts.
+        function parseQcCoreExplanation(rawText) {
+            const text = String(rawText || "").replace(/\r/g, "");
+            const markers = [
+                { key: "concept", re: /(?:<\/?(?:strong|b|span)\b[^>]*>\s*|\*{1,2}\s*)*C\s*[-–—]\s*Concept\s*:?\s*(?:<\/(?:strong|b|span)>|\*{1,2})*/i },
+                { key: "observe", re: /(?:<\/?(?:strong|b|span)\b[^>]*>\s*|\*{1,2}\s*)*O\s*[-–—]\s*Observe[^:\n]*:?\s*(?:<\/(?:strong|b|span)>|\*{1,2})*/i },
+                { key: "requirement", re: /(?:<\/?(?:strong|b|span)\b[^>]*>\s*|\*{1,2}\s*)*R\s*[-–—]\s*Requirement\s*:?\s*(?:<\/(?:strong|b|span)>|\*{1,2})*/i },
+                { key: "eliminate", re: /(?:<\/?(?:strong|b|span)\b[^>]*>\s*|\*{1,2}\s*)*E\s*[-–—]\s*Eliminate\s*:?\s*(?:<\/(?:strong|b|span)>|\*{1,2})*/i }
+            ];
+
+            const found = [];
+            markers.forEach((marker) => {
+                const match = text.match(marker.re);
+                if (match) found.push({ key: marker.key, start: match.index, after: match.index + match[0].length });
+            });
+            found.sort((left, right) => left.start - right.start);
+
+            const sections = {};
+            found.forEach((entry, index) => {
+                const end = index + 1 < found.length ? found[index + 1].start : text.length;
+                sections[entry.key] = text.slice(entry.after, end).trim();
+            });
+
+            const rows = [];
+            const observeBody = String(sections.observe || "").split("\n").filter((line) => {
+                const match = line.match(/^\s*[*\-]?\s*\*{0,2}(Subject|Verb|Compliance)\*{0,2}\s*:\s*(.*)$/i);
+                if (!match) return true;
+                rows.push({ label: match[1], value: String(match[2] || "").trim() });
+                return false;
+            }).join("\n").trim();
+
+            const options = [];
+            String(sections.eliminate || "").split("\n").forEach((line) => {
+                const raw = line.trim();
+                const body = raw.replace(/^(?:[*\-]\s*)?/, "");
+                const letterMatch = body.match(/^\s*\*{0,2}\s*\(?([A-D])\)?(?:\s|[.)])/i);
+                if (!letterMatch) return;
+                const splitIndex = body.indexOf(":");
+                const head = splitIndex >= 0 ? body.slice(0, splitIndex) : body;
+                const reason = splitIndex >= 0 ? body.slice(splitIndex + 1).trim() : "";
+                if (!reason) return;
+                const verdict = /\((BENAR|TRUE|CORRECT)\)/i.test(head) ? "correct" : (/\((SALAH|FALSE|INCORRECT|WRONG)\)/i.test(head) ? "incorrect" : "");
+                options.push({
+                    letter: letterMatch[1].toUpperCase(),
+                    label: head.replace(/\*/g, "").replace(/\((BENAR|SALAH|CORRECT|INCORRECT|WRONG)\)/i, "").trim(),
+                    reason,
+                    verdict
+                });
+            });
+
+            return {
+                concept: String(sections.concept || "").replace(/\*/g, "").trim(),
+                observe: observeBody,
+                rows,
+                requirement: String(sections.requirement || "").trim(),
+                options,
+                isEmpty: !found.length
+            };
+        }
+
+        function buildInstantCompleteSentenceHtml(uid) {
+            const question = globalQuestions[uid] || {};
+            const correct = String(globalAnswerKey[uid] || "").trim().toUpperCase();
+            const correctText = String((question.options || {})[correct] || "").trim();
+            let sentence = String(question.questionText || "").replace(/^\s*\d+[.)]?\s*/, "").trim();
+            if (!sentence) return "";
+            if (correctText && /_{2,}|\.{3,}/.test(sentence)) {
+                sentence = sentence.replace(/_{2,}|\.{3,}/, correctText);
+            }
+            const safeSentence = escapeHtml(sentence);
+            const safeAnswer = escapeHtml(correctText);
+            const answerIndex = safeAnswer ? safeSentence.toLowerCase().indexOf(safeAnswer.toLowerCase()) : -1;
+            const beforeAnswer = answerIndex > 0 ? safeSentence.charAt(answerIndex - 1) : "";
+            const afterAnswer = answerIndex >= 0 ? safeSentence.charAt(answerIndex + safeAnswer.length) : "";
+            const answerHasWordBoundaries = !/[A-Za-z0-9]/.test(beforeAnswer) && !/[A-Za-z0-9]/.test(afterAnswer);
+            const highlightedSentence = answerIndex >= 0 && answerHasWordBoundaries
+                ? safeSentence.slice(0, answerIndex) + `<strong>${safeSentence.slice(answerIndex, answerIndex + safeAnswer.length)}</strong>` + safeSentence.slice(answerIndex + safeAnswer.length)
+                : safeSentence;
+            return `<div class="qc-core__block section2-complete-sentence-box">
+                <div class="qc-core__label">Maka kalimat lengkapnya</div>
+                <div class="qc-core__text">&ldquo;${highlightedSentence}&rdquo;</div>
+            </div>`;
+        }
+
+        function buildInstantExplanationHtml(uid) {
+            const partId = getPartIdFromUid(uid);
+            const questionNumber = getQuestionNumberFromUid(uid);
+            const correct = String(globalAnswerKey[uid] || "").trim().toUpperCase();
+
+            if (instantTab === "step") {
+                const videoUrl = String((parseIndexedLineMap((document.getElementById(`input-video-step-${partId}`) || {}).value || ""))[questionNumber] || "").trim();
+                return `<section class="instant-panel">${videoUrl
+                    ? `<iframe class="instant-video-frame" src="${escapeHtml(toEmbeddableVideoUrl(videoUrl))}" allowfullscreen title="Step-by-step video"></iframe>`
+                    : `<p class="instant-empty">No step-by-step video saved for this question yet.</p>`}</section>`;
+            }
+
+            if (instantTab === "materi") {
+                const draft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
+                const topic = getSelectedSection2Material(questionNumber)
+                    || draft?.parts?.[partId]?.explanationTexts?.[questionNumber]?.materialTopic
+                    || null;
+                return `<section class="instant-panel">${topic
+                    ? `<div class="qc-core"><div class="qc-core__head">MATERI</div><div class="qc-core__body">
+                        <div class="qc-core__row"><strong>Module</strong><span>${escapeHtml(topic.module || "")}</span></div>
+                        <div class="qc-core__row"><strong>Topic</strong><span>${escapeHtml(topic.code || "")} · ${escapeHtml(topic.title || "")}</span></div>
+                       </div></div>`
+                    : `<p class="instant-empty">No material topic linked to this question yet.</p>`}</section>`;
+            }
+
+            const source = getSection2ExplanationSource(partId, questionNumber, uid);
+            const question = globalQuestions[uid] || {};
+            const explanationSource = source || buildQcCoreMarkdown(questionNumber, question, correct);
+
+            const parsed = parseQcCoreExplanation(explanationSource);
+            if (parsed.isEmpty) {
+                return `<section class="instant-panel"><div class="qc-core">
+                    <div class="qc-core__head"><i class="ph ph-lightbulb" aria-hidden="true"></i> EXPLANATION</div>
+                    <div class="qc-core__body"><div class="qc-core__text">${markdownInlineToHtml(explanationSource)}</div>${buildInstantCompleteSentenceHtml(uid)}</div>
+                </div></section>`;
+            }
+
+            const rowsHtml = parsed.rows.map((row) => `
+                <div class="qc-core__row"><strong>${escapeHtml(row.label)}</strong><span>: ${markdownInlineToHtml(row.value)}</span></div>`).join("");
+
+            const optionsHtml = parsed.options.map((option) => {
+                const state = option.verdict || (option.letter === correct ? "correct" : "incorrect");
+                return `
+                <li class="qc-core__item is-${state}">
+                    <span><strong>(${option.letter})</strong> ${escapeHtml(option.label.replace(/^\([A-D]\)\s*/i, ""))}</span>
+                    <span class="qc-core__item-mark">${state === "correct" ? "✓" : "✕"}</span>
+                    <span>${markdownInlineToHtml(option.reason)}</span>
+                </li>`;
+            }).join("");
+
+            return `
+                <section class="instant-panel">
+                    <div class="qc-core">
+                        <div class="qc-core__head"><i class="ph ph-lightbulb" aria-hidden="true"></i> QC C.O.R.E ANALYSIS</div>
+                        <div class="qc-core__body">
+                            ${parsed.concept ? `<div class="qc-core__block qc-core__concept">
+                                <div class="qc-core__label">C – Concept :</div>
+                                <div class="qc-core__text"><mark>${escapeHtml(parsed.concept)}</mark></div>
+                            </div>` : ""}
+                            ${(parsed.observe || rowsHtml) ? `<div class="qc-core__block">
+                                <div class="qc-core__label">O – Observe S-V-C :</div>
+                                ${parsed.observe ? `<div class="qc-core__text">${markdownInlineToHtml(parsed.observe)}</div>` : ""}
+                                ${rowsHtml ? `<div class="qc-core__rows">${rowsHtml}</div>` : ""}
+                            </div>` : ""}
+                            ${parsed.requirement ? `<div class="qc-core__block">
+                                <div class="qc-core__label">R – Requirement :</div>
+                                <div class="qc-core__text">${markdownInlineToHtml(parsed.requirement)}</div>
+                            </div>` : ""}
+                            ${optionsHtml ? `<div class="qc-core__block">
+                                <div class="qc-core__label">E – Eliminate :</div>
+                                <ul class="qc-core__list">${optionsHtml}</ul>
+                            </div>` : ""}
+                            ${buildInstantCompleteSentenceHtml(uid)}
+                        </div>
+                    </div>
+                </section>`;
+        }
+
+        function toEmbeddableVideoUrl(url) {
+            const raw = String(url || "").trim();
+            const youtube = raw.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/);
+            if (youtube) return `https://www.youtube.com/embed/${youtube[1]}`;
+            return raw;
         }
 
         function updateHeaderProgress() {
@@ -1194,10 +2136,27 @@
             if (tabName === "user-view") window.scrollTo(0, 0);
         }
 
+        // Instant Feedback / Full Test Mode only exist for practice sets.
+        function syncPracticePreviewButtons() {
+            const isPractice = String(currentTestType || "").toLowerCase().includes("practice");
+            document.querySelectorAll(".practice-preview-btn").forEach((button) => {
+                button.style.display = isPractice ? "inline-flex" : "none";
+            });
+        }
+
         // Apply the developer's current edits and jump to the User (exam) view so the
         // developer can preview exactly what the test-taker sees, then use the top
         // "Panel Developer" tab to return to the editor.
-        function openUserPreviewFromDeveloper() {
+        function openUserPreviewFromDeveloper(runMode) {
+            // The URL must carry the mode before the view rebuilds, because the instant
+            // engine reads runMode/testType straight from the query string.
+            const params = new URLSearchParams(window.location.search);
+            if (runMode === "instant" || runMode === "full") {
+                params.set("runMode", runMode);
+            }
+            const query = params.toString();
+            window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}#user-view`);
+
             updateUserView(true);
             document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
             document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
@@ -1205,9 +2164,7 @@
             if (userView) userView.classList.add("active");
             const userButton = Array.from(document.querySelectorAll(".tab-button")).find((button) => (button.getAttribute("onclick") || "").includes("'user-view'"));
             if (userButton) userButton.classList.add("active");
-            const params = new URLSearchParams(window.location.search);
-            const query = params.toString();
-            window.history.replaceState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}#user-view`);
+            updateHeaderPackageLabel((document.getElementById("set-date") || {}).value || currentPackageDate);
             updateOnboardingVisibility();
             window.scrollTo(0, 0);
         }
@@ -2198,10 +3155,41 @@
             refreshStructurePartAState();
             buildQuestionNavigator();
             updateHeaderProgress();
+            applyPracticeRunMode();
             startTimer();
         }
 
-        function submitAnswers() {
+        async function getNextSectionSetId(currentSetId, targetModule) {
+            const urlParams = new URLSearchParams(window.location.search);
+            let targetDate = urlParams.get("setDate");
+            const testType = urlParams.get("testType") || "mocktest";
+
+            if (!targetDate && currentSetId) {
+                const dateMatch = currentSetId.match(/\d{4}-\d{2}-\d{2}/);
+                if (dateMatch) targetDate = dateMatch[0];
+            }
+
+            if (!targetDate) return null;
+
+            try {
+                const records = await window.toeflStorage.getSetRecordsByTestType(testType);
+                const matchingRecord = records.find(item => 
+                    String(item.module).toLowerCase() === targetModule.toLowerCase() && 
+                    String(item.setDate) === targetDate
+                );
+                return matchingRecord ? matchingRecord.setId : null;
+            } catch (e) {
+                console.warn("[ToeflSync] Failed to dynamically fetch next setId:", e);
+                return null;
+            }
+}
+
+        async function submitAnswers() {
+            if (isInstantFeedbackMode()) {
+                finishInstantPractice();
+                return;
+            }
+
             let score = 0;
             let total = Object.keys(globalAnswerKey).length;
             const videoMapByPart = {
@@ -2210,7 +3198,15 @@
             };
 
             if (total === 0) { alert("Data Kunci Jawaban masih kosong. Sistem tidak dapat melakukan penilaian."); return; }
-            if (!confirm("Yakin ingin mengakhiri Section 2 dan melihat skor?")) return;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const isFullTest = urlParams.get("fullTest") === "true";
+
+            const confirmMessage = isFullTest 
+                ? "Finish Section 2, are you sure you want to continue to Section 3?" 
+                : "Yakin ingin mengakhiri Section 2 dan melihat skor?";
+
+            if (!confirm(confirmMessage)) return;
 
             clearInterval(timerInterval);
 
@@ -2235,8 +3231,22 @@
             }).sort((a, b) => a.number - b.number);
 
             const result = { sectionTitle: "Section 2: Structure and Written Expression", sectionKey: "structure", totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), questions: answeredQs };
+            
+            // Save results to storage
             localStorage.setItem('toefl_section2_result', JSON.stringify(result));
-            window.location.href = 'section 2-answered.html';
+
+            if (isFullTest) {
+                // Dynamically find the corresponding Reading set ID for this date
+                const nextSetId = await getNextSectionSetId(currentSetId, "reading");
+                
+                if (nextSetId) {
+                    urlParams.set("setId", nextSetId);
+                }
+                
+                window.location.href = `section 3.html?${urlParams.toString()}`;
+            } else {
+                window.location.href = 'section 2-answered.html';
+            }
         }
 
         function startTimer() {

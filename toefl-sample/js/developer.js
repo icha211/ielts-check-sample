@@ -67,14 +67,17 @@ const MOCK_MODULE_OPTIONS = [
 
 // Create-modal options shown for Practice Test: fixed 20-question presets per module/difficulty.
 const PRACTICE_MODULE_OPTIONS = [
-    { module: "listening", focus: "part1", label: "Listening - Part 1 (20 Qs)", icon: "headset.png" },
-    { module: "listening", focus: "part2", label: "Listening - Part 2 (20 Qs)", icon: "headset.png" },
-    { module: "listening", focus: "part3", label: "Listening - Part 3 (20 Qs)", icon: "headset.png" },
+    { module: "listening", focus: "part1", label: "Listening - Part 1 (15 Qs)", icon: "headset.png" },
+    { module: "listening", focus: "part2", label: "Listening - Part 2 (15 Qs)", icon: "headset.png" },
+    { module: "listening", focus: "part3", label: "Listening - Part 3 (15 Qs)", icon: "headset.png" },
     { module: "structure", difficulty: "beginner", focus: "partA", label: "Structure - Beginner (Part A \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { module: "structure", difficulty: "intermediate", focus: "partA", label: "Structure - Intermediate (Part A \u00b7 20 Qs)", icon: "paper-pencil.png" },
     { module: "structure", difficulty: "advanced", focus: "partA", label: "Structure - Advanced (Part A \u00b7 20 Qs)", icon: "paper-pencil.png" },
     { module: "structure", difficulty: "beginner", focus: "partB", label: "Writing - Beginner (Part B \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { module: "structure", difficulty: "intermediate", focus: "partB", label: "Writing - Intermediate (Part B \u00b7 20 Qs)", icon: "paper-pencil.png" },
     { module: "structure", difficulty: "advanced", focus: "partB", label: "Writing - Advanced (Part B \u00b7 20 Qs)", icon: "paper-pencil.png" },
-    { module: "reading", focus: "part1-2", label: "Reading - Part 1 & Part 2 (20 Qs each)", icon: "blue-book.png" }
+    { module: "reading", difficulty: "beginner", label: "Reading - 1 Passages Beginner (10 Qs each)", icon: "blue-book.png" },
+    { module: "reading", difficulty: "intermediate", label: "Reading - 1 Passages Intermediate (10 Qs each)", icon: "blue-book.png" }
 ];
 
 const DIFFICULTY_LABELS = {
@@ -348,6 +351,7 @@ function normalizeSet(item, fallbackModule) {
         setDate,
         difficulty: difficultyKey,
         difficultyLabel: DIFFICULTY_LABELS[difficultyKey],
+        focus: String(item?.focus || ""),
         updatedAt: String(item?.updatedAt || ""),
         year: validDate ? dateValue.getFullYear() : null,
         monthIndex: validDate ? dateValue.getMonth() : null,
@@ -493,13 +497,14 @@ async function filterSetsWithRealContent(records) {
 function persistSets(records) {
     const payload = {};
     records.forEach((item) => {
-        const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate, currentTestType);
+        const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate, currentTestType, { focus: item.focus, difficulty: item.difficulty });
         payload[setId] = {
             setId,
             module: item.module,
             label: item.label || MODULE_CONFIG[item.module]?.label || item.module,
             setDate: item.setDate,
             difficulty: item.difficulty,
+            focus: item.focus || "",
             updatedAt: item.updatedAt || new Date().toISOString()
         };
     });
@@ -781,11 +786,12 @@ function renderLibrary() {
                 <div class="meta">
                     <span><img src="../asset/icon/pin.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"> Set Date: ${escapeHtml(metadataSetDateLabel)}</span>
                     <span>Difficulty: ${escapeHtml(item.difficultyLabel)}</span>
+                    ${item.focus ? `<span>Focus: ${escapeHtml(item.focus)}</span>` : ""}
                     <span>ID: ${escapeHtml(item.setId || "-")}</span>
                     <span>Updated: ${escapeHtml(item.updatedAt ? new Date(item.updatedAt).toLocaleString() : "Not saved")}</span>
                 </div>
                 <div class="actions">
-                    <a class="btn-mini edit" href="${buildEditorUrl(item.module, item.setDate, item.setId, currentTestType)}">Open Editor</a>
+                    <a class="btn-mini edit" href="${buildEditorUrl(item.module, item.setDate, item.setId, currentTestType, { focus: item.focus, difficulty: item.difficulty })}">Open Editor</a>
                     <label class="btn-mini date date-picker-trigger" aria-label="Set date for ${escapeHtml(item.label)} set">
                         <span>Set Date: ${escapeHtml(compactSetDateLabel)}</span>
                         <input type="date" value="${escapeHtml(normalizedDate)}" onchange="handleLibrarySetDateChange('${escapeHtml(item.setId)}', '${escapeHtml(item.module)}', this.value)">
@@ -929,7 +935,7 @@ function renderMonthDetail(year, monthIndex) {
         const moduleActions = hasAny
             ? `
                 ${items.map((item) => `
-                    <a class="month-action complete" href="${buildEditorUrl(item.module, key, item.setId, currentTestType)}">
+                    <a class="month-action complete" href="${buildEditorUrl(item.module, key, item.setId, currentTestType, { focus: item.focus, difficulty: item.difficulty })}">
                         <span>${item.icon} ${item.label}</span>
                         <span>${item.difficultyLabel}</span>
                     </a>
@@ -1009,7 +1015,7 @@ async function importData(file) {
         const existing = getStoredSets();
         const mergedMap = {};
         [...existing, ...normalized].forEach((item) => {
-            const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate, currentTestType);
+            const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate, currentTestType, { focus: item.focus, difficulty: item.difficulty });
             mergedMap[setId] = { ...item, setId };
         });
         persistSets(Object.values(mergedMap));
@@ -1177,11 +1183,18 @@ document.addEventListener("DOMContentLoaded", async () => {
             console.log("Selected module:", module, "difficulty:", difficulty, "focus:", focus, "for test type:", currentTestType);
 
             const today = new Date().toISOString().slice(0, 10);
+            // Practice sets are per category, so only the same module+focus+difficulty counts as a duplicate.
+            const isPractice = currentTestType === "practicetest";
+            const sameCategory = (item) => !isPractice
+                || (String(item.focus || "") === String(focus || "")
+                    && (!difficulty || String(item.difficulty || "") === String(difficulty)));
             const existingToday = sectionSets.find((item) => item
                 && item.module === module
+                && sameCategory(item)
                 && (normalizeDateKey(item.setDate) === today || normalizeDateKey(item.updatedAt) === today));
             if (existingToday) {
-                toast(`${MODULE_CONFIG[module]?.label || module} already has a ${currentTestType} set for today.`);
+                const categoryLabel = option.textContent.trim() || MODULE_CONFIG[module]?.label || module;
+                toast(`${categoryLabel} already has a ${currentTestType} set for today.`);
                 return;
             }
 

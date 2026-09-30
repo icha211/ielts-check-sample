@@ -13,8 +13,12 @@ DEFAULT_ALLOWED_ORIGINS = [
     "https://icha211.github.io",
     "http://localhost:3000",
     "http://localhost:8000",
+    "http://localhost:5500",
+    "http://localhost:5501",
     "http://127.0.0.1:8000",
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:5500",
+    "http://127.0.0.1:5501",
     "null",
 ]
 
@@ -26,13 +30,15 @@ def create_app() -> FastAPI:
     )
 
     allowed_origins = parse_cors_origins(settings.cors_origins) or DEFAULT_ALLOWED_ORIGINS
+    if settings.debug:
+        allowed_origins = list(dict.fromkeys([*allowed_origins, *DEFAULT_ALLOWED_ORIGINS]))
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
-        allow_credentials=False,
-        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "Range", "X-Playback-Telemetry"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
         expose_headers=["Accept-Ranges", "Content-Range", "Content-Length", "Content-Type"],
     )
 

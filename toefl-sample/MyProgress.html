@@ -133,6 +133,382 @@
 		@media (max-width: 900px) { main { width: auto; margin: 0 18px; } }
 		@media (max-width: 700px) { .app { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; padding: 8px 12px; } .brand { justify-content: start; } .nav { display: flex; overflow-x: auto; } .nav-label, .sidebar-bottom { display: none; } .nav a { flex: 0 0 auto; padding: 7px 8px; } main { margin: 0; padding: 12px; } .skill-grid { grid-template-columns: repeat(2, 1fr); } .standings, .recommendations, .chart-panel, .skills-panel { overflow: hidden; } }
 		@media (max-width: 500px) { .banner-grid { gap: 8px; grid-template-columns: 1.4fr 1fr 1fr; } .result-grid { grid-template-columns: 1fr; } .skill-grid { grid-template-columns: 1fr; } .banner-stat small { display: none; } .radar-wrap { min-height: 142px; transform: scale(.92); } .recommendation { grid-template-columns: 28px minmax(0, 1fr); } .recommendation .start-button, .recommendation > small { grid-column: 2; justify-self: start; } }
+		
+		:root{
+    --bg:#EEF1F6;
+    --surface:#FFFFFF;
+    --surface-sunken:#F5F7FB;
+    --border:#DFE4EE;
+    --border-strong:#C9D0DE;
+    --ink:#141B2E;
+    --ink-soft:#4B5468;
+    --ink-mute:#8A93A6;
+
+    --blue:#2F5FE0;
+    --blue-dim:#E7EDFC;
+    --teal:#0E8F82;
+    --teal-dim:#E2F4F1;
+    --green:#1E9E6B;
+    --green-dim:#E4F5EC;
+    --amber:#C2570F;
+    --amber-dim:#FBEBE0;
+    --red:#D14343;
+    --red-dim:#FAE7E7;
+    --purple:#6E56CF;
+    --purple-dim:#EEEAFB;
+
+    --radius-s:8px;
+    --radius-m:14px;
+    --radius-l:20px;
+    --shadow:none;
+
+    color-scheme: light;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+	}
+	@media (prefers-color-scheme: dark){
+		:root:not([data-theme="light"]){
+		--bg:#0E1420;
+		--surface:#161D2C;
+		--surface-sunken:#121826;
+		--border:#28324A;
+		--border-strong:#39445E;
+		--ink:#EDF0F7;
+		--ink-soft:#B7BFD3;
+		--ink-mute:#7C859C;
+		--blue-dim:#1B2545;
+		--teal-dim:#0E2A28;
+		--green-dim:#0F2A20;
+		--amber-dim:#33200F;
+		--red-dim:#3A1919;
+		--purple-dim:#241C3F;
+		color-scheme: dark;
+		}
+	}
+	:root[data-theme="dark"]{
+		--bg:#0E1420;
+		--surface:#161D2C;
+		--surface-sunken:#121826;
+		--border:#28324A;
+		--border-strong:#39445E;
+		--ink:#EDF0F7;
+		--ink-soft:#B7BFD3;
+		--ink-mute:#7C859C;
+		--blue-dim:#1B2545;
+		--teal-dim:#0E2A28;
+		--green-dim:#0F2A20;
+		--amber-dim:#33200F;
+		--red-dim:#3A1919;
+		--purple-dim:#241C3F;
+		color-scheme: dark;
+	}
+
+	*{box-sizing:border-box;}
+	html,body{margin:0;padding:0;}
+	html{scroll-padding-top:env(safe-area-inset-top,0px);}
+	body{
+		background:var(--bg);
+		color:var(--ink);
+		font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+		-webkit-font-smoothing:antialiased;
+		min-height:100%;
+	}
+	.serif{font-family:'Source Serif 4', Georgia, serif;}
+	.page{max-width:1180px;margin:0 auto;padding:20px 24px 64px;}
+	@media (max-width:640px){ .page{padding:14px 14px 48px;} }
+
+	a{color:inherit;}
+	button{font-family:inherit;}
+
+	/* ---------- top bar ---------- */
+	.topbar{
+		display:flex;align-items:center;gap:14px;
+		padding:6px 0 20px;
+	}
+	.back-btn{
+		display:flex;align-items:center;gap:6px;
+		background:none;border:none;color:var(--ink-soft);
+		font-size:14px;font-weight:600;cursor:pointer;padding:6px 4px;
+		border-radius:var(--radius-s);
+	}
+	.back-btn:hover{color:var(--ink);}
+	.back-btn:focus-visible, button:focus-visible, [tabindex]:focus-visible{
+		outline:2px solid var(--blue); outline-offset:2px;
+	}
+	.topbar .divider{width:1px;height:20px;background:var(--border-strong);}
+	.identity{display:flex;align-items:center;gap:12px;flex:1;min-width:0;}
+	.avatar{
+		width:40px;height:40px;border-radius:50%;
+		background:linear-gradient(135deg,#F4A896,#D9667F);
+		flex-shrink:0;
+		display:flex;align-items:center;justify-content:center;
+		color:#fff;font-weight:700;font-size:15px;
+	}
+	.identity h1{font-size:16px;margin:0;font-weight:700;}
+	.identity .sub{font-size:12.5px;color:var(--ink-mute);}
+	.streak-chip{
+		display:flex;align-items:center;gap:6px;
+		background:var(--surface-sunken);border:1px solid var(--border);
+		padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;color:var(--ink-soft);
+		white-space:nowrap;
+	}
+	.streak-chip strong{color:var(--ink);}
+
+	/* ---------- section shell ---------- */
+	.card{
+		background:var(--surface);
+		border:1px solid var(--border);
+		border-radius:var(--radius-l);
+		padding:24px;
+	}
+	section.block{margin-top:22px;}
+	.block-head{
+		display:flex;align-items:baseline;justify-content:space-between;
+		gap:12px;margin-bottom:14px;flex-wrap:wrap;
+	}
+	.block-head h2{font-size:19px;margin:0;font-weight:700;letter-spacing:-.01em;}
+	.block-head .desc{font-size:13px;color:var(--ink-mute);margin-top:3px;}
+	.block-head-left{max-width:70%;}
+
+	/* ---------- insight banner ---------- */
+	.insight{
+		display:flex;gap:16px;
+		background:linear-gradient(180deg,#182449,#101A38);
+		color:#EDF1FF;
+		border-radius:var(--radius-l);
+		padding:20px 24px;
+		position:relative;
+		overflow:hidden;
+	}
+	.insight::after{
+		content:"";position:absolute;right:-60px;top:-60px;width:220px;height:220px;
+		background:radial-gradient(circle,rgba(90,130,255,.35),transparent 70%);
+	}
+	.insight .icon{
+		width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.12);
+		display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;
+	}
+	.insight-body{position:relative;z-index:1;}
+	.insight-tag{font-size:11.5px;font-weight:700;letter-spacing:.02em;color:#9FB4FF;margin-bottom:6px;}
+	.insight p{margin:0;font-size:14.5px;line-height:1.55;color:#DCE3F7;max-width:70ch;}
+	.insight p strong{color:#fff;}
+	.insight-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;position:relative;z-index:1;}
+	.pill-btn{
+		border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);
+		color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;
+	}
+	.pill-btn.primary{background:#fff;color:#16224A;border-color:#fff;}
+
+	/* ---------- hero: two score cards + ring ---------- */
+	.hero-grid{
+		display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:16px;margin-top:22px;
+	}
+	@media (max-width:900px){ .hero-grid{grid-template-columns:1fr;} }
+
+	.ring-card{display:flex;flex-direction:column;align-items:center;text-align:center;justify-content:center;}
+	.ring-wrap{position:relative;width:168px;height:168px;margin:6px 0 12px;}
+	.ring-wrap svg{width:100%;height:100%;transform:rotate(-90deg);}
+	.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+	.ring-center .num{font-size:34px;font-weight:700;line-height:1;}
+	.ring-center .lbl{font-size:11px;color:var(--ink-mute);margin-top:4px;}
+	.ring-caption{font-size:13px;color:var(--ink-soft);}
+	.ring-caption b{color:var(--green);}
+
+	.score-card .card-top{display:flex;justify-content:space-between;align-items:flex-start;}
+	.score-card .kicker{
+		display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--ink-soft);
+	}
+	.kicker .dot{width:8px;height:8px;border-radius:50%;}
+	.score-card .badge{
+		font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;
+	}
+	.score-card .big{font-size:38px;font-weight:700;margin:12px 0 2px;line-height:1;}
+	.score-card .big small{font-size:15px;font-weight:600;color:var(--ink-mute);}
+	.score-card .delta{font-size:12.5px;font-weight:600;margin-bottom:14px;}
+	.score-card .delta.up{color:var(--green);}
+	.score-card .delta.flat{color:var(--ink-mute);}
+	.sparkline{width:100%;height:38px;margin:6px 0 14px;}
+	.goal-row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-mute);margin-bottom:5px;}
+	.goal-bar{height:7px;border-radius:999px;background:var(--surface-sunken);overflow:hidden;border:1px solid var(--border);}
+	.goal-bar > div{height:100%;border-radius:999px;}
+	.mini-rows{margin-top:16px;display:flex;flex-direction:column;gap:10px;}
+	.mini-row{display:flex;align-items:center;gap:10px;font-size:12.5px;}
+	.mini-row .name{flex:0 0 128px;color:var(--ink-soft);font-weight:600;}
+	.mini-row .track{flex:1;height:6px;border-radius:999px;background:var(--surface-sunken);overflow:hidden;border:1px solid var(--border);}
+	.mini-row .track>div{height:100%;border-radius:999px;}
+	.mini-row .val{flex:0 0 30px;text-align:right;font-weight:700;}
+	.mini-row.na .val, .mini-row.na .name{color:var(--ink-mute);font-weight:500;}
+	.card-foot-note{font-size:11.5px;color:var(--ink-mute);margin-top:14px;border-top:1px dashed var(--border);padding-top:10px;}
+
+	/* ---------- tabs ---------- */
+	.tabs{display:inline-flex;background:var(--surface-sunken);border:1px solid var(--border);padding:3px;border-radius:999px;}
+	.tabs button{
+		border:none;background:none;padding:6px 13px;border-radius:999px;font-size:12.5px;font-weight:600;
+		color:var(--ink-mute);cursor:pointer;
+	}
+	.tabs button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--border);}
+	.subtabs{display:flex;gap:6px;flex-wrap:wrap;}
+
+	/* ---------- main section tabs ---------- */
+	.main-tabs{
+		position:sticky;
+		top:env(safe-area-inset-top,0px);
+		z-index:20;
+		display:flex;gap:6px;
+		background:var(--bg);
+		padding:10px 2px 12px;
+		margin:0 -2px 4px;
+		overflow-x:auto;
+		-webkit-overflow-scrolling:touch;
+		scrollbar-width:none;
+		border-bottom:1px solid var(--border);
+	}
+	.main-tabs::-webkit-scrollbar{display:none;}
+	.main-tabs button{
+		flex:0 0 auto;
+		display:flex;align-items:center;gap:7px;
+		border:1px solid var(--border);background:var(--surface);color:var(--ink-soft);
+		padding:10px 16px;border-radius:999px;font-size:13.5px;font-weight:700;cursor:pointer;
+		white-space:nowrap;
+	}
+	.main-tabs button[aria-pressed="true"]{
+		background:var(--blue);color:#fff;border-color:var(--blue);
+	}
+	.tabpanel[hidden]{display:none;}
+	@media (max-width:640px){
+		.main-tabs button{padding:9px 13px;font-size:13px;}
+	}
+
+	/* ---------- activity timeline ---------- */
+	.timeline-card .chart-row{display:flex;align-items:flex-end;gap:10px;height:180px;margin:18px 0 6px;padding:0 4px;}
+	.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;gap:8px;position:relative;}
+	.bar-track{width:100%;max-width:34px;height:100%;display:flex;align-items:flex-end;border-radius:6px;overflow:hidden;background:var(--surface-sunken);}
+	.bar-fill{width:100%;border-radius:6px 6px 0 0;transition:height .35s ease;}
+	.bar-fill.risk{background:repeating-linear-gradient(135deg,var(--red),var(--red) 4px,#e77 4px,#e77 8px);}
+	.bar-col .bar-label{font-size:11px;color:var(--ink-mute);font-weight:600;}
+	.bar-col .bar-flag{
+		position:absolute;top:-6px;transform:translateY(-100%);
+		font-size:9.5px;font-weight:700;color:#fff;background:var(--red);
+		padding:2px 6px;border-radius:6px;white-space:nowrap;
+	}
+	.legend-row{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--ink-mute);}
+	.legend-row .item{display:flex;align-items:center;gap:6px;}
+	.legend-row .sw{width:10px;height:10px;border-radius:3px;}
+	.streak-strip{
+		display:flex;justify-content:space-between;gap:14px;margin-top:16px;flex-wrap:wrap;
+		background:var(--surface-sunken);border:1px solid var(--border);border-radius:var(--radius-m);padding:14px 16px;
+	}
+	.streak-strip .stat b{display:block;font-size:18px;}
+	.streak-strip .stat span{font-size:11.5px;color:var(--ink-mute);}
+	.streak-strip .stat.risk b{color:var(--red);}
+
+	/* ---------- trajectory chart ---------- */
+	.traj-wrap{position:relative;margin-top:16px;}
+	.traj-wrap svg{width:100%;height:220px;display:block;overflow:visible;}
+	.traj-legend{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;font-size:12px;color:var(--ink-soft);}
+	.traj-legend .item{display:flex;align-items:center;gap:6px;}
+	.traj-legend .ln{width:14px;height:3px;border-radius:2px;}
+	.traj-table{width:100%;border-collapse:collapse;margin-top:18px;font-size:13px;}
+	.traj-table th{text-align:left;font-size:11px;color:var(--ink-mute);font-weight:700;padding:8px 6px;border-bottom:1px solid var(--border);}
+	.traj-table td{padding:9px 6px;border-bottom:1px solid var(--border);}
+	.traj-table tr:last-child td{border-bottom:none;}
+	.tag{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:6px;}
+	.tag.mock{background:var(--blue-dim);color:var(--blue);}
+	.tag.practice{background:var(--purple-dim);color:var(--purple);}
+	.traj-table td.score{text-align:right;font-weight:700;}
+
+	/* ---------- breakdown ---------- */
+	.breakdown-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:16px;}
+	@media (max-width:900px){.breakdown-grid{grid-template-columns:1fr;}}
+	.radar-wrap{display:flex;flex-direction:column;align-items:center;}
+	.radar-wrap svg{width:100%;max-width:280px;height:auto;}
+	.radar-key{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--ink-soft);}
+	.radar-key .item{display:flex;align-items:center;gap:6px;}
+	.radar-key .ln{width:14px;height:0;border-top:2px solid;}
+	.radar-key .ln.dash{border-top-style:dashed;}
+
+	.comp-list{display:flex;flex-direction:column;gap:10px;}
+	.comp-row{
+		display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px 14px;
+		border:1px solid var(--border);border-left:4px solid var(--border-strong);
+		border-radius:10px;padding:11px 14px;background:var(--surface-sunken);
+	}
+	.comp-row .name{font-size:13.5px;font-weight:700;}
+	.comp-row .evidence{font-size:11px;color:var(--ink-mute);margin-top:2px;}
+	.comp-row .acc{font-size:16px;font-weight:700;text-align:right;}
+	.comp-row .cat{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:6px;white-space:nowrap;}
+	.comp-row.cat-priority{border-left-color:var(--red);}
+	.comp-row.cat-needs{border-left-color:var(--amber);}
+	.comp-row.cat-developing{border-left-color:var(--blue);}
+	.comp-row.cat-mastered{border-left-color:var(--green);}
+	.cat-priority .cat{background:var(--red-dim);color:var(--red);}
+	.cat-needs .cat{background:var(--amber-dim);color:var(--amber);}
+	.cat-developing .cat{background:var(--blue-dim);color:var(--blue);}
+	.cat-mastered .cat{background:var(--green-dim);color:var(--green);}
+	.foundation-note{grid-column:1/-1;font-size:11.5px;color:var(--ink-mute);display:flex;align-items:center;gap:8px;margin-top:2px;}
+	.foundation-note .fbar{flex:1;max-width:160px;height:5px;border-radius:999px;background:var(--border);overflow:hidden;}
+	.foundation-note .fbar>div{height:100%;background:var(--blue);}
+
+	/* ---------- recommendations ---------- */
+	.rec-list{display:flex;flex-direction:column;gap:12px;}
+	.rec-card{
+		display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;
+		border:1px solid var(--border);border-radius:var(--radius-m);padding:16px;
+		background:var(--surface-sunken);
+	}
+	.rec-rank{
+		width:34px;height:34px;border-radius:10px;background:var(--surface);border:1px solid var(--border-strong);
+		display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:var(--ink-soft);
+	}
+	.rec-card:first-child .rec-rank{background:var(--red);color:#fff;border-color:var(--red);}
+	.rec-card:nth-child(2) .rec-rank{background:var(--amber);color:#fff;border-color:var(--amber);}
+	.rec-card:nth-child(3) .rec-rank{background:#E3A21A;color:#fff;border-color:#E3A21A;}
+	.rec-title{font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+	.rec-title .priority-score{font-size:10.5px;font-weight:700;color:var(--ink-mute);background:var(--surface);border:1px solid var(--border);padding:2px 8px;border-radius:6px;}
+	.rec-why{font-size:12.5px;color:var(--ink-soft);margin-top:4px;line-height:1.5;max-width:56ch;}
+	.rec-time{font-size:11px;color:var(--ink-mute);margin-top:6px;}
+	.rec-cta{
+		background:var(--ink);color:#fff;border:none;padding:9px 16px;border-radius:999px;font-size:12.5px;font-weight:700;
+		cursor:pointer;white-space:nowrap;
+	}
+	@media (max-width:600px){
+		.rec-card{grid-template-columns:auto 1fr;}
+		.rec-cta{grid-column:1/-1;}
+	}
+	.secondary-title{font-size:12.5px;font-weight:700;color:var(--ink-mute);margin:18px 0 10px;text-transform:uppercase;letter-spacing:.03em;}
+	.sec-row{display:flex;justify-content:space-between;gap:10px;padding:10px 4px;border-bottom:1px solid var(--border);font-size:13px;}
+	.sec-row:last-child{border-bottom:none;}
+	.sec-row .name{font-weight:600;}
+	.sec-row .why{color:var(--ink-mute);font-size:12px;margin-top:2px;}
+
+	details.method{margin-top:18px;border-top:1px solid var(--border);padding-top:14px;}
+	details.method summary{cursor:pointer;font-size:12.5px;font-weight:700;color:var(--blue);list-style:none;}
+	details.method summary::-webkit-details-marker{display:none;}
+	details.method summary::before{content:"▸ ";}
+	details.method[open] summary::before{content:"▾ ";}
+	.method-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12.5px;}
+	.method-table th{text-align:left;color:var(--ink-mute);font-weight:700;font-size:11px;padding:6px;border-bottom:1px solid var(--border);}
+	.method-table td{padding:7px 6px;border-bottom:1px solid var(--border);}
+
+	/* ---------- modules ---------- */
+	.module-tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+	.module-tabs button{
+		border:1px solid var(--border);background:var(--surface);color:var(--ink-soft);
+		padding:8px 14px;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:7px;
+	}
+	.module-tabs button[aria-pressed="true"]{border-color:var(--blue);color:var(--blue);background:var(--blue-dim);}
+	.module-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
+	.module-card{border:1px solid var(--border);border-radius:10px;padding:12px 13px;background:var(--surface-sunken);}
+	.module-card .m-name{font-size:12.5px;font-weight:700;margin-bottom:8px;line-height:1.35;}
+	.module-card .m-track{height:5px;border-radius:999px;background:var(--border);overflow:hidden;}
+	.module-card .m-track>div{height:100%;background:var(--blue);}
+	.module-card .m-meta{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-mute);margin-top:6px;}
+	.module-card.done .m-track>div{background:var(--green);}
+	.module-card.pending .m-track>div{background:var(--border-strong);}
+	.view-all{font-size:12.5px;font-weight:700;color:var(--blue);background:none;border:none;cursor:pointer;margin-top:14px;}
+
+	.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 	</style>
 </head>
 <body>
@@ -157,132 +533,716 @@
 			</div>
 		</aside>
 		<main>
-			<section class="progress-banner panel" aria-label="Overall progress">
-				<div class="banner-grid">
-					<div><p class="eyebrow">OVERALL PROGRESS</p><p class="banner-score" id="overallScore">0</p><p class="banner-copy">accumulation score from Mock Test &amp; Practice Test</p><div class="goal-row"><span>GOAL</span><strong id="goalScore">550</strong><span id="pointsToGo">↗ 550 points to go</span></div></div>
-					<div class="banner-stat"><i class="ti ti-sparkles"></i><div><p class="eyebrow">AI PROJECTED</p><strong id="projectedScore">0</strong><small>by exam date, at current pace</small></div></div>
-					<div class="banner-stat"><i class="ti ti-calendar-week"></i><div><p class="eyebrow">TO EXAM DAY</p><strong id="examDays">--</strong></div></div>
-				</div>
-				<div class="progress-track"><span id="overallProgressBar"></span></div><div class="progress-meta"><span id="progressStart">0</span><span id="progressPercent">0% way to go to your goals</span><span id="progressGoal">550</span></div>
-			</section>
-			<section class="standings panel">
-				<p class="panel-title">WHERE YOU STAND</p>
-				<div class="radar-wrap"><div class="radar"><svg viewBox="0 0 190 150" aria-hidden="true"><polygon points="95,12 161,75 95,138 29,75" fill="none" stroke="#d9e3ec"/><polygon points="95,28 144,75 95,122 46,75" fill="none" stroke="#d9e3ec"/><polygon points="95,44 127,75 95,106 63,75" fill="none" stroke="#d9e3ec"/><line x1="95" y1="12" x2="95" y2="138" stroke="#e5ebf1"/><line x1="29" y1="75" x2="161" y2="75" stroke="#e5ebf1"/><polygon points="95,28 144,75 95,122 46,75" fill="none" stroke="#f0a34a" stroke-dasharray="3 3"/><polygon id="currentRadar" points="95,75 95,75 95,75 95,75" fill="#0b83de" fill-opacity=".22" stroke="#0b83de" stroke-width="2"/></svg><span class="radar-label listening">⚠ <strong id="listeningRadar">Listening (0%)</strong></span><span class="radar-label structure">Structure <strong id="structureRadar">(0%)</strong></span><span class="radar-label reading">Reading <strong id="readingRadar">(0%)</strong></span><span class="radar-label writing">Writing <strong id="writingRadar">(0%)</strong></span></div></div>
-				<div class="standings-foot"><div class="legend"><span>Goal</span><span>Current</span></div><p class="standings-note">-18% <span>behind baseline (dashed line), the largest gap in your result test so it's first area need to be improved.</span></p><div class="divider"></div><div class="gaps"><p class="gaps-title">WHERE THOSE POINT WENT</p><div class="gap-tags"><span>Idiomatic Expressions</span><span>Restatement Items</span><span>Pacing</span></div></div></div>
-			</section>
-			<div class="result-grid">
-				<article class="result-card panel"><div class="card-head"><span class="type-pill"><i class="ti ti-file-text"></i>Mock Test</span><span class="dots">‹ · · · ›</span></div><div class="date-box"><span id="mockDate">No completed test</span><strong id="mockName">Mock Test</strong></div><p class="score-label">SCORE</p><p class="score" id="mockScore">--</p><div class="metric-list"><div class="metric"><span class="metric-icon"><img src="../asset/figma/mock-listening.png" alt=""></span><div class="metric-copy"><header>LISTENING COMPREHENSION <span id="mockListening">--</span></header><div class="metric-bar"><span id="mockListeningBar"></span></div></div></div><div class="metric"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div class="metric-copy"><header>STRUCTURE &amp; WRITING <span id="mockStructure">--</span></header><div class="metric-bar green"><span id="mockStructureBar"></span></div></div></div><div class="metric"><span class="metric-icon purple"><img src="../asset/figma/mock-reading.png" alt=""></span><div class="metric-copy"><header>READING COMPREHENSION <span id="mockReading">--</span></header><div class="metric-bar purple"><span id="mockReadingBar"></span></div></div></div></div></article>
-				<article class="result-card panel"><div class="card-head"><span class="type-pill outline"><i class="ti ti-dumbbell"></i>Practice Test</span><span class="dots">‹ · · · ›</span></div><div class="date-box"><span>2 OCT 2026</span><strong>Mock Test-1</strong></div><div class="metric-list"><div class="metric"><span class="metric-icon"><img src="../asset/figma/mock-listening.png" alt=""></span><div class="metric-copy"><header>LISTENING COMPREHENSION <span>49</span></header><div class="metric-bar"><span></span></div></div></div><div class="metric"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div class="metric-copy"><header>STRUCTURE <span>not drilled</span></header><div class="metric-bar green"><span style="width:0"></span></div></div></div><div class="metric"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div class="metric-copy"><header>WRITING <span>not drilled</span></header><div class="metric-bar green"><span style="width:0"></span></div></div></div><div class="metric"><span class="metric-icon purple"><img src="../asset/figma/mock-reading.png" alt=""></span><div class="metric-copy"><header>READING COMPREHENSION <span>42</span></header><div class="metric-bar purple"><span></span></div></div></div></div></article>
+					<!-- top bar -->
+		<div class="topbar">
+			<button class="back-btn" aria-label="Back">← Back</button>
+			<div class="divider"></div>
+			<div class="identity">
+			<div class="avatar">U1</div>
+			<div>
+				<h1>Your Progress</h1>
+				<div class="sub">User 1 · Trial plan</div>
 			</div>
-			<section class="recommendations panel"><div class="recommendation-head"><span><i class="ti ti-sparkles"></i> Recommended Study Plan for Today</span><a href="study-plan.html">View full 4-week roadmap　›</a></div><div class="recommendation-list"><div class="recommendation"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div><h3>Subject–verb agreement drills</h3><p>Your Structure score (42) is the widest gap from goal (52) — 24% of missed items were agreement errors.</p></div><button class="start-button" type="button">Start Now</button></div><div class="recommendation"><span class="metric-icon"><img src="../asset/figma/mock-listening.png" alt=""></span><div><h3>Lecture note-taking: signal words</h3><p>Build listening accuracy with a focused 20-minute practice session.</p></div><button class="start-button" type="button">Start Now</button></div><div class="recommendation"><span class="metric-icon purple"><img src="../asset/figma/mock-reading.png" alt=""></span><div><h3>Reading</h3><p>Reading is closest to goal. Light maintenance only, so most of today's time goes to Structure.</p></div><small>49/100</small></div></div></section>
-			<section class="chart-panel panel"><div class="chart-head"><h2 class="chart-title">⌁ Score Trajectory</h2><div class="toggle"><button class="active" type="button">Composite</button><button type="button">By Section</button></div></div><div class="chart"><svg viewBox="0 0 820 150" preserveAspectRatio="none" aria-label="Score trajectory chart"><polyline points="10,134 160,112 310,122 460,92 610,65 805,35" fill="none" stroke="#0ea5e9" stroke-width="2"/></svg></div><div class="history"><div class="history-row"><b>MOCK</b><span>Mock #3　Oct 15</span><strong>517</strong></div><div class="history-row"><b>MOCK</b><span>Mock #2　Oct 8</span><strong>505</strong></div><div class="history-row"><b>PRACTICE</b><span>Practice　Oct 4</span><strong>—</strong></div><div class="history-row"><b>PRACTICE</b><span>Practice　Oct 3</span><strong>—</strong></div><div class="history-row"><b>PRACTICE</b><span>Practice　Oct 2</span><strong>—</strong></div><div class="history-row"><b>MOCK</b><span>Mock #1　Oct 1</span><strong>493</strong></div></div></section>
-			<section class="skills-panel panel"><div class="skills-head"><h2 class="chart-title">Skill Accuracy</h2><small>Practice-based skill accuracy from your latest attempts</small><strong>86%</strong></div><div class="skills-tabs"><button class="active" type="button">Listening</button><button type="button">Structure &amp; Writing</button><button type="button">Reading</button></div><div class="skill-grid"><div class="skill-column"><h3>Module 1: Listening Foundation</h3><div class="skill-item"><header>1.1 Main idea <span>72%</span></header><div class="skill-bar"><span></span></div></div><div class="skill-item"><header>1.2 Detail questions <span>68%</span></header><div class="skill-bar"><span style="width:68%"></span></div></div><div class="skill-item"><header>1.3 Inference <span>54%</span></header><div class="skill-bar"><span style="width:54%"></span></div></div><div class="skill-item"><header>1.4 Speaker purpose <span>61%</span></header><div class="skill-bar"><span style="width:61%"></span></div></div></div><div class="skill-column"><h3>Module 2: Structure Connectors</h3><div class="skill-item"><header>2.1 Agreement <span>48%</span></header><div class="skill-bar"><span style="width:48%"></span></div></div><div class="skill-item"><header>2.2 Word forms <span>63%</span></header><div class="skill-bar"><span style="width:63%"></span></div></div><div class="skill-item"><header>2.3 Connectors <span>57%</span></header><div class="skill-bar"><span style="width:57%"></span></div></div><div class="skill-item"><header>2.4 Parallelism <span>51%</span></header><div class="skill-bar"><span style="width:51%"></span></div></div></div><div class="skill-column"><h3>Module 3: Advanced Comprehension</h3><div class="skill-item"><header>3.1 Vocabulary <span>74%</span></header><div class="skill-bar"><span style="width:74%"></span></div></div><div class="skill-item"><header>3.2 Restatement <span>46%</span></header><div class="skill-bar"><span style="width:46%"></span></div></div><div class="skill-item"><header>3.3 Organization <span>69%</span></header><div class="skill-bar"><span style="width:69%"></span></div></div><div class="skill-item"><header>3.4 Author purpose <span>62%</span></header><div class="skill-bar"><span style="width:62%"></span></div></div></div><div class="skill-column"><h3>Module 4: Mixed Drills</h3><div class="skill-item"><header>4.1 Tone and attitude <span>58%</span></header><div class="skill-bar"><span style="width:58%"></span></div></div><div class="skill-item"><header>4.2 Context clues <span>66%</span></header><div class="skill-bar"><span style="width:66%"></span></div></div><div class="skill-item"><header>4.3 Sentence meaning <span>71%</span></header><div class="skill-bar"><span style="width:71%"></span></div></div></div></div></section>
-		</main>
-	</div>
-	<script src="../study-plan-firestore-sync.js?v=20260508"></script>
-	<script>
-		const RESULT_KEYS = { listening: "toefl_section1_result", structure: "toefl_section2_result", reading: "toefl_section3_result" };
-		const sectionDefaults = { listening: 50, structure: 40, reading: 50 };
-		const progressState = { results: {}, sync: null };
+			</div>
+			<div class="streak-chip">🔥 <strong>3-day</strong> streak</div>
+		</div>
 
-		function readResult(section) {
-			try {
-				const parsed = JSON.parse(localStorage.getItem(RESULT_KEYS[section]) || "null");
-				if (!parsed || typeof parsed !== "object") return null;
-				const total = Number(parsed.totalQuestions) || sectionDefaults[section];
-				const raw = Number(parsed.rawScore) || 0;
-				const scaled = Number(parsed.scaledScore) || Math.round(31 + (raw / Math.max(1, total)) * (section === "reading" ? 36 : 37));
-				return { ...parsed, total, raw, scaled, percent: Math.round((raw / Math.max(1, total)) * 100) };
-			} catch (_) { return null; }
-		}
+		<!-- AI insight -->
+		<section class="insight">
+			<div class="icon">✦</div>
+			<div class="insight-body">
+			<div class="insight-tag">TODAY'S PRIORITY</div>
+			<p><strong>Listening Part B</strong> is your highest-priority practice — accuracy sits at 50%, the weakest result of anything you've been tested on, backed by a full 20-question sample. Two quiet days this week have also nudged your risk of falling behind pace up a notch.</p>
+			<div class="insight-actions">
+				<button class="pill-btn primary">Start Listening Part B · 15 min</button>
+				<button class="pill-btn">See full plan</button>
+			</div>
+			</div>
+		</section>
 
-		function formatResultDate(result) {
-			const value = result && (result.setDate || result.submittedAt);
-			if (!value) return "No completed test";
-			const date = new Date(value);
-			return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
-		}
+		<!-- main section tabs -->
+		<nav class="main-tabs" id="mainTabs" role="tablist" aria-label="Progress sections">
+			<button role="tab" aria-pressed="true" data-panel="overview">📊 Overview</button>
+			<button role="tab" aria-pressed="false" data-panel="activity">🗓️ Activity</button>
+			<button role="tab" aria-pressed="false" data-panel="trajectory">📈 Trajectory</button>
+			<button role="tab" aria-pressed="false" data-panel="modules">🧩 Modules</button>
+		</nav>
 
-		function setText(id, value) { const node = document.getElementById(id); if (node) node.textContent = String(value); }
-		function setBar(id, value) { const node = document.getElementById(id); if (node) node.style.width = `${Math.max(0, Math.min(100, value))}%`; }
+		<!-- hero: overall + two score cards -->
+		<section class="hero-grid tabpanel" data-panel="overview">
+			<div class="card ring-card">
+			<div class="kicker" style="align-self:flex-start;"><span class="dot" style="background:var(--blue)"></span>OVERALL PROGRESS</div>
+			<div class="ring-wrap">
+				<svg viewBox="0 0 160 160">
+				<circle cx="80" cy="80" r="68" fill="none" stroke="var(--surface-sunken)" stroke-width="14"/>
+				<circle id="overallRing" cx="80" cy="80" r="68" fill="none" stroke="var(--blue)" stroke-width="14" stroke-linecap="round"/>
+				</svg>
+				<div class="ring-center">
+				<div class="num serif">517</div>
+				<div class="lbl">of 550 goal</div>
+				</div>
+			</div>
+			<div class="ring-caption"><b>30% ahead</b> of your target pace</div>
+			<div class="card-foot-note" style="width:100%;text-align:left;">Baseline 310 → Goal 550. Combines your latest mock composite with drilled practice accuracy.</div>
+			</div>
 
-		function renderProgress() {
-			const results = Object.fromEntries(Object.keys(RESULT_KEYS).map((section) => [section, readResult(section)]));
-			progressState.results = results;
-			const available = Object.values(results).filter(Boolean);
-			const overall = available.length ? Math.round(available.reduce((sum, result) => sum + result.scaled, 0) / available.length) : 0;
-			const goal = 550;
-			const percent = Math.round((overall / goal) * 100);
-			const pointsToGo = Math.max(0, goal - overall);
-			setText("overallScore", overall);
-			setText("pointsToGo", `↗ ${pointsToGo} points to go`);
-			setText("progressStart", overall);
-			setText("progressPercent", `${percent}% way to go to your goals`);
-			setBar("overallProgressBar", percent);
-			setText("projectedScore", available.length ? Math.min(goal, overall + Math.round(pointsToGo * .45)) : 0);
-			const examDate = progressState.sync && progressState.sync.plan && (progressState.sync.plan.examDate || progressState.sync.plan.examinationDate);
-			if (examDate) setText("examDays", Math.max(0, Math.ceil((new Date(examDate) - new Date()) / 86400000)));
-			Object.entries(results).forEach(([section, result]) => {
-				const percentValue = result ? result.percent : 0;
-				setText(`${section}Radar`, section === "listening" ? `Listening (${percentValue}%)` : `(${percentValue}%)`);
+			<div class="card score-card">
+			<div class="card-top">
+				<div class="kicker"><span class="dot" style="background:var(--blue)"></span>MOCK TEST SCORE</div>
+				<span class="badge" style="background:var(--blue-dim);color:var(--blue);">Mock #3</span>
+			</div>
+			<div class="big">517 <small>/ 677 scale</small></div>
+			<div class="delta up">▲ +12 since Mock #2 (Oct 8)</div>
+			<svg class="sparkline" viewBox="0 0 240 38" preserveAspectRatio="none">
+				<polyline points="4,30 120,18 236,4" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+				<circle cx="4" cy="30" r="3.2" fill="var(--blue)"/><circle cx="120" cy="18" r="3.2" fill="var(--blue)"/><circle cx="236" cy="4" r="3.2" fill="var(--blue)"/>
+			</svg>
+			<div class="goal-row"><span>310</span><span>33 pts to 550</span></div>
+			<div class="goal-bar"><div style="width:87%;background:var(--blue);"></div></div>
+			<div class="mini-rows">
+				<div class="mini-row"><span class="name">Listening</span><div class="track"><div style="width:49%;background:var(--blue)"></div></div><span class="val">49</span></div>
+				<div class="mini-row"><span class="name">Structure &amp; Writing</span><div class="track"><div style="width:42%;background:var(--blue)"></div></div><span class="val">42</span></div>
+				<div class="mini-row"><span class="name">Reading</span><div class="track"><div style="width:42%;background:var(--blue)"></div></div><span class="val">42</span></div>
+			</div>
+			<div class="card-foot-note">Subscale scores from your most recent completed mock, on Quick Check's 0–100 section scale.</div>
+			</div>
+
+			<div class="card score-card">
+			<div class="card-top">
+				<div class="kicker"><span class="dot" style="background:var(--teal)"></span>PRACTICE ACCURACY</div>
+				<span class="badge" style="background:var(--teal-dim);color:var(--teal);">2 of 4 drilled</span>
+			</div>
+			<div class="big">65<small>%</small></div>
+			<div class="delta flat">Average across components you've drilled</div>
+			<svg class="sparkline" viewBox="0 0 240 38" preserveAspectRatio="none">
+				<polyline points="4,22 80,26 160,16 236,12" fill="none" stroke="var(--teal)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+				<circle cx="236" cy="12" r="3.2" fill="var(--teal)"/>
+			</svg>
+			<div class="goal-row"><span>Drilled components</span><span>65% avg accuracy</span></div>
+			<div class="goal-bar"><div style="width:65%;background:var(--teal);"></div></div>
+			<div class="mini-rows">
+				<div class="mini-row"><span class="name">Listening</span><div class="track"><div style="width:49%;background:var(--teal)"></div></div><span class="val">49</span></div>
+				<div class="mini-row na"><span class="name">Structure</span><div class="track"><div style="width:0%;background:var(--ink-mute)"></div></div><span class="val">—</span></div>
+				<div class="mini-row na"><span class="name">Writing</span><div class="track"><div style="width:0%;background:var(--ink-mute)"></div></div><span class="val">—</span></div>
+				<div class="mini-row"><span class="name">Reading</span><div class="track"><div style="width:42%;background:var(--teal)"></div></div><span class="val">42</span></div>
+			</div>
+			<div class="card-foot-note">Structure and Writing haven't been drilled in practice yet — that's why they show as gaps here even though your mock accuracy for both is solid.</div>
+			</div>
+		</section>
+
+		<!-- activity timeline -->
+		<section class="block card timeline-card tabpanel" data-panel="activity" hidden>
+			<div class="block-head">
+			<div class="block-head-left">
+				<h2>Activity timeline</h2>
+				<div class="desc">When you actually studied — spot gaps before they turn into risk.</div>
+			</div>
+			<div class="tabs" id="activityTabs" role="tablist" aria-label="Activity timeframe">
+				<button role="tab" aria-pressed="true" data-range="day">Day</button>
+				<button role="tab" aria-pressed="false" data-range="week">Week</button>
+				<button role="tab" aria-pressed="false" data-range="month">Month</button>
+				<button role="tab" aria-pressed="false" data-range="year">Year</button>
+			</div>
+			</div>
+
+			<div class="chart-row" id="activityChart"></div>
+
+			<div class="legend-row">
+			<div class="item"><span class="sw" style="background:var(--blue);"></span>Minutes studied</div>
+			<div class="item"><span class="sw" style="background:var(--red);"></span>No activity — risk day</div>
+			</div>
+
+			<div class="streak-strip">
+			<div class="stat"><b>3 days</b><span>current streak</span></div>
+			<div class="stat risk"><b>2 days</b><span>no-activity this week</span></div>
+			<div class="stat"><b>34 min</b><span>daily average</span></div>
+			<div class="stat"><b>Thu &amp; Fri</b><span>your usual quiet days</span></div>
+			</div>
+		</section>
+
+		<!-- score trajectory -->
+		<section class="block card tabpanel" data-panel="trajectory" hidden>
+			<div class="block-head">
+			<div class="block-head-left">
+				<h2>Score trajectory</h2>
+				<div class="desc">How your score is moving toward goal, across mocks and drills.</div>
+			</div>
+			<div style="display:flex;gap:10px;flex-wrap:wrap;">
+				<div class="tabs" id="trajRangeTabs" role="tablist" aria-label="Trajectory timeframe">
+				<button role="tab" aria-pressed="false" data-range="week">Week</button>
+				<button role="tab" aria-pressed="false" data-range="month">Month</button>
+				<button role="tab" aria-pressed="true" data-range="year">All mocks</button>
+				</div>
+				<div class="tabs" id="trajViewTabs" role="tablist" aria-label="Composite or by section">
+				<button role="tab" aria-pressed="true" data-view="composite">Composite</button>
+				<button role="tab" aria-pressed="false" data-view="section">By section</button>
+				</div>
+			</div>
+			</div>
+
+			<div class="traj-wrap">
+			<svg id="trajSvg" viewBox="0 0 720 220" preserveAspectRatio="none"></svg>
+			</div>
+			<div class="traj-legend" id="trajLegend"></div>
+
+			<table class="traj-table">
+			<thead><tr><th>Type</th><th>Attempt</th><th>Date</th><th style="text-align:right;">Score</th></tr></thead>
+			<tbody>
+				<tr><td><span class="tag mock">MOCK</span></td><td>Mock #3</td><td>Oct 15</td><td class="score">517</td></tr>
+				<tr><td><span class="tag mock">MOCK</span></td><td>Mock #2</td><td>Oct 8</td><td class="score">505</td></tr>
+				<tr><td><span class="tag practice">PRACTICE</span></td><td>Drill session</td><td>Oct 4</td><td class="score">—</td></tr>
+				<tr><td><span class="tag practice">PRACTICE</span></td><td>Drill session</td><td>Oct 3</td><td class="score">—</td></tr>
+				<tr><td><span class="tag practice">PRACTICE</span></td><td>Drill session</td><td>Oct 2</td><td class="score">—</td></tr>
+				<tr><td><span class="tag mock">MOCK</span></td><td>Mock #1</td><td>Oct 1</td><td class="score">493</td></tr>
+			</tbody>
+			</table>
+		</section>
+
+		<!-- skill breakdown -->
+		<section class="block card tabpanel" data-panel="overview">
+			<div class="block-head">
+			<div class="block-head-left">
+				<h2>Where you stand, by component</h2>
+				<div class="desc">Accuracy, weakness score and level placement — calculated the same way your practice plan is.</div>
+			</div>
+			</div>
+
+			<div class="breakdown-grid">
+			<div class="radar-wrap">
+				<svg viewBox="0 0 260 260">
+				<!-- grid rings -->
+				<polygon points="130,40 220,130 130,220 40,130" fill="none" stroke="var(--border)" stroke-width="1"/>
+				<polygon points="130,62 197.5,130 130,197.5 62.5,130" fill="none" stroke="var(--border)" stroke-width="1"/>
+				<polygon points="130,84 175,130 130,175 85,130" fill="none" stroke="var(--border)" stroke-width="1"/>
+				<polygon points="130,106 152.5,130 130,152.5 107.5,130" fill="none" stroke="var(--border)" stroke-width="1"/>
+				<line x1="130" y1="20" x2="130" y2="240" stroke="var(--border)"/>
+				<line x1="20" y1="130" x2="240" y2="130" stroke="var(--border)"/>
+				<!-- goal (85% target, dashed) -->
+				<polygon points="130,47 213,130 130,213 47,130" fill="none" stroke="var(--ink-mute)" stroke-width="1.5" stroke-dasharray="4 4"/>
+				<!-- current -->
+				<polygon points="130,113.4 178,130 137.4,183 82,148.8" fill="var(--blue)" fill-opacity="0.16" stroke="var(--blue)" stroke-width="2.5"/>
+				<circle cx="130" cy="113.4" r="3.5" fill="var(--blue)"/>
+				<circle cx="178" cy="130" r="3.5" fill="var(--blue)"/>
+				<circle cx="137.4" cy="183" r="3.5" fill="var(--blue)"/>
+				<circle cx="82" cy="148.8" r="3.5" fill="var(--blue)"/>
+				<text x="130" y="14" text-anchor="middle" font-size="12" fill="var(--red)" font-weight="700">Listening 62%</text>
+				<text x="250" y="134" text-anchor="end" font-size="12" fill="var(--ink-soft)" font-weight="700">Structure 80%</text>
+				<text x="130" y="253" text-anchor="middle" font-size="12" fill="var(--ink-soft)" font-weight="700">Writing 75%</text>
+				<text x="10" y="134" text-anchor="start" font-size="12" fill="var(--amber)" font-weight="700">Reading 68%</text>
+				</svg>
+				<div class="radar-key">
+				<div class="item"><span class="ln" style="border-color:var(--blue);"></span>Current</div>
+				<div class="item"><span class="ln dash" style="border-color:var(--ink-mute);"></span>Target (85%)</div>
+				</div>
+			</div>
+
+			<div class="comp-list">
+				<div class="comp-row cat-priority">
+				<div><div class="name">Listening — Part B</div><div class="evidence">10 / 20 correct · full coverage</div></div>
+				<div class="acc">50%</div>
+				<div class="cat">PRIORITY</div>
+				</div>
+				<div class="comp-row cat-needs">
+				<div><div class="name">Listening — Part C</div><div class="evidence">12 / 20 correct · full coverage</div></div>
+				<div class="acc">60%</div>
+				<div class="cat">NEEDS PRACTICE</div>
+				</div>
+				<div class="comp-row cat-needs">
+				<div><div class="name">Reading</div><div class="evidence">17 / 25 correct · placed at Beginner</div></div>
+				<div class="acc">68%</div>
+				<div class="cat">NEEDS PRACTICE</div>
+				<div class="foundation-note">7 points from Intermediate (needs 75%) <div class="fbar"><div style="width:91%;"></div></div></div>
+				</div>
+				<div class="comp-row cat-developing">
+				<div><div class="name">Listening — Part A</div><div class="evidence">15 / 20 correct · full coverage</div></div>
+				<div class="acc">75%</div>
+				<div class="cat">DEVELOPING</div>
+				</div>
+				<div class="comp-row cat-developing">
+				<div><div class="name">Written Expression</div><div class="evidence">15 / 20 correct · placed at Intermediate</div></div>
+				<div class="acc">75%</div>
+				<div class="cat">DEVELOPING</div>
+				<div class="foundation-note">At the 75% mark — Advanced unlocks next attempt <div class="fbar"><div style="width:100%;background:var(--green);"></div></div></div>
+				</div>
+				<div class="comp-row cat-developing">
+				<div><div class="name">Structure</div><div class="evidence">20 / 25 correct · placed at Advanced</div></div>
+				<div class="acc">80%</div>
+				<div class="cat">DEVELOPING</div>
+				<div class="foundation-note">Advanced already unlocked ✓ — light maintenance only <div class="fbar"><div style="width:100%;background:var(--green);"></div></div></div>
+				</div>
+			</div>
+			</div>
+		</section>
+
+		<!-- recommendations -->
+		<section class="block card tabpanel" data-panel="overview">
+			<div class="block-head">
+			<div class="block-head-left">
+				<h2>Your next 3 practices</h2>
+				<div class="desc">Ranked by priority score — weakness first, then how much evidence backs it up.</div>
+			</div>
+			</div>
+
+			<div class="rec-list">
+			<div class="rec-card">
+				<div class="rec-rank">1</div>
+				<div>
+				<div class="rec-title">Listening Part B <span class="priority-score">Priority 50</span></div>
+				<div class="rec-why">Your weakest result overall — 50% accuracy on a full 20-question sample, the clearest signal in your data.</div>
+				<div class="rec-time">⏱ 15 minutes · No level, drills as-is</div>
+				</div>
+				<button class="rec-cta">Start now</button>
+			</div>
+			<div class="rec-card">
+				<div class="rec-rank">2</div>
+				<div>
+				<div class="rec-title">Listening Part C <span class="priority-score">Priority 40</span></div>
+				<div class="rec-why">Second-weakest listening skill at 60% — still just inside "Needs practice."</div>
+				<div class="rec-time">⏱ 15 minutes · No level, drills as-is</div>
+				</div>
+				<button class="rec-cta">Start now</button>
+			</div>
+			<div class="rec-card">
+				<div class="rec-rank">3</div>
+				<div>
+				<div class="rec-title">Reading — Beginner <span class="priority-score">Priority 32</span></div>
+				<div class="rec-why">68% is below the 70% placement line for Intermediate, so Beginner drills come next.</div>
+				<div class="rec-time">⏱ 20 minutes · Beginner level</div>
+				</div>
+				<button class="rec-cta">Start now</button>
+			</div>
+			</div>
+
+			<div class="secondary-title">Also worth a look</div>
+			<div class="sec-row">
+			<div><div class="name">Written Expression — Intermediate</div><div class="why">75% — one strong session away from unlocking Advanced.</div></div>
+			<div class="acc" style="font-weight:700;">Priority 25</div>
+			</div>
+			<div class="sec-row">
+			<div><div class="name">Structure — Advanced</div><div class="why">80% — already past the mastery line; maintenance keeps it sharp.</div></div>
+			<div class="acc" style="font-weight:700;">Priority 20</div>
+			</div>
+
+			<details class="method">
+			<summary>How this ranking is calculated</summary>
+			<p style="font-size:12.5px;color:var(--ink-soft);margin:10px 0 0;">Every component gets a weakness score (100 − accuracy), multiplied by a coverage factor based on how many questions back it up (5+ questions = full confidence). Level placements follow fixed accuracy bands, and a foundation rule stops the system from jumping a level before you're ready — even when raw priority would suggest otherwise.</p>
+			<table class="method-table">
+				<thead><tr><th>Component</th><th>Accuracy</th><th>Weakness</th><th>Coverage</th><th>Priority score</th></tr></thead>
+				<tbody>
+				<tr><td>Listening Part B</td><td>50%</td><td>50</td><td>1.00 (20 q)</td><td><strong>50</strong></td></tr>
+				<tr><td>Listening Part C</td><td>60%</td><td>40</td><td>1.00 (20 q)</td><td><strong>40</strong></td></tr>
+				<tr><td>Reading</td><td>68%</td><td>32</td><td>1.00 (25 q)</td><td><strong>32</strong></td></tr>
+				<tr><td>Listening Part A</td><td>75%</td><td>25</td><td>1.00 (20 q)</td><td><strong>25</strong></td></tr>
+				<tr><td>Written Expression</td><td>75%</td><td>25</td><td>1.00 (20 q)</td><td><strong>25</strong></td></tr>
+				<tr><td>Structure</td><td>80%</td><td>20</td><td>1.00 (25 q)</td><td><strong>20</strong></td></tr>
+				</tbody>
+			</table>
+			</details>
+		</section>
+
+		<!-- modules -->
+		<section class="block card tabpanel" data-panel="modules" hidden>
+			<div class="block-head">
+			<div class="block-head-left">
+				<h2>Skill accuracy by module</h2>
+				<div class="desc">A closer look inside each section's building blocks.</div>
+			</div>
+			</div>
+			<div class="module-tabs" id="moduleTabs">
+			<button aria-pressed="true" data-cat="listening">👂 Listening</button>
+			<button aria-pressed="false" data-cat="structure">🧩 Structure &amp; Writing</button>
+			<button aria-pressed="false" data-cat="reading">📖 Reading</button>
+			</div>
+			<div class="module-grid" id="moduleGrid"></div>
+			<button class="view-all">View all modules →</button>
+		</section>
+
+		</div>
+
+		<script>
+		(function(){
+		"use strict";
+
+		/* ---------------- Activity data ---------------- */
+		var activityData = {
+			day:  {unit:"min", items:[
+			{label:"Mon",val:35},{label:"Tue",val:48},{label:"Wed",val:0,risk:true},
+			{label:"Thu",val:0,risk:true},{label:"Fri",val:30},{label:"Sat",val:52},{label:"Sun",val:18}
+			]},
+			week: {unit:"min", items:[
+			{label:"W1",val:120},{label:"W2",val:95},{label:"W3",val:140},{label:"W4",val:60,risk:true},
+			{label:"W5",val:110},{label:"W6",val:130},{label:"W7",val:20,risk:true},{label:"W8",val:85}
+			]},
+			month:{unit:"min", items:[
+			{label:"Jun",val:40},{label:"Jul",val:260},{label:"Aug",val:410},{label:"Sep",val:380},
+			{label:"Oct",val:300},{label:"Nov",val:0},{label:"Dec",val:0}
+			]},
+			year: {unit:"min", items:[
+			{label:"Q1",val:0},{label:"Q2",val:180},{label:"Q3",val:690},{label:"Q4",val:300}
+			]}
+		};
+
+		function renderActivity(range){
+			var d = activityData[range];
+			var max = Math.max.apply(null, d.items.map(function(i){return i.val;})) || 1;
+			var wrap = document.getElementById("activityChart");
+			wrap.innerHTML = "";
+			d.items.forEach(function(item){
+			var col = document.createElement("div");
+			col.className = "bar-col";
+			var pct = Math.max((item.val / max) * 100, item.val === 0 ? 4 : 6);
+			var flag = item.risk ? '<div class="bar-flag">RISK</div>' : "";
+			col.innerHTML =
+				flag +
+				'<div class="bar-track"><div class="bar-fill' + (item.risk ? " risk" : "") + '" style="height:' + pct + '%;' + (item.risk ? "" : "background:var(--blue);") + '"></div></div>' +
+				'<div class="bar-label">' + item.label + '</div>';
+			wrap.appendChild(col);
 			});
-			const listening = results.listening ? results.listening.percent : 0;
-			const structure = results.structure ? results.structure.percent : 0;
-			const reading = results.reading ? results.reading.percent : 0;
-			const writing = results.structure ? results.structure.percent : 0;
-			setText("writingRadar", `Writing (${writing}%)`);
-			const chartCenterX = 95;
-			const chartCenterY = 75;
-			const chartRadiusY = 63;
-			const chartRadiusX = 66;
-			const points = [
-				`${chartCenterX},${chartCenterY - (listening / 100) * chartRadiusY}`,
-				`${chartCenterX + (structure / 100) * chartRadiusX},${chartCenterY}`,
-				`${chartCenterX},${chartCenterY + (writing / 100) * chartRadiusY}`,
-				`${chartCenterX - (reading / 100) * chartRadiusX},${chartCenterY}`
-			];
-			const radar = document.getElementById("currentRadar");
-			if (radar) radar.setAttribute("points", points.join(" "));
-			const latest = available.slice().sort((left, right) => String(right.submittedAt || "").localeCompare(String(left.submittedAt || "")))[0];
-			setText("mockDate", formatResultDate(latest));
-			setText("mockName", latest ? (latest.setId || "Completed test") : "No completed test");
-			setText("mockScore", overall || "--");
-			["listening", "structure", "reading"].forEach((section) => { const value = results[section] ? results[section].scaled : null; setText(`mock${section[0].toUpperCase()}${section.slice(1)}`, value === null ? "--" : value); setBar(`mock${section[0].toUpperCase()}${section.slice(1)}Bar`, value ? Math.round((value / 68) * 100) : 0); });
 		}
 
-		function renderStructureDefaultSkills() {
-			const skillGrid = document.querySelector(".skill-grid");
-			const skillAccuracy = document.querySelector(".skills-head > strong");
-			if (!skillGrid) return;
-			if (skillAccuracy) skillAccuracy.textContent = "0%";
-			const modules = [
-				["Module 1: Sentence Foundation", "blocks", [["user-question", "1.1 Missing Subjects & Verbs"], ["brackets", "1.2 Appositives (Noun Phrase Distractors)"], ["arrows-left-right", "1.3 Present Participles (-ing) vs. Past Participles (-ed)"], ["scale", "Subject-Verb Agreement"], ["alert-triangle", "Tricky Singular Subjects"]]],
-				["Module 2: Clauses & Connectors", "git-branch", [["arrows-join", "2.1 Coordinate Connectors"], ["corner-down-right", "2.2 Adverb Clauses"], ["gift", "2.3 Noun Clauses"], ["tag", "2.4 Adjective/Relative Clauses"], ["minimize", "2.5 Reduced Clauses"]]],
-				["Module 3: Advanced Verb Mechanics", "settings-2", [["users", "3.1 Causative Verbs"], ["arrows-right-left", "3.2 Active vs. Passive Voice"], ["adjustments-horizontal", "3.3 Modals + Base Verbs"], ["arrows-left-right", "3.4 Infinitives vs. Gerunds"], ["history", "3.5 Time Markers & Tenses"]]],
-				["Module 4: Word Order & Inversion", "arrows-up-down", [["flip-vertical", "4.1 Inversion with Negatives"], ["map-pin", "4.2 Inversion with Place Expressions"], ["route", "4.3 Inversion in Conditionals"]]],
-				["Module 5: Parallelism & Comparisons", "columns", [["align-justified", "5.1 Parallel Structure"], ["link", "5.2 Paired Conjunctions"], ["stairs-up", "5.3 Comparatives & Superlatives"], ["alert-triangle", "5.4 Logical Comparisons"]]],
-				["Module 6: Word Forms and Part of Speech", "typography", [["arrows-left-right", "6.1 Adjectives vs. Adverbs"], ["letter-case", "6.2 Noun Endings"], ["copy", "6.3 Singular/Plural Countability"], ["user-check", "6.4 Pronoun Agreement"]]],
-				["Module 7: Tricky Vocabulary and Idioms", "language", [["plug-connected", "7.1 Dependent Prepositions"], ["arrows-left-right", "7.2 Make vs. Do"], ["yin-yang", "7.3 Like, Alike, and Unlike"], ["replace", "7.4 Another, Other, Others"]]]
-			];
-			skillGrid.innerHTML = modules.map(([title, moduleIcon, items]) => `
-				<div class="skill-column"><h3><i class="ti ti-${moduleIcon}"></i>${title}</h3>${items.map(([icon, item]) => `
-					<div class="skill-item"><header><span><i class="ti ti-${icon}"></i>${item}</span><span>75%</span></header><div class="skill-bar"><span style="width: 0"></span></div><small>Not attempted</small></div>
-				`).join("")}</div>
-			`).join("");
+		function wireTabs(containerId, onChange){
+			var el = document.getElementById(containerId);
+			el.addEventListener("click", function(e){
+			var btn = e.target.closest("button");
+			if(!btn) return;
+			el.querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed","false"); });
+			btn.setAttribute("aria-pressed","true");
+			onChange(btn.dataset.range || btn.dataset.view);
+			});
 		}
 
-		document.querySelectorAll(".toggle button, .skills-tabs button").forEach((button) => button.addEventListener("click", () => { button.parentElement.querySelectorAll("button").forEach((item) => item.classList.remove("active")); button.classList.add("active"); }));
-		renderStructureDefaultSkills();
-		document.querySelectorAll(".skills-tabs button")[1]?.classList.add("active");
-		document.querySelectorAll(".skills-tabs button")[0]?.classList.remove("active");
-		document.querySelectorAll(".start-button").forEach((button) => button.addEventListener("click", () => { button.textContent = "Opened"; button.disabled = true; }));
-		window.addEventListener("storage", renderProgress);
-		if (typeof StudyPlanFirestoreSync === "function") {
-			progressState.sync = new StudyPlanFirestoreSync({ projectId: "quickcheck-25590" });
-			progressState.sync.subscribe((snapshot) => { progressState.syncSnapshot = snapshot; renderProgress(); });
-			progressState.sync.start();
+		wireTabs("activityTabs", renderActivity);
+		renderActivity("day");
+
+		/* ---------------- Trajectory chart ---------------- */
+		var trajData = {
+			week:  {composite:[[0,505],[1,505],[2,505],[3,505],[4,505],[5,517],[6,517]], labels:["M","T","W","T","F","S","S"]},
+			month: {composite:[[0,493],[1,493],[2,505],[3,505],[4,517]], labels:["Oct 1","Oct 4","Oct 8","Oct 11","Oct 15"]},
+			year:  {composite:[[0,493],[1,505],[2,517]], labels:["Mock #1\\nOct 1","Mock #2\\nOct 8","Mock #3\\nOct 15"]}
+		};
+		var sectionData = {
+			year: {
+			series:[
+				{name:"Listening", color:"var(--blue)", pts:[[0,54],[1,58],[2,62]]},
+				{name:"Structure", color:"var(--teal)", pts:[[0,68],[1,74],[2,80]]},
+				{name:"Writing", color:"var(--purple)", pts:[[0,64],[1,70],[2,75]]},
+				{name:"Reading", color:"var(--amber)", pts:[[0,58],[1,63],[2,68]]}
+			], labels:["Mock #1","Mock #2","Mock #3"]
+			},
+			month:{
+			series:[
+				{name:"Listening", color:"var(--blue)", pts:[[0,52],[1,55],[2,58],[3,60],[4,62]]},
+				{name:"Structure", color:"var(--teal)", pts:[[0,66],[1,70],[2,74],[3,77],[4,80]]},
+				{name:"Writing", color:"var(--purple)", pts:[[0,60],[1,64],[2,70],[3,72],[4,75]]},
+				{name:"Reading", color:"var(--amber)", pts:[[0,55],[1,58],[2,63],[3,65],[4,68]]}
+			], labels:["Oct 1","Oct 4","Oct 8","Oct 11","Oct 15"]
+			},
+			week:{
+			series:[
+				{name:"Listening", color:"var(--blue)", pts:[[0,60],[1,60],[2,61],[3,61],[4,62],[5,62],[6,62]]},
+				{name:"Structure", color:"var(--teal)", pts:[[0,77],[1,77],[2,78],[3,78],[4,79],[5,80],[6,80]]},
+				{name:"Writing", color:"var(--purple)", pts:[[0,72],[1,73],[2,73],[3,74],[4,74],[5,75],[6,75]]},
+				{name:"Reading", color:"var(--amber)", pts:[[0,66],[1,66],[2,67],[3,67],[4,68],[5,68],[6,68]]}
+			], labels:["M","T","W","T","F","S","S"]
+			}
+		};
+
+		var trajState = {range:"year", view:"composite"};
+		var W=720,H=220,PAD_L=34,PAD_R=14,PAD_T=16,PAD_B=28;
+
+		function scaleX(i, n){ return PAD_L + (i/(Math.max(n-1,1))) * (W-PAD_L-PAD_R); }
+		function scaleY(v, min, max){ return H-PAD_B - ((v-min)/(max-min || 1)) * (H-PAD_T-PAD_B); }
+
+		function drawTrajectory(){
+			var svg = document.getElementById("trajSvg");
+			var legend = document.getElementById("trajLegend");
+			var range = trajState.range, view = trajState.view;
+			var svgns = "http://www.w3.org/2000/svg";
+			while(svg.firstChild) svg.removeChild(svg.firstChild);
+			legend.innerHTML = "";
+
+			var seriesList, allVals=[], labels;
+			if(view === "composite"){
+			var d = trajData[range] || trajData.year;
+			labels = d.labels;
+			seriesList = [{name:"Composite score", color:"var(--blue)", pts:d.composite}];
+			d.composite.forEach(function(p){ allVals.push(p[1]); });
+			} else {
+			var sd = sectionData[range] || sectionData.year;
+			labels = sd.labels;
+			seriesList = sd.series;
+			seriesList.forEach(function(s){ s.pts.forEach(function(p){ allVals.push(p[1]); }); });
+			}
+			var min = Math.min.apply(null, allVals), max = Math.max.apply(null, allVals);
+			var pad = (max-min)*0.15 || 10;
+			min -= pad; max += pad;
+
+			// gridlines
+			for(var g=0; g<=3; g++){
+			var y = PAD_T + (g/3)*(H-PAD_T-PAD_B);
+			var line = document.createElementNS(svgns,"line");
+			line.setAttribute("x1",PAD_L); line.setAttribute("x2",W-PAD_R);
+			line.setAttribute("y1",y); line.setAttribute("y2",y);
+			line.setAttribute("stroke","var(--border)"); line.setAttribute("stroke-width","1");
+			svg.appendChild(line);
+			}
+
+			seriesList.forEach(function(s){
+			var n = s.pts.length;
+			var pts = s.pts.map(function(p){ return scaleX(p[0], n) + "," + scaleY(p[1], min, max); }).join(" ");
+			var poly = document.createElementNS(svgns,"polyline");
+			poly.setAttribute("points", pts);
+			poly.setAttribute("fill","none");
+			poly.setAttribute("stroke", s.color);
+			poly.setAttribute("stroke-width", view==="composite" ? "3.5" : "2.5");
+			poly.setAttribute("stroke-linecap","round");
+			poly.setAttribute("stroke-linejoin","round");
+			svg.appendChild(poly);
+			s.pts.forEach(function(p){
+				var c = document.createElementNS(svgns,"circle");
+				c.setAttribute("cx", scaleX(p[0], n)); c.setAttribute("cy", scaleY(p[1], min, max));
+				c.setAttribute("r", view==="composite" ? 4.5 : 3);
+				c.setAttribute("fill", s.color);
+				svg.appendChild(c);
+			});
+			var leg = document.createElement("div");
+			leg.className = "item";
+			leg.innerHTML = '<span class="ln" style="background:'+s.color+';"></span>' + s.name;
+			legend.appendChild(leg);
+			});
+
+			labels.forEach(function(lbl, i){
+			var t = document.createElementNS(svgns,"text");
+			t.setAttribute("x", scaleX(i, labels.length));
+			t.setAttribute("y", H-6);
+			t.setAttribute("text-anchor","middle");
+			t.setAttribute("font-size","11");
+			t.setAttribute("fill","var(--ink-mute)");
+			t.textContent = lbl.split("\\n")[0];
+			svg.appendChild(t);
+			});
 		}
-		renderProgress();
-	</script>
+
+		wireTabs("trajRangeTabs", function(r){ trajState.range = r; drawTrajectory(); });
+		wireTabs("trajViewTabs", function(v){ trajState.view = v; drawTrajectory(); });
+		drawTrajectory();
+
+		/* ---------------- overall ring ---------------- */
+		var ring = document.getElementById("overallRing");
+		var R = 68, C = 2*Math.PI*R;
+		var pct = (517-310)/(550-310); // progress within band
+		ring.setAttribute("stroke-dasharray", C);
+		ring.setAttribute("stroke-dashoffset", C*(1-pct));
+
+		/* ---------------- modules ---------------- */
+		var moduleData = {
+			listening:[
+			{name:"1.1 Missing Subjects & Verbs", pct:78, state:"progress"},
+			{name:"1.2 Appositives (Noun Phrase Distractors)", pct:0, state:"pending"},
+			{name:"1.3 Reduced Relative Clauses", pct:0, state:"pending"},
+			{name:"1.4 Signal Words & Note-taking", pct:0, state:"pending"},
+			{name:"1.5 Number & Date Details", pct:0, state:"pending"},
+			{name:"1.6 Speaker Attitude / Tone", pct:0, state:"pending"}
+			],
+			structure:[
+			{name:"2.1 Coordinate Connectors", pct:100, state:"done"},
+			{name:"2.2 Adverb Clauses", pct:0, state:"pending"},
+			{name:"2.3 Noun Clauses", pct:64, state:"progress"},
+			{name:"2.4 Subject–Verb Agreement", pct:0, state:"pending"},
+			{name:"2.5 Parallel Structure", pct:0, state:"pending"},
+			{name:"2.6 Comparatives & Superlatives", pct:0, state:"pending"}
+			],
+			reading:[
+			{name:"3.1 Main Idea & Purpose", pct:82, state:"progress"},
+			{name:"3.2 Vocabulary in Context", pct:70, state:"progress"},
+			{name:"3.3 Reference Words", pct:0, state:"pending"},
+			{name:"3.4 Inference Questions", pct:0, state:"pending"},
+			{name:"3.5 Sentence Insertion", pct:0, state:"pending"},
+			{name:"3.6 Fact vs. Negative Fact", pct:0, state:"pending"}
+			]
+		};
+
+		function renderModules(cat){
+			var grid = document.getElementById("moduleGrid");
+			grid.innerHTML = "";
+			moduleData[cat].forEach(function(m){
+			var card = document.createElement("div");
+			card.className = "module-card " + m.state;
+			var statusLabel = m.state === "done" ? "Mastered" : (m.state === "progress" ? "In progress" : "Not attempted");
+			card.innerHTML =
+				'<div class="m-name">'+m.name+'</div>' +
+				'<div class="m-track"><div style="width:'+m.pct+'%;"></div></div>' +
+				'<div class="m-meta"><span>'+statusLabel+'</span><span>'+m.pct+'%</span></div>';
+			grid.appendChild(card);
+			});
+		}
+		document.getElementById("moduleTabs").addEventListener("click", function(e){
+			var btn = e.target.closest("button");
+			if(!btn) return;
+			this.querySelectorAll("button").forEach(function(b){ b.setAttribute("aria-pressed","false"); });
+			btn.setAttribute("aria-pressed","true");
+			renderModules(btn.dataset.cat);
+		});
+		renderModules("listening");
+
+		/* ---------------- main section tabs ---------------- */
+		var mainTabs = document.getElementById("mainTabs");
+		var panels = document.querySelectorAll(".tabpanel");
+		var trajDrawnOnce = false;
+
+		function showPanel(name){
+			panels.forEach(function(p){
+			p.hidden = (p.dataset.panel !== name);
+			});
+			if(name === "trajectory" && !trajDrawnOnce){
+			// redraw once visible so the SVG has real layout dimensions
+			drawTrajectory();
+			trajDrawnOnce = true;
+			}
+			mainTabs.querySelectorAll("button").forEach(function(b){
+			b.setAttribute("aria-pressed", b.dataset.panel === name ? "true" : "false");
+			});
+			window.scrollTo({top: mainTabs.offsetTop - 8, behavior:"smooth"});
+		}
+
+		mainTabs.addEventListener("click", function(e){
+			var btn = e.target.closest("button");
+			if(!btn) return;
+			showPanel(btn.dataset.panel);
+		});
+
+		})();
+</script>
 </body>
 </html>
+
+
+<!-- 				
+		<section class="progress-banner panel" aria-label="Overall progress">
+			<div class="banner-grid">
+				<div><p class="eyebrow">OVERALL PROGRESS</p><p class="banner-score" id="overallScore">0</p><p class="banner-copy">accumulation score from Mock Test &amp; Practice Test</p><div class="goal-row"><span>GOAL</span><strong id="goalScore">550</strong><span id="pointsToGo">↗ 550 points to go</span></div></div>
+				<div class="banner-stat"><i class="ti ti-sparkles"></i><div><p class="eyebrow">AI PROJECTED</p><strong id="projectedScore">0</strong><small>by exam date, at current pace</small></div></div>
+				<div class="banner-stat"><i class="ti ti-calendar-week"></i><div><p class="eyebrow">TO EXAM DAY</p><strong id="examDays">--</strong></div></div>
+			</div>
+			<div class="progress-track"><span id="overallProgressBar"></span></div><div class="progress-meta"><span id="progressStart">0</span><span id="progressPercent">0% way to go to your goals</span><span id="progressGoal">550</span></div>
+		</section>
+		<section class="standings panel">
+			<p class="panel-title">WHERE YOU STAND</p>
+			<div class="radar-wrap"><div class="radar"><svg viewBox="0 0 190 150" aria-hidden="true"><polygon points="95,12 161,75 95,138 29,75" fill="none" stroke="#d9e3ec"/><polygon points="95,28 144,75 95,122 46,75" fill="none" stroke="#d9e3ec"/><polygon points="95,44 127,75 95,106 63,75" fill="none" stroke="#d9e3ec"/><line x1="95" y1="12" x2="95" y2="138" stroke="#e5ebf1"/><line x1="29" y1="75" x2="161" y2="75" stroke="#e5ebf1"/><polygon points="95,28 144,75 95,122 46,75" fill="none" stroke="#f0a34a" stroke-dasharray="3 3"/><polygon id="currentRadar" points="95,75 95,75 95,75 95,75" fill="#0b83de" fill-opacity=".22" stroke="#0b83de" stroke-width="2"/></svg><span class="radar-label listening">⚠ <strong id="listeningRadar">Listening (0%)</strong></span><span class="radar-label structure">Structure <strong id="structureRadar">(0%)</strong></span><span class="radar-label reading">Reading <strong id="readingRadar">(0%)</strong></span><span class="radar-label writing">Writing <strong id="writingRadar">(0%)</strong></span></div></div>
+			<div class="standings-foot"><div class="legend"><span>Goal</span><span>Current</span></div><p class="standings-note">-18% <span>behind baseline (dashed line), the largest gap in your result test so it's first area need to be improved.</span></p><div class="divider"></div><div class="gaps"><p class="gaps-title">WHERE THOSE POINT WENT</p><div class="gap-tags"><span>Idiomatic Expressions</span><span>Restatement Items</span><span>Pacing</span></div></div></div>
+		</section>
+		<div class="result-grid">
+			<article class="result-card panel"><div class="card-head"><span class="type-pill"><i class="ti ti-file-text"></i>Mock Test</span><span class="dots">‹ · · · ›</span></div><div class="date-box"><span id="mockDate">No completed test</span><strong id="mockName">Mock Test</strong></div><p class="score-label">SCORE</p><p class="score" id="mockScore">--</p><div class="metric-list"><div class="metric"><span class="metric-icon"><img src="../asset/figma/mock-listening.png" alt=""></span><div class="metric-copy"><header>LISTENING COMPREHENSION <span id="mockListening">--</span></header><div class="metric-bar"><span id="mockListeningBar"></span></div></div></div><div class="metric"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div class="metric-copy"><header>STRUCTURE &amp; WRITING <span id="mockStructure">--</span></header><div class="metric-bar green"><span id="mockStructureBar"></span></div></div></div><div class="metric"><span class="metric-icon purple"><img src="../asset/figma/mock-reading.png" alt=""></span><div class="metric-copy"><header>READING COMPREHENSION <span id="mockReading">--</span></header><div class="metric-bar purple"><span id="mockReadingBar"></span></div></div></div></div></article>
+			<article class="result-card panel"><div class="card-head"><span class="type-pill outline"><i class="ti ti-dumbbell"></i>Practice Test</span><span class="dots">‹ · · · ›</span></div><div class="date-box"><span>2 OCT 2026</span><strong>Mock Test-1</strong></div><div class="metric-list"><div class="metric"><span class="metric-icon"><img src="../asset/figma/mock-listening.png" alt=""></span><div class="metric-copy"><header>LISTENING COMPREHENSION <span>49</span></header><div class="metric-bar"><span></span></div></div></div><div class="metric"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div class="metric-copy"><header>STRUCTURE <span>not drilled</span></header><div class="metric-bar green"><span style="width:0"></span></div></div></div><div class="metric"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div class="metric-copy"><header>WRITING <span>not drilled</span></header><div class="metric-bar green"><span style="width:0"></span></div></div></div><div class="metric"><span class="metric-icon purple"><img src="../asset/figma/mock-reading.png" alt=""></span><div class="metric-copy"><header>READING COMPREHENSION <span>42</span></header><div class="metric-bar purple"><span></span></div></div></div></div></article>
+		</div>
+		<section class="recommendations panel"><div class="recommendation-head"><span><i class="ti ti-sparkles"></i> Recommended Study Plan for Today</span><a href="study-plan.html">View full 4-week roadmap ›</a></div><div class="recommendation-list"><div class="recommendation"><span class="metric-icon green"><img src="../asset/figma/mock-structure.png" alt=""></span><div><h3>Subject–verb agreement drills</h3><p>Your Structure score (42) is the widest gap from goal (52) — 24% of missed items were agreement errors.</p></div><button class="start-button" type="button">Start Now</button></div><div class="recommendation"><span class="metric-icon"><img src="../asset/figma/mock-listening.png" alt=""></span><div><h3>Lecture note-taking: signal words</h3><p>Build listening accuracy with a focused 20-minute practice session.</p></div><button class="start-button" type="button">Start Now</button></div><div class="recommendation"><span class="metric-icon purple"><img src="../asset/figma/mock-reading.png" alt=""></span><div><h3>Reading</h3><p>Reading is closest to goal. Light maintenance only, so most of today's time goes to Structure.</p></div><small>49/100</small></div></div></section>
+		<section class="chart-panel panel"><div class="chart-head"><h2 class="chart-title">⌁ Score Trajectory</h2><div class="toggle"><button class="active" type="button">Composite</button><button type="button">By Section</button></div></div><div class="chart"><svg viewBox="0 0 820 150" preserveAspectRatio="none" aria-label="Score trajectory chart"><polyline points="10,134 160,112 310,122 460,92 610,65 805,35" fill="none" stroke="#0ea5e9" stroke-width="2"/></svg></div><div class="history"><div class="history-row"><b>MOCK</b><span>Mock #3 Oct 15</span><strong>517</strong></div><div class="history-row"><b>MOCK</b><span>Mock #2 Oct 8</span><strong>505</strong></div><div class="history-row"><b>PRACTICE</b><span>Practice Oct 4</span><strong>—</strong></div><div class="history-row"><b>PRACTICE</b><span>Practice Oct 3</span><strong>—</strong></div><div class="history-row"><b>PRACTICE</b><span>Practice Oct 2</span><strong>—</strong></div><div class="history-row"><b>MOCK</b><span>Mock #1 Oct 1</span><strong>493</strong></div></div></section>
+		<section class="skills-panel panel"><div class="skills-head"><h2 class="chart-title">Skill Accuracy</h2><small>Practice-based skill accuracy from your latest attempts</small><strong>86%</strong></div><div class="skills-tabs"><button class="active" type="button">Listening</button><button type="button">Structure &amp; Writing</button><button type="button">Reading</button></div><div class="skill-grid"><div class="skill-column"><h3>Module 1: Listening Foundation</h3><div class="skill-item"><header>1.1 Main idea <span>72%</span></header><div class="skill-bar"><span></span></div></div><div class="skill-item"><header>1.2 Detail questions <span>68%</span></header><div class="skill-bar"><span style="width:68%"></span></div></div><div class="skill-item"><header>1.3 Inference <span>54%</span></header><div class="skill-bar"><span style="width:54%"></span></div></div><div class="skill-item"><header>1.4 Speaker purpose <span>61%</span></header><div class="skill-bar"><span style="width:61%"></span></div></div></div><div class="skill-column"><h3>Module 2: Structure Connectors</h3><div class="skill-item"><header>2.1 Agreement <span>48%</span></header><div class="skill-bar"><span style="width:48%"></span></div></div><div class="skill-item"><header>2.2 Word forms <span>63%</span></header><div class="skill-bar"><span style="width:63%"></span></div></div><div class="skill-item"><header>2.3 Connectors <span>57%</span></header><div class="skill-bar"><span style="width:57%"></span></div></div><div class="skill-item"><header>2.4 Parallelism <span>51%</span></header><div class="skill-bar"><span style="width:51%"></span></div></div></div><div class="skill-column"><h3>Module 3: Advanced Comprehension</h3><div class="skill-item"><header>3.1 Vocabulary <span>74%</span></header><div class="skill-bar"><span style="width:74%"></span></div></div><div class="skill-item"><header>3.2 Restatement <span>46%</span></header><div class="skill-bar"><span style="width:46%"></span></div></div><div class="skill-item"><header>3.3 Organization <span>69%</span></header><div class="skill-bar"><span style="width:69%"></span></div></div><div class="skill-item"><header>3.4 Author purpose <span>62%</span></header><div class="skill-bar"><span style="width:62%"></span></div></div></div><div class="skill-column"><h3>Module 4: Mixed Drills</h3><div class="skill-item"><header>4.1 Tone and attitude <span>58%</span></header><div class="skill-bar"><span style="width:58%"></span></div></div><div class="skill-item"><header>4.2 Context clues <span>66%</span></header><div class="skill-bar"><span style="width:66%"></span></div></div><div class="skill-item"><header>4.3 Sentence meaning <span>71%</span></header><div class="skill-bar"><span style="width:71%"></span></div></div></div></div></section>
+		</main>
+		</div>
+		<script src="../study-plan-firestore-sync.js?v=20260508"></script>
+		<script>
+			const RESULT_KEYS = { listening: "toefl_section1_result", structure: "toefl_section2_result", reading: "toefl_section3_result" };
+			const sectionDefaults = { listening: 50, structure: 40, reading: 50 };
+			const progressState = { results: {}, sync: null };
+
+			function readResult(section) {
+				try {
+					const parsed = JSON.parse(localStorage.getItem(RESULT_KEYS[section]) || "null");
+					if (!parsed || typeof parsed !== "object") return null;
+					const total = Number(parsed.totalQuestions) || sectionDefaults[section];
+					const raw = Number(parsed.rawScore) || 0;
+					const scaled = Number(parsed.scaledScore) || Math.round(31 + (raw / Math.max(1, total)) * (section === "reading" ? 36 : 37));
+					return { ...parsed, total, raw, scaled, percent: Math.round((raw / Math.max(1, total)) * 100) };
+				} catch (_) { return null; }
+			}
+
+			function formatResultDate(result) {
+				const value = result && (result.setDate || result.submittedAt);
+				if (!value) return "No completed test";
+				const date = new Date(value);
+				return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }).toUpperCase();
+			}
+
+			function setText(id, value) { const node = document.getElementById(id); if (node) node.textContent = String(value); }
+			function setBar(id, value) { const node = document.getElementById(id); if (node) node.style.width = `${Math.max(0, Math.min(100, value))}%`; }
+
+			function renderProgress() {
+				const results = Object.fromEntries(Object.keys(RESULT_KEYS).map((section) => [section, readResult(section)]));
+				progressState.results = results;
+				const available = Object.values(results).filter(Boolean);
+				const overall = available.length ? Math.round(available.reduce((sum, result) => sum + result.scaled, 0) / available.length) : 0;
+				const goal = 550;
+				const percent = Math.round((overall / goal) * 100);
+				const pointsToGo = Math.max(0, goal - overall);
+				setText("overallScore", overall);
+				setText("pointsToGo", `↗ ${pointsToGo} points to go`);
+				setText("progressStart", overall);
+				setText("progressPercent", `${percent}% way to go to your goals`);
+				setBar("overallProgressBar", percent);
+				setText("projectedScore", available.length ? Math.min(goal, overall + Math.round(pointsToGo * .45)) : 0);
+				const examDate = progressState.sync && progressState.sync.plan && (progressState.sync.plan.examDate || progressState.sync.plan.examinationDate);
+				if (examDate) setText("examDays", Math.max(0, Math.ceil((new Date(examDate) - new Date()) / 86400000)));
+				Object.entries(results).forEach(([section, result]) => {
+					const percentValue = result ? result.percent : 0;
+					setText(`${section}Radar`, section === "listening" ? `Listening (${percentValue}%)` : `(${percentValue}%)`);
+				});
+				const listening = results.listening ? results.listening.percent : 0;
+				const structure = results.structure ? results.structure.percent : 0;
+				const reading = results.reading ? results.reading.percent : 0;
+				const writing = results.structure ? results.structure.percent : 0;
+				setText("writingRadar", `Writing (${writing}%)`);
+				const chartCenterX = 95;
+				const chartCenterY = 75;
+				const chartRadiusY = 63;
+				const chartRadiusX = 66;
+				const points = [
+					`${chartCenterX},${chartCenterY - (listening / 100) * chartRadiusY}`,
+					`${chartCenterX + (structure / 100) * chartRadiusX},${chartCenterY}`,
+					`${chartCenterX},${chartCenterY + (writing / 100) * chartRadiusY}`,
+					`${chartCenterX - (reading / 100) * chartRadiusX},${chartCenterY}`
+				];
+				const radar = document.getElementById("currentRadar");
+				if (radar) radar.setAttribute("points", points.join(" "));
+				const latest = available.slice().sort((left, right) => String(right.submittedAt || "").localeCompare(String(left.submittedAt || "")))[0];
+				setText("mockDate", formatResultDate(latest));
+				setText("mockName", latest ? (latest.setId || "Completed test") : "No completed test");
+				setText("mockScore", overall || "--");
+				["listening", "structure", "reading"].forEach((section) => { const value = results[section] ? results[section].scaled : null; setText(`mock${section[0].toUpperCase()}${section.slice(1)}`, value === null ? "--" : value); setBar(`mock${section[0].toUpperCase()}${section.slice(1)}Bar`, value ? Math.round((value / 68) * 100) : 0); });
+			}
+
+			function renderStructureDefaultSkills() {
+				const skillGrid = document.querySelector(".skill-grid");
+				const skillAccuracy = document.querySelector(".skills-head > strong");
+				if (!skillGrid) return;
+				if (skillAccuracy) skillAccuracy.textContent = "0%";
+				const modules = [
+					["Module 1: Sentence Foundation", "blocks", [["user-question", "1.1 Missing Subjects & Verbs"], ["brackets", "1.2 Appositives (Noun Phrase Distractors)"], ["arrows-left-right", "1.3 Present Participles (-ing) vs. Past Participles (-ed)"], ["scale", "Subject-Verb Agreement"], ["alert-triangle", "Tricky Singular Subjects"]]],
+					["Module 2: Clauses & Connectors", "git-branch", [["arrows-join", "2.1 Coordinate Connectors"], ["corner-down-right", "2.2 Adverb Clauses"], ["gift", "2.3 Noun Clauses"], ["tag", "2.4 Adjective/Relative Clauses"], ["minimize", "2.5 Reduced Clauses"]]],
+					["Module 3: Advanced Verb Mechanics", "settings-2", [["users", "3.1 Causative Verbs"], ["arrows-right-left", "3.2 Active vs. Passive Voice"], ["adjustments-horizontal", "3.3 Modals + Base Verbs"], ["arrows-left-right", "3.4 Infinitives vs. Gerunds"], ["history", "3.5 Time Markers & Tenses"]]],
+					["Module 4: Word Order & Inversion", "arrows-up-down", [["flip-vertical", "4.1 Inversion with Negatives"], ["map-pin", "4.2 Inversion with Place Expressions"], ["route", "4.3 Inversion in Conditionals"]]],
+					["Module 5: Parallelism & Comparisons", "columns", [["align-justified", "5.1 Parallel Structure"], ["link", "5.2 Paired Conjunctions"], ["stairs-up", "5.3 Comparatives & Superlatives"], ["alert-triangle", "5.4 Logical Comparisons"]]],
+					["Module 6: Word Forms and Part of Speech", "typography", [["arrows-left-right", "6.1 Adjectives vs. Adverbs"], ["letter-case", "6.2 Noun Endings"], ["copy", "6.3 Singular/Plural Countability"], ["user-check", "6.4 Pronoun Agreement"]]],
+					["Module 7: Tricky Vocabulary and Idioms", "language", [["plug-connected", "7.1 Dependent Prepositions"], ["arrows-left-right", "7.2 Make vs. Do"], ["yin-yang", "7.3 Like, Alike, and Unlike"], ["replace", "7.4 Another, Other, Others"]]]
+				];
+				skillGrid.innerHTML = modules.map(([title, moduleIcon, items]) => `
+					<div class="skill-column"><h3><i class="ti ti-${moduleIcon}"></i>${title}</h3>${items.map(([icon, item]) => `
+						<div class="skill-item"><header><span><i class="ti ti-${icon}"></i>${item}</span><span>75%</span></header><div class="skill-bar"><span style="width: 0"></span></div><small>Not attempted</small></div>
+					`).join("")}</div>
+				`).join("");
+			}
+
+			document.querySelectorAll(".toggle button, .skills-tabs button").forEach((button) => button.addEventListener("click", () => { button.parentElement.querySelectorAll("button").forEach((item) => item.classList.remove("active")); button.classList.add("active"); }));
+			renderStructureDefaultSkills();
+			document.querySelectorAll(".skills-tabs button")[1]?.classList.add("active");
+			document.querySelectorAll(".skills-tabs button")[0]?.classList.remove("active");
+			document.querySelectorAll(".start-button").forEach((button) => button.addEventListener("click", () => { button.textContent = "Opened"; button.disabled = true; }));
+			window.addEventListener("storage", renderProgress);
+			if (typeof StudyPlanFirestoreSync === "function") {
+				progressState.sync = new StudyPlanFirestoreSync({ projectId: "quickcheck-25590" });
+				progressState.sync.subscribe((snapshot) => { progressState.syncSnapshot = snapshot; renderProgress(); });
+				progressState.sync.start();
+			}
+			renderProgress();
+		</script>
+-->

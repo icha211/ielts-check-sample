@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TOEFL ITP Study Plan | IELTS Check</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Plus+Jakarta+Sans:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">    <style>
+        :root {
+            --blue-950: #06223d;
+            --blue-900: #0a3560;
+            --blue-800: #0e4d88;
+            --blue-700: #1463ad;
+            --blue-600: #1d72bf;
+            --blue-100: #e8f5ff;
+            --text: #10243a;
+            --muted: #60758d;
+            --card: #ffffff;
+            --surface: #f4f9fe;
+            --stroke: #d7e7f6;
+            --success: #0f9f7f;
+            --shadow: 0 18px 40px rgba(10, 53, 96, 0.1);
+            --listening: #1463ad;
+            --structure: #0891b2;
+            --reading: #4f46e5;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Jakarta Plus Sans", "Arial", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 16% -10%, rgba(115, 186, 255, 0.6) 0%, transparent 30%),
+                linear-gradient(180deg, #eaf5ff 0%, #f7fbff 32%, #f6faff 100%);
+        }
+
+        .app-shell {
+            display: flex;
+            min-height: 100vh;
+        }   
+
+        .content-wrap {
+            min-width: 0;
+        }
+
+        .sidebar-main,
+        .sidebar-list,
+        .sidebar-utility { display: grid; gap: 8px; }
+
+        .sidebar-main { gap: 24px; }
+        .sidebar-brand-row { display: flex; align-items: center; justify-content: space-between; }
+        .sidebar-brand { display: flex; align-items: center; border: 0; padding: 0; background: transparent; cursor: pointer; }
+        .sidebar-brand img { width: 88px; height: 40px; object-fit: contain; }
+
+        .sidebar-collapse {
+            display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px;
+            color: #59708a; background: transparent; cursor: pointer;
+        }
+
+        .sidebar-link {
+            min-height: 40px; padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+            border-radius: 8px; color: #1c1c1c; text-decoration: none; font-size: 14px;
+        }
+
+        .sidebar-link:hover { color: #005faa; background: rgba(255, 255, 255, 0.66); }
+        .sidebar-link.active { color: #005faa; background: #ffffff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05); }
+        .sidebar-link svg, .sidebar-link img, .sidebar-search svg, .sidebar-collapse img { width: 20px; height: 20px; flex: 0 0 auto; stroke-width: 1.5; }
+
+        .sidebar-profile {
+            padding-top: 16px; border-top: 1px solid #e6eef7; display: flex; align-items: center; gap: 10px;
+        }
+
+        .sidebar-avatar {
+            width: 40px; height: 40px; border-radius: 50%; flex: 0 0 auto;
+            background: url("../asset/figma/sidebar-avatar.jpeg") center / cover no-repeat;
+        }
+
+        .sidebar-profile p { margin: 0; }
+        .sidebar-profile-name { font-size: 14px; color: #1c1c1c; }
+        .sidebar-profile-plan { margin-top: 2px !important; font-size: 12px; color: #9f9f9f; }
+
+        .app-sidebar { z-index: 10; }
+        .app-shell.sidebar-collapsed { grid-template-columns: 80px minmax(0, 1fr); }
+        .sidebar-expand { display: none; }
+
+        .sidebar-collapsed .app-sidebar { padding: 24px 16px; overflow: visible; }
+        .sidebar-collapsed .sidebar-main { align-items: center; }
+        .sidebar-collapsed .sidebar-brand-row { position: relative; width: 40px; justify-content: center; }
+        .sidebar-collapsed .sidebar-brand img { width: 36px; height: 32px; }
+        .sidebar-collapsed .sidebar-collapse,
+        .sidebar-collapsed .sidebar-search input,
+        .sidebar-collapsed .sidebar-link span,
+        .sidebar-collapsed .sidebar-profile { display: none; }
+        .sidebar-collapsed .sidebar-search,
+        .sidebar-collapsed .sidebar-link { width: 40px; min-height: 40px; height: 40px; padding: 10px; justify-content: center; }
+        .sidebar-collapsed .sidebar-list { width: 100%; justify-items: center; }
+        .sidebar-collapsed .sidebar-expand { display: grid; place-items: center; position: absolute; top: -30px; left: 50%; width: 28px; height: 28px; padding: 4px; border: 0; border-radius: 8px; background: #ffffff; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08); cursor: pointer; transform: translateX(-50%); opacity: 0; pointer-events: none; }
+        .sidebar-collapsed .sidebar-expand img { width: 20px; height: 20px; }
+        .sidebar-collapsed .sidebar-brand-row:hover .sidebar-expand,
+        .sidebar-collapsed .sidebar-brand-row:focus-within .sidebar-expand { opacity: 1; pointer-events: auto; }
+
+        .sidebar-collapsed [data-tooltip] { position: relative; }
+        .sidebar-collapsed [data-tooltip]::after { content: attr(data-tooltip); position: absolute; left: calc(100% + 14px); top: 50%; z-index: 100; min-width: max-content; height: 40px; padding: 0 18px; display: grid; place-items: center; border-radius: 20px; color: #ffffff; background: #000000; font-family: "Inter", sans-serif; font-size: 15px; font-weight: 600; line-height: 1.4; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18); opacity: 0; pointer-events: none; transform: translateY(-50%) translateX(-4px); transition: opacity 0.14s ease, transform 0.14s ease; }
+        .sidebar-collapsed [data-tooltip]:hover::after,
+        .sidebar-collapsed [data-tooltip]:focus-visible::after { opacity: 1; transform: translateY(-50%) translateX(0); }
+
+        .content-wrap { background: #ffffff; }
+        .subheader { padding: 36px 28px 0; display: block; color: #7a8fa6; background: transparent; border: 0; }
+        .subheader strong { font-size: 15px; font-weight: 600; }
+        .subnav { display: none; }
+        .shell { width: min(1150px, 100%); max-width: none; margin: 0 auto; padding: 18px 28px 54px; }
+    </style>
+</head>
+<link rel="stylesheet" href="toefl-navigation.css?v=20260918b">
+</head>
+<body>
+    <div class="app-shell" id="historyAppShell">
+        <nav class="app-sidebar" aria-label="TOEFL navigation">
+            <div class="sidebar-main">
+                <div class="sidebar-brand-row">
+                    <button class="sidebar-brand" id="historySidebarToggle" type="button" aria-label="Collapse navigation" aria-expanded="true" data-tooltip="Close Sidebar"><img src="../asset/figma/sidebar-profile.png" alt="Quick Check"></button>
+                    <button class="sidebar-collapse" id="historySidebarToggleButton" type="button" aria-label="Collapse navigation" data-tooltip="Close Sidebar"><img src="../asset/figma/nav-sidebar-collapse.svg" alt=""></button>
+                    <button class="sidebar-expand" id="historySidebarExpandButton" type="button" aria-label="Expand navigation" data-tooltip="Open Sidebar"><img src="../asset/figma/nav-sidebar-expand.svg" alt=""></button>
+                </div>
+                <div class="sidebar-list">
+                    <a class="sidebar-link" href="index.html" data-tooltip="Dashboard"><i data-lucide="house" aria-hidden="true"></i><span>Dashboard</span></a>
+                    <a class="sidebar-link" href="study-plan.html" data-tooltip="Today"><svg width="13.3" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><text id="studyTodayNumber" x="12" y="18" text-anchor="middle" stroke="none" fill="currentColor" style="font:700 6px Inter">1</text></svg><span id="studyTodayLabel">Today</span></a>
+                    <a class="sidebar-link" href="../study-progress.html" data-tooltip="My Progress"><img src="../asset/figma/nav-chart-bar.svg" alt=""><span>My Progress</span></a>
+                    <a class="nav-item active" href="history.html" data-nav-label="Test History" data-tooltip="Test History"><i data-lucide="history" aria-hidden="true"></i><span>Test History</span></a>
+                </div>
+            </div>
+            <div class="sidebar-utility">
+                <a class="sidebar-link" href="../index.html#settings" data-tooltip="Setting"><img src="../asset/figma/nav-settings.svg" alt=""><span>Setting</span></a>
+                <a class="sidebar-link" href="../index.html#notifications" data-tooltip="Notification"><i data-lucide="bell-dot" aria-hidden="true"></i><span>Notifications</span></a>
+                <div class="sidebar-profile"><div class="sidebar-avatar" aria-hidden="true"></div><div><p class="sidebar-profile-name">Culaccino_</p><p class="sidebar-profile-plan">Trial</p></div></div>
+            </div>
+        </nav>
+    </div>
+    <main class="shell">
+        <div class="content-wrap">
+            <!-- Page content goes here -->
+        </div>
+    </main>
+</body>
+</html>

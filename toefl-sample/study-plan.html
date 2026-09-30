@@ -7,8 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Plus+Jakarta+Sans:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/tabler-icons.min.css">
-    <style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">    <style>
         :root {
             --blue-950: #06223d;
             --blue-900: #0a3560;
@@ -92,15 +91,17 @@
             padding: 28px;
         }
 
-        .page-head {
-            margin-bottom: 24px;
+        .breadcrumb-link {
+            margin: 0; /* CRITICAL: Forces the browser to respect your 8px gap */
+            font-size: 16px;
+            font-family: "Outfit", sans-serif;
+            font-weight: 400;
+            color: #64748B;
+            text-decoration: none;
         }
 
-        .page-head h1 {
-            margin: 0;
-            font-size: 34px;
-            color: var(--blue-900);
-            letter-spacing: -0.03em;
+        .breadcrumb-link:hover {
+            color: #0F172A;
         }
 
         .page-head p {
@@ -110,25 +111,12 @@
             line-height: 1.55;
         }
 
-        .schedule-card,
         .mock-panel {
             background: rgba(255, 255, 255, 0.9);
             border: 1px solid rgba(215, 231, 246, 0.95);
             border-radius: 26px;
             box-shadow: var(--shadow);
             backdrop-filter: blur(6px);
-        }
-
-        .schedule-card {
-            padding: 24px;
-            margin-bottom: 22px;
-        }
-
-        .schedule-toolbar {
-            display: grid;
-            grid-template-columns: auto 1fr auto;
-            align-items: center;
-            gap: 16px;
         }
 
         .nav-arrow {
@@ -167,10 +155,6 @@
             transition: transform 0.2s ease;
         }
 
-        .schedule-card.expanded .month-chevron {
-            transform: rotate(180deg);
-        }
-
         .month-caption {
             margin-top: 8px;
             font-size: 13px;
@@ -184,10 +168,6 @@
             overflow: hidden;
             max-height: 210px;
             transition: max-height 0.28s ease;
-        }
-
-        .schedule-card.expanded .date-strip-wrap {
-            max-height: 620px;
         }
 
         .date-strip {
@@ -299,19 +279,6 @@
             gap: 14px;
         }
 
-        .mock-icon {
-            width: 52px;
-            height: 52px;
-            border-radius: 18px;
-            background: linear-gradient(135deg, #d7ecff, #eef7ff);
-            color: var(--blue-900);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-        }
-
         .mock-kicker {
             margin: 2px 0 6px;
             font-size: 12px;
@@ -349,10 +316,165 @@
             white-space: nowrap;
         }
 
-        .section-grid {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 16px;
+        .choose-section-title {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 0px;
+            gap: 8px; /* Creates the exact 8px gap */
+        }
+
+        .choose-section {
+            margin: 0; /* CRITICAL: Forces the browser to respect your 8px gap */
+            font-size: 20px;
+            font-family: "Outfit", sans-serif;
+            font-weight: 600;
+            color: #000000;
+        }
+
+        .choose-section-description {
+            margin: 0; /* CRITICAL: Forces the browser to respect your 8px gap */
+            font-size: 14px;
+            font-family: "Plus Jakarta Sans", sans-serif;
+            font-weight: 400;
+            color: #7A8FA6;
+        }
+
+        .section-grid { display: grid; margin-top: 20px; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+
+        /* --- Card Base --- */
+        .section-card-v2 {
+            display: flex;
+            flex-direction: column;
+            border-radius: 24px;
+            padding: 32px 24px 24px 24px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.02);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        /* --- Image Container --- */
+        .card-image-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 140px;
+            margin-bottom: 24px;
+        }
+
+        .card-image-wrap img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* --- Typography & Stats --- */
+        .card-content-wrap {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .card-title {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 600;
+            font-family: "Plus Jakarta Sans", sans-serif;
+            color: #0F172A;
+            letter-spacing: -0.02em;
+        }
+
+        .card-desc {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #64748B;
+            font-weight: 400;
+            font-family: "Plus Jakarta Sans", sans-serif;
+            min-height: 42px; /* Keeps stats aligned if descriptions vary in length */
+        }
+
+        .card-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+            margin-bottom: 24px;
+        }
+
+        .stat-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #64748B;
+            font-family: "Plus Jakarta Sans", sans-serif;
+        }
+
+        .stat-row i {
+            font-size: 18px;
+        }
+
+        /* --- Buttons --- */
+        .card-actions-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .card-actions-wrap .btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            size: 20px;
+        }
+
+        .card-actions-wrap .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: #FFFFFF;
+            color: #64748B;
+        }
+
+        /* ==========================================================================
+        THEMES (Colors from Figma)
+        ========================================================================== */
+
+        /* 1. Listening (Green) */
+        .theme-listening { background-color: #E0FBF1; border-color: #C3EEDD; }
+        .theme-listening .btn-primary { background-color: #149D82; color: white; }
+        .theme-listening .stat-row i { color: #149D82; }
+        .theme-listening .btn-secondary i { color: #64748B; }
+
+        /* 2. Structure (Blue) */
+        .theme-structure { background-color: #E6F3FB; border-color: #D0E8F7; }
+        .theme-structure .btn-primary { background-color: #0369A1; color: white; }
+        .theme-structure .stat-row i { color: #0369A1; }
+        .theme-structure .btn-secondary i { color: #64748B; }
+
+        /* 3. Reading (Purple) */
+        .theme-reading { background-color: #F3EFFC; border-color: #E5DBF9; }
+        .theme-reading .btn-primary { background-color: #6B4CFF; color: white; }
+        .theme-reading .stat-row i { color: #6B4CFF; }
+        .theme-reading .btn-secondary i { color: #64748B; }
+
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .section-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         .section-card {
@@ -412,6 +534,50 @@
             display: flex;
             justify-content: center;
             align-items: center;
+        }
+
+        /* Styling for the stacked practice buttons */
+        .btn-practice {
+            width: 100%;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 20px; /* Pill shape */
+            color: #ffffff;
+            font-style: italic;
+            font-weight: 600;
+            font-size: 13px;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.2s ease, filter 0.2s ease;
+        }
+
+        .btn-practice:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        /* Listening Part Buttons (Teal) */
+        .btn-part {
+            background-color: #159b8a;
+        }
+
+        /* Beginner Level (Yellow) */
+        .btn-beginner {
+            background-color: #ffd600;
+        }
+
+        /* Intermediate Level (Orange/Gold) */
+        .btn-intermediate {
+            background-color: #fbaf00;
+        }
+
+        /* Advance Level (Red) */
+        .btn-advance {
+            background-color: #da251d;
         }
 
         .frame-parent {
@@ -533,23 +699,23 @@
             min-width: 0;
         }
 
-        .alarm-1-1-parent {
+        .test-package {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 4px;
             font-size: 8px;
             font-family: "Plus Jakarta Sans", sans-serif;
-            color: #7a8fa6;
+            color: #0D9488;
         }
 
-        .alarm-1-1 {
+        .test {
             width: 16px;
             height: 16px;
             font-size: 16px;
             line-height: 1;
             display: inline-block;
-            color: #7a8fa6;
+            color: #0D9488;
             stroke-width: 1.5;
         }
 
@@ -557,7 +723,7 @@
             position: relative;
             font-weight: 500;
             font-size: 12px;
-            color: #7a8fa6;
+            color: #0D9488;
         }
 
         .detail-pill {
@@ -718,11 +884,13 @@
         .subheader strong { font-size: 15px; font-weight: 600; }
         .subnav { display: none; }
         .shell { width: min(1150px, 100%); max-width: none; margin: 0 auto; padding: 18px 28px 54px; }
-        .page-head { margin: 0 0 24px; }
-        .page-head h1 { font-size: 30px; color: #3a4a5c; }
 
-        .schedule-card {
-            margin: 0 0 18px; padding: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none;
+        .main-page-title {
+            margin: 0;
+            font-size: 24px;
+            font-family: "Outfit", sans-serif;
+            font-weight: 600;
+            color: #000000;
         }
 
         .schedule-toolbar { grid-template-columns: 40px auto 40px; justify-content: start; gap: 8px; }
@@ -743,15 +911,133 @@
         .mock-progress { display: none; }
 
         .simulation-banner {
-            min-height: 114px; padding: 10px 15px; border-radius: 8px; display: flex; justify-content: space-between;
-            align-items: center; gap: 24px; color: #ffffff; background: linear-gradient(90deg, #005faa, #0d9488);
+            position: relative;
+            margin-bottom: 20px; /* Fixed: "margin-bellow" is not a valid CSS property */
+            overflow: hidden;
+            width: 100%;
+            min-height: 360px; /* Note: 360px is quite tall. If the banner looks too stretched, try 180px or 200px */
+            border-radius: 22px;
+            background: radial-gradient(circle at 68% 48%, rgba(194,225,255,.75), transparent 28%), linear-gradient(135deg, #f1f8ff, #e8f3ff 52%, #edf7ff);
+            padding: 34px;
+            display: grid;
+            grid-template-columns: minmax(340px, 1.08fr) minmax(420px, 1fr) 180px;
+            align-items: center;
+            gap: 18px;
+            box-shadow: 0 12px 28px rgba(40,91,150,.12); /* Fixed: Added the missing semicolon */
         }
 
         .simulation-eyebrow { margin: 0 0 16px; font-family: "Plus Jakarta Sans", sans-serif; font-size: 16px; font-style: italic; font-weight: 500; }
         .simulation-title { margin: 0; font-family: "Plus Jakarta Sans", sans-serif; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
         .simulation-meta { margin: 16px 0 0; font-family: "Plus Jakarta Sans", sans-serif; font-size: 12px; font-weight: 500; }
-        .simulation-start { border: 0; border-radius: 20px; padding: 5px 10px 5px 18px; color: #0071b6; background: #ffffff; font-family: "Plus Jakarta Sans", sans-serif; font-size: 24px; font-style: italic; font-weight: 600; cursor: pointer; white-space: nowrap; }
-        .simulation-start:disabled { cursor: not-allowed; color: #6d8498; background: rgba(255, 255, 255, 0.76); }
+        .simulation-start{border:0;min-height:52px;padding:0 24px;border-radius:17px;color:#fff;background:linear-gradient(100deg,#0878e8,#118fe7);font-size:16px;font-weight:750;display:inline-flex;align-items:center;gap:16px;cursor:pointer;box-shadow:0 9px 20px rgba(8,120,232,.22);transition:.18s}
+        .simulation-start:hover{transform:translateY(-2px)}
+        .simulation-start:focus-visible{outline:3px solid #80bfff;outline-offset:3px}
+        
+        .hero-art{
+            min-height:290px;
+            display:flex;
+            align-items:center;
+            justify-content:center
+        }
+
+        .hero-art img{
+            display:block;
+            width:min(100%,600px);
+            height:auto;
+            object-fit:contain;
+            filter:drop-shadow(0 18px 24px rgba(41,91,146,.1))
+        }
+
+        .hero-left,
+        .hero-art,
+        .hero-progress{
+            position:relative;
+            z-index:1
+        }
+
+        .hero-left h1{
+            margin:0;
+            max-width:520px;
+            line-height:1.05;
+            letter-spacing:-1.8px;
+            font-family: "Plus Jakarta Sans", sans-serif;
+            font-size: 36px;
+            font-weight:700;
+        }
+        
+        .hero-left p{
+            margin:16px 0 20px;
+            max-width:520px;
+            color:var(--muted);
+            font-family: "Plus Jakarta Sans", sans-serif;
+            font-size:16px;
+            font-weight:400;
+            line-height:1.48
+        }
+
+        .hero-note{
+            margin-top:10px!important;
+            font-family: "Plus Jakarta Sans", sans-serif;
+            font-size:10px!important;
+            line-height:1.35!important;
+            color:#7A8FA6
+        }
+        .hero-progress{
+            justify-self:end;
+            width:180px;
+            min-height:220px;
+            padding:20px 18px;
+            border-radius:18px;
+            background:rgba(255,255,255,.94);
+            border:1px solid rgba(186,215,243,.8);
+            box-shadow:0 9px 22px rgba(38,90,145,.1);
+            text-align:center
+        }
+        
+        .hero-progress{
+            position:relative;
+            z-index:1
+        }
+
+        .hero-progress h2{
+            font-size:15px;
+            margin:0 0 15px
+        }
+
+        .ring{
+            width:108px;
+            height:108px;
+            margin:0 auto 13px;
+            border-radius:50%;
+            display:grid;
+            place-items:center;
+            background:conic-gradient(#e7eef7 0 0%,#e7eef7 100%);
+            position:relative
+        }
+
+        .ring:before{
+            content:"";
+            position:absolute;
+            inset:10px;
+            border-radius:50%;
+            background:#fff
+        }
+        .ring span{
+            position:relative;
+            font-size:20px;
+            font-weight:800
+        }
+        .progress-meta{
+            font-size:12px;
+            font-weight:700
+        }
+
+        .progress-line{
+            height:4px;
+            border-radius:99px;
+            background:#e5edf6;
+            margin-top:14px
+        }
 
         .trial-message {
             margin: 18px 0 0; padding: 14px 16px; display: none; border: 1px solid #d7e7f6; border-radius: 8px;
@@ -760,9 +1046,7 @@
 
         .trial-message.visible { display: block; }
         .trial-message.visible:not(.locked) { display: none; }
-        .trial-message.locked { border-color: #f0cfa3; color: #76511e; background: #fffaf0; }
 
-        .section-grid { margin-top: 26px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
         .section-card {
             min-height: 170px;
             height: 170px;
@@ -775,7 +1059,6 @@
             align-items: center;
             gap: 20px;
         }
-        .section-card:nth-child(3) { grid-column: 1 / -1; width: 524px; max-width: 100%; justify-self: center; }
         .section-head {
             display: flex;
             align-items: center;
@@ -798,8 +1081,8 @@
         .section-status-node img { width: 15px; height: 15px; object-fit: contain; }
         .section-title { font-family: "Outfit", sans-serif; font-size: 18px; font-weight: 600; color: #000000; white-space: nowrap; }
         .detail-row {
-            width: 247px;
-            min-height: 92px;
+            width: 304px;
+            min-height: 300px;
             display: block;
             flex: 0 0 247px;
             margin: 0;
@@ -816,7 +1099,7 @@
             width: 172px;
         }
         .status-badge { display: none; }
-        .card-actions { display: flex; width: 172px; flex-direction: column; gap: 8px; align-items: center; }
+        .card-actions { display: flex; width: 120px; flex-direction: column; gap: 8px; align-items: center; }
         .btn {
             border: none;
             border-radius: 20px;
@@ -833,7 +1116,7 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            width: 172px;
+            width: 120px;
             min-width: 0;
             max-width: 100%;
             height: 48px;
@@ -883,6 +1166,88 @@
         .trial-locked .section-card { opacity: 0.78; }
         .mock-notes { margin-top: 18px; border-radius: 8px; }
 
+        .modal{
+            position:fixed;
+            inset:0;background:#082e2b99;
+            backdrop-filter:blur(6px);
+            z-index:100;
+            display:none;
+            align-items:center;
+            justify-content:center;
+            padding:20px
+        }
+        .modal.open{display:flex}
+        .modal-box{
+            background:#fff;
+            border-radius:20px;
+            max-width:650px;
+            width:100%;
+            padding:24px;
+            box-shadow:0 25px 70px #001f1c55
+        }
+        .modal-head{display:flex;justify-content:space-between;align-items:center}
+        .close{border:0;background:#eef4f6;width:34px;height:34px;border-radius:50%}
+        
+        .mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+        .mode{border:1px solid var(--line);border-radius:14px;padding:16px;text-align:left;background:#fff}
+        .mode:hover,.mode.selected{border-color:var(--teal);box-shadow:0 0 0 3px #0aa89922}
+        .mode strong{display:block;margin-bottom:5px}
+        
+        .primary{border:0;background:var(--teal);color:#fff;border-radius:12px;padding:11px 17px;font-weight:700}
+        .secondary{border:1px solid var(--line);background:#fff;border-radius:12px;padding:11px 17px}
+        .toast{position:fixed;right:20px;bottom:20px;background:#153b49;color:#fff;padding:12px 16px;border-radius:12px;box-shadow:var(--shadow);display:none;z-index:120}
+        .toast.show{display:block}
+
+        .mode-stack{display:grid;gap:10px}
+        .mode-card{
+            position:relative;
+            width:100%;
+            display:grid;
+            grid-template-columns:66px 1fr 24px;
+            gap:12px;align-items:center;
+            text-align:left;
+            padding:13px 13px 13px 12px;
+            border:1px solid #d7e4e9;
+            background:#fff;
+            border-radius:15px;
+            cursor:pointer;
+            font-family:inherit;
+            transition:border-color .15s,box-shadow .15s,background .15s;box-sizing:border-box}
+        .mode-card:hover{
+            border-color:#91cfc7;
+            box-shadow:0 5px 18px #0a6f6320
+        }
+        .mode-card.selected{
+            border:1.5px solid #0aa58f;
+            background:#f2fcf9;
+            box-shadow:0 0 0 3px #0aa58f12
+        }
+        .mode-icon{width:66px;height:66px;border-radius:14px;display:grid;place-items:center;overflow:hidden}
+        .mode-icon.instant{background:#e4f8e9}
+        .mode-icon.full{background:#eaf2ff}
+        .mode-icon img{width:62px;height:62px;object-fit:contain}
+        .mode-content{min-width:0}
+        .mode-title-row{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+        .mode-content strong{font-size:15px;color:#142f3b}
+        .mode-content p{font-size:10.5px;line-height:1.45;color:#536b77;margin:4px 0 2px}
+        .mode-content small{font-size:9.5px;color:#83939b}
+        .mode-badge{font-size:8px;font-weight:800;padding:4px 6px;border-radius:7px;white-space:nowrap}
+        .mode-badge.recommended{background:#d9f5e7;color:#078468}
+        .mode-badge.simulation{background:#e7efff;color:#356ac4}
+        .radio{width:20px;height:20px;border:2px solid #cbd9df;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:11px;box-sizing:border-box}
+        .radio.checked{background:#0aa58f;border-color:#0aa58f}
+        .practice-summary{margin-top:12px;background:#f7f9fa;border:1px solid #e8eef1;border-radius:11px;padding:9px 11px;display:flex;justify-content:space-between;align-items:center;font-size:10px}
+        .practice-summary>div{display:flex;align-items:center;gap:8px}
+        .summary-icon{width:22px;height:22px;border-radius:50%;background:#dff5ed;color:#07886f;display:grid;place-items:center;font-size:11px;font-weight:800}
+        .practice-summary b{display:block;color:#3b5662;font-size:9.5px}
+        .practice-summary small{display:block;color:#87969e;font-size:8.5px;margin-top:2px}
+        .summary-time{color:#647985;font-weight:750}
+        .modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:13px}
+        .modal-footer .secondary,.modal-footer .primary{height:38px;padding:0 16px;border-radius:10px;cursor:pointer;font-family:inherit}
+        .modal-start{min-width:132px}.modal-start span{margin-left:5px}
+        .practice-modal::-webkit-scrollbar{width:6px}
+        .practice-modal::-webkit-scrollbar-thumb{background:#d6e2e6;border-radius:6px}
+
         @media (max-width: 900px) {
             .app-shell { grid-template-columns: 1fr; }
             .app-shell.sidebar-collapsed { grid-template-columns: 1fr; }
@@ -905,18 +1270,26 @@
 
         @media (max-width: 1100px) {
             .section-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
             }
 
             .date-strip {
                 grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+
+            .toefl-hero{
+                grid-template-columns:1fr 1fr
+            }
+
+            .hero-progress{
+                display:none
             }
         }
 
         @media (max-width: 860px) {
             .shell { padding: 18px 16px 38px; }
             .simulation-banner { align-items: flex-start; flex-direction: column; }
-            .section-grid { grid-template-columns: 1fr; }
+            .section-grid { grid-template-columns: 3fr; }
             .section-card:nth-child(3) { grid-column: auto; width: 100%; }
             .shell {
                 padding: 20px 16px;
@@ -928,9 +1301,22 @@
                 display: grid;
             }
 
+            .toefl-hero{
+                grid-template-columns:1fr;
+                padding:24px 20px;
+                border-radius:18px
+            }
             .mock-progress {
                 justify-self: start;
             }
+
+            .hero-art{
+                min-height:210px;
+                order:2
+            }
+            
+            .hero-copy{order:1}
+            .hero-art img{max-height:250px}
 
             .date-strip {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -941,7 +1327,6 @@
             .subheader { padding: 18px 16px 0; }
             .sidebar-list { display: flex; overflow-x: auto; }
             .sidebar-link { flex: 0 0 auto; }
-            .page-head h1 { font-size: 25px; }
             .subheader {
                 flex-direction: column;
                 align-items: start;
@@ -972,13 +1357,11 @@
                     <button class="sidebar-collapse" id="studySidebarToggleButton" type="button" aria-label="Collapse navigation" data-tooltip="Close Sidebar"><img src="../asset/figma/nav-sidebar-collapse.svg" alt=""></button>
                     <button class="sidebar-expand" id="studySidebarExpandButton" type="button" aria-label="Expand navigation" data-tooltip="Open Sidebar"><img src="../asset/figma/nav-sidebar-expand.svg" alt=""></button>
                 </div>
-                <label class="sidebar-search" for="studyNavSearch"><i data-lucide="search" aria-hidden="true"></i><input id="studyNavSearch" type="search" placeholder="Search"></label>
                 <div class="sidebar-list">
                     <a class="sidebar-link" href="index.html" data-tooltip="Dashboard"><i data-lucide="house" aria-hidden="true"></i><span>Dashboard</span></a>
                     <a class="sidebar-link active" href="study-plan.html" data-tooltip="Today"><svg width="13.3" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><text id="studyTodayNumber" x="12" y="18" text-anchor="middle" stroke="none" fill="currentColor" style="font:700 6px Inter">1</text></svg><span id="studyTodayLabel">Today</span></a>
-                    <a class="sidebar-link" href="#mockTitle" data-tooltip="Mock Test"><img src="../asset/figma/nav-books.svg" alt=""><span>Mock Test</span></a>
-                    <a class="sidebar-link" href="section%201.html" data-tooltip="Practice Test"><img src="../asset/figma/nav-book.svg" alt=""><span>Practice Test</span></a>
                     <a class="sidebar-link" href="../study-progress.html" data-tooltip="My Progress"><img src="../asset/figma/nav-chart-bar.svg" alt=""><span>My Progress</span></a>
+                    <a class="nav-item" href="history.html" data-nav-label="Test History" data-tooltip="Test History"><i data-lucide="history" aria-hidden="true"></i><span>Test History</span></a>
                 </div>
             </div>
             <div class="sidebar-utility">
@@ -987,66 +1370,73 @@
                 <div class="sidebar-profile"><div class="sidebar-avatar" aria-hidden="true"></div><div><p class="sidebar-profile-name">Culaccino_</p><p class="sidebar-profile-plan">Trial</p></div></div>
             </div>
         </nav>
-        <div class="content-wrap">
-            <section class="subheader" aria-label="Study plan header">
-                <strong>‹&nbsp; Back to calendar</strong>
-                <div class="subnav">
-                    <a href="index.html">📅 Month Planner</a>
-                    <a class="active" href="study-plan.html">🧭 Daily Schedule</a>
-                    <a href="developer.html">🛠 Developer</a>
-                </div>
-            </section>
-
             <main class="shell">
-                <div class="page-head">
-                    <h1>Daily schedule inside your selected month</h1>
-                </div>
-
-                <section class="schedule-card" id="scheduleCard">
-                    <div class="schedule-toolbar">
-                        <button class="nav-arrow" type="button" id="prevDateBtn" aria-label="Previous date">‹</button>
-                        <button class="month-toggle" type="button" id="monthToggle" aria-expanded="false">
-                            <span class="month-label"><span id="monthHeading">Februari, 2026</span><span class="month-chevron">▾</span></span>
-                            <div class="month-caption" id="monthCaption"></div>
-                        </button>
-                        <button class="nav-arrow" type="button" id="nextDateBtn" aria-label="Next date">›</button>
+                <div class="content-wrap">
+                    
+                    <div class="page-header-container">
+                        <nav class="breadcrumb" style="display: flex; align-items: center; gap: 6px;">
+                            <a href="index.html" class="breadcrumb-link" style="display: inline-flex; align-items: center; gap: 4px;">
+                                <i data-lucide="chevron-left" style="width: 16px; height: 16px; stroke-width: 1.5;"></i> Dashboard
+                            </a>
+                            <span class="breadcrumb-separator">/</span>
+                            <span class="breadcrumb-current" id="breadcrumbDate">Schedule</span>
+                        </nav>
+                        <h1 class="main-page-title" id="pageTitleDate">Schedule</h1>
                     </div>
-
-                    <div class="date-strip-wrap" id="dateStripWrap">
-                        <div class="date-strip" id="dateStrip"></div>
-                        <div class="date-helper" id="dateHelper"></div>
-                    </div>
-                </section>
-
-                <section class="mock-panel" aria-labelledby="mockTitle">
-                    <div class="mock-panel-head">
-                        <div class="mock-title-wrap">
-                            <div class="mock-icon">🧪</div>
-                            <div>
-                                <div class="mock-kicker" id="mockKicker">Selected day</div>
-                                <h2 class="mock-title" id="mockTitle">Mock Test Package</h2>
-                                <p class="mock-subtitle" id="mockSubtitle">A focused daily TOEFL set for all three sections.</p>
+                
+                    <section class="mock-panel" aria-labelledby="mockTitle">
+                        <div class="mock-panel-head">
+                            <div class="mock-title-wrap">
+                                <div>
+                                    <div class="mock-kicker" id="mockKicker">MOCK TEST</div>
+                                </div>
                             </div>
                         </div>
-                        <div class="mock-progress" id="mockProgress">0 of 3 Tests Complete</div>
-                    </div>
+                        <section class="simulation-banner" aria-labelledby="simulationTitle">
+                            <div class="hero-left">
+                                <h1 id="simulationTitle">Complete TOEFL ITP<br>In Full Mode</h1>
+                                <p>to experience the real test scenario</p>
 
-                    <section class="simulation-banner" aria-labelledby="simulationTitle">
-                        <div>
-                            <p class="simulation-eyebrow" id="simulationEyebrow">FULL-LENGTH SIMULATION</p>
-                            <h2 class="simulation-title" id="simulationTitle">Complete Mock Test</h2>
-                            <p class="simulation-meta" id="simulationMeta">140 Questions &nbsp;|&nbsp; 115 minutes &nbsp;|&nbsp; All 3 Sections</p>
+                                <button class="simulation-start" id="fullTestButton" type="button" onclick="startMockTest()">
+                                    <span>START NOW</span>
+                                    <span class="arrow"><i data-lucide="move-right"></i></span>
+                                </button>
+
+                                <p class="hero-note">Complete all three sections<br>(Listening, Structure & Writing, Reading) in a single mock test.</p>
+                            </div>
+
+                            <div class="hero-art"><img src="../asset/figma/card-toeflitp.png" alt="TOEFL ITP card"></div>
+
+                            <aside class="hero-progress" aria-label="Your progress">
+                                <h2>Your Progress</h2>
+                                    <div class="ring">
+                                        <span>0%</span>
+                                    </div>
+                                    <div class="progress-meta">0 / 3 Sections</div>
+                                    <div class="progress-line"></div>
+                            </aside>
+                        </section>
+
+                        <div class="trial-message" id="trialMessage" aria-live="polite"></div>
+
+                        <div class="choose-section-title" style="margin-bottom: 24px;">
+                            <h2 class="choose-section" id="chooseSection">Choose Your Section</h2>
+                            <p class="choose-section-description" id="chooseSectionDescription">Practice each section individually or take the full test at once.</p>
                         </div>
-                        <button class="simulation-start" id="fullTestButton" type="button">Start Full Test →</button>
+
+                        <div class="section-grid" id="sectionGrid"></div>
+
+                        <div class="mock-notes" id="mockNotes"></div>
                     </section>
-
-                    <div class="trial-message" id="trialMessage" aria-live="polite"></div>
-
-                    <div class="section-grid" id="sectionGrid"></div>
-
-                    <div class="mock-notes" id="mockNotes"></div>
-                </section>
+                </div>
             </main>
+        </div>
+    </div>
+
+    <!-- Practice Configuration Modal -->
+    <div class="modal" id="practiceModal" role="dialog" aria-modal="true">
+        <div class="modal-box" id="modalBoxContent">
+            <!-- Dynamically populated via JS -->
         </div>
     </div>
 
@@ -1057,638 +1447,677 @@
     <script src="toefl-developer-auth.js?v=20260918b"></script>
     <script>
         lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
-        const STORAGE_KEY = "toefl_schedule_v3";
-        const TOEFL_SETS_V2_KEY = "toefl_developer_sets_v2";
-        const TOEFL_MOCK_SETS_V2_KEY = "toefl_developer_mocktest_sets_v2";
-        const TOEFL_PRACTICE_SETS_V2_KEY = "toefl_developer_practicetest_sets_v2";
-        const STUDY_PLAN_PROJECT_ID = "quickcheck-25590";
-        const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-        const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        const difficultyCycle = ["Beginner", "Intermediate", "Advanced"];
-        const questionBlueprint = {
-            listening: { icon: `<img src="../asset/figma/mock-listening.png" style="width:35px;height:35px;" alt="">`, title: "Listening Mock Test", difficultyBase: 0, minutes: 35, questions: 50, colorClass: "listening", file: "section 1.html" },
-            structure: { icon: `<img src="../asset/figma/mock-structure.png" style="width:35px;height:35px;" alt="">`, title: "Structure & Writing Mock Test", difficultyBase: 1, minutes: 25, questions: 40, colorClass: "structure", file: "section 2.html" },
-            reading: { icon: `<img src="../asset/figma/mock-reading.png" style="width:35px;height:35px;" alt="">`, title: "Reading Mock Test", difficultyBase: 2, minutes: 55, questions: 50, colorClass: "reading", file: "section 3.html" }
-        };
-
-        const params = new URLSearchParams(window.location.search);
-        const initialYear = Number(params.get("year")) || 2026;
-        const initialMonth = Number(params.get("month"));
-        const initialDay = Number(params.get("day"));
-        const dateParam = String(params.get("date") || "").trim();
-        const parsedDateMatch = dateParam.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-        const safeMonth = Number.isFinite(initialMonth) && initialMonth >= 0 && initialMonth <= 11 ? initialMonth : 1;
-        const safeDay = Number.isFinite(initialDay) && initialDay >= 1 && initialDay <= 31 ? initialDay : null;
-        const today = new Date();
-        const hasYearParam = params.has("year");
-        const hasMonthParam = params.has("month");
-        const hasDayParam = params.has("day");
-        const rawDeepLinkYear = parsedDateMatch ? Number(parsedDateMatch[1]) : null;
-        const rawDeepLinkMonth = parsedDateMatch ? Number(parsedDateMatch[2]) - 1 : null;
-        const rawDeepLinkDay = parsedDateMatch ? Number(parsedDateMatch[3]) : null;
-        const hasDateParam = Boolean(
-            parsedDateMatch &&
-            rawDeepLinkMonth >= 0 &&
-            rawDeepLinkMonth <= 11 &&
-            rawDeepLinkDay >= 1 &&
-            rawDeepLinkDay <= 31
-        );
-        const deepLinkYear = hasDateParam ? rawDeepLinkYear : null;
-        const deepLinkMonth = hasDateParam ? rawDeepLinkMonth : null;
-        const deepLinkDay = hasDateParam ? rawDeepLinkDay : null;
-        const cloudSync = typeof StudyPlanFirestoreSync === "function"
-            ? new StudyPlanFirestoreSync({ projectId: STUDY_PLAN_PROJECT_ID })
-            : null;
-        let cloudDailyTasks = {};
-        let monthStoreCache = {};
-        let cachedSetRecords = [];
-        let cloudStatusLabel = "Cloud sync is unavailable. Using local cache.";
-        let shouldFocusDeepLinkedDate = hasDateParam;
-        let selectedDate = hasDateParam
-            ? new Date(deepLinkYear, deepLinkMonth, deepLinkDay)
-            : (hasYearParam || hasMonthParam)
-            ? new Date(initialYear, safeMonth, hasDayParam && safeDay ? safeDay : today.getDate())
-            : new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        let isCalendarExpanded = false;
-
-        document.getElementById("studyTodayLabel").textContent = `Today, ${new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(new Date())}`;
-
-        function getTrialLifecycle(day) {
-            if (day === 1) {
-                return {
-                    locked: false,
-                    eyebrow: "FULL-LENGTH SIMULATION",
-                    title: "Complete Mock Test",
-                    button: "Start Full Test →",
-                    message: "Day 1 establishes this month’s baseline. Gemini uses the results to identify gaps and prepare a three-day practice sequence."
-                };
-            }
-            if (day <= 4) {
-                const focus = day === 2 ? "primary weakness" : day === 3 ? "secondary weakness" : "final practice and review";
-                return {
-                    locked: false,
-                    eyebrow: `AI TARGETED PRACTICE · DAY ${day}`,
-                    title: "Adaptive Practice Session",
-                    button: "Start Practice →",
-                    message: `Day ${day} focuses on your ${focus}. Complete the available section tests to keep the adaptive progression moving.`
-                };
-            }
-            return {
-                locked: false,
-                eyebrow: "CONTINUE PRACTICING",
-                title: "Continue Your TOEFL Practice",
-                button: "Start Practice →",
-                message: "Your practice sessions remain available while you continue building and editing your study plan."
-            };
-        }
-
-        function formatDateKey(date) {
-            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-        }
-
-        function getLocalSetRecords() {
-            const parseMap = (keyName) => {
-                try {
-                    return JSON.parse(localStorage.getItem(keyName) || "{}") || {};
-                } catch {
-                    return {};
-                }
+            const STORAGE_KEY = "toefl_schedule_v3";
+            const TOEFL_SETS_V2_KEY = "toefl_developer_sets_v2";
+            const TOEFL_MOCK_SETS_V2_KEY = "toefl_developer_mocktest_sets_v2";
+            const TOEFL_PRACTICE_SETS_V2_KEY = "toefl_developer_practicetest_sets_v2";
+            const STUDY_PLAN_PROJECT_ID = "quickcheck-25590";
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            const weekdayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+            const difficultyCycle = ["Beginner", "Intermediate", "Advanced"];
+            
+            const questionBlueprint = {
+                listening: { icon: `<img src="../asset/figma/mock-listening.png" style="width:176px;height:146px;" alt="">`, title: "Listening Mock Test", difficultyBase: 0, minutes: 35, questions: 50, colorClass: "#CCFFF4", file: "section 1.html" },
+                structure: { icon: `<img src="../asset/figma/mock-structure.png" style="width:35px;height:35px;" alt="">`, title: "Structure & Writing Mock Test", difficultyBase: 1, minutes: 25, questions: 40, colorClass: "#E2F6FF", file: "section 2.html" },
+                reading: { icon: `<img src="../asset/figma/mock-reading.png" style="width:35px;height:35px;" alt="">`, title: "Reading Mock Test", difficultyBase: 2, minutes: 55, questions: 50, colorClass: "#F4F0FF", file: "section 3.html" }
             };
 
-            const legacy = parseMap(TOEFL_SETS_V2_KEY);
-            const mock = parseMap(TOEFL_MOCK_SETS_V2_KEY);
-            const practice = parseMap(TOEFL_PRACTICE_SETS_V2_KEY);
+            const planStartDate = new Date("2026-11-01"); 
 
-            const toRows = (source, fallbackType = "") => Object.entries(source || {})
-                .filter(([key]) => key !== "_updatedAt")
-                .map(([setId, value]) => {
-                    const resolvedId = value?.setId || setId;
-                    const inferredType = String(value?.testType || "").toLowerCase()
-                        || (String(resolvedId || "").startsWith("practicetest_") ? "practicetest" : String(resolvedId || "").startsWith("mocktest_") ? "mocktest" : fallbackType || "mocktest");
-                    return { ...value, setId: resolvedId, testType: inferredType };
-                })
-                .filter((item) => item && item.module && item.setDate);
+            function getDynamicTestType(selectedDate) {
+                const start = new Date(planStartDate.getFullYear(), planStartDate.getMonth(), planStartDate.getDate());
+                const current = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+                const diffTime = current.getTime() - start.getTime();
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-            const merged = [...toRows(legacy), ...toRows(mock, "mocktest"), ...toRows(practice, "practicetest")];
-            const byId = {};
-            merged.forEach((item) => {
-                if (!item?.setId) return;
-                byId[item.setId] = item;
-            });
-            return Object.values(byId);
-        }
-
-        async function refreshSetRecordCache() {
-            try {
-                if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
-                    const [mockRecords, practiceRecords] = await Promise.all([
-                        toeflStorage.getSetRecordsByTestType("mocktest").catch(() => []),
-                        toeflStorage.getSetRecordsByTestType("practicetest").catch(() => [])
-                    ]);
-                    const merged = [
-                        ...(Array.isArray(mockRecords) ? mockRecords.map((item) => ({ ...item, testType: "mocktest" })) : []),
-                        ...(Array.isArray(practiceRecords) ? practiceRecords.map((item) => ({ ...item, testType: "practicetest" })) : [])
-                    ];
-                    const byId = {};
-                    merged.forEach((item) => {
-                        if (!item?.setId) return;
-                        byId[item.setId] = item;
-                    });
-                    cachedSetRecords = Object.values(byId).filter((item) => item && item.module && item.setDate);
-                    return;
-                }
-
-                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
-                    const records = await toeflStorage.getSetRecords();
-                    cachedSetRecords = (records || []).filter((item) => item && item.module && item.setDate);
-                    return;
-                }
-            } catch (error) {
-                console.warn("[Schedule] Set cache refresh failed, using local records:", error);
-            }
-            cachedSetRecords = getLocalSetRecords();
-        }
-
-        function getRecordsSource() {
-            return Array.isArray(cachedSetRecords) && cachedSetRecords.length > 0
-                ? cachedSetRecords
-                : getLocalSetRecords();
-        }
-
-        function getAvailableSetsByDate(dateValue) {
-            const records = getRecordsSource()
-                .filter((item) => item && item.setDate === dateValue && questionBlueprint[item.module]);
-            const byModule = {};
-            records.forEach((item) => {
-                const prev = byModule[item.module];
-                if (!prev) {
-                    byModule[item.module] = item;
-                    return;
-                }
-                const prevTime = new Date(prev.updatedAt || 0).getTime();
-                const nextTime = new Date(item.updatedAt || 0).getTime();
-                if (nextTime >= prevTime) {
-                    byModule[item.module] = item;
-                }
-            });
-            return byModule;
-        }
-
-        function getSetTestType(record) {
-            const explicitType = String(record?.testType || "").toLowerCase();
-            if (explicitType === "mocktest" || explicitType === "practicetest") {
-                return explicitType;
+                if (diffDays < 0) return "mocktest";
+                return (diffDays % 4 === 0) ? "mocktest" : "practicetest";
             }
 
-            const setId = String(record?.setId || "").toLowerCase();
-            if (setId.startsWith("practicetest_")) return "practicetest";
-            if (setId.startsWith("mocktest_")) return "mocktest";
-            return "mocktest";
-        }
-
-        async function resolveSetIdForDate(sectionId, dateValue) {
-            try {
-                if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
-                    const [mockRecords, practiceRecords] = await Promise.all([
-                        toeflStorage.getSetRecordsByTestType("mocktest").catch(() => []),
-                        toeflStorage.getSetRecordsByTestType("practicetest").catch(() => [])
-                    ]);
-                    const records = [
-                        ...(Array.isArray(mockRecords) ? mockRecords : []),
-                        ...(Array.isArray(practiceRecords) ? practiceRecords : [])
-                    ];
-                    const match = (records || [])
-                        .filter((item) => item && item.module === sectionId && item.setDate === dateValue)
-                        .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
-                    if (match?.setId) return match.setId;
-                } else if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
-                    const records = await toeflStorage.getSetRecords();
-                    const match = (records || [])
-                        .filter((item) => item && item.module === sectionId && item.setDate === dateValue)
-                        .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
-                    if (match?.setId) return match.setId;
-                }
-            } catch (error) {
-                console.warn("[Schedule] Remote set lookup failed, using local cache:", error);
-            }
-
-            const localMatch = getLocalSetRecords()
-                .filter((item) => item.module === sectionId && item.setDate === dateValue)
-                .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
-            return localMatch?.setId || "";
-        }
-
-        function createDefaultDayData(day) {
-            return {
-                mockTitle: `Mock Test Package ${String(day).padStart(2, "0")}`,
-                focus: day % 3 === 0 ? "accuracy under timed conditions" : day % 3 === 1 ? "steady foundation building" : "mixed TOEFL stamina practice",
-                sections: {
-                    listening: { completed: false },
-                    structure: { completed: false },
-                    reading: { completed: false }
-                }
+            let activeModalState = {
+                sectionId: null,
+                selectedMode: 'instant', // 'instant' or 'full'
+                timerMinutes: 35
             };
-        }
 
-        function normalizeDayData(raw, dayNumber) {
-            const defaultValue = createDefaultDayData(dayNumber);
-            const sections = raw && raw.sections ? raw.sections : {};
-            return {
-                ...defaultValue,
-                ...(raw || {}),
-                sections: {
-                    listening: { completed: Boolean(sections.listening && sections.listening.completed) },
-                    structure: { completed: Boolean(sections.structure && sections.structure.completed) },
-                    reading: { completed: Boolean(sections.reading && sections.reading.completed) }
-                }
-            };
-        }
+            const params = new URLSearchParams(window.location.search);
+            const dateParam = String(params.get("date") || "").trim();
+            const yearParam = params.get("year");
+            const monthParam = params.get("month");
+            const dayParam = params.get("day");
+            const parsedDateMatch = dateParam.match(/^(\d{4})-(\d{2})-(\d{2})$/);
 
-        function getLegacyMonthStore(year, month) {
-            const key = `${STORAGE_KEY}_${year}_${month}`;
-            const existing = localStorage.getItem(key);
-            if (existing) {
-                return JSON.parse(existing);
+            let selectedDate = new Date();
+            if (parsedDateMatch) {
+                selectedDate = new Date(Number(parsedDateMatch[1]), Number(parsedDateMatch[2]) - 1, Number(parsedDateMatch[3]));
+            } else if (yearParam !== null || monthParam !== null || dayParam !== null) {
+                const y = Number(yearParam) || 2026;
+                const m = monthParam !== null ? Number(monthParam) : 0;
+                const d = Number(dayParam) || 1;
+                selectedDate = new Date(y, m, d);
             }
 
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const monthStore = {};
-            for (let day = 1; day <= daysInMonth; day++) {
-                monthStore[day] = createDefaultDayData(day);
-            }
-            localStorage.setItem(key, JSON.stringify(monthStore));
-            return monthStore;
-        }
-
-        function dateKeyForDay(year, month, day) {
-            return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-        }
-
-        function getMonthStore(year, month) {
-            const cacheKey = `${year}-${month}`;
-            if (monthStoreCache[cacheKey]) return monthStoreCache[cacheKey];
-
-            const baseStore = getLegacyMonthStore(year, month);
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const mergedStore = {};
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dateKey = dateKeyForDay(year, month, day);
-                const cloudValue = cloudDailyTasks[dateKey];
-                mergedStore[day] = normalizeDayData(cloudValue || baseStore[day], day);
-            }
-            monthStoreCache[cacheKey] = mergedStore;
-            return mergedStore;
-        }
-
-        function saveMonthStore(year, month, value) {
-            const key = `${STORAGE_KEY}_${year}_${month}`;
-            localStorage.setItem(key, JSON.stringify(value));
-            monthStoreCache[`${year}-${month}`] = value;
-            const activeDay = selectedDate.getFullYear() === year && selectedDate.getMonth() === month
-                ? selectedDate.getDate()
+            const cloudSync = typeof StudyPlanFirestoreSync === "function"
+                ? new StudyPlanFirestoreSync({ projectId: STUDY_PLAN_PROJECT_ID })
                 : null;
-            if (!activeDay || !value[activeDay] || !cloudSync) return;
-            const dateStr = dateKeyForDay(year, month, activeDay);
-            cloudSync.saveDay(dateStr, normalizeDayData(value[activeDay], activeDay));
-            cloudSync.savePlan({
-                lastViewedMonth: `${year}-${String(month + 1).padStart(2, "0")}`,
-                lastViewedDate: dateStr
-            });
-        }
+            let cloudDailyTasks = {};
+            let monthStoreCache = {};
+            let cachedSetRecords = [];
 
-        function clampDateToMonth(date) {
-            const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-            if (date.getDate() > daysInMonth) {
-                date.setDate(daysInMonth);
+            const studyTodayLabelEl = document.getElementById("studyTodayLabel");
+            if (studyTodayLabelEl) {
+                studyTodayLabelEl.textContent = `Today, ${new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(new Date())}`;
             }
-            return date;
-        }
 
-        function shiftDate(offset) {
-            selectedDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate() + offset);
-            renderSchedule();
-        }
-
-        function getDayWindow(date) {
-            const start = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 3);
-            const tiles = [];
-            for (let index = 0; index < 7; index++) {
-                const item = new Date(start.getFullYear(), start.getMonth(), start.getDate() + index);
-                if (item.getMonth() === date.getMonth() && item.getFullYear() === date.getFullYear()) {
-                    tiles.push(item);
+            function getTrialLifecycle(day) {
+                if (day === 1) {
+                    return {
+                        locked: false,
+                        eyebrow: "FULL-LENGTH SIMULATION",
+                        title: "Complete Mock Test",
+                        button: "Start Full Test →",
+                        message: "Day 1 establishes this month’s baseline. Gemini uses the results to identify gaps and prepare a three-day practice sequence."
+                    };
                 }
+                if (day <= 4) {
+                    const focus = day === 2 ? "primary weakness" : day === 3 ? "secondary weakness" : "final practice and review";
+                    return {
+                        locked: false,
+                        eyebrow: `AI TARGETED PRACTICE · DAY ${day}`,
+                        title: "Adaptive Practice Session",
+                        button: "Start Practice →",
+                        message: `Day ${day} focuses on your ${focus}. Complete the available section tests to keep the adaptive progression moving.`
+                    };
+                }
+                return {
+                    locked: false,
+                    eyebrow: "CONTINUE PRACTICING",
+                    title: "Continue Your TOEFL Practice",
+                    button: "Start Practice →",
+                    message: "Your practice sessions remain available while you continue building and editing your study plan."
+                };
             }
 
-            while (tiles.length < 7) {
-                const last = tiles[tiles.length - 1] || date;
-                const next = new Date(last.getFullYear(), last.getMonth(), last.getDate() + 1);
-                if (next.getMonth() !== date.getMonth() || next.getFullYear() !== date.getFullYear()) break;
-                tiles.push(next);
+            function formatDateKey(date) {
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
             }
 
-            while (tiles.length < 7) {
-                const first = tiles[0] || date;
-                const prev = new Date(first.getFullYear(), first.getMonth(), first.getDate() - 1);
-                if (prev.getMonth() !== date.getMonth() || prev.getFullYear() !== date.getFullYear()) break;
-                tiles.unshift(prev);
-            }
+            function getLocalSetRecords() {
+                const parseMap = (keyName) => {
+                    try {
+                        return JSON.parse(localStorage.getItem(keyName) || "{}") || {};
+                    } catch {
+                        return {};
+                    }
+                };
 
-            return tiles;
-        }
+                const legacy = parseMap(TOEFL_SETS_V2_KEY);
+                const mock = parseMap(TOEFL_MOCK_SETS_V2_KEY);
+                const practice = parseMap(TOEFL_PRACTICE_SETS_V2_KEY);
 
-        function getMonthDates(date) {
-            const year = date.getFullYear();
-            const month = date.getMonth();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const tiles = [];
+                const toRows = (source, fallbackType = "") => Object.entries(source || {})
+                    .filter(([key]) => key !== "_updatedAt")
+                    .map(([setId, value]) => {
+                        const resolvedId = value?.setId || setId;
+                        const inferredType = String(value?.testType || "").toLowerCase()
+                            || (String(resolvedId || "").startsWith("practicetest_") ? "practicetest" : String(resolvedId || "").startsWith("mocktest_") ? "mocktest" : fallbackType || "mocktest");
+                        return { ...value, setId: resolvedId, testType: inferredType };
+                    })
+                    .filter((item) => item && item.module && item.setDate);
 
-            for (let day = 1; day <= daysInMonth; day++) {
-                tiles.push(new Date(year, month, day));
-            }
-
-            return tiles;
-        }
-
-        function getSectionState(dayData, sectionId, dayNumber) {
-            const base = questionBlueprint[sectionId];
-            const difficulty = difficultyCycle[(dayNumber + base.difficultyBase) % difficultyCycle.length];
-            return {
-                ...base,
-                difficulty,
-                completed: Boolean(dayData.sections[sectionId].completed)
-            };
-        }
-
-        function getStoredSectionProgress(sectionId, setDate, isCompleted) {
-            if (isCompleted) return 100;
-
-            const resultKey = `toefl_section${sectionId === "listening" ? "1" : sectionId === "structure" ? "2" : "3"}_result`;
-            try {
-                const result = JSON.parse(localStorage.getItem(resultKey) || "null");
-                const resultDate = String(result?.setDate || result?.submittedAt || "").slice(0, 10);
-                const questions = Array.isArray(result?.questions) ? result.questions : [];
-                if (resultDate !== setDate || questions.length === 0) return 0;
-                const answered = questions.filter((question) => String(question?.userAnswer || "").trim()).length;
-                return Math.round((answered / questions.length) * 100);
-            } catch (_) {
-                return 0;
-            }
-        }
-
-        function renderDateTiles() {
-            const host = document.getElementById("dateStrip");
-            host.innerHTML = "";
-            const tiles = isCalendarExpanded ? getMonthDates(selectedDate) : getDayWindow(selectedDate);
-            const store = getMonthStore(selectedDate.getFullYear(), selectedDate.getMonth());
-            tiles.forEach((dateItem) => {
-                const tile = document.createElement("button");
-                tile.type = "button";
-                tile.className = `date-tile${dateItem.toDateString() === selectedDate.toDateString() ? " active" : ""}`;
-                const dayData = store[dateItem.getDate()] || createDefaultDayData(dateItem.getDate());
-                const dateValue = formatDateKey(dateItem);
-                const available = getAvailableSetsByDate(dateValue);
-                tile.innerHTML = `
-                    <span class="weekday">${weekdayNames[dateItem.getDay()]}</span>
-                    <span class="date-number">${dateItem.getDate()}</span>
-                    <span class="date-task-queue">
-                        <span class="date-task-token ${available.listening && dayData.sections.listening.completed ? "done" : ""}" title="Listening">${available.listening ? (dayData.sections.listening.completed ? "✓" : "🎧") : "—"}</span>
-                        <span class="date-task-token ${available.structure && dayData.sections.structure.completed ? "done" : ""}" title="Structure">${available.structure ? (dayData.sections.structure.completed ? "✓" : "✍️") : "—"}</span>
-                        <span class="date-task-token ${available.reading && dayData.sections.reading.completed ? "done" : ""}" title="Reading">${available.reading ? (dayData.sections.reading.completed ? "✓" : "📖") : "—"}</span>
-                    </span>
-                `;
-                tile.addEventListener("click", () => {
-                    selectedDate = new Date(dateItem.getFullYear(), dateItem.getMonth(), dateItem.getDate());
-                    renderSchedule();
+                const merged = [...toRows(legacy), ...toRows(mock, "mocktest"), ...toRows(practice, "practicetest")];
+                const byId = {};
+                merged.forEach((item) => {
+                    if (!item?.setId) return;
+                    byId[item.setId] = item;
                 });
-                host.appendChild(tile);
-                if (shouldFocusDeepLinkedDate && dateItem.toDateString() === selectedDate.toDateString()) {
-                    tile.scrollIntoView({ block: "nearest", inline: "center" });
-                    tile.focus();
-                    shouldFocusDeepLinkedDate = false;
+                return Object.values(byId);
+            }
+
+            async function refreshSetRecordCache() {
+                try {
+                    if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
+                        const [mockRecords, practiceRecords] = await Promise.all([
+                            toeflStorage.getSetRecordsByTestType("mocktest").catch(() => []),
+                            toeflStorage.getSetRecordsByTestType("practicetest").catch(() => [])
+                        ]);
+                        const merged = [
+                            ...(Array.isArray(mockRecords) ? mockRecords.map((item) => ({ ...item, testType: "mocktest" })) : []),
+                            ...(Array.isArray(practiceRecords) ? practiceRecords.map((item) => ({ ...item, testType: "practicetest" })) : [])
+                        ];
+                        const byId = {};
+                        merged.forEach((item) => {
+                            if (!item?.setId) return;
+                            byId[item.setId] = item;
+                        });
+                        cachedSetRecords = Object.values(byId).filter((item) => item && item.module && item.setDate);
+                        return;
+                    }
+
+                    if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
+                        const records = await toeflStorage.getSetRecords();
+                        cachedSetRecords = (records || []).filter((item) => item && item.module && item.setDate);
+                        return;
+                    }
+                } catch (error) {
+                    console.warn("[Schedule] Set cache refresh failed, using local records:", error);
                 }
-            });
-
-            document.getElementById("dateHelper").textContent = cloudStatusLabel;
-        }
-
-        function getSectionDetailMarkup(sectionId, section, setDate, setRecord) {
-            const listeningRows = [
-                ["30 Question", "Part 1: Short Conversation"],
-                ["8 Question", "Part 2: Long Conversation"],
-                ["12 Question", "Part 3: Short Talks"]
-            ];
-            const structureRows = [
-                ["15 Question", "Set 1: Structure"],
-                ["25 Question", "Set 2: Writing"]
-            ];
-            const readingRowsLeft = [
-                ["10 Question", "Part 4"],
-                ["10 Question", "Part 5"]
-            ];
-            const readingRowsRight = [
-                ["10 Question", "Part 1"],
-                ["10 Question", "Part 2"],
-                ["10 Question", "Part 3"]
-            ];
-            const testType = getSetTestType(setRecord);
-            const testLabel = testType === "practicetest" ? "Practice Test" : "Mock Test";
-
-            const getAlignedRow = (left, right) => `
-                <div class="question-part-1-short-conve-parent">
-                    <span class="question-part">${left}</span>
-                    <span class="question-part-separator">|</span>
-                    <span class="question-part2">${right}</span>
-                </div>
-            `;
-
-            const getReadingColumn = (rows) => rows.map(([left, right]) => `
-                <div class="question-part-1-parent">
-                    <span class="question-part4">${left}</span>
-                    <span class="question-part5">${right}</span>
-                </div>
-            `).join("");
-
-            const renderReading = () => `
-                <div class="frame-parent">
-                    <div class="listening-mock-test-wrapper">
-                        <div class="listening-mock-test">Reading ${testLabel}</div>
-                    </div>
-                    <div class="frame-group reading-grid">
-                        <div class="reading-left">${getReadingColumn(readingRowsLeft)}</div>
-                        <div class="reading-right">${getReadingColumn(readingRowsRight)}</div>
-                    </div>
-                    <div class="alarm-1-1-parent">
-                        <i class="ti ti-alarm alarm-1-1"></i>
-                        <span class="minutes">55 minutes</span>
-                    </div>
-                </div>
-            `;
-
-            if (sectionId === "reading") {
-                return renderReading();
+                cachedSetRecords = getLocalSetRecords();
             }
 
-            const rows = sectionId === "listening" ? listeningRows : structureRows;
-            const title = sectionId === "listening"
-                ? `Listening ${testLabel}`
-                : `Structure & Writing ${testLabel}`;
-            const minutes = sectionId === "listening" ? 35 : 25;
-
-            return `
-                <div class="frame-parent">
-                    <div class="listening-mock-test-wrapper">
-                        <div class="listening-mock-test">${title}</div>
-                    </div>
-                    <div class="frame-group">
-                        ${rows.map(([left, right]) => getAlignedRow(left, right)).join("")}
-                    </div>
-                    <div class="alarm-1-1-parent">
-                        <i class="ti ti-alarm alarm-1-1"></i>
-                        <span class="minutes">${minutes} minutes</span>
-                    </div>
-                </div>
-            `;
-        }
-
-        function renderMockPanel() {
-            const year = selectedDate.getFullYear();
-            const month = selectedDate.getMonth();
-            const day = selectedDate.getDate();
-            const setDate = formatDateKey(selectedDate);
-            const store = getMonthStore(year, month);
-            const dayData = store[day];
-            const sectionGrid = document.getElementById("sectionGrid");
-            const availableByModule = getAvailableSetsByDate(setDate);
-            const availableSectionIds = ["listening", "structure", "reading"].filter((sectionId) => Boolean(availableByModule[sectionId]));
-            const completedCount = availableSectionIds.filter((sectionId) => Boolean(dayData.sections?.[sectionId]?.completed)).length;
-            const lifecycle = getTrialLifecycle(day);
-            const fullTestButton = document.getElementById("fullTestButton");
-            const trialMessage = document.getElementById("trialMessage");
-
-            document.getElementById("mockKicker").textContent = `${weekdayNames[selectedDate.getDay()]} ${day} ${monthNames[month]}`;
-            document.getElementById("mockTitle").textContent = availableSectionIds.length > 0
-                ? dayData.mockTitle
-                : "No Package On This Date";
-            document.getElementById("mockSubtitle").textContent = availableSectionIds.length > 0
-                ? `Daily TOEFL practice for ${dayData.focus}.`
-                : "No TOEFL section set is saved for this selected date yet.";
-            document.getElementById("mockProgress").textContent = availableSectionIds.length > 0
-                ? `${completedCount} of ${availableSectionIds.length} Tests Complete`
-                : "0 of 0 Tests Complete";
-            document.getElementById("mockNotes").textContent = availableSectionIds.length === 0
-                ? "Create a package in Developer mode for this date first, then it will appear here."
-                : completedCount === availableSectionIds.length
-                ? "All available tests for this day are completed."
-                : "";
-            document.getElementById("simulationEyebrow").textContent = lifecycle.eyebrow;
-            document.getElementById("simulationTitle").textContent = lifecycle.title;
-            document.getElementById("simulationMeta").textContent = availableSectionIds.length > 0
-                ? `${availableSectionIds.length === 3 ? "140" : "Available"} Questions | 115 minutes | ${availableSectionIds.length} section${availableSectionIds.length === 1 ? "" : "s"} available`
-                : "Create a package in Developer mode to add today’s test sections";
-            fullTestButton.textContent = lifecycle.button;
-            fullTestButton.disabled = lifecycle.locked || availableSectionIds.length === 0;
-            trialMessage.textContent = lifecycle.message;
-            trialMessage.className = `trial-message visible${lifecycle.locked ? " locked" : ""}`;
-
-            sectionGrid.innerHTML = "";
-            sectionGrid.classList.toggle("trial-locked", lifecycle.locked);
-
-            if (availableSectionIds.length === 0) {
-                return;
+            function getRecordsSource() {
+                return Array.isArray(cachedSetRecords) && cachedSetRecords.length > 0
+                    ? cachedSetRecords
+                    : getLocalSetRecords();
             }
 
-            availableSectionIds.forEach((sectionId) => {
-                const section = getSectionState(dayData, sectionId, day);
-                const setRecord = availableByModule[sectionId] || null;
-                const progress = getStoredSectionProgress(sectionId, setDate, section.completed);
-                const status = progress >= 100 ? "completed" : progress > 0 ? "ongoing" : "unattempted";
-                const card = document.createElement("article");
-                card.className = "section-card";
-                card.innerHTML = `
-                    <div class="section-head">
-                        <div class="section-icon ${section.colorClass}${progress > 0 ? " has-progress" : ""}" style="--progress: ${progress}" aria-label="${progress}% complete">
-                            ${section.icon}
-                            <span class="section-status-node"><img src="../asst/icon/${status}.svg" alt="${status}"></span>
+            function getAvailableSetsByDate(dateValue) {
+                const parts = dateValue.split("-");
+                const altDateValue = parts.length === 3 ? `${parts[0]}-${parseInt(parts[1], 10)}-${parseInt(parts[2], 10)}` : dateValue;
+
+                const records = getRecordsSource()
+                    .filter((item) => {
+                        if (!item || !item.module) return false;
+                        const itemDate = String(item.setDate || "").trim();
+                        return itemDate === dateValue || itemDate === altDateValue;
+                    });
+
+                const byModule = {};
+                records.forEach((item) => {
+                    const prev = byModule[item.module];
+                    if (!prev) {
+                        byModule[item.module] = item;
+                        return;
+                    }
+                    const prevTime = new Date(prev.updatedAt || 0).getTime();
+                    const nextTime = new Date(item.updatedAt || 0).getTime();
+                    if (nextTime >= prevTime) {
+                        byModule[item.module] = item;
+                    }
+                });
+                return byModule;
+            }
+
+            function getSetTestType(record) {
+                const explicitType = String(record?.testType || "").toLowerCase();
+                if (explicitType === "mocktest" || explicitType === "practicetest") {
+                    return explicitType;
+                }
+
+                const setId = String(record?.setId || "").toLowerCase();
+                if (setId.startsWith("practicetest_")) return "practicetest";
+                if (setId.startsWith("mocktest_")) return "mocktest";
+                return "mocktest";
+            }
+
+            function createDefaultDayData(day) {
+                return {
+                    mockTitle: `Mock Test Package ${String(day).padStart(2, "0")}`,
+                    focus: day % 3 === 0 ? "accuracy under timed conditions" : day % 3 === 1 ? "steady foundation building" : "mixed TOEFL stamina practice",
+                    sections: {
+                        listening: { completed: false },
+                        structure: { completed: false },
+                        writing: { completed: false },
+                        reading: { completed: false }
+                    }
+                };
+            }
+
+            function normalizeDayData(raw, dayNumber) {
+                const defaultValue = createDefaultDayData(dayNumber);
+                const sections = raw && raw.sections ? raw.sections : {};
+                return {
+                    ...defaultValue,
+                    ...(raw || {}),
+                    sections: {
+                        listening: { completed: Boolean(sections.listening && sections.listening.completed) },
+                        structure: { completed: Boolean(sections.structure && sections.structure.completed) },
+                        writing: { completed: Boolean(sections.writing && sections.writing.completed) },
+                        reading: { completed: Boolean(sections.reading && sections.reading.completed) }
+                    }
+                };
+            }
+
+            function getLegacyMonthStore(year, month) {
+                const key = `${STORAGE_KEY}_${year}_${month}`;
+                const existing = localStorage.getItem(key);
+                if (existing) {
+                    return JSON.parse(existing);
+                }
+
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const monthStore = {};
+                for (let day = 1; day <= daysInMonth; day++) {
+                    monthStore[day] = createDefaultDayData(day);
+                }
+                localStorage.setItem(key, JSON.stringify(monthStore));
+                return monthStore;
+            }
+
+            function dateKeyForDay(year, month, day) {
+                return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            }
+
+            function getMonthStore(year, month) {
+                const cacheKey = `${year}-${month}`;
+                if (monthStoreCache[cacheKey]) return monthStoreCache[cacheKey];
+
+                const baseStore = getLegacyMonthStore(year, month);
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const mergedStore = {};
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dateKey = dateKeyForDay(year, month, day);
+                    const cloudValue = cloudDailyTasks[dateKey];
+                    mergedStore[day] = normalizeDayData(cloudValue || baseStore[day], day);
+                }
+                monthStoreCache[cacheKey] = mergedStore;
+                return mergedStore;
+            }
+
+            function saveMonthStore(year, month, value) {
+                const key = `${STORAGE_KEY}_${year}_${month}`;
+                localStorage.setItem(key, JSON.stringify(value));
+                monthStoreCache[`${year}-${month}`] = value;
+                const activeDay = selectedDate.getFullYear() === year && selectedDate.getMonth() === month
+                    ? selectedDate.getDate()
+                    : null;
+                if (!activeDay || !value[activeDay] || !cloudSync) return;
+                const dateStr = dateKeyForDay(year, month, activeDay);
+                cloudSync.saveDay(dateStr, normalizeDayData(value[activeDay], activeDay));
+                cloudSync.savePlan({
+                    lastViewedMonth: `${year}-${String(month + 1).padStart(2, "0")}`,
+                    lastViewedDate: dateStr
+                });
+            }
+
+            function getSectionState(dayData, sectionId, dayNumber) {
+                const base = questionBlueprint[sectionId] || { difficultyBase: 0, file: "section 1.html" };
+                const difficulty = difficultyCycle[(dayNumber + base.difficultyBase) % difficultyCycle.length];
+                return {
+                    ...base,
+                    difficulty,
+                    completed: Boolean(dayData.sections?.[sectionId]?.completed)
+                };
+            }
+
+            function confirmStartTest() {
+                const sectionId = activeModalState.sectionId;
+                const lookupKey = sectionId === "writing" ? "structure" : sectionId;
+                const fileMap = { listening: "section 1.html", structure: "section 2.html", reading: "section 3.html" };
+                const file = fileMap[lookupKey] || "section 1.html";
+
+                const availableByModule = getAvailableSetsByDate(formatDateKey(selectedDate));
+                const targetRecord = availableByModule?.[lookupKey] || null;
+                const setId = String(targetRecord?.setId || "");
+                const testType = getDynamicTestType(selectedDate);
+                
+                const timerValue = activeModalState.timerMinutes || '35';
+                const runMode = activeModalState.selectedMode === 'full' ? 'full' : 'instant';
+
+                const params = new URLSearchParams({ 
+                    setDate: formatDateKey(selectedDate),
+                    mode: runMode,
+                    runMode: runMode,                                // Read by section 1.html; `mode` is also used for the dev editor.
+                    time: timerValue,                                // Passes selected minutes or 'unlimited'
+                    timer: timerValue,                               // Alias passed for backward compatibility
+                    section: sectionId                               // Passes active module section
+                });
+
+                if (setId) params.set("setId", setId);
+                if (testType) params.set("testType", testType);
+                if (targetRecord?.focus) params.set("focus", String(targetRecord.focus));
+
+                window.location.href = `${file}?${params.toString()}`;
+            }
+
+            function renderMockPanel() {
+                const year = selectedDate.getFullYear();
+                const month = selectedDate.getMonth();
+                const day = selectedDate.getDate();
+                const setDate = formatDateKey(selectedDate);
+                const store = getMonthStore(year, month);
+                const dayData = store[day] || createDefaultDayData(day);
+                const sectionGrid = document.getElementById("sectionGrid");
+                const availableByModule = getAvailableSetsByDate(setDate);
+                
+                const testType = getDynamicTestType(selectedDate);
+                const isMockTest = testType !== "practicetest"; 
+
+                const targetSectionIds = isMockTest 
+                    ? ["listening", "structure", "reading"] 
+                    : ["listening", "structure", "writing", "reading"];
+
+                const completedCount = targetSectionIds.filter((sectionId) => Boolean(dayData.sections?.[sectionId]?.completed)).length;
+                const lifecycle = getTrialLifecycle(day);
+                const fullTestButton = document.getElementById("fullTestButton");
+                const trialMessage = document.getElementById("trialMessage");
+
+                const formattedDate = `${day} ${monthNames[month]} ${year}`;
+
+                const breadcrumbEl = document.getElementById("breadcrumbDate");
+                const pageTitleEl = document.getElementById("pageTitleDate");
+                
+                if (breadcrumbEl) breadcrumbEl.textContent = formattedDate;
+                if (pageTitleEl) pageTitleEl.textContent = formattedDate;
+
+                const mockKickerEl = document.getElementById("mockKicker");
+                if (mockKickerEl) mockKickerEl.textContent = `${weekdayNames[selectedDate.getDay()]} ${day} ${monthNames[month]}`;
+
+                const mockTitleEl = document.getElementById("mockTitle");
+                if (mockTitleEl) {
+                    mockTitleEl.textContent = targetSectionIds.length > 0 ? dayData.mockTitle : "No Package On This Date";
+                }
+
+                const mockSubtitleEl = document.getElementById("mockSubtitle");
+                if (mockSubtitleEl) {
+                    mockSubtitleEl.textContent = targetSectionIds.length > 0 ? `Daily TOEFL practice for ${dayData.focus}.` : "No TOEFL section set is saved for this selected date yet.";
+                }
+
+                const mockProgressEl = document.getElementById("mockProgress");
+                if (mockProgressEl) {
+                    mockProgressEl.textContent = `${completedCount} of ${targetSectionIds.length} Tests Complete`;
+                }
+
+                const mockNotesEl = document.getElementById("mockNotes");
+                if (mockNotesEl) {
+                    mockNotesEl.textContent = completedCount === targetSectionIds.length ? "All available tests for this day are completed." : "";
+                }
+
+                const simTitleEl = document.getElementById("simulationTitle");
+                if (simTitleEl) simTitleEl.textContent = lifecycle.title;
+
+                if (fullTestButton) {
+                    fullTestButton.textContent = lifecycle.button;
+                    fullTestButton.disabled = lifecycle.locked;
+                }
+
+                if (trialMessage) {
+                    trialMessage.textContent = lifecycle.message;
+                    trialMessage.className = `trial-message visible${lifecycle.locked ? " locked" : ""}`;
+                }
+
+                if (!sectionGrid) return;
+                sectionGrid.innerHTML = "";
+                sectionGrid.classList.toggle("trial-locked", lifecycle.locked);
+
+                targetSectionIds.forEach((sectionId) => {
+                    const contentMap = {
+                        "listening": {
+                            title: "Listening",
+                            description: "Test your ability to understand spoken English in various contexts",
+                            questions: "50 Question",
+                            time: "35 minutes",
+                            themeClass: "theme-listening",
+                            image: "../asset/figma/mock-listening.png",
+                            btnClass: "btn-primary"
+                        },
+                        "structure": {
+                            title: isMockTest ? "Structure & Writing" : "Structure",
+                            description: "Check your knowledge of grammar, structure and written expression.",
+                            questions: "40 Question",
+                            time: "25 minutes",
+                            themeClass: "theme-structure",
+                            image: "../asset/figma/mock-structure.png",
+                            btnClass: "btn-primary"
+                        },
+                        "writing": {
+                            title: "Writing",
+                            description: "Check your knowledge of grammar, structure and written expression.",
+                            questions: "40 Question",
+                            time: "25 minutes",
+                            themeClass: "theme-structure",
+                            image: "../asset/figma/mock-structure.png",
+                            btnClass: "btn-primary"
+                        },
+                        "reading": {
+                            title: "Reading", 
+                            description: "Improve your reading comprehension skills with academic topics",
+                            questions: "50 Question",
+                            time: "55 minutes",
+                            themeClass: "theme-reading",
+                            image: "../asset/figma/mock-reading.png",
+                            btnClass: "btn-primary"
+                        }
+                    };
+
+                    const data = contentMap[sectionId];
+                    if (!data) return;
+
+                    const isCompleted = Boolean(dayData.sections?.[sectionId]?.completed);
+                    const card = document.createElement("article");
+                    card.className = `section-card-v2 ${data.themeClass || ""}`;
+                    
+                    card.innerHTML = `
+                        <div class="card-image-wrap">
+                            <img src="${data.image}" alt="${data.title}">
                         </div>
-                    </div>
-                    <div class="detail-row">
-                        ${getSectionDetailMarkup(sectionId, section, setDate, setRecord)}
-                    </div>
-                    <div class="card-footer">
-                        <span class="status-badge ${section.completed ? "status-done" : "status-pending"}">${section.completed ? "Completed" : "Pending"}</span>
-                        <div class="card-actions">
-                            <button class="btn btn-open" type="button" data-open-section="${sectionId}" ${lifecycle.locked ? "disabled" : ""}>${lifecycle.locked ? "Locked" : "Start Test"}<i class="ti ti-arrow-narrow-right"></i></button>
-                            <button class="btn btn-toggle" type="button" data-toggle-section="${sectionId}"><i class="ti ti-circle-key"></i><span>Answer Key</span></button>
+                        <div class="card-content-wrap">
+                            <h3 class="card-title">${data.title}</h3>
+                            <p class="card-desc">${data.description}</p>
+                            <div class="card-stats">
+                                <div class="stat-row">
+                                    <i class="ti ti-file-text"></i>
+                                    <span>${data.questions}</span>
+                                </div>
+                                <div class="stat-row">
+                                    <i class="ti ti-clock"></i>
+                                    <span>${data.time}</span>
+                                </div>
+                            </div>
                         </div>
+                        <div class="card-actions-wrap">
+                            <button class="btn ${data.btnClass}" type="button" data-open-section="${sectionId}" ${lifecycle.locked ? "disabled" : ""}>
+                                <span>${lifecycle.locked ? "Locked" : "Start Test"}</span>
+                                <i class="ti ti-arrow-right"></i>
+                            </button>
+                            <button class="btn btn-secondary" type="button" data-toggle-section="${sectionId}">
+                                <i class="ti ${isCompleted ? 'ti-check' : 'ti-circle-key'}"></i>
+                                <span>${isCompleted ? 'Completed' : 'Answer Key'}</span>
+                            </button>
+                        </div>
+                    `;
+
+                    sectionGrid.appendChild(card);
+
+                    sectionGrid.querySelectorAll("[data-toggle-section]").forEach((button) => {
+                        button.addEventListener("click", () => {
+                            const sectionId = button.getAttribute("data-toggle-section");
+                            if (dayData.sections[sectionId]) {
+                                dayData.sections[sectionId].completed = !dayData.sections[sectionId].completed;
+                                saveMonthStore(year, month, store);
+                                renderMockPanel();
+                            }
+                        });
+                    });
+
+                    sectionGrid.querySelectorAll("[data-open-section]").forEach((button) => {
+                        button.addEventListener("click", () => {
+                            if (lifecycle.locked) return;
+                            const secId = button.getAttribute("data-open-section");
+
+                            if (isMockTest) {
+                                // Day 1 Mock test direct launcher
+                                const lookupKey = secId === "writing" ? "structure" : secId;
+                                const fileMap = { listening: "section 1.html", structure: "section 2.html", reading: "section 3.html" };
+                                const file = fileMap[lookupKey] || "section 1.html";
+                                const targetRecord = availableByModule?.[lookupKey] || null;
+                                const setId = String(targetRecord?.setId || "");
+                                const params = new URLSearchParams({ setDate });
+                                if (setId) params.set("setId", setId);
+                                if (testType) params.set("testType", testType);
+                                window.location.href = `${file}?${params.toString()}`;
+                            } else {
+                                // Days 2-4 Practice mode opens configuration popup modal
+                                openPracticeModal(secId);
+                            }
+                        });
+                    });
+
+                    if (fullTestButton) {
+                        fullTestButton.onclick = () => {
+                            if (lifecycle.locked) return;
+                            
+                            const targetRecord = availableByModule?.["listening"] || null;
+                            const setId = String(targetRecord?.setId || "");
+                            
+                            // Add fullTest: "true" here:
+                            const params = new URLSearchParams({ setDate, fullTest: "true" });
+                            
+                            if (setId) params.set("setId", setId);
+                            if (testType) params.set("testType", testType);
+                            
+                            window.location.href = `section 1.html?${params.toString()}`;
+                        };
+                    }
+                }); // Closes targetSectionIds.forEach
+            } // Closes renderMockPanel()
+
+            const practiceConfig = {
+                sections: ["listening", "structure", "writing", "reading"],
+                
+                listening: {
+                    parts: [
+                    { id: "part-a", title: "Part A: Short Conversation", questions: 15 },
+                    { 
+                        id: "part-b", 
+                        title: "Part B: Long Conversation", 
+                        sections: [
+                        { title: "Talk A", questions: 4 },
+                        { title: "Talk B", questions: 4 }
+                        ]
+                    },
+                    { id: "part-c", title: "Part C: Short Talks", questions: 8 }
+                    ]
+                },
+                
+                structure: {
+                    levels: [
+                    { level: "beginner", questions: 20, selectable: true },
+                    { level: "advance", questions: 20, selectable: true }
+                    ]
+                },
+                
+                writing: {
+                    levels: [
+                    { level: "beginner", questions: 20, selectable: true },
+                    { level: "advance", questions: 20, selectable: true }
+                    ]
+                },
+                
+                reading: {
+                    levels: [
+                    { level: "beginner", passages: 1, questions: 10 },
+                    { level: "intermediate", passages: 1, questions: 10 }
+                    ]
+                }
+                };
+
+            function openPracticeModal(sectionId) {
+                activeModalState.sectionId = sectionId;
+                const meta = questionBlueprint[sectionId] || { title: "Practice Test", time: "35 minutes" };
+                activeModalState.timerMinutes = parseInt(meta.time) || 35;
+                renderModalContent();
+                
+                const modal = document.getElementById('practiceModal');
+                modal.classList.add('open');
+                modal.setAttribute('aria-hidden', 'false');
+            }
+
+            function closePracticeModal() {
+                const modal = document.getElementById('practiceModal');
+                modal.classList.remove('open');
+                modal.setAttribute('aria-hidden', 'true');
+            }
+        
+            function renderModalContent() {
+                const meta = questionBlueprint[activeModalState.sectionId] || questionBlueprint.listening;
+                const modalBox = document.getElementById('modalBoxContent');
+                const sel = activeModalState.selectedMode;
+
+                modalBox.innerHTML = `
+                    <div class="modal-head">
+                        <div class="practice-title-wrap">
+                            <div class="practice-subject-icon"><img src="${meta.icon}" alt=""></div>
+                            <div>
+                                <div class="modal-eyebrow">PRACTICE TEST</div>
+                                <h2 id="practice-title" style="margin: 0; font-size: 18px;">${meta.title}</h2>
+                                <p style="margin: 2px 0 0; font-size: 11px; color: #64748B;">${meta.subtitle} · ${meta.time}</p>
+                            </div>
+                        </div>
+                        <button class="close modal-close" aria-label="Close" onclick="closePracticeModal()">×</button>
+                    </div>
+
+                    <div class="practice-section-head">
+                        <div><span>01</span><strong>Choose how you want to practice</strong></div>
+                    </div>
+                    
+                    <div class="mode-stack">
+                        <button type="button" class="mode-card ${sel==='instant'?'selected':''}" onclick="activeModalState.selectedMode='instant'; renderModalContent();">
+                            <div class="mode-icon instant"><img src="../asset/figma/instant-feedback.png" alt="" onerror="this.style.display='none'"></div>
+                            <div class="mode-content">
+                                <div class="mode-title-row"><strong>Instant Feedback</strong><span class="mode-badge recommended">Recommended</span></div>
+                                <p>See the correct answer and explanation immediately after each question.</p>
+                                <small>Best for understanding mistakes as you learn.</small>
+                            </div>
+                            <span class="radio ${sel==='instant'?'checked':''}">${sel==='instant'?'✓':''}</span>
+                        </button>
+
+                        <button type="button" class="mode-card ${sel==='full'?'selected':''}" onclick="activeModalState.selectedMode='full'; renderModalContent();">
+                            <div class="mode-icon full"><img src="../asset/figma/full-test.png" alt="" onerror="this.style.display='none'"></div>
+                            <div class="mode-content">
+                                <div class="mode-title-row"><strong>Full Test Mode</strong><span class="mode-badge simulation">Simulation</span></div>
+                                <p>Answer all questions first. Score and explanations appear after submission.</p>
+                                <small>Best for real test conditions.</small>
+                            </div>
+                            <span class="radio ${sel==='full'?'checked':''}">${sel==='full'?'✓':''}</span>
+                        </button>
+                    </div>
+
+                    <div class="practice-section-head">
+                        <div><span>02</span><strong>Choose the time limit</strong></div>
+                    </div>
+
+                    <div class="timer-grid">
+                        <button type="button" class="timer-btn ${activeModalState.timerMinutes===15?'active':''}" onclick="activeModalState.timerMinutes=15; renderModalContent();">15 min</button>
+                        <button type="button" class="timer-btn ${activeModalState.timerMinutes===25?'active':''}" onclick="activeModalState.timerMinutes=25; renderModalContent();">25 min</button>
+                        <button type="button" class="timer-btn ${activeModalState.timerMinutes===35?'active':''}" onclick="activeModalState.timerMinutes=35; renderModalContent();">35 min</button>
+                        <button type="button" class="timer-btn ${activeModalState.timerMinutes===55?'active':''}" onclick="activeModalState.timerMinutes=55; renderModalContent();">55 min</button>
+                        <button type="button" class="timer-btn ${activeModalState.timerMinutes==='unlimited'?'active':''}" onclick="activeModalState.timerMinutes='unlimited'; renderModalContent();">Unlimited</button>
+                    </div>
+
+                    <div class="practice-summary">
+                        <div>
+                            <span class="summary-icon">✓</span>
+                            <div>
+                                <b>${meta.title} (${sel === 'instant' ? 'Instant Feedback' : 'Simulation'})</b>
+                                <small>${sel === 'instant' ? 'Immediate feedback on each selection' : 'Results shown at the end'}</small>
+                            </div>
+                        </div>
+                        <span class="summary-time">${activeModalState.timerMinutes} mins</span>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="secondary modal-cancel" onclick="closePracticeModal()">Cancel</button>
+                        <button type="button" class="primary modal-start" onclick="confirmStartTest()">Start Practice →</button>
                     </div>
                 `;
-                sectionGrid.appendChild(card);
-            });
+            }
 
-            sectionGrid.querySelectorAll("[data-toggle-section]").forEach((button) => {
-                button.addEventListener("click", () => {
-                    const sectionId = button.getAttribute("data-toggle-section");
-                    dayData.sections[sectionId].completed = !dayData.sections[sectionId].completed;
-                    saveMonthStore(year, month, store);
+        
+
+
+                
+                if (cloudSync) {
+                    cloudSync.subscribe((snapshot) => {
+                        cloudDailyTasks = snapshot.dailyTasks || {};
+                        monthStoreCache = {};
+                        renderMockPanel();
+                    });
+                    cloudSync.start();
+                }
+
+                refreshSetRecordCache().finally(() => {
                     renderMockPanel();
-                });
             });
-
-            sectionGrid.querySelectorAll("[data-open-section]").forEach((button) => {
-                button.addEventListener("click", async () => {
-                    if (lifecycle.locked) return;
-                    const sectionId = button.getAttribute("data-open-section");
-                    const file = questionBlueprint[sectionId].file;
-                    const targetRecord = availableByModule?.[sectionId] || null;
-                    const setId = String(targetRecord?.setId || "");
-                    const testType = getSetTestType(targetRecord);
-                    const params = new URLSearchParams({ setDate });
-                    if (setId) params.set("setId", setId);
-                    if (testType) params.set("testType", testType);
-                    window.location.href = `${file}?${params.toString()}`;
-                });
-            });
-
-            fullTestButton.onclick = () => {
-                if (lifecycle.locked) return;
-                sectionGrid.querySelector("[data-open-section]")?.click();
-            };
-        }
-
-        function renderSchedule() {
-            selectedDate = clampDateToMonth(selectedDate);
-            document.getElementById("monthHeading").textContent = `${monthNames[selectedDate.getMonth()]}, ${selectedDate.getFullYear()}`;
-            renderDateTiles();
-            renderMockPanel();
-        }
-
-        document.getElementById("prevDateBtn").addEventListener("click", () => shiftDate(-1));
-        document.getElementById("nextDateBtn").addEventListener("click", () => shiftDate(1));
-
-        document.getElementById("monthToggle").addEventListener("click", () => {
-            const scheduleCard = document.getElementById("scheduleCard");
-            isCalendarExpanded = !isCalendarExpanded;
-            scheduleCard.classList.toggle("expanded", isCalendarExpanded);
-            document.getElementById("monthToggle").setAttribute("aria-expanded", String(isCalendarExpanded));
-            document.getElementById("monthCaption").textContent = "";
-            renderDateTiles();
-        });
-
-        if (cloudSync) {
-            cloudSync.subscribe((snapshot) => {
-                cloudDailyTasks = snapshot.dailyTasks || {};
-                cloudStatusLabel = snapshot.isCloudActive
-                    ? "Live snapshot from /studyPlans/{uid}/dailyTasks is active."
-                    : "Cloud unavailable. Falling back to local cache.";
-                monthStoreCache = {};
-                renderSchedule();
-            });
-            cloudSync.start();
-        }
-
-        refreshSetRecordCache().finally(() => {
-            renderSchedule();
-        });
     </script>
 </body>
-</html>

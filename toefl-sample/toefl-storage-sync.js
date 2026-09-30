@@ -334,11 +334,21 @@ class ToeflStorageSync {
     }
   }
 
-  createSetId(module, setDate, testType = "mocktest") {
+  // Practice sets differ by category, not by date, so the category is encoded in the id.
+  buildPracticeVariantSlug(options = {}) {
+    const focus = String(options.focus || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const difficulty = String(options.difficulty || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    return [focus, difficulty].filter(Boolean).join("-");
+  }
+
+  createSetId(module, setDate, testType = "mocktest", options = {}) {
     const stamp = Date.now();
     const rand = Math.random().toString(36).slice(2, 8);
     if (testType === "practicetest") {
-      return `${testType}_${module}_${stamp}_${rand}`;
+      const variant = this.buildPracticeVariantSlug(options);
+      return variant
+        ? `${testType}_${module}_${variant}_${stamp}_${rand}`
+        : `${testType}_${module}_${stamp}_${rand}`;
     }
     const normalizedDate = /^\d{4}-\d{2}-\d{2}$/.test(String(setDate || ""))
       ? String(setDate)
@@ -362,6 +372,7 @@ class ToeflStorageSync {
       setDate,
       cloudflare_folder: String(item.cloudflare_folder || item.cloudflareFolder || ""),
       difficulty: String(item.difficulty || "intermediate"),
+      focus: String(item.focus || ""),
       updatedAt: String(item.updatedAt || item._updatedAt || "")
     };
   }

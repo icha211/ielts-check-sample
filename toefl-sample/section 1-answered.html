@@ -5206,6 +5206,135 @@
 
         window.addEventListener('DOMContentLoaded', init);
         window.addEventListener('storage', handleReviewCrossTabSync);
+
+        function modal (){
+            const type=state.modal.type; const m=practiceMeta(type);
+            const selected=state.selectedMode||'instant feedback mode';
+
+            modalBox.innerHTML = `
+            if (partId === 1) {
+                // Part A keeps the per-speaker card layout.
+                html += '<div class="transcript-modern-shell transcript-view transcript-part-a-shell">';
+                html += '<div class="transcript-modern-panel content-container">';
+                html += '<div class="transcript-modern-list transcript-modern-list--flow transcript-part-a-list">';
+                if (!activeSegments.length) {
+                    html += '<div class="transcript-modern-empty">No transcript available for this question.</div>';
+                } else {
+                    for (var fi = 0; fi < activeSegments.length; fi += 1) {
+                        var fSeg = activeSegments[fi] || {};
+                        var fStart = Number(fSeg.start || 0);
+                        var fEnd = Number(fSeg.end || (fStart + 8));
+                        if (questionBoundary && reviewTranscriptViewMode === 'question') {
+                            if (fStart < questionBoundary.startFloat) fStart = questionBoundary.startFloat;
+                            if (fEnd > questionBoundary.endFloat) fEnd = questionBoundary.endFloat;
+                        }
+                        if (!(fEnd > fStart)) fEnd = fStart + 0.2;
+
+                        var fPlayStart = fStart;
+                        var fPlayEnd = fEnd;
+                        if (sharedQuestionPlaybackRange) {
+                            fPlayStart = Number(sharedQuestionPlaybackRange.start || fStart);
+                            fPlayEnd = Number(sharedQuestionPlaybackRange.end || fEnd);
+                            if (!(fPlayEnd > fPlayStart)) {
+                                fPlayStart = fStart;
+                                fPlayEnd = fEnd;
+                            }
+                        }
+
+                        var fSpeakerTag = normalizeSpeakerTag(fSeg.speaker || 'NARR');
+                        var fSpeakerLabel = escapeHtml(String(fSeg.speakerLabel || '').trim() || getTranscriptSpeakerLabel(fSpeakerTag, partId));
+                        var fRawText = String(fSeg.text || '').trim().replace(/^["\u201c\u201d]+|["\u201c\u201d]+$/g, '').trim();
+                        var fText = renderTranscriptTextWithMarks(fRawText, terms);
+                        var fCardKey = ['flow', String(fSpeakerTag), String(fStart), String(fSeg.timestamp || ''), String(fSeg.text || '')].join('|');
+                        var fEncodedCardKey = encodeURIComponent(fCardKey);
+                        var fIsActive = reviewActiveTranscriptKey === fCardKey;
+
+                        html += '<article class="transcript-modern-item transcript-part-a-card' + (fIsActive ? ' is-active' : '') + '"' + (sharedQuestionPlaybackRange ? '' : ' onclick="playTranscriptSegmentFromCard(\'' + fEncodedCardKey + '\',' + fPlayStart + ',' + fPlayEnd + ')"') + '>';
+                        html += '<div class="transcript-modern-speaker-label">' + fSpeakerLabel + '</div>';
+                        html += '<div class="transcript-part-a-divider" aria-hidden="true"></div>';
+                        html += '<div class="transcript-part-a-text">' + fText + '</div>';
+                        html += '</article>';
+                    }
+                }
+                html += '</div>';
+                html += '<div class="transcript-scrollbar-track" id="transcriptScrollTrack"><div class="transcript-scrollbar-thumb" id="transcriptScrollThumb"></div></div>';
+                html += '</div>';
+                html += '</div>';
+            } else {
+                // Parts B/C render as one continuous script; only the speaker name is styled.
+                html += '<div class="transcript-modern-shell transcript-view transcript-plain-shell">';
+                html += '<div class="transcript-modern-panel content-container">';
+                html += '<div class="transcript-modern-list transcript-plain-block">';
+                if (!activeSegments.length) {
+                    html += '<div class="transcript-modern-empty">No transcript available for this question.</div>';
+                } else {
+                    var pPrevSpeakerTag = '';
+                    for (var pi = 0; pi < activeSegments.length; pi += 1) {
+                        var pSeg = activeSegments[pi] || {};
+                        var pStart = Number(pSeg.start || 0);
+                        var pEnd = Number(pSeg.end || (pStart + 8));
+                        if (!(pEnd > pStart)) pEnd = pStart + 0.2;
+
+                        var pSpeakerTag = normalizeSpeakerTag(pSeg.speaker || 'NARR');
+                        var pSpeakerLabel = escapeHtml(String(pSeg.speakerLabel || '').trim() || getTranscriptSpeakerLabel(pSpeakerTag, partId));
+                        var pRawText = String(pSeg.text || '').trim().replace(/^["\u201c\u201d]+|["\u201c\u201d]+$/g, '').trim();
+                        var pText = renderTranscriptTextWithMarks(pRawText, terms);
+                        var pCardKey = ['plain', String(pSpeakerTag), String(pStart), String(pSeg.timestamp || ''), String(pSeg.text || '')].join('|');
+                        var pEncodedCardKey = encodeURIComponent(pCardKey);
+                        var pIsActive = reviewActiveTranscriptKey === pCardKey;
+                        // The transcript only states the speaker once when the same
+                        // speaker continues across paragraphs; don't repeat the label.
+                        var pShowLabel = pSpeakerTag !== pPrevSpeakerTag;
+                        pPrevSpeakerTag = pSpeakerTag;
+
+                        html += '<p class="transcript-plain-line' + (pIsActive ? ' is-active' : '') + '" onclick="playTranscriptSegmentFromCard(\'' + pEncodedCardKey + '\',' + pStart + ',' + pEnd + ')">';
+                        html += pShowLabel ? ('<span class="transcript-modern-speaker-label">' + pSpeakerLabel + '</span>: ' + pText) : pText;
+                        html += '</p>';
+                    }
+                }
+                html += '</div>';
+                html += '<div class="transcript-scrollbar-track" id="transcriptScrollTrack"><div class="transcript-scrollbar-thumb" id="transcriptScrollThumb"></div></div>';
+                html += '</div>';
+                html += '</div>';
+            }
+
+            host.innerHTML = html;
+            initTranscriptCustomScrollbar();
+
+            '<section class="explaination-why-section">';
+                '<div class="explaination-figma-divider" aria-hidden="true"></div>';
+                    '<div class="explaination-figma-why-block">';
+                    '<section class="explaination-correct-answer-card">';
+                    '<div class="explaination-icon-badge explaination-icon-badge--correct"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8.5 12.5l2.5 2.5 4.5-5"></path></svg></div>';
+                    '<div class="explaination-answer-copy"><div class="explaination-answer-text">' + escapeHtml(String(correctOption.letter || '')) + ' - ' + escapeHtml(String(correctOption.text || '')) + '</div></div>';
+            '</section>';
+            '<div class="explaination-figma-why-body">';
+            '<section class="explaination-content-card">';
+            '<div class="explaination-icon-badge explaination-icon-badge--idea"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.47c.53.5.83 1.2.83 1.93V16h6.34v-.6c0-.73.3-1.43.83-1.93A6 6 0 0 0 12 3z"></path></svg></div>';
+            '<div class="explaination-copy-column">';
+            '<h2>EXPLAINATION</h2><div class="explaination-accent" aria-hidden="true"></div>';
+            '<div class="explaination-content-text">' + renderExplanationContent(payload.main_explanation_html || '') + String(payload.closing_analysis_html || '') + '</div>';
+            '</div></section>';
+
+            '<section class="explaination-incorrect-section">';
+            '<div class="explaination-incorrect-heading"><h2>WHY THE OTHER OPTION IS INCORRECT</h2></div>';
+            '<div class="explaination-incorrect-divider" aria-hidden="true"></div>';
+            '<div class="explaination-incorrect-grid">';
+            for (var i = 0; i < wrongOptions.length; i += 1) {
+                var option = wrongOptions[i] || {};
+                var letter = String(option.letter || '').trim().toUpperCase();
+                var distractor = distractors.find(function(item) { return String(item?.letter || '').trim().toUpperCase() === letter; }) || {};
+                '<article class="explaination-incorrect-option">';
+                '<div class="explaination-option-heading"><div class="explaination-option-letter">' + escapeHtml(letter) + '</div><div class="explaination-option-title-group"><div class="explaination-option-title">' + escapeHtml(String(option.text || distractor.text || '')) + '</div><div class="explaination-option-accent" aria-hidden="true"></div><div class="explaination-option-reason">' + renderExplanationContent(escapeHtml(String(distractor.reason || ''))) + '</div></div></div>';
+                '</article>';
+            }
+            '</div></section>';
+            '</div></div>';
+            '</section></div>';
+            
+            `;
+        }
+        
     </script>
 </body>
 </html>

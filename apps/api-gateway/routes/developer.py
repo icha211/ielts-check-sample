@@ -45,8 +45,8 @@ _ALLOWED_GROUP_AUDIO_OBJECT_KEY_RE = re.compile(
 )
 # Part B/C explanation audio is grouped per conversation/talk.
 _ALLOWED_AUDIO_GROUPS = {
-    2: {(31, 34), (35, 38)},
-    3: {(39, 42), (43, 46), (47, 50)},
+    2: {(1, 4), (5, 8), (31, 34), (35, 38)},
+    3: {(1, 4), (5, 8), (39, 42), (43, 46), (47, 50)},
 }
 DEFAULT_R2_PUBLIC_BASE_URL = "https://pub-1975cb14188340238a5d6d34750e4880.r2.dev"
 
