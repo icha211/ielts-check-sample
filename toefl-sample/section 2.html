@@ -1436,6 +1436,7 @@
             const result = {
                 sectionTitle: "Section 2: Structure and Written Expression",
                 sectionKey: "structure",
+                setId: currentSetId,
                 testType: currentTestType,
                 runMode: getSection2PracticeRunMode(),
                 focus: getPracticeVariant().focus,
@@ -3342,7 +3343,8 @@
                 return { uid, number: qNum, partId: pId, partName: part.name || '', questionText: q.questionText || `Question ${qNum}`, options: q.options || {}, correctAnswer: correct, userAnswer, isCorrect: userAnswer === correct, isPartB: q.isPartB || false, explanation: globalExplanations[uid] || '', videoStepUrl };
             }).sort((a, b) => a.number - b.number);
 
-            const result = { sectionTitle: "Section 2: Structure and Written Expression", sectionKey: "structure", testType: currentTestType, runMode: getSection2PracticeRunMode(), focus: getPracticeVariant().focus, totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), questions: answeredQs };
+            const setDate = (document.getElementById("set-date") || {}).value || currentPackageDate || urlParams.get("setDate") || "";
+            const result = { sectionTitle: "Section 2: Structure and Written Expression", sectionKey: "structure", setId: currentSetId, testType: currentTestType, runMode: getSection2PracticeRunMode(), focus: getPracticeVariant().focus, totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), setDate, questions: answeredQs };
             
             // Save results to storage
             localStorage.setItem('toefl_section2_result', JSON.stringify(result));
@@ -3358,7 +3360,6 @@
                 window.location.href = `section 3.html?${urlParams.toString()}`;
             } else {
                 if (currentSetId) urlParams.set("setId", currentSetId);
-                const setDate = (document.getElementById("set-date") || {}).value || currentPackageDate;
                 if (setDate) urlParams.set("setDate", setDate);
                 window.location.href = `section 2-answered.html?${urlParams.toString()}`;
             }

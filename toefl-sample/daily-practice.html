@@ -549,9 +549,15 @@
             }));
 
             const setDate = getCurrentDaySetDate();
+            const structureParams = new URLSearchParams({ setDate, setId: selected.setId });
+            if (selected.setId.startsWith("practicetest_")) {
+                structureParams.set("testType", "practicetest");
+                structureParams.set("runMode", "full");
+                if (selected.focus) structureParams.set("focus", selected.focus);
+            }
             const sectionMap = {
                 listening: `section 1.html?setDate=${setDate}&setId=${encodeURIComponent(selected.setId)}`,
-                structure: `section 2.html?setDate=${setDate}&setId=${encodeURIComponent(selected.setId)}`,
+                structure: `section 2.html?${structureParams.toString()}`,
                 reading: `section 3.html?setDate=${setDate}&setId=${encodeURIComponent(selected.setId)}`
             };
 

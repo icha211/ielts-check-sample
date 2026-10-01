@@ -703,6 +703,7 @@
                 rawScore: rawScore,
                 scaledScore: Number(source.scaledScore),
                 submittedAt: String(firstNonEmpty(source.submittedAt, source.setDate, source.createdAt, '')),
+                setDate: String(source.setDate || ''),
                 questions: questions
             };
         }
@@ -712,7 +713,9 @@
             var dateParam = params.get('date') || params.get('setDate') || params.get('packageDate');
 
             var direct = parseStorageJson('toefl_section2_result');
-            if (direct) {
+            var isScoped = ['setId', 'testType', 'runMode', 'practiceMode', 'focus', 'setDate', 'date', 'packageDate']
+                .some(function (key) { return params.has(key); });
+            if (direct && (!isScoped || getMatchingSubmittedResult())) {
                 if (dateParam && (!direct.submittedAt || direct.submittedAt === '2026-01-01')) {
                     direct.submittedAt = dateParam;
                 }
@@ -738,6 +741,23 @@
             }
 
             return null;
+        }
+
+        function getMatchingSubmittedResult() {
+            var result = parseStorageJson('toefl_section2_result');
+            if (!result || !Array.isArray(result.questions) || !result.questions.length) return null;
+            var params = new URLSearchParams(window.location.search);
+            var setId = params.get('setId');
+            var testType = params.get('testType');
+            var runMode = params.get('runMode') || params.get('practiceMode');
+            var focus = params.get('focus');
+            var date = params.get('setDate') || params.get('date') || params.get('packageDate');
+            if (setId && result.setId !== setId) return null;
+            if (testType && String(result.testType || '').toLowerCase() !== testType.toLowerCase()) return null;
+            if (runMode && String(result.runMode || '').toLowerCase() !== runMode.toLowerCase()) return null;
+            if (focus && String(result.focus || '').toLowerCase() !== focus.toLowerCase()) return null;
+            if (date && normalizeDateKey(result.setDate || result.submittedAt) !== normalizeDateKey(date)) return null;
+            return result;
         }
 
         function parseDraftAnswerKey(value) {
@@ -3905,7 +3925,7 @@
             var params = new URLSearchParams(window.location.search);
             var dateParam = params.get('date') || params.get('setDate') || params.get('packageDate');
 
-            var source = await loadReviewSourceFromUrl() || loadReviewSource();
+            var source = getMatchingSubmittedResult() || await loadReviewSourceFromUrl() || loadReviewSource();
             var result = normalizeReviewState(source);
             if (!result || !Array.isArray(result.questions) || !result.questions.length) {
                 result = buildPreviewReviewState(dateParam);
@@ -3915,7 +3935,7 @@
             }
 
             reviewResultData = result;
-            renderReviewPackageLabel(result.submittedAt);
+            renderReviewPackageLabel(result.setDate || dateParam || result.submittedAt);
             renderListeningScaledScore(result);
 
             var qParam = Number(params.get('q') || params.get('question') || params.get('questionNumber') || 0);
