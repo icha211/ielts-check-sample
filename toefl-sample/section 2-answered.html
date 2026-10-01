@@ -358,18 +358,50 @@
         }
 
         function formatReviewPackageLabel(dateValue) {
-            var normalized = normalizeDateKey(dateValue);
-            if (!normalized) return 'Package 01 Jan';
-            var parsedDate = new Date(normalized + 'T00:00:00');
-            if (isNaN(parsedDate.getTime())) return 'Package ' + normalized;
-            var day = String(parsedDate.getDate()).padStart(2, '0');
-            var monthName = parsedDate.toLocaleString('en-US', { month: 'short' }) || 'Jan';
-            return 'Package ' + day + ' ' + monthName;
+            const params = new URLSearchParams(window.location.search);
+            const type = String(params.get("testType") || reviewResultData?.testType || "mocktest").toLowerCase().trim();
+            const mode = String(params.get("runMode") || params.get("practiceMode") || reviewResultData?.runMode || "").toLowerCase().trim();
+
+            let formattedDate = "";
+            if (dateValue) {
+                const date = new Date(normalizeDateKey(dateValue) + "T00:00:00");
+                if (!Number.isNaN(date.getTime())) {
+                    const day = String(date.getDate()).padStart(2, "0");
+                    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    formattedDate = `${day} ${months[date.getMonth()]}`;
+                }
+            }
+
+            if (type === "full_mock" || type === "full mock test") {
+                return `Full Mock Test Package ${formattedDate}`.trim();
+            }
+            if (type === "mock" || type === "mocktest") return `Mock Test ${formattedDate}`.trim();
+            if (type === "practice" || type === "practice test" || type === "practicetest") {
+                if (["instant", "instantfeedback", "instant feedback"].includes(mode)) return `Practice Test ${formattedDate} (Instant Feedback)`.replace(/\s{2,}/g, " ").trim();
+                if (["full", "fulltest", "full test", "full test mode"].includes(mode)) return `Practice Test ${formattedDate} (Full Test Mode)`.replace(/\s{2,}/g, " ").trim();
+                return `Practice Test ${formattedDate}`.trim();
+            }
+            return `Package ${formattedDate}`.trim();
         }
 
         function renderReviewPackageLabel(dateValue) {
             var labelEl = document.getElementById('reviewPackageLabel');
             if (labelEl) labelEl.textContent = formatReviewPackageLabel(dateValue);
+        }
+
+        function updateHeaderTitle() {
+            const titleElement = document.getElementById("sectionReviewTitle");
+            if (!titleElement) return;
+
+            const params = new URLSearchParams(window.location.search);
+            const type = String(params.get("testType") || reviewResultData?.testType || "mocktest").toLowerCase().trim();
+            const focus = String(params.get("focus") || reviewResultData?.focus || "").toLowerCase();
+            const sectionKey = String(params.get("sectionKey") || "").toLowerCase();
+            const isPractice = ["practice", "practice test", "practicetest"].includes(type);
+
+            titleElement.textContent = isPractice
+                ? (sectionKey === "writing" || focus === "partb" ? "Writing" : "Structure")
+                : (reviewResultData && reviewResultData.sectionTitle ? reviewResultData.sectionTitle : "Structure and Written Expression");
         }
 
         function getItemsFromSource(source) {
@@ -664,6 +696,9 @@
             return {
                 sectionTitle: sectionTitle,
                 sectionKey: String(firstNonEmpty(source.sectionKey, source.key, 'structure')),
+                testType: String(source.testType || ''),
+                runMode: String(source.runMode || ''),
+                focus: String(source.focus || ''),
                 totalQuestions: Number(source.totalQuestions) || questions.length,
                 rawScore: rawScore,
                 scaledScore: Number(source.scaledScore),
@@ -3741,7 +3776,7 @@
         function renderQuestion(question, indexHint) {
             if (!question) return;
             reviewCurrentQuestion = question;
-            document.getElementById('sectionReviewTitle').textContent = reviewResultData && reviewResultData.sectionTitle ? reviewResultData.sectionTitle : 'Structure and Written Expression';
+            updateHeaderTitle();
             try {
                 renderExplainationTabDetail(question);
                 ensureGeminiObserveAnalysis(question, deriveGrammarBlueprint(question));
