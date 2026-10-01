@@ -132,7 +132,12 @@
         display: flex;
         align-items: center;
         gap: 10px;
+        max-width: min(48vw, 620px);
+        overflow-x: auto;
+        scrollbar-width: none;
     }
+
+    .instant-progress::-webkit-scrollbar { display: none; }
 
     .instant-progress-label {
         font: 700 9px/1 "Plus Jakarta Sans", Arial, sans-serif;
@@ -158,13 +163,13 @@
         margin: 16px auto 0;
         background: #fff;
         border: 1px solid #e2e8f0;
-        border-radius: 16px;
+        border-radius: 24px;
         box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
         overflow: hidden;
     }
 
     .instant-card__body { 
-        padding: 18px 20px 20px; 
+        padding: 24px 28px; 
         display: grid; 
         gap: 16px; 
     }
@@ -195,6 +200,9 @@
         display: flex; 
         align-items: flex-start;
         gap: 24px; 
+        box-shadow: 0 0px 4px rgba(15, 23, 42, 0.16);
+        padding: 16px 24px;
+        border-radius: 16px;
     }
 
     .instant-question.is-revealed {
@@ -3127,11 +3135,17 @@
             return getPracticeRunMode() === "instant";
         }
 
+        function isPracticeFullTestMode() {
+            return isPracticeTestType() && !isInstantFeedbackMode();
+        }
+
         let instantOrder = [];
         let instantIndex = 0;
         let instantAnswers = {};
         let instantRevealed = false;
         let instantChecked = {};
+        let instantProgressOrder = [];
+        let currentMockNavigationUid = "";
         // Which question of the revealed Part B/C group is currently being explained.
         let instantReviewIndex = 0;
         let loadedInstantAudioUid = "";
@@ -3178,6 +3192,9 @@
 
         function applyPracticeRunMode() {
             const instant = isInstantFeedbackMode();
+            const fullPractice = isPracticeFullTestMode();
+            const isPractice = isPracticeTestType();
+            const useQuestionDots = instant || fullPractice;
             document.body.classList.toggle("instant-feedback-mode", instant);
 
             const navigatorPanel = document.getElementById("navigator-panel");
@@ -3187,12 +3204,11 @@
             const mockStack = document.getElementById("question-sections-container");
             const instantHost = document.getElementById("instant-question-host");
 
-            if (navigatorPanel) navigatorPanel.style.display = instant ? "none" : "";
-            if (progressBlock) progressBlock.style.display = instant ? "none" : "";
-            if (dots) dots.style.display = instant ? "flex" : "none";
-            if (mockStack) mockStack.style.display = instant ? "none" : "";
-            if (instantHost) instantHost.style.display = instant ? "" : "none";
-            // Instant mode renders its own card, so the shared bars stay hidden in both modes.
+            if (navigatorPanel) navigatorPanel.style.display = instant || fullPractice ? "none" : "";
+            if (progressBlock) progressBlock.style.display = useQuestionDots ? "none" : "";
+            if (dots) dots.style.display = useQuestionDots ? "flex" : "none";
+            if (mockStack) mockStack.style.display = instant || fullPractice ? "none" : "";
+            if (instantHost) instantHost.style.display = instant || fullPractice ? "" : "none";
             if (actionBar) actionBar.style.display = "none";
             updatePackageLabel((document.getElementById("set-date") || {}).value || "", currentTestType, instant ? "instant" : "full test");
 
@@ -3202,29 +3218,44 @@
                 explanationWrapper.style.display = "none";
             }
 
-            if (!instant) return;
+            if (!isPractice) {
+                instantOrder = [];
+                instantProgressOrder = [];
+                if (dots) dots.innerHTML = "";
+                return;
+            }
 
             instantOrder = questionOrder.filter((uid) => !forcedPracticePartId || getPartIdFromUid(uid) === forcedPracticePartId);
             if (instantIndex >= instantOrder.length) instantIndex = 0;
-            instantRevealed = Boolean(instantChecked[instantOrder[instantIndex]]);
+            instantRevealed = instant ? Boolean(instantChecked[instantOrder[instantIndex]]) : false;
             instantReviewIndex = 0;
-            renderInstantQuestion();
+            if (instant || fullPractice) renderInstantQuestion();
+            renderInstantProgressDots();
+        }
+
+        function applyFullTestMode() {
+            applyPracticeRunMode();
         }
 
         function getInstantCircleState(uid, index) {
-            const isCurrent = (uid === getInstantCurrentUid());
+            const mockCurrentUid = currentMockNavigationUid || getQuestionUidsByPart(activePartId)[0];
+            const isCurrent = isInstantFeedbackMode()
+                ? uid === getInstantCurrentUid()
+                : (isPracticeFullTestMode() ? uid === instantOrder[instantIndex] : uid === mockCurrentUid);
             const currentClass = isCurrent ? "is-current" : "";
+            const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
+            const selected = String(instantAnswers[uid] || radio?.value || "").toUpperCase();
 
             // 1. If checked, determine if correct or incorrect (even if it's current)
             if (instantChecked[uid]) {
                 const correctLetter = String(globalAnswerKey[uid] || "").trim().toUpperCase();
-                const isCorrect = String(instantAnswers[uid] || "").toUpperCase() === correctLetter;
+                const isCorrect = selected === correctLetter;
                 const statusClass = isCorrect ? "is-correct" : "is-incorrect";
                 return `${statusClass} ${currentClass}`.trim();
             }
 
             // 2. If answered but not checked yet
-            if (instantAnswers[uid]) {
+            if (selected) {
                 return `is-answered ${currentClass}`.trim();
             }
 
@@ -3232,21 +3263,33 @@
             return currentClass;
         }
 
-        // Question circles only exist for practice tests run in instant-feedback mode.
         function renderInstantProgressDots() {
             const host = document.getElementById("instant-progress-dots");
             if (!host) return;
-            if (!isPracticeTestType() || !isInstantFeedbackMode()) {
+            if (!isPracticeTestType()) {
+                host.innerHTML = "";
+                instantProgressOrder = [];
+                return;
+            }
+            if (isInstantFeedbackMode()) {
+                instantProgressOrder = instantOrder.slice();
+            } else {
+                const currentPartId = getPartIdFromUid(instantOrder[instantIndex]) || activePartId || 1;
+                instantProgressOrder = instantOrder.filter((uid) => getPartIdFromUid(uid) === currentPartId);
+            }
+            if (!instantProgressOrder.length) {
                 host.innerHTML = "";
                 return;
             }
 
-            const partId = forcedPracticePartId || getPartIdFromUid(instantOrder[instantIndex]) || activePartId || 1;
+            const partId = isPracticeFullTestMode()
+                ? getPartIdFromUid(instantOrder[instantIndex]) || activePartId || 1
+                : activePartId || 1;
             const partObj = PARTS.find((part) => part.id === partId) || {};
             const partTitle = partObj.name ? partObj.name.split(":")[0].toUpperCase() : `PART ${partId}`;
-            const circles = instantOrder.map((uid, index) => {
+            const circles = instantProgressOrder.map((uid, index) => {
                 const questionNumber = String(uid).split("_")[1] || String(index + 1);
-                return `<button type="button" class="progress-q-circle ${getInstantCircleState(uid, index)}" onclick="goToInstantQuestion(${index})" aria-label="Question ${escapeHtml(questionNumber)}">${escapeHtml(questionNumber)}</button>`;
+                return `<button type="button" class="progress-q-circle ${getInstantCircleState(uid, index)}" onclick="goToInstantQuestion(${index}, '${uid}')" aria-label="Question ${escapeHtml(questionNumber)}">${escapeHtml(questionNumber)}</button>`;
             }).join("");
 
             host.innerHTML = `
@@ -3256,16 +3299,30 @@
                 </div>`;
         }
 
-        function goToInstantQuestion(index) {
-            if (index < 0 || index >= instantOrder.length) return;
-            // Parts B/C are answered per talk, so jump to the first question of that talk.
-            const targetUid = instantOrder[index];
-            const groupUids = getInstantGroupUids(index);
-            const startIndex = groupUids.length ? instantOrder.indexOf(groupUids[0]) : index;
-            instantIndex = startIndex >= 0 ? startIndex : index;
-            instantRevealed = Boolean(instantChecked[instantOrder[instantIndex]]);
-            instantReviewIndex = instantRevealed ? Math.max(0, groupUids.indexOf(targetUid)) : 0;
+        function goToInstantQuestion(index, targetUid = "") {
+            const uid = targetUid || instantProgressOrder[index] || instantOrder[index];
+            if (!uid) return;
+            if (!isPracticeTestType()) {
+                currentMockNavigationUid = uid;
+                scrollToQuestion(uid);
+                renderInstantProgressDots();
+                return;
+            }
+
+            const targetIndex = instantOrder.indexOf(uid);
+            if (targetIndex < 0) return;
+            instantIndex = targetIndex;
+            activePartId = getPartIdFromUid(uid);
+            if (isInstantFeedbackMode()) {
+                const groupUids = getInstantGroupUids(targetIndex);
+                instantRevealed = Boolean(instantChecked[instantOrder[instantIndex]]);
+                instantReviewIndex = instantRevealed ? Math.max(0, groupUids.indexOf(uid)) : 0;
+            } else {
+                instantRevealed = false;
+            }
             renderInstantQuestion();
+            const targetCard = document.getElementById(`q-container-${uid}`);
+            if (targetCard) targetCard.scrollIntoView({ behavior: "smooth", block: "center" });
         }
 
         function getInstantDraft() {
@@ -3546,6 +3603,7 @@
             const selected = instantAnswers[uid] ? String(instantAnswers[uid]).toUpperCase() : "";
             const correctLetter = String(globalAnswerKey[uid] || "").trim().toUpperCase();
             const isCorrect = instantRevealed && selected === correctLetter;
+            const showQuestionText = instantRevealed && !isPracticeFullTestMode();
 
             const badgeStateClass = instantRevealed
                 ? (isCorrect ? " is-correct" : " is-incorrect")
@@ -3572,7 +3630,7 @@
                 <article class="instant-question${instantRevealed ? " is-revealed" : ""}" id="q-container-${uid}" data-uid="${uid}">
                     <div class="instant-question-head">
                         <div class="question-number-badge${badgeStateClass}">${questionNumber}</div>
-                        ${instantRevealed && question.questionText ? `<p class="instant-question-title">${escapeHtml(question.questionText)}</p>` : ""}
+                        ${showQuestionText && question.questionText ? `<p class="instant-question-title">${escapeHtml(question.questionText)}</p>` : ""}
                         ${instantRevealed ? `<span class="instant-verdict ${isCorrect ? "is-correct" : "is-incorrect"}">${isCorrect ? "CORRECT" : "INCORRECT"}</span>` : ""}
                     </div>
                     <div class="radio-group instant-options">${optionsHtml}</div>
@@ -3584,15 +3642,28 @@
             const container = document.getElementById("instant-question-host");
             if (!container) return;
 
+            const fullPractice = isPracticeFullTestMode();
+            const actionBar = document.getElementById("instant-action-bar");
+            const explanationWrapper = document.getElementById("explanation-wrapper");
+            if (actionBar && actionBar.parentElement !== container.parentElement) {
+                container.parentElement.insertBefore(actionBar, explanationWrapper?.nextSibling || null);
+            }
+
             const uid = instantOrder[instantIndex];
             if (!uid) {
                 container.innerHTML = `<div class="instant-card"><div class="instant-card__body"><div class="instant-empty-state">No questions available for this practice set.</div></div></div>`;
+                if (actionBar) actionBar.style.display = "none";
                 renderInstantProgressDots();
                 return;
             }
 
             const groupUids = getInstantGroupUids();
-            const visibleUids = getInstantVisibleUids();
+            const partId = getPartIdFromUid(uid);
+            const visibleUids = fullPractice
+                ? (partId === 1
+                    ? instantOrder.filter((item) => getPartIdFromUid(item) === 1)
+                    : groupUids)
+                : getInstantVisibleUids();
             const isStacked = visibleUids.length > 1;
             const hasMoreExplanations = instantRevealed && groupUids.length > 1 && instantReviewIndex < groupUids.length - 1;
             const lastGroupIndex = instantOrder.indexOf(groupUids[groupUids.length - 1]);
@@ -3611,15 +3682,31 @@
                    <button class="btn-action primary" type="button" onclick="nextInstantQuestion()">${nextLabel} <i class="ph ph-caret-right" aria-hidden="true"></i></button>`
                 : `<button class="btn-action secondary" type="button" onclick="skipInstantQuestion()">${skipLabel}</button>
                    <button class="btn-action primary" type="button" onclick="checkInstantAnswer()">Check Answer <i class="ph ph-caret-right" aria-hidden="true"></i></button>`;
+            const actionContainer = document.getElementById("action-btn-container");
+            const fullModeNextLabel = lastGroupIndex < instantOrder.length - 1 ? "Next Talk" : "Submit";
+            if (actionBar && actionContainer) {
+                if (fullPractice && partId !== 1) {
+                    actionContainer.innerHTML = `<button class="btn-action primary" type="button" onclick="${fullModeNextLabel === "Submit" ? "submitAnswers()" : "nextTalk()"}">${fullModeNextLabel} <i class="ph ph-caret-right" aria-hidden="true"></i></button>`;
+                    actionBar.style.display = "block";
+                } else {
+                    actionContainer.innerHTML = "";
+                    actionBar.style.display = "none";
+                }
+            }
 
             container.innerHTML = `
                 <section class="instant-card" data-uid="${visibleUids[0]}">
                     ${instantRevealed ? `<div class="instant-card__tab"><span class="instant-tab-chip"><img src="../asst/icon/explaination tab.png" alt="Explaination tab icon"> Explanation</span></div>` : ""}
                     <div class="instant-card__body${isStacked ? " stack" : ""}">
                         ${visibleUids.map(buildInstantQuestionArticleHtml).join("")}
-                        <div class="instant-actions">${actionsHtml}</div>
+                        ${fullPractice ? "" : `<div class="instant-actions">${actionsHtml}</div>`}
                     </div>
                 </section>`;
+
+            if (fullPractice && partId !== 1 && actionBar) {
+                const cardBody = container.querySelector(".instant-card__body");
+                if (cardBody) cardBody.appendChild(actionBar);
+            }
 
             initTranscriptCustomScrollbar();
             renderInstantProgressDots();
@@ -3632,6 +3719,25 @@
             if (!uid) return;
             instantAnswers[uid] = String(letter || "").toUpperCase();
             renderInstantQuestion();
+        }
+
+        function nextTalk() {
+            if (!isPracticeFullTestMode()) return;
+            const groupUids = getInstantGroupUids();
+            const lastGroupIndex = instantOrder.indexOf(groupUids[groupUids.length - 1]);
+            const nextIndex = lastGroupIndex + 1;
+            if (nextIndex >= instantOrder.length) {
+                submitAnswers();
+                return;
+            }
+
+            instantIndex = nextIndex;
+            activePartId = getPartIdFromUid(instantOrder[instantIndex]);
+            instantRevealed = false;
+            instantReviewIndex = 0;
+            renderInstantQuestion();
+            const main = document.getElementById("user-passages-container");
+            if (main) main.scrollTo({ top: 0, behavior: "smooth" });
         }
 
         function checkInstantAnswer() {
@@ -3710,7 +3816,7 @@
         function getAnsweredCount() {
             return questionOrder.reduce((count, uid) => {
                 const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
-                return count + (radio ? 1 : 0);
+                return count + (radio || instantAnswers[uid] ? 1 : 0);
             }, 0);
         }
 
@@ -3719,7 +3825,7 @@
                 const [uidPart] = uid.split("_");
                 if (parseInt(uidPart, 10) !== partId) return count;
                 const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
-                return count + (radio ? 1 : 0);
+                return count + (radio || instantAnswers[uid] ? 1 : 0);
             }, 0);
         }
 
@@ -3770,6 +3876,9 @@
             }
             
             activePartId = targetPart;
+            if (!isPracticeTestType() && getPartIdFromUid(currentMockNavigationUid) !== targetPart) {
+                currentMockNavigationUid = getQuestionUidsByPart(targetPart)[0] || "";
+            }
 
             PARTS.forEach((part) => {
                 const section = document.getElementById(`user-part-${part.id}`);
@@ -4807,6 +4916,7 @@
             });
 
             updateNextSectionButtonState();
+            renderInstantProgressDots();
         }
 
         async function saveSectionDraft(options = {}) {
@@ -7201,7 +7311,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             let score = 0;
             for (const uid in globalAnswerKey) {
                 const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
-                const userAnswer = radio ? radio.value.trim().toLowerCase() : "";
+                const userAnswer = radio ? radio.value.trim().toLowerCase() : String(instantAnswers[uid] || "").trim().toLowerCase();
                 if (userAnswer === globalAnswerKey[uid]) score += 1;
             }
 
@@ -7220,7 +7330,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 const pId = parseInt(uid.split("_")[0], 10);
                 const qNum = parseInt(uid.split("_")[1], 10);
                 const radio = document.querySelector(`input[name="q_${uid}"]:checked`);
-                const userAnswer = radio ? radio.value.trim().toLowerCase() : "";
+                const userAnswer = radio ? radio.value.trim().toLowerCase() : String(instantAnswers[uid] || "").trim().toLowerCase();
                 const correct = globalAnswerKey[uid];
                 const q = globalQuestions[uid] || {};
                 const part = PARTS.find((item) => item.id === pId) || {};
@@ -7283,7 +7393,12 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 
                 window.location.href = `section 2.html?${urlParams.toString()}`;
             } else {
-                window.location.href = "section 1-answered.html";
+                if (currentSetId && !urlParams.has("setId")) urlParams.set("setId", currentSetId);
+                if (selectedDate && !urlParams.has("setDate")) urlParams.set("setDate", selectedDate);
+                if (isPracticeTestType() && !urlParams.has("runMode") && !urlParams.has("practiceMode")) {
+                    urlParams.set("runMode", isInstantFeedbackMode() ? "instant" : "full");
+                }
+                window.location.href = `section 1-answered.html?${urlParams.toString()}`;
             }
         }
 
@@ -7585,8 +7700,11 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const pNum = Number(partNumber || 0);
             const groups = getAudioGroupsForPart(pNum, isPractice);
             let qNum = Number(questionNumber || 0);
-            if (isPractice && pNum === 2 && qNum >= 31 && qNum <= 38) {
-                qNum -= 30;
+            if (isPractice) {
+                const part = PARTS.find((item) => item.id === pNum);
+                if (part && qNum >= part.start && qNum <= part.end) {
+                    qNum -= part.start - 1;
+                }
             }
             return groups.find((group) => qNum >= group.start && qNum <= group.end) || null;
         }

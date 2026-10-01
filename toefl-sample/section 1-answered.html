@@ -68,6 +68,73 @@
         #partbPanelExplaination .explaination-figma-your-answer {
             justify-self: end;
         }
+
+        .review-practice-full-mode .header-score-ring {
+            display: none;
+        }
+
+        .review-practice-full-mode .header-question-nav {
+            max-width: min(52vw, 620px);
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .review-practice-full-mode .header-question-nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        .review-practice-full-mode .header-part-block {
+            align-items: center;
+            flex: 0 0 auto;
+        }
+
+        .review-practice-full-mode .reading-part-circles {
+            display: flex;
+            flex-wrap: nowrap;
+            justify-content: center;
+            gap: 4px;
+            padding-top: 4px;
+        }
+
+        .review-practice-full-mode .progress-q-circle {
+            width: 20px;
+            height: 20px;
+            flex: 0 0 20px;
+            border: 1px solid #d1dce8;
+            border-radius: 999px;
+            padding: 1px;
+            background: #7a8fa6;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font: 400 10px/1 "Plus Jakarta Sans", Arial, sans-serif;
+            cursor: pointer;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+
+        .review-practice-full-mode .progress-q-circle.is-current {
+            background: #005faa;
+            border-color: #fff;
+            box-shadow: 0 0 0 2px #005faa;
+        }
+
+        .review-practice-full-mode .progress-q-circle.is-correct {
+            background: #0d9488;
+            border-color: #fff;
+            box-shadow: 0 0 2px #0d9488;
+        }
+
+        .review-practice-full-mode .progress-q-circle.is-incorrect {
+            background: #dc2626;
+            border-color: #fff;
+            box-shadow: 0 0 2px #dc2626;
+        }
+
+        .review-practice-full-mode .progress-q-circle:hover {
+            border-color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -498,6 +565,9 @@
         var reviewTranscriptViewMode = 'full';
 
         var reviewExplainationTab = 'explaination';
+
+        var praticTestFullTestMode = false;
+        var reviewEntryMode = 'review';
 
         function getReviewResultStorageKey(setId) {
             var normalizedSetId = String(setId || '').trim();
@@ -2915,6 +2985,30 @@
         }
 
         function renderHeaderNavigator(result, activeQuestionNumber) {
+            var nav = document.querySelector('.header-question-nav');
+            if (praticTestFullTestMode && nav) {
+                var questions = (result && result.questions) || [];
+                var activeQuestion = questions.find(function(question) {
+                    return Number(question && question.number) === Number(activeQuestionNumber);
+                }) || questions[0] || {};
+                var activePartId = inferPartIdFromQuestion(activeQuestion);
+                var partTitle = activePartId === 1 ? 'PART A' : (activePartId === 2 ? 'PART B' : 'PART C');
+                var circles = questions.filter(function(question) {
+                    return inferPartIdFromQuestion(question) === activePartId;
+                }).map(function(question) {
+                    var questionNumber = Number(question.number || 0);
+                    var status = questionStatus(question);
+                    var classes = ['progress-q-circle'];
+                    if (questionNumber === Number(activeQuestionNumber)) classes.push('is-current');
+                    if (status === 'correct') classes.push('is-correct');
+                    if (status === 'wrong') classes.push('is-incorrect');
+                    return '<button type="button" class="' + classes.join(' ') + '" onclick="selectReviewQuestion(' + questionNumber + ')" aria-label="Question ' + questionNumber + '">' + questionNumber + '</button>';
+                }).join('');
+
+                nav.innerHTML = '<div class="header-part-block"><div class="header-part-title">' + partTitle + '</div><div class="reading-part-circles">' + circles + '</div></div>';
+                return;
+            }
+
             var partA = document.getElementById('partAChips');
             var partB = document.getElementById('partBChips');
             var partC = document.getElementById('partCChips');
@@ -5057,6 +5151,15 @@
             setSectionCaretIcon(document.getElementById('detailHeaderToggle'), true);
             setReviewExplainationTab('explaination');
 
+            var entryParams = new URLSearchParams(window.location.search || '');
+            var entryTestType = String(entryParams.get('testType') || '').toLowerCase();
+            var entryRunMode = String(entryParams.get('runMode') || entryParams.get('practiceMode') || entryParams.get('mode') || '').toLowerCase().trim();
+            praticTestFullTestMode = entryTestType.includes('practice')
+                && entryRunMode !== 'instant'
+                && entryRunMode !== 'instantfeedback'
+                && entryRunMode !== 'instant feedback';
+            document.body.classList.toggle('review-practice-full-mode', praticTestFullTestMode);
+
             var result = readReviewResultFromStorage();
 
             if (!result || !Array.isArray(result.questions) || !result.questions.length) {
@@ -5094,7 +5197,9 @@
             }
             await hydrateTranscriptFallbackMaps(result);
             refreshResultQuestionTranscriptSegments();
-            renderListeningScaledScore(reviewResultData);
+            if (!praticTestFullTestMode) {
+                renderListeningScaledScore(reviewResultData);
+            }
 
             var firstQuestion = result.questions[0];
             var firstIndex = 0;

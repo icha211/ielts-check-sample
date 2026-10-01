@@ -118,6 +118,11 @@
 
     /* ===== Practice: instant feedback layout ===== */
     .instant-progress { display: flex; align-items: center; gap: 10px; }
+    .instant-progress.is-full-practice {
+        max-width: min(44vw, 560px);
+        overflow-x: auto;
+    }
+    .instant-progress.is-full-practice .progress-part-chip { flex-shrink: 0; }
 
     #instant-question-host { 
         padding: 24px 16px 40px;
@@ -174,7 +179,7 @@
         flex: 1;
         margin: 0;
         color: #0f172a;
-        font: 400 16px/1.45 "Times New Roman", Times, serif;
+        font: 400 18px/1.45 "Times New Roman", Times, serif;
     }
 
     .instant-verdict {
@@ -223,13 +228,13 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font: 400 13px/1 "Times New Roman", Times, serif;
+        font: 400 12px/1 "Times New Roman", Times, serif;
     }
 
     .instant-options label.selected .instant-option-letter { background: #005FAA; border-color: #005faa; color: #fff; }
     .instant-options label.is-correct .instant-option-letter { background: #0d9488; border-color: #0d9488; color: #fff; }
 
-    .instant-option-text { flex: 1; min-width: 0; }
+    .instant-option-text { flex: 1; min-width: 0; font: 400 18px/1 "Times New Roman", Times, serif; }
 
     .instant-option-tag {
         flex: 0 0 auto;
@@ -278,11 +283,11 @@
     .qc-core__head {
         display: flex;
         align-items: center;
-        gap: 10px;
-        padding: 10px 16px;
+        gap: 12px;
+        padding: 12px 16px;
         background: #4f46e5;
         color: #fff;
-        font: 700 12px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        font: 750 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
         letter-spacing: 0.06em;
     }
 
@@ -291,13 +296,13 @@
 
     .qc-core__label {
         color: #6366f1;
-        font: 600 12px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
+        font: 600 14px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
         letter-spacing: 0.02em;
     }
 
     .qc-core__text {
         color: #0f172a;
-        font: 400 13px/1.6 "Plus Jakarta Sans", Arial, sans-serif;
+        font: 400 14px/1.6 "Plus Jakarta Sans", Arial, sans-serif;
         text-align: justify;
     }
 
@@ -322,7 +327,7 @@
         grid-template-columns: 200px 18px 1fr;
         gap: 10px;
         align-items: start;
-        font: 400 13px/1.55 "Plus Jakarta Sans", Arial, sans-serif;
+        font: 400 14px/1.55 "Plus Jakarta Sans", Arial, sans-serif;
         color: #0f172a;
     }
 
@@ -347,6 +352,48 @@
         background: #0f172a;
     }
 
+    .instant-panel .section2-complete-sentence-box {
+        width: 100%;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 8px;
+        padding: 16px 20px;
+        border: 1px solid #d1dce8;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #000000;
+        letter-spacing: 0.04em;
+    }
+
+    .instant-panel .section2-complete-sentence-box h3 {
+        margin: 0;
+        color: #111827;
+        font: 600 14px "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .instant-panel .section2-complete-sentence {
+        margin: 0;
+        color: #111827;
+        font: 400 18px/1.45 "Times New Roman", Times, serif;
+        text-align: center;
+        overflow-wrap: anywhere;
+    }
+
+    .instant-panel .section2-complete-sentence strong {
+        background: #ffde00;
+        color: #000000;
+        font-weight: 550;
+    }
+
+    .instant-panel .section2-complete-rationale {
+        margin: 0;
+        color: #111827;
+        font: 400 14px/1.55 "Plus Jakarta Sans", Arial, sans-serif;
+        overflow-wrap: anywhere;
+    }
+
     @media (max-width: 720px) {
         .qc-core__item { grid-template-columns: 1fr; }
         .qc-core__row { grid-template-columns: 1fr; }
@@ -367,7 +414,7 @@
                 <img class="logo-frame-icon" src="../asst/icon/QuickCheckLogo.png" alt="">
                 <div class="test-package-timer">
                     <div class="test-package-frame">
-                        <div class="structure-writing">Structure &amp; Writing</div>
+                        <div class="structure-writing" id="title-test">Structure &amp; Writing</div>
                         <div class="package-01-jan" id="header-package-label">Package 01 Jan</div>
                     </div>
                 </div>
@@ -1416,6 +1463,7 @@
         function updateHeaderPackageLabel(dateString) {
             const label = document.getElementById("header-package-label");
             if (!label) return;
+            updateHeaderTitle();
 
             const params = new URLSearchParams(window.location.search);
             const type = String(params.get("testType") || currentTestType || "").toLowerCase().trim();
@@ -1448,6 +1496,21 @@
             }
         }
 
+        function updateHeaderTitle() {
+            const titleElement = document.getElementById("title-test");
+            if (!titleElement) return;
+
+            const params = new URLSearchParams(window.location.search);
+            const type = String(params.get("testType") || currentTestType || "").toLowerCase().trim();
+            const focus = String(params.get("focus") || "").toLowerCase();
+            const sectionKey = String(params.get("sectionKey") || "").toLowerCase();
+            const isPractice = ["practice", "practice test", "practicetest"].includes(type);
+
+            titleElement.textContent = isPractice
+                ? (sectionKey === "writing" || focus === "partb" ? "Writing" : "Structure")
+                : "Structure & Writing";
+        }
+
         // ===== Practice test: instant feedback engine =====
         // Full Test Mode reuses the mock-test layout untouched; only instant mode
         // swaps the stacked question list for a one-question-at-a-time card.
@@ -1469,7 +1532,15 @@
         }
 
         function isInstantFeedbackMode() {
-            return getPracticeRunMode() === "instant";
+            return isPracticeTestType() && getPracticeRunMode() === "instant";
+        }
+
+        function isPracticeTestType() {
+            return String(new URLSearchParams(window.location.search).get("testType") || currentTestType || "").toLowerCase().includes("practice");
+        }
+
+        function isPracticeFullTestMode() {
+            return isPracticeTestType() && getPracticeRunMode() === "full";
         }
 
         function getPartIdFromUid(uid) {
@@ -1489,18 +1560,22 @@
 
         function applyPracticeRunMode() {
             const instant = isInstantFeedbackMode();
+            const fullPractice = isPracticeFullTestMode();
+            const useQuestionDots = instant || fullPractice;
             document.body.classList.toggle("instant-feedback-mode", instant);
 
-            const navigatorPanel = document.getElementById("question-navigator");
             const progressBlock = document.querySelector(".progressbar-final .progress-bar-question");
             const dots = document.getElementById("instant-progress-dots");
             const subNav = document.getElementById("user-sub-nav-container");
             const container = document.getElementById("user-passages-container");
             const host = document.getElementById("instant-question-host");
 
-            if (navigatorPanel) navigatorPanel.style.display = instant ? "none" : "";
-            if (progressBlock) progressBlock.style.display = instant ? "none" : "";
-            if (dots) dots.style.display = instant ? "flex" : "none";
+            setNavigatorPanelHidden(useQuestionDots);
+            if (progressBlock) progressBlock.style.display = useQuestionDots ? "none" : "";
+            if (dots) {
+                dots.style.display = useQuestionDots ? "flex" : "none";
+                dots.classList.toggle("is-full-practice", fullPractice);
+            }
             if (instant && subNav) subNav.style.display = "none";
             if (host) host.style.display = instant ? "" : "none";
 
@@ -1549,28 +1624,38 @@
             return currentClass;
         }
 
-        // Question circles only exist for practice tests run in instant-feedback mode.
+        // Practice modes share the header dots, but full tests follow the exam radios.
         function renderInstantProgressDots() {
             const host = document.getElementById("instant-progress-dots");
             if (!host) return;
-            if (!isInstantFeedbackMode() || !instantOrder.length) {
+            const instant = isInstantFeedbackMode();
+            const fullPractice = isPracticeFullTestMode();
+            if (!instant && !fullPractice) {
                 host.innerHTML = "";
                 return;
             }
 
-            const partId = forcedPracticeFocusPart || getPartIdFromUid(instantOrder[instantIndex]) || 1;
-            const partObj = PARTS.find((part) => part.id === partId) || {};
-            const partTitle = partObj.name ? partObj.name.split(":")[0].toUpperCase() : `PART ${partId}`;
-            const circles = instantOrder.map((uid, index) => {
-                const questionNumber = getQuestionNumberFromUid(uid) || index + 1;
-                return `<button type="button" class="progress-q-circle ${getInstantCircleState(uid, index)}" onclick="goToInstantQuestion(${index})" aria-label="Question ${questionNumber}">${questionNumber}</button>`;
-            }).join("");
-
-            host.innerHTML = `
+            const partId = forcedPracticeFocusPart || (instant
+                ? getPartIdFromUid(instantOrder[instantIndex])
+                : getPartIdFromUid(currentQuestionUid) || Number(document.querySelector("#user-view .sub-content.active")?.id.replace("user-part-", ""))) || 1;
+            const visibleParts = fullPractice && !forcedPracticeFocusPart ? PARTS : PARTS.filter((part) => part.id === partId);
+            host.innerHTML = visibleParts.map((partObj) => {
+                const partTitle = partObj.name.split(":")[0].toUpperCase();
+                const order = instant ? instantOrder : getPartQuestionNumbers(partObj.id).map((entry) => entry.uid);
+                if (!order.length) return "";
+                const circles = order.map((uid, index) => {
+                    const questionNumber = getQuestionNumberFromUid(uid) || index + 1;
+                    const state = instant ? getInstantCircleState(uid, index)
+                        : `${document.querySelector(`input[name="q_${uid}"]:checked`) ? "is-answered" : ""} ${uid === currentQuestionUid ? "is-current" : ""}`.trim();
+                    const action = instant ? `goToInstantQuestion(${index})` : `scrollToQuestion('${uid}')`;
+                    return `<button type="button" class="progress-q-circle ${state}" onclick="${action}" aria-label="Question ${questionNumber}">${questionNumber}</button>`;
+                }).join("");
+                return `
                 <div class="progress-part-chip active">
                     <span class="progress-part-title">${escapeHtml(partTitle)}</span>
                     <div class="reading-part-circles">${circles}</div>
                 </div>`;
+            }).join("");
         }
 
         function goToInstantQuestion(index) {
@@ -1712,7 +1797,7 @@
                 <section class="instant-card">
                     ${instantRevealed ? buildInstantTabsHtml() : ""}
                     <div class="instant-card__body">
-                        ${questionBlock}
+                        ${instantTab === "explaination" ? questionBlock : ""}
                         ${instantRevealed ? buildInstantExplanationHtml(uid) : ""}
                         <div class="instant-actions">${actionsHtml}</div>
                     </div>
@@ -1824,24 +1909,35 @@
             const question = globalQuestions[uid] || {};
             const correct = String(globalAnswerKey[uid] || "").trim().toUpperCase();
             const correctText = String((question.options || {})[correct] || "").trim();
-            let sentence = String(question.questionText || "").replace(/^\s*\d+[.)]?\s*/, "").trim();
+            const explanationSource = getSection2ExplanationSource(getPartIdFromUid(uid), getQuestionNumberFromUid(uid), uid).replace(/\r/g, "");
+            const sentenceBlock = explanationSource.match(/(?:^|\n)\s*(?:#{1,6}\s*)?(?:\*{0,2}\s*)Maka\s+(?:perbaikan\s+)?kalimat\s+lengkapnya\s*:?(?:\*{0,2})\s*\n+\s*["\u201c]([\s\S]*?)["\u201d]\s*\n+([\s\S]*?)(?=\n\s*(?:\*{0,2}\s*(?:C\s*[-\u2013\u2014]\s*Concept|O\s*[-\u2013\u2014]\s*Observe|R\s*[-\u2013\u2014]\s*Requirement|E\s*[-\u2013\u2014]\s*Eliminate)|#{1,6}\s*(?:Question|Part)\b)|$)/i);
+            let sentence = sentenceBlock ? String(sentenceBlock[1] || "").trim() : "";
+            let rationale = sentenceBlock ? String(sentenceBlock[2] || "").trim() : "";
+
+            if (!sentence) sentence = String(question.questionText || "").replace(/^\s*\d+[.)]?\s*/, "").trim();
             if (!sentence) return "";
             if (correctText && /_{2,}|\.{3,}/.test(sentence)) {
                 sentence = sentence.replace(/_{2,}|\.{3,}/, correctText);
             }
-            const safeSentence = escapeHtml(sentence);
-            const safeAnswer = escapeHtml(correctText);
-            const answerIndex = safeAnswer ? safeSentence.toLowerCase().indexOf(safeAnswer.toLowerCase()) : -1;
-            const beforeAnswer = answerIndex > 0 ? safeSentence.charAt(answerIndex - 1) : "";
-            const afterAnswer = answerIndex >= 0 ? safeSentence.charAt(answerIndex + safeAnswer.length) : "";
-            const answerHasWordBoundaries = !/[A-Za-z0-9]/.test(beforeAnswer) && !/[A-Za-z0-9]/.test(afterAnswer);
-            const highlightedSentence = answerIndex >= 0 && answerHasWordBoundaries
-                ? safeSentence.slice(0, answerIndex) + `<strong>${safeSentence.slice(answerIndex, answerIndex + safeAnswer.length)}</strong>` + safeSentence.slice(answerIndex + safeAnswer.length)
-                : safeSentence;
-            return `<div class="qc-core__block section2-complete-sentence-box">
-                <div class="qc-core__label">Maka kalimat lengkapnya</div>
-                <div class="qc-core__text">&ldquo;${highlightedSentence}&rdquo;</div>
-            </div>`;
+            const cleanSentence = sentence
+                .replace(/&lt;[^&>]+&gt;/gi, "")
+                .replace(/<\/?(?:strong|b|u|i|em|span|mark|p|div)\b[^>]*>/gi, "")
+                .replace(/^\s*["\u201c]|["\u201d]\s*$/g, "")
+                .trim();
+            let sentenceHtml = escapeHtml(cleanSentence)
+                .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+            const correctPattern = correctText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const answerAlreadyEmphasized = correctPattern && new RegExp(`\\*\\*\\s*${correctPattern}\\s*\\*\\*`, "i").test(cleanSentence);
+            if (correctPattern && !answerAlreadyEmphasized) {
+                sentenceHtml = sentenceHtml.replace(new RegExp(`(^|\\s|["'])(${correctPattern})(?=[\\s.,;:!?']|$)`, "i"), "$1<strong>$2</strong>");
+            }
+            if (!rationale) rationale = "Karena pilihan ini melengkapi struktur kalimat dengan tepat.";
+
+            return '<section class="section2-complete-sentence-box">'
+                + '<h3>Maka kalimat lengkapnya</h3>'
+                + '<p class="section2-complete-sentence">&ldquo;' + sentenceHtml + '&rdquo;</p>'
+                + '<p class="section2-complete-rationale">' + markdownInlineToHtml(rationale) + '</p>'
+                + '</section>';
         }
 
         function buildInstantExplanationHtml(uid) {
@@ -1889,7 +1985,8 @@
                 return `
                 <li class="qc-core__item is-${state}">
                     <span><strong>(${option.letter})</strong> ${escapeHtml(option.label.replace(/^\([A-D]\)\s*/i, ""))}</span>
-                    <span class="qc-core__item-mark">${state === "correct" ? "✓" : "✕"}</span>
+                    <span class="qc-core__item-mark">${state === "correct" ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` 
+                    : '✕'}</span>
                     <span>${markdownInlineToHtml(option.reason)}</span>
                 </li>`;
             }).join("");
@@ -2435,7 +2532,10 @@
             navContainer.querySelectorAll(`.${btnClass}`).forEach(b => b.classList.remove("active"));
             document.getElementById(tabName).classList.add("active");
             evt.currentTarget.classList.add("active");
-            if (btnClass.includes('user')) updateHeaderProgress();
+            if (btnClass.includes('user')) {
+                updateHeaderProgress();
+                renderInstantProgressDots();
+            }
         }
 
         function formatText(areaId, openTag, closeTag) {
@@ -2791,6 +2891,7 @@
 
             updateQuestionNavigatorState();
             updateHeaderProgress();
+            if (isPracticeFullTestMode()) renderInstantProgressDots();
         }
 
         function getPartQuestionNumbers(partId) {
@@ -2813,6 +2914,7 @@
             card.scrollIntoView({ behavior: "smooth", block: "start" });
             currentQuestionUid = uid;
             updateQuestionNavigatorState();
+            if (isPracticeFullTestMode()) renderInstantProgressDots();
         }
 
         function buildQuestionNavigator() {

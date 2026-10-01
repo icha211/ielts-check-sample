@@ -1500,13 +1500,35 @@
                 if (!selected && isCorrectChoice) classes.push('is-correct-answer');
                 if (selected && !isCorrectChoice) classes.push('is-user-wrong');
 
-                var badgeHtml = '';
+                let badgeHtml = '';
                 if (selected && isCorrectChoice) {
-                    badgeHtml = '<div class="explaination-figma-your-answer you-answer-correct is-correct"><span class="your-answer">' + escapeHtml(selectedLabel) + '</span><i class="ph ph-check" aria-hidden="true"></i></div>';
+                    badgeHtml = `
+                        <div class="explaination-figma-your-answer your-answer-correct is-correct">
+                            <span class="your-answer">${escapeHtml(selectedLabel)}</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                    `.trim();
                 } else if (selected && !isCorrectChoice) {
-                    badgeHtml = '<div class="explaination-figma-your-answer is-wrong"><span class="your-answer">' + escapeHtml(selectedLabel) + '</span><i class="ph ph-x" aria-hidden="true"></i></div>';
+                    badgeHtml = `
+                        <div class="explaination-figma-your-answer is-wrong">
+                            <span class="your-answer">${escapeHtml(selectedLabel)}</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </div>
+                    `.trim();
                 } else if (isCorrectChoice) {
-                    badgeHtml = '<div class="explaination-figma-your-answer is-correct"><span class="your-answer">' + escapeHtml(correctLabel) + '</span><i class="ph ph-check" aria-hidden="true"></i></div>';
+                    badgeHtml = `
+                        <div class="explaination-figma-your-answer is-correct">
+                            <span class="your-answer">${escapeHtml(correctLabel)}</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                    `.trim();
                 }
 
                 var markerClasses = ['explaination-figma-option-letter'];
