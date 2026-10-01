@@ -744,6 +744,17 @@ function renderModuleOverview() {
 }
 
 const LIBRARY_VIEW_KEY = "toefl_library_view";
+const libraryModuleFilters = { mocktest: "all", practicetest: "all" };
+
+function syncLibraryModuleFilter() {
+    const select = document.getElementById("libraryModuleFilter");
+    if (!select) return;
+    const options = currentTestType === "practicetest"
+        ? [["all", "All sections"], ["listening", "Listening"], ["reading", "Reading"], ["structure", "Structure"], ["writing", "Writing"]]
+        : [["all", "All sections"], ["listening", "Listening"], ["reading", "Reading"], ["structure", "Structure & Writing"]];
+    select.innerHTML = options.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
+    select.value = libraryModuleFilters[currentTestType] || "all";
+}
 
 function applyLibraryView(view) {
     const host = document.getElementById("library");
@@ -769,13 +780,19 @@ function initLibraryViewToggle() {
 
 function renderLibrary() {
     const host = document.getElementById("library");
-    if (sectionSets.length === 0) {
+    const filter = libraryModuleFilters[currentTestType] || "all";
+    const visibleSets = sectionSets.filter((item) => filter === "all"
+        || (filter === "writing" ? item.module === "structure" && String(item.focus || "").toLowerCase() === "partb"
+            : filter === "structure" && currentTestType === "practicetest"
+                ? item.module === "structure" && String(item.focus || "").toLowerCase() !== "partb"
+                : item.module === filter));
+    if (visibleSets.length === 0) {
         const testTypeLabel = currentTestType === "practicetest" ? "Practice" : "Mock";
-        host.innerHTML = `<div class="empty">No TOEFL ${testTypeLabel} Test sets saved yet. Open Listening, Structure, or Reading, set the date and difficulty, then click Update.</div>`;
+        host.innerHTML = `<div class="empty">${sectionSets.length ? "No sets found in this section." : `No TOEFL ${testTypeLabel} Test sets saved yet. Open Listening, Structure, or Reading, set the date and difficulty, then click Update.`}</div>`;
         return;
     }
 
-    host.innerHTML = sectionSets.map((item) => {
+    host.innerHTML = visibleSets.map((item) => {
         const normalizedDate = normalizeDateKey(item.setDate || "");
         const metadataSetDateLabel = item.setDate ? item.displayDate : "-";
         const compactSetDateLabel = formatCompactSetDate(item.setDate);
@@ -1030,6 +1047,7 @@ async function renderAll() {
     const loadedSets = await loadSetsFromFirebase();
     // Don't filter sets - show all recovered data even if empty
     sectionSets = Array.isArray(loadedSets) ? loadedSets : [];
+    syncLibraryModuleFilter();
     renderStats();
     renderModuleOverview();
     renderLibrary();
@@ -1060,6 +1078,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadMaterialsLibraryFromFirebase();
     
     initLibraryViewToggle();
+    document.getElementById("libraryModuleFilter")?.addEventListener("change", (event) => {
+        libraryModuleFilters[currentTestType] = event.target.value;
+        renderLibrary();
+    });
 
     document.getElementById("exportBtn").addEventListener("click", exportData);
     document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
@@ -1086,6 +1108,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 setMaterialsLibraryVisible(true);
                 return;
             }
+            syncLibraryModuleFilter();
             setMaterialsLibraryVisible(false);
             await renderAll();
         });
