@@ -6,7 +6,7 @@
     <title>TOEFL ITP Simulator - Section 2: Structure & Written Expression</title>
     <script src="app-config.js"></script>
     <link rel="stylesheet" href="css/editor.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600;700&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
     <style>
@@ -172,7 +172,7 @@
 
     .instant-question { display: grid; gap: 14px; }
 
-    .instant-question-head { display: flex; align-items: center; gap: 14px; }
+    .instant-question-head { display: flex; align-items: top-left; gap: 24px; }
     .instant-question-head .question-number-badge { flex: 0 0 auto; }
 
     .instant-question-title {
@@ -252,6 +252,30 @@
         margin: 0;
         color: #0f172a;
         font: 400 16px/2.1 "Times New Roman", Times, serif;
+    }
+
+    #instant-question-host .instant-partb-sentence .inline-error-wrapper.is-correct .word-text {
+        background: #0d9488;
+        border-color: #0d9488;
+        color: #fff;
+    }
+
+    #instant-question-host .instant-partb-sentence .inline-error-wrapper.is-correct .letter-badge {
+        border-color: #0d9488;
+        background: #d7f5ee;
+        color: #0f172a;
+    }
+
+    #instant-question-host .instant-partb-sentence .inline-error-wrapper.is-incorrect .word-text {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: #fff;
+    }
+
+    #instant-question-host .instant-partb-sentence .inline-error-wrapper.is-incorrect .letter-badge {
+        border-color: #dc2626;
+        background: #fef2f2;
+        color: #0f172a;
     }
 
     .instant-actions {
@@ -1777,8 +1801,27 @@
             }).join("");
 
             const stem = String(question.questionText || `Question ${questionNumber}`).replace(/^\s*\d+[.)]?\s*/, "");
+            const partBSentence = question.isPartB
+                ? document.querySelector(`#q-container-${uid} .inline-question-text`)?.cloneNode(true)
+                : null;
+            if (partBSentence) {
+                partBSentence.classList.add("instant-partb-sentence");
+                partBSentence.querySelectorAll('.inline-error-wrapper input[type="radio"]').forEach((input) => {
+                    const letter = input.value.toUpperCase();
+                    const wrapper = input.closest(".inline-error-wrapper");
+                    if (instantRevealed && letter === correct) wrapper.classList.add("is-correct");
+                    else if (instantRevealed && letter === selected) wrapper.classList.add("is-incorrect");
+                    input.name = `instant_q_${uid}`;
+                    input.id = `instant_q_${uid}_${letter.toLowerCase()}`;
+                    input.toggleAttribute("checked", selected === letter);
+                    input.disabled = instantRevealed;
+                    const label = input.nextElementSibling;
+                    label.setAttribute("for", input.id);
+                    if (!instantRevealed) label.setAttribute("onclick", `event.preventDefault(); selectInstantChoice('${letter}', '${uid}')`);
+                });
+            }
             const stemHtml = question.isPartB
-                ? `<p class="instant-partb-sentence">${escapeHtml(stem)}</p>`
+                ? (partBSentence?.outerHTML || `<p class="instant-partb-sentence">${escapeHtml(stem)}</p>`)
                 : `<p class="instant-question-title">${escapeHtml(stem).replace(/_{3,}/, '<span class="question-blank">_____</span>')}</p>`;
 
             const isLast = instantIndex >= instantOrder.length - 1;
@@ -1794,7 +1837,7 @@
                         ${stemHtml}
                         ${instantRevealed ? `<span class="instant-verdict ${isCorrect ? "is-correct" : "is-incorrect"}">${isCorrect ? "CORRECT" : "INCORRECT"}</span>` : ""}
                     </div>
-                    <div class="instant-options">${optionsHtml}</div>
+                    ${question.isPartB ? "" : `<div class="instant-options">${optionsHtml}</div>`}
                 </article>`;
 
             host.innerHTML = `
