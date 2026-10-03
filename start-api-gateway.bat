@@ -13,7 +13,7 @@ if exist ".venv\Scripts\activate.bat" (
 )
 
 REM Install dependencies if not already installed
-pip install fastapi uvicorn python-multipart boto3 pydantic pydantic-settings -q
+pip install -r apps\api-gateway\requirements.txt -q
 
 REM Start the server
 cd apps\api-gateway

@@ -2014,6 +2014,7 @@
 
         async function saveCloudflareAudioFolderUrlToFirebase(testType, setId, folderUrl) {
             if (!setId || !folderUrl) return false;
+            if (!window.toeflStorage || typeof window.toeflStorage._request !== "function") return false;
             try {
                 // Use TOEFL_FIREBASE_URL from toefl-storage-sync.js
                 const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
@@ -2024,7 +2025,7 @@
                 // Save to testType-agnostic path so both dev and user modes can access it
                 const path = `toefl_itp/cloudflare_audio_folders/${setId}`;
                 const url = `${firebaseUrl}/${path}.json`;
-                const response = await fetch(url, {
+                const response = await window.toeflStorage._request(url, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -2048,6 +2049,7 @@
 
         async function getCloudflareAudioFolderUrlFromFirebase(setId) {
             if (!setId) return null;
+            if (!window.toeflStorage || typeof window.toeflStorage._request !== "function") return null;
             try {
                 // Use TOEFL_FIREBASE_URL from toefl-storage-sync.js
                 const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
@@ -2058,7 +2060,7 @@
                 // Fetch from testType-agnostic path (shared between dev and user modes)
                 const path = `toefl_itp/cloudflare_audio_folders/${setId}`;
                 const url = `${firebaseUrl}/${path}.json`;
-                const response = await fetch(url, { method: "GET" });
+                const response = await window.toeflStorage._request(url, { method: "GET" });
                 if (response.ok) {
                     const data = await response.json();
                     const folderUrl = data?.folderUrl;
@@ -2233,27 +2235,6 @@
                 return r2Url;
             }
 
-            // Try localStorage next (persists across page reloads)
-            // BUT: Only use if we can verify it works on this device/network
-            const cloudflareKey = `toefl_section1_cloudflare_folder_url_${testType}_${String(setId || "default")}`;
-            const savedFolderUrl = localStorage.getItem(cloudflareKey);
-            
-            if (savedFolderUrl && isValidCloudflareFolderUrl(savedFolderUrl)) {
-                const folderUrl = normalizeCloudAudioFolderUrl(savedFolderUrl);
-                if (folderUrl) {
-                    // Cache it in memory so we don't re-fetch for other parts
-                    cloudflareUrlCache[cacheKey] = folderUrl;
-                    const r2Url = `${folderUrl}/${objectSuffix}`;
-                    console.log("[AudioPlayback] Using saved Cloudflare folder URL (localStorage) for part", partId, ":", r2Url);
-                    // Note: Don't return directly! We'll return at the end, but this URL will be validated on actual load.
-                    // If it fails with cert error, the audio error handler will invalidate it and fall back to Firebase.
-                    return r2Url;
-                }
-            } else if (savedFolderUrl) {
-                console.warn("[AudioPlayback] Removing invalid cached folder URL:", savedFolderUrl);
-                localStorage.removeItem(cloudflareKey);
-            }
-
             // Fetch from Firebase RTDB (with timeout to avoid blocking on part 2+)
             try {
                 const firebaseFolderUrl = await getCloudflareAudioFolderUrlFromFirebase(setId);
@@ -2262,8 +2243,6 @@
                     if (folderUrl && isValidCloudflareFolderUrl(folderUrl)) {
                         // Cache it in memory for next part
                         cloudflareUrlCache[cacheKey] = folderUrl;
-                        // Also save to localStorage for faster access next reload
-                        localStorage.setItem(cloudflareKey, firebaseFolderUrl);
                         const r2Url = `${folderUrl}/${objectSuffix}`;
                         console.log("[AudioPlayback] Using Cloudflare folder URL from Firebase for part", partId, ":", r2Url);
                         return r2Url;
@@ -2273,12 +2252,8 @@
                 console.warn("[AudioPlayback] Firebase fetch failed, will try fallback:", error);
             }
 
-            // Per-question uploads use this deterministic key, so playback must not
-            // fall back to the full-part Firebase URL when folder metadata is missing.
             if (useQuestionAudio) {
-                const questionUrl = `${DEFAULT_R2_PUBLIC_BASE_URL}/audio/listening/sets/${setId}/question_set/part_${partId}/q_${padQuestionNumber(questionNumber)}.mp3`;
-                console.warn("[AudioPlayback] Folder URL unavailable; deriving per-question URL:", questionUrl);
-                return questionUrl;
+                return null;
             }
 
             // ONLY fall back to Firebase Storage if Cloudflare is completely unavailable
@@ -4583,18 +4558,13 @@
                 ? (safeParse(localStorage.getItem(DRAFT_KEY), {}) || {}) 
                 : {};
             
-            const folderUrl = draft.cloudflare_folder;
+            const folderUrl = currentSetId
+                ? cloudflareUrlCache[`${currentTestType || "mocktest"}_${currentSetId}`] || ""
+                : "";
             const folderEl = document.getElementById('cloud-audio-folder-url');
-            const statusEl = document.getElementById('cloud-audio-folder-status');
 
             if (folderUrl && folderEl) {
                 folderEl.value = folderUrl;
-            }
-
-            if (statusEl) {
-                statusEl.textContent = folderUrl 
-                    ? `Folder: ${folderUrl}` 
-                    : 'Create or select a package to link a Cloudflare folder.';
             }
 
             // Update status indicators for each part (supporting both array and object structures)
@@ -5356,8 +5326,7 @@
             } catch (error) {
                 console.warn("[CloudflareFolder] folder ensure during set save failed:", error);
             }
-            const folderInput = document.getElementById("cloud-audio-folder-url");
-            const normalizedFolderUrl = toPublicR2Url(String(folderInput?.value || folderUrl || buildCloudflareFolderUrl(setId) || "").trim());
+            if (!folderUrl) throw new Error("Folder link was not saved in Firebase. Sign in with the developer account and retry.");
             const record = {
                 setId,
                 module: MODULE_ID,
@@ -5365,7 +5334,6 @@
                 setDate,
                 difficulty: difficultyInput?.value || "intermediate",
                 focus: forcedPracticePartId ? `part${forcedPracticePartId}` : "",
-                cloudflare_folder: normalizedFolderUrl,
                 updatedAt: new Date().toISOString()
             };
             if (window.toeflStorage && typeof toeflStorage.upsertSetRecord === "function") {
@@ -5776,7 +5744,7 @@
             }
             if (runtimeApiGatewayUrl) candidates.push(String(runtimeApiGatewayUrl).replace(/\/+$/, ""));
             
-            if (window.location && window.location.origin && window.location.protocol !== "file:") {
+            if (!isLocalPage && window.location && window.location.origin && window.location.protocol !== "file:") {
                 candidates.push(window.location.origin.replace(/\/+$/, ""));
             }
             
@@ -5940,23 +5908,8 @@
                 return;
             }
 
-            let storedUrl = localStorage.getItem(getCloudflareFolderStorageKey(currentSetId)) || "";
+            let storedUrl = await getCloudflareAudioFolderUrlFromFirebase(currentSetId);
             let autoLinked = false;
-
-            // If not in localStorage, try fetching from Firebase RTDB (works in incognito, other devices)
-            if (!storedUrl) {
-                try {
-                    const firebaseUrl = await getCloudflareAudioFolderUrlFromFirebase(currentSetId);
-                    if (firebaseUrl) {
-                        storedUrl = firebaseUrl;
-                        // Save to localStorage for future access
-                        localStorage.setItem(getCloudflareFolderStorageKey(currentSetId), storedUrl);
-                        console.log("[CloudflarePanel] Loaded folder URL from Firebase for", currentSetId);
-                    }
-                } catch (error) {
-                    console.warn("[CloudflarePanel] Firebase fetch failed:", error);
-                }
-            }
 
             // Fallback: try to infer from existing audio records
             if (!storedUrl && window.toeflStorage && typeof window.toeflStorage.getAudioRecordFromCloudflare === "function") {
@@ -5964,15 +5917,16 @@
                     const record = await window.toeflStorage.getAudioRecordFromCloudflare(currentSetId, partId).catch(() => null);
                     const inferredUrl = toPublicR2Url(deriveCloudflareFolderUrlFromRecord(record));
                     if (inferredUrl) {
-                        storedUrl = inferredUrl;
-                        saveCloudflareFolderUrlForCurrentSetValue(storedUrl);
-                        autoLinked = true;
+                        const savedToFirebase = await saveCloudflareFolderUrlForCurrentSetValue(inferredUrl);
+                        storedUrl = savedToFirebase ? await getCloudflareAudioFolderUrlFromFirebase(currentSetId) : null;
+                        autoLinked = Boolean(storedUrl);
                         break;
                     }
                 }
             }
 
             if (storedUrl) {
+                cloudflareUrlCache[`${currentTestType || "mocktest"}_${currentSetId}`] = normalizeCloudAudioFolderUrl(storedUrl);
                 input.value = toPublicR2Url(storedUrl);
                 setCloudflareFolderStatus(
                     autoLinked ? `Folder auto-linked from existing Cloudflare audio for ${currentSetId}.` : `Folder linked for ${currentSetId}.`,
@@ -5985,19 +5939,15 @@
         }
 
         async function saveCloudflareFolderUrlForCurrentSetValue(folderUrl) {
-            if (!currentSetId) return;
+            if (!currentSetId) return false;
             const normalized = toPublicR2Url(folderUrl) || buildCloudflareFolderUrl(currentSetId);
-            const key = getCloudflareFolderStorageKey(currentSetId);
-            if (!normalized) {
-                localStorage.removeItem(key);
-                return false;
-            }
-            localStorage.setItem(key, normalized);
-            // Also save to Firebase RTDB so other users/devices can access it
-            return await saveCloudflareAudioFolderUrlToFirebase(currentTestType || "mocktest", currentSetId, normalized).catch(err => {
-                console.warn("[CloudflareAudio] Background Firebase save failed:", err);
-                return false;
-            });
+            if (!normalized) return false;
+            const saved = await saveCloudflareAudioFolderUrlToFirebase(currentTestType || "mocktest", currentSetId, normalized);
+            if (!saved) return false;
+            const storedUrl = await getCloudflareAudioFolderUrlFromFirebase(currentSetId);
+            if (normalizeCloudAudioFolderUrl(storedUrl) !== normalized) return false;
+            cloudflareUrlCache[`${currentTestType || "mocktest"}_${currentSetId}`] = normalizeCloudAudioFolderUrl(storedUrl);
+            return true;
         }
 
         async function createCloudAudioFolderForCurrentSet() {
@@ -6017,15 +5967,7 @@
             const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
             const errors = [];
 
-            // Step 1: Check if folder already exists locally (localStorage + Firebase)
-            let cachedUrl = localStorage.getItem(getCloudflareFolderStorageKey(setId)) || "";
-            if (!cachedUrl) {
-                try {
-                    cachedUrl = await getCloudflareAudioFolderUrlFromFirebase(setId, testType).catch(() => "");
-                } catch (err) {
-                    console.warn("[CloudflareFolder] Firebase check failed:", err);
-                }
-            }
+            const cachedUrl = await getCloudflareAudioFolderUrlFromFirebase(setId);
 
             // Step 2: Check if URL field already has value
             const existingInputUrl = input?.value || "";
@@ -6033,20 +5975,20 @@
                 currentSetId = setId;  // Preserve the setId
                 const savedToFirebase = await saveCloudflareFolderUrlForCurrentSetValue(cachedUrl);
                 setCloudflareFolderStatus(
-                    savedToFirebase ? `Folder linked for ${setId}.` : `Folder linked on this device; Firebase sync failed for ${setId}.`,
+                    savedToFirebase ? `Folder linked in Firebase for ${setId}.` : `Firebase save failed for ${setId}. Sign in with the developer account and retry.`,
                     savedToFirebase ? "#0f766e" : "#b45309"
                 );
                 if (input && !input.value) input.value = cachedUrl;
-                return toPublicR2Url(cachedUrl);
+                return savedToFirebase ? toPublicR2Url(cachedUrl) : "";
             }
             if (existingInputUrl && toPublicR2Url(existingInputUrl)) {
                 currentSetId = setId;  // Preserve the setId
                 const savedToFirebase = await saveCloudflareFolderUrlForCurrentSetValue(existingInputUrl);
                 setCloudflareFolderStatus(
-                    savedToFirebase ? `Folder linked for ${setId}.` : `Folder linked on this device; Firebase sync failed for ${setId}.`,
+                    savedToFirebase ? `Folder linked in Firebase for ${setId}.` : `Firebase save failed for ${setId}. Sign in with the developer account and retry.`,
                     savedToFirebase ? "#0f766e" : "#b45309"
                 );
-                return toPublicR2Url(existingInputUrl);
+                return savedToFirebase ? toPublicR2Url(existingInputUrl) : "";
             }
 
             // Step 3: No cached folder found - create new one via API
@@ -6076,11 +6018,11 @@
                     const savedToFirebase = await saveCloudflareFolderUrlForCurrentSetValue(folderUrl);
                     if (input) input.value = folderUrl;
                     setCloudflareFolderStatus(
-                        savedToFirebase ? `Folder created and linked for ${setId}.` : `Folder created and saved on this device; Firebase sync failed for ${setId}.`,
+                        savedToFirebase ? `Folder created and saved in Firebase for ${setId}.` : `Folder created in Cloudflare, but Firebase save failed for ${setId}. Sign in with the developer account and retry.`,
                         savedToFirebase ? "#0f766e" : "#b45309"
                     );
                     console.log("[CloudflareFolder] Created folder for setId:", setId);
-                    return folderUrl;
+                    return savedToFirebase ? folderUrl : "";
                 } catch (error) {
                     errors.push(`${apiBase} -> ${error?.message || String(error)}`);
                 }
@@ -6115,7 +6057,7 @@
             
             const savedToFirebase = await saveCloudflareFolderUrlForCurrentSetValue(normalizedUrl);
             setCloudflareFolderStatus(
-                savedToFirebase ? `Folder URL saved for ${urlSetId}.` : `Folder URL saved on this device; Firebase sync failed for ${urlSetId}.`,
+                savedToFirebase ? `Folder URL saved in Firebase for ${urlSetId}.` : `Firebase save failed for ${urlSetId}. Sign in with the developer account and retry.`,
                 savedToFirebase ? "#0f766e" : "#b45309"
             );
         }
@@ -6178,14 +6120,17 @@
             }
             
             // Now normalize and transform the folder URL
-            const folderUrl = toPublicR2Url(rawFolderUrl || localStorage.getItem(getCloudflareFolderStorageKey(setId)) || "");
+            const folderUrl = toPublicR2Url(rawFolderUrl || await getCloudflareAudioFolderUrlFromFirebase(setId) || "");
 
             if (!folderUrl) {
                 setCloudflareFolderStatus("Save a Cloudflare folder URL first.", "#b91c1c");
                 return;
             }
 
-            saveCloudflareFolderUrlForCurrentSetValue(folderUrl);
+            if (!await saveCloudflareFolderUrlForCurrentSetValue(folderUrl)) {
+                setCloudflareFolderStatus("Firebase folder save failed. Sign in with the developer account and retry.", "#b91c1c");
+                return;
+            }
             setCloudflareFolderStatus(`Checking Cloudflare sync for ${setId}...`, "#1d4ed8");
 
             // Try to get actual folder contents from gateway
@@ -7074,7 +7019,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             }
 
             if (shouldSaveMeta) {
-                await saveSectionMeta().catch(() => {});
+                await saveSectionMeta();
                 await saveSectionDraft().catch(() => {});
             }
 
@@ -8455,52 +8400,6 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
             alert('✅ All audio files validated and ready to save.');
             return true;
-        }
-
-        async function saveCloudAudioFolderUrlForCurrentSet() {
-            if (!currentSetId) {
-                alert('No test set selected. Create or select a test set first.');
-                return;
-            }
-
-            try {
-                const runtimeApiGatewayUrl = await resolveRuntimeApiGatewayUrl();
-                const apiBases = getApiGatewayBaseCandidates(runtimeApiGatewayUrl);
-                let apiBase = apiBases[0] || '';
-                
-                // Ensure folder exists in Cloudflare
-                const folderResponse = await fetch(`${apiBase}/api/developer/ensure-audio-folder`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ setId: currentSetId })
-                });
-
-                if (!folderResponse.ok) {
-                    const errorText = await folderResponse.text();
-                    throw new Error(`Folder creation failed: ${folderResponse.status} ${errorText}`);
-                }
-
-                const { folderUrl } = await folderResponse.json();
-
-                // Save folder URL to draft
-                const draft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
-                draft.cloudflare_folder = folderUrl;
-                localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-
-                // Save to Firebase
-                if (window.toeflStorage && typeof toeflStorage.saveDraftBySetId === 'function') {
-                    await toeflStorage.saveDraftBySetId(currentSetId, currentTestType, draft);
-                }
-
-                document.getElementById('cloud-audio-folder-url').value = folderUrl;
-                document.getElementById('cloud-audio-folder-status').textContent = `Folder created: ${folderUrl}`;
-                
-                console.log(`[Audio Folder] Created/linked: ${folderUrl}`);
-                alert('✅ Cloudflare folder linked successfully.');
-            } catch (error) {
-                console.error('[Audio Folder] Error:', error);
-                alert(`❌ Failed to create folder: ${error.message}`);
-            }
         }
 
         // ===== END AUDIO UPLOAD FUNCTIONALITY =====
