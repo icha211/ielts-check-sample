@@ -10,6 +10,31 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
     <style>
+        #instant-question-host .section2-materi-lesson { width: 100%; min-width: 0; }
+        #instant-question-host .section2-materi-lesson .lesson-trail { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+        #instant-question-host .section2-materi-lesson .topic-chip { display: inline-flex; align-items: center; min-height: 30px; padding: 0 13px; border: 1px solid #dce6f0; border-radius: 16px; color: #5d7088; background: #fff; font: 600 11px "Plus Jakarta Sans", sans-serif; overflow-wrap: anywhere; }
+        #instant-question-host .section2-materi-lesson .topic-chip.primary { color: #fff; background: #005faa; border-color: #005faa; }
+        #instant-question-host .section2-materi-lesson .lesson-heading { border-bottom: 1px solid #d1dce8; padding-bottom: 15px; margin-bottom: 18px; }
+        #instant-question-host .section2-materi-lesson .lesson-heading h1 { margin: 0; color: #1b2532; font: 800 20px "Plus Jakarta Sans", sans-serif; overflow-wrap: anywhere; }
+        #instant-question-host .section2-materi-lesson .lesson-document { width: 100%; min-width: 0; font-size: 14px; line-height: 1.65; color: #111827; max-height: 480px; overflow: auto; overflow-wrap: anywhere; }
+        #instant-question-host .section2-materi-lesson .lesson-document h1,
+        #instant-question-host .section2-materi-lesson .lesson-document h2,
+        #instant-question-host .section2-materi-lesson .lesson-document h3 { color: #1f2937; font-family: "Plus Jakarta Sans", sans-serif; line-height: 1.3; }
+        #instant-question-host .section2-materi-lesson .lesson-document h1 { font-size: 20px; }
+        #instant-question-host .section2-materi-lesson .lesson-document h2 { font-size: 17px; margin-top: 24px; }
+        #instant-question-host .section2-materi-lesson .lesson-document h3 { font-size: 15px; margin-top: 18px; }
+        #instant-question-host .section2-materi-lesson .lesson-document p { margin: 9px 0; }
+        #instant-question-host .section2-materi-lesson .lesson-document ul,
+        #instant-question-host .section2-materi-lesson .lesson-document ol { padding-left: 24px; }
+        #instant-question-host .section2-materi-lesson .lesson-document li { margin: 5px 0; }
+        #instant-question-host .section2-materi-lesson .lesson-document table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 13px; }
+        #instant-question-host .section2-materi-lesson .lesson-document th { background: #0070b8; color: #fff; }
+        #instant-question-host .section2-materi-lesson .lesson-document th,
+        #instant-question-host .section2-materi-lesson .lesson-document td { border: 1px solid #b8d2e7; padding: 8px; text-align: left; vertical-align: top; }
+        #instant-question-host .section2-materi-lesson .lesson-document strong { font-weight: 700; }
+        #instant-question-host .section2-materi-lesson .lesson-document mark { background: #ffde00; padding: 0 2px; }
+        #instant-question-host .section2-materi-empty { padding: 20px 0; color: #63738a; }
+
         .progress-q-circle {
         width: 20px;
         height: 20px;
@@ -808,6 +833,7 @@
         let lastValidSetDate = "";
         let forcedPracticeFocusPart = null;
         let section2MaterialTopics = [];
+        let section2MaterialRecords = safeParse(localStorage.getItem('toefl_structure_materials_v1'), {}) || {};
 
         const SECTION2_DEFAULT_MATERIAL_TOPICS = [
             ['Module 1', [['1.1', 'Missing Subjects & Verbs'], ['1.2', 'Appositives (Noun Phrase Distractors)'], ['1.3', 'Present Participles (-ing) vs. Past Participles (-ed)'], ['1.4', 'Subject-Verb Agreement'], ['1.5', 'Tricky Singular Subjects']]],
@@ -839,6 +865,15 @@
                     ? await toeflStorage.getMaterialsLibrary()
                     : null;
                 remoteCustom = remote && Array.isArray(remote.customTopics) ? remote.customTopics : [];
+                if (remote && remote.records && typeof remote.records === 'object') {
+                    const decoded = {};
+                    Object.keys(remote.records).forEach((key) => {
+                        let decodedKey = key;
+                        try { decodedKey = decodeURIComponent(key); } catch (_) {}
+                        decoded[decodedKey] = remote.records[key];
+                    });
+                    section2MaterialRecords = decoded;
+                }
             } catch (_) {}
             const topics = getSection2MaterialTopicsFromDefaults().concat(normalizeSection2MaterialTopics(localCustom), normalizeSection2MaterialTopics(remoteCustom));
             const seen = {};
@@ -848,6 +883,42 @@
                 seen[key] = true;
                 return true;
             });
+            if (instantTab === 'materi' && instantRevealed) renderInstantQuestion();
+        }
+
+        function resolveInstantMaterialTopic(uid) {
+            const questionNumber = getQuestionNumberFromUid(uid);
+            const question = globalQuestions[uid] || {};
+            const draft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
+            const explicit = getSelectedSection2Material(questionNumber)
+                || question.materialTopic
+                || draft.parts?.[getPartIdFromUid(uid)]?.explanationTexts?.[questionNumber]?.materialTopic;
+            if (explicit && explicit.module && explicit.code) return explicit;
+
+            const normalize = (value) => String(value || '').replace(/<[^>]*>|\*+/g, '').toLowerCase().replace(/[&/,.:;()\-]+/g, ' ').replace(/\s+/g, ' ').trim();
+            const concept = normalize(parseQcCoreExplanation(getSection2ExplanationSource(getPartIdFromUid(uid), questionNumber, uid)).concept);
+            if (!concept) return null;
+            for (const [key, record] of Object.entries(section2MaterialRecords)) {
+                const title = String(record?.title || record?.name || '').trim();
+                const normalizedTitle = normalize(title);
+                if (!normalizedTitle || (normalizedTitle !== concept && !normalizedTitle.includes(concept) && !concept.includes(normalizedTitle))) continue;
+                const separator = key.lastIndexOf('-');
+                if (separator < 0) continue;
+                return { module: record.module || key.slice(0, separator), code: record.code || key.slice(separator + 1), title };
+            }
+            return null;
+        }
+
+        function sanitizeMaterialHtml(value) {
+            const template = document.createElement('template');
+            template.innerHTML = String(value || '');
+            template.content.querySelectorAll('script, style, iframe, object, embed').forEach((node) => node.remove());
+            template.content.querySelectorAll('*').forEach((node) => {
+                Array.from(node.attributes).forEach((attribute) => {
+                    if (/^on/i.test(attribute.name) || /javascript:/i.test(attribute.value)) node.removeAttribute(attribute.name);
+                });
+            });
+            return template.innerHTML;
         }
 
         function renderSection2MaterialOptions() {
@@ -1175,8 +1246,8 @@
                     const englishInput = document.getElementById(`input-explanation-en-${questionNumber}`);
                     const bahasaInput = document.getElementById(`input-explanation-id-${questionNumber}`);
                     const materialTopic = getSelectedSection2Material(questionNumber);
-                    const english = String(englishInput?.value || "").trim() || String(bulkEnglishByNumber[questionNumber] || "").trim();
-                    const bahasa = String(bahasaInput?.value || "").trim() || String(bulkBahasaByNumber[questionNumber] || "").trim();
+                    const english = String(bulkEnglishByNumber[questionNumber] || "").trim() || String(englishInput?.value || "").trim();
+                    const bahasa = String(bulkBahasaByNumber[questionNumber] || "").trim() || String(bahasaInput?.value || "").trim();
                     if (englishInput || bahasaInput || english || bahasa) {
                         explanationTexts[questionNumber] = {
                             explanation: english,
@@ -1561,11 +1632,7 @@
                     isCorrect,
                     isPartB: !!q.isPartB,
                     materialTopic: getSelectedSection2Material(qNum),
-                    explanation: String(
-                        (document.getElementById(`input-explanation-en-${qNum}`) || {}).value
-                        || globalExplanations[uid]
-                        || ""
-                    ).trim(),
+                    explanation: getSection2ExplanationSource(pId, qNum, uid),
                     setDate: dateValue
                 };
             }).sort((a, b) => Number(a.number || 0) - Number(b.number || 0));
@@ -1993,14 +2060,14 @@
 
         // Explanation content comes from the same bulk-explanation input the mock test uses.
         function getSection2ExplanationSource(partId, questionNumber, uid) {
-            const direct = String((document.getElementById(`input-explanation-en-${questionNumber}`) || {}).value || "").trim();
-            if (direct) return direct;
-
             const bulkEnglish = parseAllSection2BulkExplanations((document.getElementById("input-bulk-explanation-en-all") || {}).value || "");
             if (String(bulkEnglish[questionNumber] || "").trim()) return bulkEnglish[questionNumber];
 
             const bulkBahasa = parseAllSection2BulkExplanations((document.getElementById("input-bulk-explanation-id-all") || {}).value || "");
             if (String(bulkBahasa[questionNumber] || "").trim()) return bulkBahasa[questionNumber];
+
+            const direct = String((document.getElementById(`input-explanation-en-${questionNumber}`) || {}).value || "").trim();
+            if (direct) return direct;
 
             const draft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
             const saved = draft?.parts?.[partId]?.explanationTexts?.[questionNumber] || {};
@@ -2155,16 +2222,16 @@
             }
 
             if (instantTab === "materi") {
-                const draft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
-                const topic = getSelectedSection2Material(questionNumber)
-                    || draft?.parts?.[partId]?.explanationTexts?.[questionNumber]?.materialTopic
-                    || null;
-                return `<section class="instant-panel">${topic
-                    ? `<div class="qc-core"><div class="qc-core__head">MATERI</div><div class="qc-core__body">
-                        <div class="qc-core__row"><strong>Module</strong><span>${escapeHtml(topic.module || "")}</span></div>
-                        <div class="qc-core__row"><strong>Topic</strong><span>${escapeHtml(topic.code || "")} · ${escapeHtml(topic.title || "")}</span></div>
-                       </div></div>`
-                    : `<p class="instant-empty">No material topic linked to this question yet.</p>`}</section>`;
+                const materialTopic = resolveInstantMaterialTopic(uid);
+                if (!materialTopic || !materialTopic.title) {
+                    return '<section class="instant-panel"><div class="section2-materi-empty">No material topic has been linked to this question yet.</div></section>';
+                }
+                const record = section2MaterialRecords[materialTopic.module + '-' + materialTopic.code];
+                const trail = '<div class="lesson-trail"><span class="topic-chip primary">' + escapeHtml(materialTopic.code) + '</span><span class="topic-chip">' + escapeHtml(materialTopic.title) + '</span></div>';
+                const lesson = record && record.html
+                    ? '<div class="lesson-heading"><h1>' + escapeHtml(record.title || materialTopic.title) + '</h1></div><article class="lesson-document">' + sanitizeMaterialHtml(record.html) + '</article>'
+                    : '<div class="section2-materi-empty">Upload a DOCX lesson for this topic from the Developer Materials Library, then reopen this page.</div>';
+                return '<section class="instant-panel"><div class="section2-materi-lesson">' + trail + lesson + '</div></section>';
             }
 
             const source = getSection2ExplanationSource(partId, questionNumber, uid);
@@ -3540,7 +3607,7 @@
                 const q = globalQuestions[uid] || {};
                 const part = PARTS.find(pt => pt.id === pId) || {};
                 const videoStepUrl = (videoMapByPart[pId] && videoMapByPart[pId][qNum]) || '';
-                return { uid, number: qNum, partId: pId, partName: part.name || '', questionText: q.questionText || `Question ${qNum}`, options: q.options || {}, correctAnswer: correct, userAnswer, isCorrect: userAnswer === correct, isPartB: q.isPartB || false, explanation: globalExplanations[uid] || '', videoStepUrl };
+                return { uid, number: qNum, partId: pId, partName: part.name || '', questionText: q.questionText || `Question ${qNum}`, options: q.options || {}, correctAnswer: correct, userAnswer, isCorrect: userAnswer === correct, isPartB: q.isPartB || false, explanation: getSection2ExplanationSource(pId, qNum, uid), videoStepUrl };
             }).sort((a, b) => a.number - b.number);
 
             const setDate = (document.getElementById("set-date") || {}).value || currentPackageDate || urlParams.get("setDate") || "";

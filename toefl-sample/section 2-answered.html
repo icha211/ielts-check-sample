@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Section 2 Review - Structure | TOEFL ITP</title>
-    <link rel="stylesheet" href="css/explaination.css?v=20260917a" />
+    <link rel="stylesheet" href="css/explaination.css" />
     <style>
         .materials-tab { display: block; padding: 24px; }
         .section2-materi-lesson { width: 100%; }
@@ -579,11 +579,15 @@
             var explanationSource = firstNonEmpty(raw.explanation, review.explanation, review.reasoning, contextualExplanations.join('\n\n'));
             var explanation = String(explanationSource || '').replace(/\r\n?/g, '\n').trim();
             var videoStepUrl = normalizeText(firstNonEmpty(raw.videoStepUrl, raw.videoUrl, raw.stepVideoUrl, review.videoStepUrl, review.videoUrl));
+            var params = new URLSearchParams(window.location.search);
+            var practicePartB = /practice/i.test(params.get('testType') || '') && /^(partb|writing)$/i.test(params.get('focus') || params.get('sectionKey') || '');
+            var partId = Number(firstNonEmpty(raw.partId, raw.part, review.partId, submission.partId) || (raw.isPartB || practicePartB ? 2 : (number <= 15 ? 1 : 2)));
 
             return {
                 number: number,
-                partId: Number(firstNonEmpty(raw.partId, raw.part, review.partId, submission.partId) || (number <= 15 ? 1 : 2)),
-                partName: normalizeText(firstNonEmpty(raw.partName, raw.partLabel, review.partName, review.partLabel, number <= 15 ? 'Part A' : 'Part B')),
+                partId: partId,
+                partName: normalizeText(firstNonEmpty(raw.partName, raw.partLabel, review.partName, review.partLabel, partId === 2 ? 'Part B' : 'Part A')),
+                isPartB: partId === 2,
                 questionText: rawQuestionText.replace(/<[^>]*>/g, '').replace(/\s*\([A-D]\)\s*/gi, ' ').replace(/\s+/g, ' ').trim(),
                 options: options,
                 correctAnswer: correctAnswer,
@@ -839,6 +843,16 @@
 
         function buildReviewSourceFromDraft(draft, setDate) {
             if (!draft || !isPlainObject(draft) || !draft.parts) return null;
+            var bulkByNumber = {};
+            [draft.bulkExplanationId, draft.bulkExplanationEn].forEach(function (rawText) {
+                var text = String(rawText || '');
+                var markers = Array.from(text.matchAll(/(?:<[^>]+>|[*#>\s])*Question\s*:?\s*(\d+)(?:<\/[^>]+>|\*{1,2})?\s*/gi));
+                markers.forEach(function (marker, index) {
+                    var end = index + 1 < markers.length ? markers[index + 1].index : text.length;
+                    var content = text.slice(marker.index + marker[0].length, end).trim();
+                    if (content) bulkByNumber[Number(marker[1])] = content;
+                });
+            });
             var questions = [];
             for (var partId = 1; partId <= 2; partId += 1) {
                 var part = draft.parts[partId] || draft.parts[String(partId)] || {};
@@ -858,7 +872,7 @@
                         correctAnswer: correctAnswer,
                         userAnswer: correctAnswer,
                         isCorrect: !!correctAnswer,
-                        explanation: String(firstNonEmpty(explanationRecord.explanation, explanationRecord.explanationId, part.explanation, '') || ''),
+                        explanation: String(firstNonEmpty(bulkByNumber[parsedQuestion.number], explanationRecord.explanation, explanationRecord.explanationId, part.explanation, '') || ''),
                         materialTopic: explanationRecord.materialTopic || null,
                         videoStepUrl: String(part.videoStep || '')
                     });
@@ -1653,8 +1667,12 @@
             function renderObserveLine(value) {
                 var raw = String(value || '').trim();
                 if (!raw) return '';
-                // Strip '+' separators if present in legacy format
-                var cleaned = raw.replace(/\s*\+\s*/g, ' ').replace(/\s+/g, ' ').trim();
+                
+                var cleaned = raw
+                    .replace(/^\s*\d+\.\s*/, '')
+                    .replace(/\s*\+\s*/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
 
                 var tokenRegex = /(?:\[([^\]\n]+?)\s*\(([^)\n]+)\)\]|([A-Za-z0-9_'\-—–*"]+(?:\s+[A-Za-z0-9_'\-—–*"]+){0,5})\s*\(([^)\n]+)\))([,.;:]*)/g;
                 var output = '<div class="section2-qc-observe-line">';
@@ -1705,7 +1723,7 @@
                 }
 
                 var remaining = cleaned.slice(lastIndex).trim();
-                if (remaining) {
+                if (hasMatches && remaining) {
                     output += '<span class="section2-qc-observe-plain">' + renderObservePlainText(remaining) + '</span>';
                 }
 
@@ -2074,6 +2092,8 @@
 
         function isPartBFigmaCase(question) {
             if (!question) return false;
+            if (question.isPartB || Number(question.partId) === 2) return true;
+            if (Number(question.partId) === 1) return false;
             var questionNumber = Number(question.number || 0);
             return questionNumber >= 16 && questionNumber <= 40;
         }
@@ -2135,7 +2155,7 @@
         }
 
         function buildPartBReviewSentenceHtml(question) {
-            var source = String(question && question.questionText || '').replace(/^\s*\d+[.)]?\s+/, '');
+            var source = String(question && question.questionText || '').replace(/^\s*\d+[.)]?\s*/, '');
             var optionMap = question && question.options || {};
             var userAnswer = normalizeLetter(question && question.userAnswer);
             var correctAnswer = normalizeLetter(question && question.correctAnswer);
