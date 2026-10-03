@@ -175,8 +175,6 @@
         var reviewCurrentQuestion = null;
         var reviewSidebarMode = 'correct';
         var qcCoreExpandState = {};
-        var observeAnalysisCache = {};
-        var observeAnalysisPending = {};
         var SECTION2_MATERIALS_KEY = "toefl_structure_materials_v1";
         var section2MaterialRecords = {};
 
@@ -1758,6 +1756,10 @@
                     if (inlineRest) html += '<p>' + inlineText(inlineRest) + '</p>';
                     continue;
                 }
+                if (/\[[^\]\n]+\s+\([^)\n]+\)\]/.test(line)) {
+                    html += renderObserveLine(line);
+                    continue;
+                }
                 var eliminationMatch = line.match(/^(?:[-*•\s]|<\/?(?:strong|b|span)\b[^>]*>)*\*{0,2}\(?\s*([A-D])\s*\)?\s*(.*?)\s*\*{0,2}(?:<\/(?:strong|b|span)>)?\s*\((BENAR|SALAH|TRUE|FALSE|CORRECT|INCORRECT)\)\s*:\s*(.*)$/i);
                 if (eliminationMatch) {
                     var choiceLabel = '(' + eliminationMatch[1].toUpperCase() + ') ' + eliminationMatch[2].replace(/<\/?(?:strong|b|span)\b[^>]*>/gi, '').trim();
@@ -1876,17 +1878,28 @@
                 + '</section>';
         }
 
-            function buildPartBAnalysisBlock(question) {
-                var savedAnalysis = buildSavedQcCoreAnalysisBlock(question);
-                if (savedAnalysis) return savedAnalysis;
+            function inlineText(value) {
+                var text = String(value || '');
+                text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+                text = text.replace(/<b\b[^>]*>/gi, '<strong>').replace(/<\/b>/gi, '</strong>');
+                return escapeHtml(text)
+                .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
+                .replace(/&lt;(\/?)u&gt;/gi, '<$1u>')
+                .replace(/&lt;(\/?)em&gt;/gi, '<$1em>')
+                .replace(/&lt;(\/?)i&gt;/gi, '<$1em>');
+            }
 
-                var questionNumber = Number(question && question.number) || 0;
-                var correctAnswer = normalizeLetter(question && question.correctAnswer) || '-';
-                var correctText = extractChoiceText(question && question.options, correctAnswer);
-                var isExpanded = qcCoreExpandState[questionNumber] !== false;
-                var summary = 'Tandai bagian (' + correctAnswer + ') ' + correctText + ' lalu periksa fungsi kata tersebut terhadap Subject, Verb, dan hubungan antar clause.';
+        function buildPartBAnalysisBlock(question) {
+            var savedAnalysis = buildSavedQcCoreAnalysisBlock(question);
+            if (savedAnalysis) return savedAnalysis;
 
-                return '<section class="section2-qc-analysis ' + (isExpanded ? 'is-expanded' : 'is-collapsed') + ' section2-partb-analysis">'
+            var questionNumber = Number(question && question.number) || 0;
+            var correctAnswer = normalizeLetter(question && question.correctAnswer) || '-';
+            var correctText = extractChoiceText(question && question.options, correctAnswer);
+            var isExpanded = qcCoreExpandState[questionNumber] !== false;
+            var summary = 'Tandai bagian (' + correctAnswer + ') ' + correctText + ' lalu periksa fungsi kata tersebut terhadap Subject, Verb, dan hubungan antar clause.';
+
+            return '<section class="section2-qc-analysis ' + (isExpanded ? 'is-expanded' : 'is-collapsed') + ' section2-partb-analysis">'
                 + '<div class="section2-qc-core-banner">'
                 + '<button type="button" class="section2-qc-core-head" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" onclick="toggleQcCoreExpand(' + questionNumber + ')">'
                 + '<span style="display:inline-flex;align-items:center;gap:8px;"><img src="../asset/icon/light.png" alt="" style="width:16px;height:16px;object-fit:contain;">QC CORE ANALYSIS</span>'
@@ -1903,379 +1916,35 @@
                 + buildCompleteSentenceBox(question)
                 + '</div>'
                 + '</section>';
-            }
-
-        function inlineText(value) {
-            var text = String(value || '');
-            text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-            text = text.replace(/<b\b[^>]*>/gi, '<strong>').replace(/<\/b>/gi, '</strong>');
-            return escapeHtml(text)
-                .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
-                .replace(/&lt;(\/?)u&gt;/gi, '<$1u>')
-                .replace(/&lt;(\/?)em&gt;/gi, '<$1em>')
-                .replace(/&lt;(\/?)i&gt;/gi, '<$1em>');
         }
 
         function buildPartAAnalysisBlock(question, blueprint) {
             var savedAnalysis = buildSavedQcCoreAnalysisBlock(question);
             if (savedAnalysis) return savedAnalysis;
+
             var questionNumber = Number(question && question.number) || 0;
             var isExpanded = qcCoreExpandState[questionNumber] !== false;
             var correct = normalizeLetter(question && question.correctAnswer) || '-';
-            var correctChoiceText = extractChoiceText(question && question.options, correct);
-            var mainVerb = normalizeText((blueprint && blueprint.mainVerb) || 'unknown');
-            var subjectToken = normalizeText((blueprint && blueprint.subject) || '');
-            var aiObserve = getCachedGeminiObserveAnalysis(question);
-            if (aiObserve && aiObserve.subjectToken) subjectToken = normalizeText(aiObserve.subjectToken);
-            if (aiObserve && aiObserve.verbToken && aiObserve.verbToken !== '_____') mainVerb = normalizeText(aiObserve.verbToken);
-            var stemParts = splitStemBlank(question && question.questionText);
-            var stemBefore = String(stemParts.before || '');
-            var stemAfter = String(stemParts.after || '');
-            var normalizedStemBefore = normalizeText(stemBefore);
-            var normalizedStemAfter = normalizeText(stemAfter);
-            var normalizedStemAll = normalizeText((stemBefore || '') + ' ' + (stemAfter || ''));
-            var descriptivePhrase = normalizeText((blueprint && blueprint.descriptivePhrase) || 'frasa diapit koma');
-            var ruleLabel = normalizeText((blueprint && blueprint.ruleLabel) || 'Pilih opsi yang melengkapi Subject + Verb tanpa connector tambahan.');
+            var ruleLabel = normalizeText((blueprint && blueprint.ruleLabel) || 'Periksa fungsi setiap bagian berdasarkan role yang tersedia dalam penjelasan.');
             var conceptTitle = normalizeText(question && question.materialTopic && question.materialTopic.title)
                 || (Number(question && question.partId) === 2 ? 'Written Expression & Subject-Verb Agreement' : 'Subject & Appositive');
             var letters = Object.keys((question && question.options) || {}).sort();
             var eliminationLines = '';
-            var subjectText = '_____';
-
-            function renderObserveColumn(text, label, color, topAlign) {
-                var topJustify = topAlign === 'center' ? 'center' : 'start';
-                return '<span style="display:inline-block; justify-self:' + topJustify + '; background-color:' + color + '; color:#FFFFFF; border-radius:4px; padding:2px 6px; font-weight:500; font-size:11px; line-height:1.25; white-space:nowrap; text-align:left;">' + escapeHtml(text) + '</span>'
-                    + '<span style="padding:2px 8px; border:1px solid #D1DCE8; border-radius:4px; font-size:13px; color:#FFFFFF; text-align:center; background-color:' + color + ';">' + escapeHtml(label) + '</span>';
-            }
-
-            function renderObservePlainColumn(text) {
-                return '<span style="display:inline-block; white-space:nowrap; color:#0f172a; font-size:11px; line-height:1.25;">' + escapeHtml(text) + '</span>'
-                    + '<span aria-hidden="true" style="display:block; height:29px;"></span>';
-            }
-
-            function escapeRegExpText(value) {
-                return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            }
-
-            function splitTextByVerb(text, verb) {
-                var source = String(text || '');
-                var token = String(verb || '').trim();
-                if (!source || !token) return null;
-                var match = source.match(new RegExp('\\b' + escapeRegExpText(token) + '\\b', 'i'));
-                if (!match || typeof match.index !== 'number') return null;
-                var start = match.index;
-                var matchedText = source.slice(start, start + match[0].length);
-                return {
-                    before: source.slice(0, start),
-                    verb: matchedText,
-                    after: source.slice(start + match[0].length)
-                };
-            }
-
-            function hasTokenInText(text, token) {
-                var source = String(text || '');
-                var target = String(token || '').trim();
-                if (!source || !target) return false;
-                return new RegExp('\\b' + escapeRegExpText(target) + '\\b', 'i').test(source);
-            }
-
-            function findTokenMatch(text, token) {
-                var source = String(text || '');
-                var target = String(token || '').trim();
-                if (!source || !target) return null;
-                var match = source.match(new RegExp('\\b' + escapeRegExpText(target) + '\\b', 'i'));
-                if (!match || typeof match.index !== 'number') return null;
-                return {
-                    index: match.index,
-                    text: source.slice(match.index, match.index + match[0].length)
-                };
-            }
-
-            function tokenizeWords(text) {
-                return String(text || '').replace(/[^A-Za-z\s']/g, ' ').trim().split(/\s+/).filter(Boolean);
-            }
-
-            function isLikelyVerbWord(word) {
-                var token = String(word || '').toLowerCase();
-                if (!token) return false;
-                if (/^(a|an|the|this|that|these|those)$/.test(token)) return false;
-                if (/^(is|are|was|were|be|being|been|am|do|does|did|has|have|had|can|could|will|would|should|may|might|must)$/.test(token)) return true;
-                if (/^(become|pose|poses|posed|posing|threaten|threatens|threatened|threatening|remain|remains|remained|becomes)$/.test(token)) return true;
-                if (/(ed|ing|en|ify|ise|ize|ate|s)$/.test(token) && token.length > 3) return true;
-                return false;
-            }
-
-            function extractAnswerRoles(answerText) {
-                var words = tokenizeWords(answerText);
-                if (!words.length) return { subject: '', verb: '' };
-
-                var auxSet = {
-                    is: true, are: true, was: true, were: true, be: true, being: true, been: true, am: true,
-                    do: true, does: true, did: true, has: true, have: true, had: true, can: true, could: true,
-                    will: true, would: true, should: true, may: true, might: true, must: true
-                };
-
-                var lastVerbIndex = -1;
-                for (var wi = words.length - 1; wi >= 0; wi -= 1) {
-                    if (isLikelyVerbWord(words[wi])) {
-                        lastVerbIndex = wi;
-                        break;
-                    }
-                }
-
-                if (lastVerbIndex < 0) return { subject: normalizeText(answerText), verb: '' };
-
-                var verb = words[lastVerbIndex];
-                var subject = '';
-                var firstAuxIndex = -1;
-                for (var aj = 0; aj < lastVerbIndex; aj += 1) {
-                    if (auxSet[String(words[aj] || '').toLowerCase()]) {
-                        firstAuxIndex = aj;
-                        break;
-                    }
-                }
-
-                if (firstAuxIndex >= 0 && firstAuxIndex + 1 < lastVerbIndex) {
-                    subject = words.slice(firstAuxIndex + 1, lastVerbIndex).join(' ');
-                } else if (lastVerbIndex > 0) {
-                    subject = words.slice(0, lastVerbIndex).join(' ');
-                }
-
-                return { subject: normalizeText(subject), verb: normalizeText(verb) };
-            }
-
-            function inferStemSubjectHead(beforeText) {
-                var source = normalizeText(beforeText);
-                if (!source) return '';
-
-                var cleaned = source.replace(/[,:;]+$/g, '').trim();
-                if (!cleaned) return '';
-
-                var ofMatch = cleaned.match(/\bof\b/i);
-                if (ofMatch && typeof ofMatch.index === 'number') {
-                    var leftChunk = normalizeText(cleaned.slice(0, ofMatch.index));
-                    var leftWords = tokenizeWords(leftChunk);
-                    if (leftWords.length) return leftWords[leftWords.length - 1];
-                }
-
-                var words = tokenizeWords(cleaned);
-                if (!words.length) return '';
-                var skip = { the: true, a: true, an: true, this: true, that: true, these: true, those: true };
-                for (var ix = words.length - 1; ix >= 0; ix -= 1) {
-                    var token = String(words[ix] || '').toLowerCase();
-                    if (!skip[token]) return words[ix];
-                }
-                return words[words.length - 1];
-            }
-
-            function looksLikeInversionStem(beforeText) {
-                var source = normalizeText(beforeText).toLowerCase();
-                if (!source) return false;
-                return /^(not\s+until|only\s+after|only\s+when|only\s+if|rarely|seldom|never|hardly|scarcely|no\s+sooner|under\s+no\s+circumstances)\b/.test(source);
-            }
-
-            function inferVerbFromStem(text) {
-                var words = tokenizeWords(text);
-                for (var iWord = 0; iWord < words.length; iWord += 1) {
-                    if (isLikelyVerbWord(words[iWord])) return words[iWord];
-                }
-                return '';
-            }
-
-            var answerRoles = extractAnswerRoles(correctChoiceText);
-
-            var inferredStemSubject = inferStemSubjectHead(stemBefore);
-            var inversionStem = looksLikeInversionStem(stemBefore);
-            var inferredStemVerb = inferVerbFromStem(normalizedStemAll);
-
-            if ((!subjectToken || subjectToken === '_____') && inferredStemSubject) {
-                subjectToken = inferredStemSubject;
-            }
-            if ((!mainVerb || mainVerb === 'unknown') && inferredStemVerb) {
-                mainVerb = inferredStemVerb;
-            }
-
-            var hasKnownVerb = !!mainVerb && mainVerb !== 'unknown';
-            var hasKnownSubject = !!subjectToken;
-            var verbInBefore = hasKnownVerb && hasTokenInText(stemBefore, mainVerb);
-            var verbInAfter = hasKnownVerb && hasTokenInText(stemAfter, mainVerb);
-            var hasVerbInStem = verbInBefore || verbInAfter;
-            var verbInCorrectChoice = hasKnownVerb && hasTokenInText(correctChoiceText, mainVerb);
-            var answerVerb = normalizeText(answerRoles.verb || '');
-            var answerVerbInStem = answerVerb ? hasTokenInText(stemBefore, answerVerb) || hasTokenInText(stemAfter, answerVerb) : false;
-            var missingVerb = (!hasVerbInStem && verbInCorrectChoice) || (!!answerVerb && !answerVerbInStem && !hasVerbInStem);
-            var subjectInBefore = hasKnownSubject && hasTokenInText(stemBefore, subjectToken);
-            var subjectInAfter = hasKnownSubject && hasTokenInText(stemAfter, subjectToken);
-            var hasSubjectInStem = subjectInBefore || subjectInAfter;
-            var answerSubject = normalizeText(answerRoles.subject || '');
-            var answerSubjectInStem = answerSubject ? hasTokenInText(stemBefore, answerSubject) || hasTokenInText(stemAfter, answerSubject) : false;
-
-            var hasStrongPreBlankSubject = !!normalizedStemBefore && !/[,:;]\s*$/.test(String(stemBefore || '').trim()) && !inversionStem;
-            var missingSubject = !hasSubjectInStem && !hasStrongPreBlankSubject;
-
-            if (inversionStem) {
-                missingSubject = !answerSubjectInStem;
-            }
-
-            if (answerSubject && !answerSubjectInStem && !hasStrongPreBlankSubject) {
-                missingSubject = true;
-            }
-
-            if (missingSubject && inversionStem && answerSubject) {
-                subjectToken = answerSubject;
-            } else if (!missingSubject && inferredStemSubject) {
-                subjectToken = inferredStemSubject;
-            }
-
-            if (missingVerb) {
-                mainVerb = answerVerb || mainVerb;
-            }
-
-            var hasAiDecision = !!(aiObserve && (
-                typeof aiObserve.missingSubject === 'boolean'
-                || typeof aiObserve.missingVerb === 'boolean'
-                || aiObserve.subjectToken
-                || aiObserve.verbToken
-            ));
-
-            if (hasAiDecision) {
-                var aiSubjectToken = normalizeText(aiObserve.subjectToken || '');
-                var aiVerbToken = normalizeText(aiObserve.verbToken || '');
-
-                if (typeof aiObserve.missingSubject === 'boolean') missingSubject = aiObserve.missingSubject;
-                if (typeof aiObserve.missingVerb === 'boolean') missingVerb = aiObserve.missingVerb;
-
-                if (aiSubjectToken === '_____') {
-                    missingSubject = true;
-                } else if (aiSubjectToken) {
-                    subjectToken = aiSubjectToken;
-                    if (typeof aiObserve.missingSubject !== 'boolean') missingSubject = false;
-                }
-
-                if (aiVerbToken === '_____') {
-                    missingVerb = true;
-                } else if (aiVerbToken) {
-                    mainVerb = aiVerbToken;
-                    if (typeof aiObserve.missingVerb !== 'boolean') missingVerb = false;
-                }
-            }
-
-            hasKnownVerb = !!mainVerb && mainVerb !== 'unknown';
-            hasKnownSubject = !!subjectToken;
-
-            var observeSegments = [];
-            var subjectPlaced = false;
-            var verbPlaced = false;
-
-            function pushPlain(text) {
-                var chunk = String(text || '');
-                if (!chunk) return;
-                observeSegments.push({ type: 'plain', text: chunk });
-            }
-
-            function pushVerbToken(text) {
-                observeSegments.push({ type: 'verb', text: text || '_____', label: 'Verb', color: '#30B0C7' });
-                verbPlaced = true;
-            }
-
-            function pushSubjectToken(text) {
-                observeSegments.push({ type: 'subject', text: text || '_____', label: 'Subject', color: '#0EA5E9' });
-                subjectPlaced = true;
-            }
-
-            function appendStemChunkWithRoleDetection(text) {
-                var source = String(text || '');
-                if (!source) return;
-
-                var remaining = source;
-                while (remaining) {
-                    var roleMatches = [];
-                    if (hasKnownSubject && !missingSubject && !subjectPlaced) {
-                        var subjectMatch = findTokenMatch(remaining, subjectToken);
-                        if (subjectMatch) roleMatches.push({ role: 'subject', index: subjectMatch.index, text: subjectMatch.text });
-                    }
-                    if (hasKnownVerb && !missingVerb && !verbPlaced) {
-                        var verbMatch = findTokenMatch(remaining, mainVerb);
-                        if (verbMatch) roleMatches.push({ role: 'verb', index: verbMatch.index, text: verbMatch.text });
-                    }
-
-                    if (!roleMatches.length) {
-                        pushPlain(remaining);
-                        break;
-                    }
-
-                    roleMatches.sort(function (left, right) { return left.index - right.index; });
-                    var next = roleMatches[0];
-                    if (next.index > 0) pushPlain(remaining.slice(0, next.index));
-
-                    if (next.role === 'subject') {
-                        pushSubjectToken(next.text || subjectToken);
-                    } else {
-                        pushVerbToken(next.text || mainVerb);
-                    }
-
-                    remaining = remaining.slice(next.index + String(next.text || '').length);
-                }
-            }
-
-            appendStemChunkWithRoleDetection(stemBefore);
-            var missingSubjectDisplayToken = (!inversionStem && missingSubject) ? subjectText : (subjectToken || subjectText);
-
-            if (missingSubject) pushSubjectToken(missingSubjectDisplayToken);
-            if (missingVerb) pushVerbToken('_____');
-            appendStemChunkWithRoleDetection(stemAfter);
-            if (hasKnownSubject && !missingSubject && !subjectPlaced) pushSubjectToken(subjectToken);
-            if (hasKnownVerb && !missingVerb && !verbPlaced) pushVerbToken(mainVerb);
-
-            var observeColumnsHtml = '';
-            for (var segmentIndex = 0; segmentIndex < observeSegments.length; segmentIndex += 1) {
-                var segment = observeSegments[segmentIndex];
-                if (segment.type === 'subject' || segment.type === 'verb') {
-                    var isBlank = /^[_.\-—–\s]+$/.test(String(segment.text || ''));
-                    var wordClass = 'section2-qc-observe-word' + (!isBlank ? ' is-underlined' : '');
-                    observeColumnsHtml += '<span class="section2-qc-observe-token">'
-                        + '<span class="' + wordClass + '">' + inlineText(segment.text) + '</span>'
-                        + '<span class="section2-qc-observe-label">' + escapeHtml(segment.label) + '</span>'
-                        + '</span>';
-                } else {
-                    var plainTxt = String(segment.text || '').trim();
-                    if (plainTxt) {
-                        var isPunc = /^[,.;:]+$/.test(plainTxt);
-                        observeColumnsHtml += '<span class="section2-qc-observe-plain' + (isPunc ? ' is-punctuation' : '') + '">' + inlineText(plainTxt) + '</span>';
-                    }
-                }
-            }
-
-            var observeVisualHtml = '<div class="section2-qc-observe-line">'
-                + observeColumnsHtml
-                + '</div>';
-
-            var observedSubjectText = missingSubject ? '[KOSONG/BLANK]' : escapeHtml(subjectToken || '[TERSEDIA]');
-            var observedVerbText = missingVerb ? '[KOSONG/BLANK]' : escapeHtml(mainVerb);
-            var requirementLead = '';
-            if (missingSubject && missingVerb) {
-                requirementLead = 'Kalimat ini belum memiliki Subject dan Verb pada slot kosong.';
-            } else if (missingSubject) {
-                requirementLead = 'Kalimat ini sudah memiliki Verb namun belum memiliki Subject.';
-            } else if (missingVerb) {
-                requirementLead = 'Kalimat ini sudah memiliki Subject namun belum memiliki Verb.';
-            } else {
-                requirementLead = 'Kalimat ini sudah memiliki Subject dan Verb; analisis fokus pada kecocokan struktur pilihan.';
-            }
+            var observeSource = String(question && (question.observeText || question.questionText) || '');
+            var observeVisualHtml = '<div class="section2-qc-observe-line"><span class="section2-qc-observe-plain">' + escapeHtml(observeSource) + '</span></div>';
 
             for (var i = 0; i < letters.length; i += 1) {
                 var letter = letters[i];
                 var optionText = extractChoiceText(question && question.options, letter);
                 var isCorrectChoice = letter === correct;
-                var symbol = isCorrectChoice ? '?' : '?';
                 var symbolClass = isCorrectChoice ? 'is-correct' : 'is-wrong';
                 var reason = isCorrectChoice
-                    ? 'Ini adalah noun phrase yang berfungsi sempurna sebagai Subject.'
-                    : inferPart1WrongReason(optionText, blueprint);
+                    ? 'Pilihan ini sesuai dengan fungsi yang dibutuhkan dalam kalimat.'
+                    : 'Pilihan ini tidak sesuai dengan fungsi yang dibutuhkan dalam kalimat.';
 
                 eliminationLines += '<li>'
                     + '<span class="section2-qc-core-choice"><b>(' + escapeHtml(letter) + ')</b> ' + escapeHtml(optionText) + '</span>'
-                    + '<span class="section2-qc-core-mark ' + symbolClass + '">' + symbol + '</span>'
+                    + '<span class="section2-qc-core-mark ' + symbolClass + '">?</span>'
                     + '<span class="section2-qc-core-colon">:</span>'
                     + '<span class="section2-qc-core-reason">' + escapeHtml(reason) + '</span>'
                     + '</li>';
@@ -2289,7 +1958,7 @@
                 + '</button>'
                 + '<div class="section2-qc-core-expand-lines">'
                 + '<p><b>C - Concept</b><span>Menentukan Topik Grammar atau materi apa yang sedang diuji</span></p>'
-                + '<p><b>O - Observe S-V-C (Subject-Verb-Complement)</b><span>Melakukan Identifikasi S-V-C dan Mencari apa yang sudah ada dan apa yang hilang di kalimat</span></p>'
+                + '<p><b>O - Observe S-V-C (Subject-Verb-Complement)</b><span>Membaca fungsi bagian kalimat berdasarkan role yang ditandai dalam penjelasan</span></p>'
                 + '<p><b>R - Requirement</b><span>Menarik Kesimpulan Kebutuhan dan Menentukan apa yang harus dicari di pilihan ganda</span></p>'
                 + '<p><b>E - Eliminate</b><span>Melakukan Eliminasi Opsi dengan Membedah A, B, C, D dengan alasan kenapa salah/benar berdasarkan S-V-C</span></p>'
                 + '</div>'
@@ -2298,16 +1967,11 @@
                 + '<p><span class="section2-qc-core-key">C - Concept</span> : <mark>' + escapeHtml(conceptTitle) + '</mark></p>'
                 + '<p><span class="section2-qc-core-key">O - Observe S-V-C</span>:</p>'
                 + observeVisualHtml
-                + '<ul class="section2-qc-core-list">'
-                + '<li><span class="section2-qc-core-label"><b>Subject</b></span><span class="section2-qc-core-colon">:</span><span>' + observedSubjectText + '</span></li>'
-                + '<li><span class="section2-qc-core-label"><b>Verb</b></span><span class="section2-qc-core-colon">:</span><span>' + observedVerbText + '</span></li>'
-                + '<li><span class="section2-qc-core-label"><b>Compliance</b></span><span class="section2-qc-core-colon">:</span><span>Frasa diapit dua koma (' + escapeHtml(descriptivePhrase) + ') adalah Appositive.</span></li>'
-                + '</ul>'
                 + '<p><span class="section2-qc-core-key">R - Requirement</span>:</p>'
-                + '<p>' + requirementLead + ' ' + escapeHtml(ruleLabel) + '</p>'
+                + '<p>' + escapeHtml(ruleLabel) + '</p>'
                 + '<p><span class="section2-qc-core-key">E - Eliminate</span>:</p>'
                 + '<ul class="section2-qc-core-list section2-qc-core-list--elim">' + eliminationLines + '</ul>'
-                + buildCompleteSentenceBox(question, { subject: subjectToken, mainVerb: mainVerb })
+                + buildCompleteSentenceBox(question, blueprint)
                 + '</div>'
                 + '</section>';
         }
@@ -2387,7 +2051,6 @@
         function renderQuestionTwoExplanation(question) {
             var displayQuestion = buildQuestionTwoExplanationQuestion(question);
             var blueprint = deriveGrammarBlueprint(displayQuestion);
-            ensureGeminiObserveAnalysis(displayQuestion, blueprint);
 
             return '<div class="explaination-figma section2-figma-shell section2-figma-shell--q2 section2-aiqc-host">'
                 + '<div class="section2-figma-top">'
@@ -2739,127 +2402,6 @@
                 data && data.output_text
             );
             return normalizeText(text) || 'Maaf, respons Gemini kosong. Coba ulangi pertanyaannya dengan kalimat lebih spesifik.';
-        }
-
-        function getObserveAnalysisKey(question) {
-            return [
-                String(question && question.number || ''),
-                normalizeText(question && question.questionText),
-                normalizeLetter(question && question.correctAnswer)
-            ].join('::');
-        }
-
-        function getCachedGeminiObserveAnalysis(question) {
-            var key = getObserveAnalysisKey(question);
-            return key ? observeAnalysisCache[key] : null;
-        }
-
-        function hasGeminiObserveAnalysisRun(question) {
-            var key = getObserveAnalysisKey(question);
-            return !!key && Object.prototype.hasOwnProperty.call(observeAnalysisCache, key);
-        }
-
-        function parseGeminiObserveJson(rawText) {
-            var source = String(rawText || '').trim();
-            if (!source) return null;
-            var parsed = parseJsonSafe(source, null);
-            if (parsed && typeof parsed === 'object') return parsed;
-
-            var start = source.indexOf('{');
-            var end = source.lastIndexOf('}');
-            if (start < 0 || end <= start) return null;
-            var sliced = source.slice(start, end + 1);
-            return parseJsonSafe(sliced, null);
-        }
-
-        function sanitizeGeminiObserveAnalysis(candidate) {
-            if (!candidate || typeof candidate !== 'object') return null;
-            var output = {};
-            if (typeof candidate.missingSubject === 'boolean') output.missingSubject = candidate.missingSubject;
-            if (typeof candidate.missingVerb === 'boolean') output.missingVerb = candidate.missingVerb;
-
-            var subjectToken = normalizeText(candidate.subjectToken);
-            var verbToken = normalizeText(candidate.verbToken);
-            if (subjectToken) output.subjectToken = subjectToken;
-            if (verbToken) output.verbToken = verbToken;
-
-            if (typeof output.missingSubject !== 'boolean' && typeof output.missingVerb !== 'boolean' && !output.subjectToken && !output.verbToken) {
-                return null;
-            }
-            return output;
-        }
-
-        async function requestGeminiObserveAnalysis(question, blueprint) {
-            var apiKey = '';
-            try {
-                apiKey = String(window.TOEFL_GEMINI_API_KEY || localStorage.getItem('toefl_gemini_api_key') || '').trim();
-            } catch (_) {
-                apiKey = String(window.TOEFL_GEMINI_API_KEY || '').trim();
-            }
-            if (!apiKey) return null;
-
-            var correctLetter = normalizeLetter(question && question.correctAnswer);
-            var correctChoiceText = extractChoiceText(question && question.options, correctLetter);
-            var stemText = String(question && question.questionText || '');
-            var prompt = [
-                'You are a strict TOEFL structure parser.',
-                'Analyze ONLY this stem and answer key to detect which grammatical roles are missing in the blank.',
-                'Return ONLY JSON (no markdown) with keys:',
-                '{"missingSubject": boolean, "missingVerb": boolean, "subjectToken": string, "verbToken": string}',
-                'Rules:',
-                '- If subject is missing in blank, subjectToken must be "_____".',
-                '- If verb is missing in blank, verbToken must be "_____".',
-                '- If role exists in stem text, return the exact token from stem for that role.',
-                '- Do not invent words not present in stem unless the role is missing (then use "_____").',
-                '',
-                'Stem: ' + stemText,
-                'Correct answer letter: ' + correctLetter,
-                'Correct answer text: ' + correctChoiceText,
-                'Blueprint subject hint: ' + String((blueprint && blueprint.subject) || ''),
-                'Blueprint verb hint: ' + String((blueprint && blueprint.mainVerb) || '')
-            ].join('\n');
-
-            var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                    generationConfig: {
-                        temperature: 0,
-                        maxOutputTokens: 220,
-                        responseMimeType: 'application/json'
-                    }
-                })
-            });
-
-            if (!response.ok) return null;
-
-            var data = await response.json();
-            var text = firstNonEmpty(
-                data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text,
-                data && data.output_text
-            );
-            return sanitizeGeminiObserveAnalysis(parseGeminiObserveJson(text));
-        }
-
-        function ensureGeminiObserveAnalysis(question, blueprint) {
-            if (!question || isPartBFigmaCase(question)) return;
-            var key = getObserveAnalysisKey(question);
-            if (!key || hasGeminiObserveAnalysisRun(question) || observeAnalysisPending[key]) return;
-            observeAnalysisPending[key] = true;
-
-            requestGeminiObserveAnalysis(question, blueprint).then(function (analysis) {
-                observeAnalysisCache[key] = analysis || null;
-                if (!analysis || !reviewCurrentQuestion) return;
-                var sameQuestionNumber = Number(reviewCurrentQuestion.number || 0) === Number(question.number || 0);
-                if (sameQuestionNumber && reviewExplainationTab === 'explaination') {
-                    renderExplainationTabDetail(reviewCurrentQuestion);
-                }
-            }).catch(function () {
-                // Keep deterministic fallback when Gemini parsing fails.
-            }).finally(function () {
-                observeAnalysisPending[key] = false;
-            });
         }
 
         async function submitAiQcPrompt(event, directText) {
@@ -3799,7 +3341,6 @@
             updateHeaderTitle();
             try {
                 renderExplainationTabDetail(question);
-                ensureGeminiObserveAnalysis(question, deriveGrammarBlueprint(question));
             } catch (error) {
                 console.error('Unable to render explanation for question ' + String(question.number || ''), error);
                 var explanationHost = document.getElementById('explainationTabContent');

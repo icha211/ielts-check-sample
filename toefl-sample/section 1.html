@@ -1862,7 +1862,7 @@
 
             // Practice-test Part A in instant mode plays one clip per question; everything else plays the whole part.
             const useQuestionAudio = usesPerQuestionAudio(partId, questionNumber);
-            const practiceGroup = isPracticeTestType()
+            const practiceGroup = isPracticeTestType() && isInstantFeedbackMode()
                 ? getAudioGroupForQuestion(partId, questionNumber, true)
                 : null;
 
@@ -1882,8 +1882,6 @@
                 }
 
                 const storageUrl = await getCloudAudioUrl(currentSetId, partId, 3500, useQuestionAudio ? questionNumber : null);
-                // The full-part file is always a valid fallback if the per-question clip 404s.
-                const partLevelFallbackUrl = useQuestionAudio ? await getCloudAudioUrl(currentSetId, partId) : null;
                 let fallbackUrls = [];
                 if (!useQuestionAudio && window.toeflStorage && typeof toeflStorage.getAudioRecordFromFirebase === "function") {
                     const record = await toeflStorage.getAudioRecordFromFirebase(currentSetId, partId).catch(() => null);
@@ -1915,10 +1913,6 @@
                     }
 
                     fallbackUrls = [directUrl].filter(Boolean);
-                }
-
-                if (partLevelFallbackUrl) {
-                    fallbackUrls = [partLevelFallbackUrl, ...fallbackUrls].filter((value, index, arr) => value && arr.indexOf(value) === index);
                 }
 
                 if (storageUrl) {
@@ -2277,6 +2271,14 @@
                 }
             } catch (error) {
                 console.warn("[AudioPlayback] Firebase fetch failed, will try fallback:", error);
+            }
+
+            // Per-question uploads use this deterministic key, so playback must not
+            // fall back to the full-part Firebase URL when folder metadata is missing.
+            if (useQuestionAudio) {
+                const questionUrl = `${DEFAULT_R2_PUBLIC_BASE_URL}/audio/listening/sets/${setId}/question_set/part_${partId}/q_${padQuestionNumber(questionNumber)}.mp3`;
+                console.warn("[AudioPlayback] Folder URL unavailable; deriving per-question URL:", questionUrl);
+                return questionUrl;
             }
 
             // ONLY fall back to Firebase Storage if Cloudflare is completely unavailable
@@ -3139,6 +3141,15 @@
             return isPracticeTestType() && !isInstantFeedbackMode();
         }
 
+        function getPracticeQuestionDisplayNumber(uid) {
+            const questionNumber = Number(String(uid).split("_")[1] || 0);
+            const part = PARTS.find((item) => item.id === getPartIdFromUid(uid));
+            if (isPracticeTestType() && part && part.id !== 1 && questionNumber >= part.start) {
+                return questionNumber - part.start + 1;
+            }
+            return questionNumber;
+        }
+
         let instantOrder = [];
         let instantIndex = 0;
         let instantAnswers = {};
@@ -3168,6 +3179,15 @@
             const questionNumber = Number(String(uid).split("_")[1] || 0);
             const isPractice = isPracticeTestType();
             setAudioShellTitle(partId);
+
+            if (isPracticeFullTestMode()) {
+                const partKey = `${currentSetId}:part_${partId}`;
+                if (loadedInstantGroupKey === partKey) return;
+                loadedInstantGroupKey = partKey;
+                loadedInstantAudioUid = "";
+                void restoreAudioForCurrentSet(partId);
+                return;
+            }
 
             // 1. Handle Part A (Per-Question Audio)
             if (usesPerQuestionAudio(partId, questionNumber)) {
@@ -3288,7 +3308,7 @@
             const partObj = PARTS.find((part) => part.id === partId) || {};
             const partTitle = partObj.name ? partObj.name.split(":")[0].toUpperCase() : `PART ${partId}`;
             const circles = instantProgressOrder.map((uid, index) => {
-                const questionNumber = String(uid).split("_")[1] || String(index + 1);
+                const questionNumber = String(getPracticeQuestionDisplayNumber(uid) || index + 1);
                 return `<button type="button" class="progress-q-circle ${getInstantCircleState(uid, index)}" onclick="goToInstantQuestion(${index}, '${uid}')" aria-label="Question ${escapeHtml(questionNumber)}">${escapeHtml(questionNumber)}</button>`;
             }).join("");
 
@@ -3571,6 +3591,10 @@
         function getInstantGroupUids(index = instantIndex) {
             const uid = instantOrder[index];
             if (!uid) return [];
+            if (isPracticeFullTestMode()) {
+                const partId = getPartIdFromUid(uid);
+                return instantOrder.filter((item) => getPartIdFromUid(item) === partId);
+            }
             const groupKey = getInstantGroupKeyForUid(uid);
             if (!groupKey) return [uid];
             return instantOrder.filter((item) => getInstantGroupKeyForUid(item) === groupKey);
@@ -3598,7 +3622,7 @@
         }
 
         function buildInstantQuestionArticleHtml(uid) {
-            const questionNumber = Number(String(uid).split("_")[1] || 0);
+            const questionNumber = getPracticeQuestionDisplayNumber(uid);
             const question = globalQuestions[uid] || { questionText: "", options: {} };
             const selected = instantAnswers[uid] ? String(instantAnswers[uid]).toUpperCase() : "";
             const correctLetter = String(globalAnswerKey[uid] || "").trim().toUpperCase();
@@ -3683,7 +3707,7 @@
                 : `<button class="btn-action secondary" type="button" onclick="skipInstantQuestion()">${skipLabel}</button>
                    <button class="btn-action primary" type="button" onclick="checkInstantAnswer()">Check Answer <i class="ph ph-caret-right" aria-hidden="true"></i></button>`;
             const actionContainer = document.getElementById("action-btn-container");
-            const fullModeNextLabel = lastGroupIndex < instantOrder.length - 1 ? "Next Talk" : "Submit";
+            const fullModeNextLabel = lastGroupIndex < instantOrder.length - 1 ? "Next Part" : "Submit";
             if (actionBar && actionContainer) {
                 if (fullPractice && partId !== 1) {
                     actionContainer.innerHTML = `<button class="btn-action primary" type="button" onclick="${fullModeNextLabel === "Submit" ? "submitAnswers()" : "nextTalk()"}">${fullModeNextLabel} <i class="ph ph-caret-right" aria-hidden="true"></i></button>`;
@@ -3741,17 +3765,20 @@
         }
 
         function checkInstantAnswer() {
-            const groupUids = getInstantGroupUids();
-            if (!groupUids.length) return;
-            if (groupUids.some((item) => !instantAnswers[item])) {
-                alert(groupUids.length > 1
-                    ? "Please answer every question in this talk before checking the answers."
-                    : "Please select an option before checking the answer.");
-                return;
+            const uid = instantOrder[instantIndex];
+            if (!uid) return;
+
+            if (!instantAnswers[uid]) {
+                // If the user clicks Cancel, exit early.
+                // If the user clicks OK, execution continues past this block.
+                if (!confirm("Are you sure you want to check the answer without selecting one?")) {
+                    return;
+                }
             }
+
+            instantChecked[uid] = true;
             instantRevealed = true;
-            instantReviewIndex = 0;
-            groupUids.forEach((item) => { instantChecked[item] = true; });
+            instantTab = "explaination"; // Note: fix typo to "explanation" if required in your project
             renderInstantQuestion();
         }
 
@@ -5963,12 +5990,13 @@
             const key = getCloudflareFolderStorageKey(currentSetId);
             if (!normalized) {
                 localStorage.removeItem(key);
-                return;
+                return false;
             }
             localStorage.setItem(key, normalized);
             // Also save to Firebase RTDB so other users/devices can access it
-            await saveCloudflareAudioFolderUrlToFirebase(currentTestType || "mocktest", currentSetId, normalized).catch(err => {
+            return await saveCloudflareAudioFolderUrlToFirebase(currentTestType || "mocktest", currentSetId, normalized).catch(err => {
                 console.warn("[CloudflareAudio] Background Firebase save failed:", err);
+                return false;
             });
         }
 
@@ -6003,13 +6031,21 @@
             const existingInputUrl = input?.value || "";
             if (cachedUrl && toPublicR2Url(cachedUrl)) {
                 currentSetId = setId;  // Preserve the setId
-                setCloudflareFolderStatus(`Folder already linked for ${setId} (using cached URL).`, "#0f766e");
+                const savedToFirebase = await saveCloudflareFolderUrlForCurrentSetValue(cachedUrl);
+                setCloudflareFolderStatus(
+                    savedToFirebase ? `Folder linked for ${setId}.` : `Folder linked on this device; Firebase sync failed for ${setId}.`,
+                    savedToFirebase ? "#0f766e" : "#b45309"
+                );
                 if (input && !input.value) input.value = cachedUrl;
                 return toPublicR2Url(cachedUrl);
             }
             if (existingInputUrl && toPublicR2Url(existingInputUrl)) {
                 currentSetId = setId;  // Preserve the setId
-                setCloudflareFolderStatus(`Folder already linked for ${setId}.`, "#0f766e");
+                const savedToFirebase = await saveCloudflareFolderUrlForCurrentSetValue(existingInputUrl);
+                setCloudflareFolderStatus(
+                    savedToFirebase ? `Folder linked for ${setId}.` : `Folder linked on this device; Firebase sync failed for ${setId}.`,
+                    savedToFirebase ? "#0f766e" : "#b45309"
+                );
                 return toPublicR2Url(existingInputUrl);
             }
 
@@ -6037,9 +6073,12 @@
                     const responseSetId = extractCloudflareSetId(folderUrl);
                     if (responseSetId) setId = responseSetId;
                     currentSetId = setId;
-                    saveCloudflareFolderUrlForCurrentSetValue(folderUrl);
+                    const savedToFirebase = await saveCloudflareFolderUrlForCurrentSetValue(folderUrl);
                     if (input) input.value = folderUrl;
-                    setCloudflareFolderStatus(`Folder created and linked for ${setId}. (setId: ${setId})`, "#0f766e");
+                    setCloudflareFolderStatus(
+                        savedToFirebase ? `Folder created and linked for ${setId}.` : `Folder created and saved on this device; Firebase sync failed for ${setId}.`,
+                        savedToFirebase ? "#0f766e" : "#b45309"
+                    );
                     console.log("[CloudflareFolder] Created folder for setId:", setId);
                     return folderUrl;
                 } catch (error) {
@@ -6074,8 +6113,11 @@
             // This prevents subsequent clicks from generating NEW setIds
             currentSetId = urlSetId;
             
-            saveCloudflareFolderUrlForCurrentSetValue(normalizedUrl);
-            setCloudflareFolderStatus(`Folder URL saved for ${urlSetId}.`, "#0f766e");
+            const savedToFirebase = await saveCloudflareFolderUrlForCurrentSetValue(normalizedUrl);
+            setCloudflareFolderStatus(
+                savedToFirebase ? `Folder URL saved for ${urlSetId}.` : `Folder URL saved on this device; Firebase sync failed for ${urlSetId}.`,
+                savedToFirebase ? "#0f766e" : "#b45309"
+            );
         }
 
         function getCloudflarePartSyncStatusKey(setId) {
@@ -7971,16 +8013,6 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const group = getAudioGroupForQuestion(normalizedPartId, questionNo);
             const practiceTranscript = group ? String(groupTranscripts[group.key] || "").trim() : "";
             if (practiceTranscript) return parseGroupTranscriptSegments(practiceTranscript);
-
-            // Part B/C practice textareas still use global question-number ranges.
-            if (isPracticeTestType() && [2, 3].includes(normalizedPartId)) {
-                const globalQuestionNo = questionNo >= 1 && questionNo <= 8
-                    ? questionNo + (normalizedPartId === 2 & 3 ? 30 : 38)
-                    : questionNo;
-                const legacyGroup = getAudioGroupForQuestion(normalizedPartId, globalQuestionNo, false);
-                const legacyTranscript = legacyGroup ? String(groupTranscripts[legacyGroup.key] || "").trim() : "";
-                if (legacyTranscript) return parseGroupTranscriptSegments(legacyTranscript);
-            }
 
             return [];
         }

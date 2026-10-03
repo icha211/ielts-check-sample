@@ -330,6 +330,49 @@
         text-align: justify;
     }
 
+    .qc-core__observe {
+        display: flex;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            row-gap: 12px;
+            column-gap: 8px;
+            padding: 8px 0 14px;
+            color: #0f172a;
+            font: 500 15px/1.4 "Plus Jakarta Sans", Arial, sans-serif;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .qc-core__observe-token {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        vertical-align: middle;
+        gap: 4px;
+        margin: 0 2px;
+        line-height: 1.2;
+    }
+
+    .qc-core__observe-word {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 6px;
+        background: #e0f2fe;
+        color: #075985;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    .qc-core__observe-role {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: #0d9488;
+        color: #fff;
+        font: 600 11px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+        white-space: nowrap;
+    }
+
     .qc-core__concept mark { background: #fde047; padding: 1px 5px; border-radius: 3px; font-weight: 600; }
 
     .qc-core__rows { display: grid; gap: 4px; }
@@ -343,6 +386,18 @@
     }
 
     .qc-core__row strong { font-weight: 600; }
+
+    .qc-core__row-value.is-bullet {
+        display: inline-flex;
+        align-items: center;
+        min-height: 21px;
+    }
+
+    .qc-core__row-value.is-bullet::before {
+        content: "•";
+        font-size: 18px;
+        line-height: 1;
+    }
 
     .qc-core__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 
@@ -417,6 +472,67 @@
         font: 400 14px/1.55 "Plus Jakarta Sans", Arial, sans-serif;
         overflow-wrap: anywhere;
     }
+
+    .section2-review-page #partbPanelExplaination .section2-qc-observe-token,
+        .section2-qc-observe-token {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            vertical-align: top;
+            gap: 4px;
+        }
+
+        .section2-review-page #partbPanelExplaination .section2-qc-observe-word,
+        .section2-qc-observe-word {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: #e0f2fe;
+            color: #075985;
+            font-size: 15px;
+            font-weight: 600;
+            line-height: 1.4;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .section2-review-page #partbPanelExplaination .section2-qc-observe-word.is-underlined,
+        .section2-qc-observe-word.is-underlined {
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            text-decoration-thickness: 1.5px;
+        }
+
+        .section2-review-page #partbPanelExplaination .section2-qc-elimination-row {
+            display: grid;
+            grid-template-columns: 10px 160px 20px 14px minmax(0, 1fr);
+            align-items: start;
+            column-gap: 6px;
+            margin: 7px 0;
+            color: #111827;
+            font: 500 14px/1.5 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .section2-review-page #partbPanelExplaination .section2-qc-elimination-row.section2-qc-keyvalue-row {
+            grid-template-columns: 10px 100px 14px minmax(0, 1fr);
+        }
+
+        .section2-review-page #partbPanelExplaination .section2-qc-bullet {
+            width: 5px;
+            height: 5px;
+            margin-top: 8px;
+            border-radius: 999px;
+            background: #000000;
+        }
+
+        .section2-review-page #partbPanelExplaination .section2-qc-elimination-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding-top: 2px;
+        }
+
+
 
     @media (max-width: 720px) {
         .qc-core__item { grid-template-columns: 1fr; }
@@ -955,7 +1071,7 @@
         function parseAllSection2BulkExplanations(rawText) {
             const text = String(rawText || "");
             const blocks = {};
-            const questionRegex = /(?:<[^>]+>|[*#>\s])*Question\s*:?\s*(\d+)(?:<[^>]+>|[*#\s])*/gi;
+            const questionRegex = /(?:<[^>]+>|[*#>\s])*Question\s*:?\s*(\d+)(?:<\/[^>]+>|\*{1,2})?\s*/gi;
             const markers = [];
             let qMatch;
             while ((qMatch = questionRegex.exec(text)) !== null) {
@@ -1319,20 +1435,24 @@
         }
 
         function buildQcCoreMarkdown(questionNumber, question, correctLetter) {
+            const bulkEnglish = parseAllSection2BulkExplanations(
+                (document.getElementById("input-bulk-explanation-en-all") || {}).value || ""
+            );
+            const bulkBahasa = parseAllSection2BulkExplanations(
+                (document.getElementById("input-bulk-explanation-id-all") || {}).value || ""
+            );
+            const suppliedExplanation = String(bulkEnglish[questionNumber] || bulkBahasa[questionNumber] || "").trim();
+            if (suppliedExplanation) return suppliedExplanation;
+
             const stem = String(question?.questionText || `Question ${questionNumber}`).replace(/^\s*\d+[.)]?\s*/, '').trim();
             const options = question?.options || {};
             const correct = String(correctLetter || '').toUpperCase();
             const correctText = String(options[correct] || '').trim();
             const sentence = stem.replace(/_{3,}/, correctText || '_____');
-            const verbMatch = sentence.match(/\b(is|are|was|were|be|been|being|has|have|had|do|does|did|can|could|will|would|should|may|might|must|[a-z]+(?:ed|ing))\b/i);
-            const verb = verbMatch ? verbMatch[0] : 'belum terdeteksi';
-            const hasBlank = /_{3,}/.test(stem);
-            const subjectStatus = hasBlank ? '___ [Yang Dicari]' : 'tersedia pada kalimat';
             const materialTopic = getSelectedSection2Material(questionNumber);
-            const concept = materialTopic ? materialTopic.title : (Number(question?.partId) === 2 ? 'Written Expression & Subject-Verb Agreement' : 'Subject & Appositive');
-            const requirement = hasBlank
-                ? `Kalimat ini memiliki Verb (${verb}) namun belum memiliki Subject. Karena tidak ada Connector (seperti and, but, because), kita hanya butuh satu Subject (Kata Benda/Noun) untuk mengisi bagian yang kosong. Kita tidak boleh memilih opsi yang menambahkan Verb lagi.`
-                : `Kalimat ini perlu diperiksa berdasarkan hubungan Subject dan Verb. Fokuskan analisis pada kata yang diuji dan pastikan struktur kalimat tetap lengkap.`;
+            const partId = Number(question?.partId) || (question?.isPartB || questionNumber > 15 ? 2 : 1);
+            const concept = materialTopic ? materialTopic.title : (partId === 2 ? 'Written Expression & Subject-Verb Agreement' : 'Subject & Appositive');
+            const requirement = 'Gunakan konteks kalimat dan role yang ditandai pada penjelasan untuk menilai setiap bagian.';
             const elimination = Object.keys(options).sort().map((letter) => {
                 const text = String(options[letter] || '').trim();
                 if (letter === correct) return `* **(${letter}) ${text}** (BENAR): Ini adalah pilihan yang paling sesuai dengan kebutuhan struktur kalimat.`;
@@ -1344,7 +1464,7 @@
                 return `* **(${letter}) ${text}** (SALAH): ${reason}`;
             }).join('\n');
 
-            return `Question:${questionNumber}\n**C - Concept:** ${concept}\n**O - Observe S-V-C:**\n${sentence.replace(verb, `${verb} (Verb)`).replace(correctText, `${correctText || '_____'} (Subject)`)}\n\n* **Subject**    : ${subjectStatus}\n* **Verb**       : ${verb}\n* **Compliance** : Periksa frasa penjelas dan connector agar tidak keliru menganggapnya sebagai bagian inti klausa.\n\n**R - Requirement:**\n${requirement}\n\n**E - Eliminate:**\n${elimination}`;
+            return `Question:${questionNumber}\n**C - Concept:** ${concept}\n**O - Observe S-V-C:**\n${sentence}\n\n**R - Requirement:**\n${requirement}\n\n**E - Eliminate:**\n${elimination}`;
         }
 
         function populateQcCoreExplanationCards() {
@@ -1710,13 +1830,18 @@
         function checkInstantAnswer() {
             const uid = instantOrder[instantIndex];
             if (!uid) return;
+
             if (!instantAnswers[uid]) {
-                alert("Please select an answer before checking.");
-                return;
+                // If the user clicks Cancel, exit early.
+                // If the user clicks OK, execution continues past this block.
+                if (!confirm("Are you sure you want to check the answer without selecting one?")) {
+                    return;
+                }
             }
+
             instantChecked[uid] = true;
             instantRevealed = true;
-            instantTab = "explaination";
+            instantTab = "explaination"; // Note: fix typo to "explanation" if required in your project
             renderInstantQuestion();
         }
 
@@ -1892,6 +2017,32 @@
                 .replace(/\n/g, "<br>");
         }
 
+        function renderQcObserveText(value) {
+            return escapeHtml(String(value || ""))
+                .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
+                .replace(/\n/g, "<br>");
+        }
+
+        function renderQcObserveHtml(value) {
+            const source = String(value || "");
+            const roleToken = /\[([^\]\n]+?)\s+\(([^)\n]+)\)\]/g;
+            let html = "";
+            let cursor = 0;
+            let match;
+
+            while ((match = roleToken.exec(source)) !== null) {
+                html += renderQcObserveText(source.slice(cursor, match.index));
+                html += '<span class="qc-core__observe-token">'
+                    + '<span class="qc-core__observe-word">' + renderQcObserveText(match[1].trim()) + '</span>'
+                    + '<span class="qc-core__observe-role">' + escapeHtml(match[2].trim()) + '</span>'
+                    + '</span>';
+                cursor = roleToken.lastIndex;
+            }
+
+            html += renderQcObserveText(source.slice(cursor));
+            return '<div class="qc-core__observe">' + html + '</div>';
+        }
+
         // Splits a QC C.O.R.E block into its Concept / Observe / Requirement / Eliminate parts.
         function parseQcCoreExplanation(rawText) {
             const text = String(rawText || "").replace(/\r/g, "");
@@ -1917,9 +2068,13 @@
 
             const rows = [];
             const observeBody = String(sections.observe || "").split("\n").filter((line) => {
-                const match = line.match(/^\s*[*\-]?\s*\*{0,2}(Subject|Verb|Compliance)\*{0,2}\s*:\s*(.*)$/i);
-                if (!match) return true;
-                rows.push({ label: match[1], value: String(match[2] || "").trim() });
+                const rowText = String(line || "").trim().replace(/^(?:[-*•]\s+)+/, "");
+                const separator = rowText.indexOf(":");
+                if (separator <= 0) return true;
+                const label = rowText.slice(0, separator).replace(/<\/?[^>]+>/g, "").replace(/\*+/g, "").trim();
+                if (!label) return true;
+                const value = rowText.slice(separator + 1).trim();
+                rows.push({ label, value, isBullet: /^[-–—]$/.test(value) });
                 return false;
             }).join("\n").trim();
 
@@ -2025,7 +2180,9 @@
             }
 
             const rowsHtml = parsed.rows.map((row) => `
-                <div class="qc-core__row"><strong>${escapeHtml(row.label)}</strong><span>: ${markdownInlineToHtml(row.value)}</span></div>`).join("");
+                <div class="qc-core__row"><strong>${escapeHtml(row.label)}</strong>${row.isBullet
+                    ? '<span class="qc-core__row-value is-bullet" aria-label="No value"></span>'
+                    : `<span class="qc-core__row-value">: ${markdownInlineToHtml(row.value)}</span>`}</div>`).join("");
 
             const optionsHtml = parsed.options.map((option) => {
                 const state = option.verdict || (option.letter === correct ? "correct" : "incorrect");
@@ -2049,7 +2206,7 @@
                             </div>` : ""}
                             ${(parsed.observe || rowsHtml) ? `<div class="qc-core__block">
                                 <div class="qc-core__label">O – Observe S-V-C :</div>
-                                ${parsed.observe ? `<div class="qc-core__text">${markdownInlineToHtml(parsed.observe)}</div>` : ""}
+                                ${parsed.observe ? renderQcObserveHtml(parsed.observe) : ""}
                                 ${rowsHtml ? `<div class="qc-core__rows">${rowsHtml}</div>` : ""}
                             </div>` : ""}
                             ${parsed.requirement ? `<div class="qc-core__block">
