@@ -786,6 +786,7 @@ function renderLibrary() {
             : filter === "structure" && currentTestType === "practicetest"
                 ? item.module === "structure" && String(item.focus || "").toLowerCase() !== "partb"
                 : item.module === filter));
+                
     if (visibleSets.length === 0) {
         const testTypeLabel = currentTestType === "practicetest" ? "Practice" : "Mock";
         host.innerHTML = `<div class="empty">${sectionSets.length ? "No sets found in this section." : `No TOEFL ${testTypeLabel} Test sets saved yet. Open Listening, Structure, or Reading, set the date and difficulty, then click Update.`}</div>`;
@@ -796,10 +797,26 @@ function renderLibrary() {
         const normalizedDate = normalizeDateKey(item.setDate || "");
         const metadataSetDateLabel = item.setDate ? item.displayDate : "-";
         const compactSetDateLabel = formatCompactSetDate(item.setDate);
+
+        // Focus is stored in mixed case ("partA" vs "parta") and every set gets a default difficulty,
+        // so compare focus case-insensitively and only check difficulty when the option defines one.
+        const itemFocus = String(item.focus || "").toLowerCase();
+        const matchingOption = PRACTICE_MODULE_OPTIONS.find((opt) =>
+            opt.module === item.module &&
+            String(opt.focus || "").toLowerCase() === itemFocus &&
+            (!opt.difficulty || opt.difficulty === item.difficulty)
+        );
+
+        const practiceLabel = matchingOption ? matchingOption.label : item.label;
+
+        const headerTitle = currentTestType === "practicetest"
+            ? `${item.icon || ""} ${escapeHtml(practiceLabel)}`
+            : `${item.icon || ""} ${escapeHtml(item.label)} Set`;
+
         return `
         <article class="card">
             <div class="card-body">
-                <h3>${item.icon} ${escapeHtml(item.label)} Set</h3>
+                <h3>${headerTitle}</h3>
                 <div class="meta">
                     <span><img src="../asset/icon/pin.png" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;"> Set Date: ${escapeHtml(metadataSetDateLabel)}</span>
                     <span>Difficulty: ${escapeHtml(item.difficultyLabel)}</span>
