@@ -1790,11 +1790,14 @@
             
             // Only get fallback candidates if url is a Cloudflare URL (not Firebase Storage)
             // This prevents mixing old Firebase fallbacks with new Cloudflare sources
-            if (currentAudioFallbackUrls.length === 0 && url && url.includes("r2.dev")) {
-                if (window.toeflStorage && typeof toeflStorage.getAudioUrlCandidates === "function" && setId) {
-                    const candidates = toeflStorage.getAudioUrlCandidates(setId, partId, url);
-                    currentAudioFallbackUrls = (candidates || []).filter((item) => item && item !== url);
-                }
+            if (url && url.includes("r2.dev")) {
+                // Part-level candidates would replace a per-question/talk clip with the full part audio.
+                const partCandidates = !url.includes("/question_set/") && currentAudioFallbackUrls.length === 0
+                    && window.toeflStorage && typeof toeflStorage.getAudioUrlCandidates === "function" && setId
+                    ? (toeflStorage.getAudioUrlCandidates(setId, partId, url) || [])
+                    : [];
+                currentAudioFallbackUrls = [...buildGatewayAudioProxyUrls(url), ...currentAudioFallbackUrls, ...partCandidates]
+                    .filter((item, index, arr) => item && item !== url && arr.indexOf(item) === index);
             }
             
             audio.removeAttribute("crossorigin");
@@ -1822,6 +1825,17 @@
             }
         }
 
+        // Some networks/ISPs block or intercept r2.dev (ERR_CERT_COMMON_NAME_INVALID); the gateway streams the same object.
+        function buildGatewayAudioProxyUrls(r2Url) {
+            const match = String(r2Url || "").match(/r2\.dev\/(audio\/listening\/sets\/[^?#]+)/i);
+            if (!match) return [];
+            const objectKey = decodeURIComponent(match[1]);
+            const pageOrigin = window.location?.origin || "";
+            return getApiGatewayBaseCandidates(runtimeApiGatewayUrlCache || window.__TOEFL_API_GATEWAY_URL__ || "")
+                .filter((base) => base && base !== pageOrigin)
+                .map((base) => `${base}/api/developer/audio-proxy?objectKey=${encodeURIComponent(objectKey)}`);
+        }
+
         async function tryFallbackAudioSource() {
             const audio = document.getElementById("cbt-audio-player");
             if (!audio || currentAudioFallbackUrls.length === 0) return false;
@@ -1842,8 +1856,13 @@
                     });
                     updateAudioShellStatus();
                     return true;
-                } catch {
-                    // Try the next candidate URL.
+                } catch (playError) {
+                    // Autoplay being blocked means the source itself loaded fine; keep it.
+                    if (playError?.name === "NotAllowedError") {
+                        currentAudioPlaybackSource = inferPlaybackSource(nextUrl);
+                        updateAudioShellStatus();
+                        return true;
+                    }
                 }
             }
 
@@ -4708,7 +4727,9 @@
                     
                     // If fallback failed and current source is a Cloudflare URL, invalidate it and try Firebase directly
                     if (!recovered) {
-                        if (currentSrc && currentSrc.includes("r2.dev")) {
+                        // Firebase only holds full-part audio, which must not replace a per-question/talk clip.
+                        const isClipSource = /question_set/i.test(decodeURIComponent(currentSrc));
+                        if (currentSrc && currentSrc.includes("r2.dev") && !isClipSource) {
                             console.warn("[AudioPlayback] Cloudflare URL failed (", codeText, "), invalidating cache and falling back to Firebase Storage:", currentSrc);
                             
                             // Invalidate all cached Cloudflare URLs for this set
