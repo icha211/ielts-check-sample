@@ -1850,6 +1850,8 @@
             return false;
         }
 
+        let audioRestoreToken = 0;
+
         async function restoreAudioForCurrentSet(partId = activePartId || 1, questionNumber = null) {
             if (!AUDIO_PART_IDS.includes(Number(partId || 1))) {
                 return false;
@@ -1860,6 +1862,15 @@
                 if (isPartActive(partId)) clearAudioSource();
                 return false;
             }
+
+            const isInstantPractice = isPracticeTestType() && isInstantFeedbackMode();
+            if (isInstantPractice && !Number(questionNumber)) questionNumber = getCurrentInstantQuestionNumber();
+            // Instant Part A must never fall back to the full-part clip while the question is unknown.
+            if (isInstantPractice && Number(partId) === 1 && !Number(questionNumber)) return false;
+
+            // Concurrent restores resolve out of order; only the latest one may touch the player.
+            const restoreToken = ++audioRestoreToken;
+            const canApply = () => isPartActive(partId) && restoreToken === audioRestoreToken;
 
             // Practice-test Part A in instant mode plays one clip per question; everything else plays the whole part.
             const useQuestionAudio = usesPerQuestionAudio(partId, questionNumber);
@@ -1875,7 +1886,7 @@
                 const groupBelongsToCurrentSet = !groupObjectKey || groupObjectKey.includes(`/sets/${currentSetId}/`);
                 const groupAudioUrl = groupBelongsToCurrentSet ? String(groupRecord?.url || "").trim() : "";
                 if (groupAudioUrl) {
-                    if (isPartActive(partId)) {
+                    if (canApply()) {
                         setAudioSourceFromUrl(groupAudioUrl, currentSetId, partId);
                     }
                     setAudioLabelReady(`cloud audio (${practiceGroup.key})`, partId);
@@ -1901,7 +1912,7 @@
                                 const fallbackUrl = String(payload?.fallbackUrl || "").trim();
                                 if (proxyUrl) {
                                     fallbackUrls = [fallbackUrl, directUrl, storageUrl].filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i);
-                                    if (isPartActive(partId)) {
+                                    if (canApply()) {
                                         setAudioSourceFromUrl(proxyUrl, currentSetId, partId, fallbackUrls);
                                     }
                                     setAudioLabelReady(`cloud audio`, partId);
@@ -1917,7 +1928,7 @@
                 }
 
                 if (storageUrl) {
-                    if (isPartActive(partId)) {
+                    if (canApply()) {
                         setAudioSourceFromUrl(storageUrl, currentSetId, partId, fallbackUrls);
                     }
                     setAudioLabelReady(useQuestionAudio ? `cloud audio (Q${questionNumber})` : `cloud audio`, partId);
@@ -1948,18 +1959,18 @@
                 }
                 if (!record || !record.blob) {
                     setAudioLabelEmpty(partId);
-                    if (isPartActive(partId)) clearAudioSource();
+                    if (canApply()) clearAudioSource();
                     return false;
                 }
 
-                if (isPartActive(partId)) {
+                if (canApply()) {
                     setAudioSourceFromBlob(record.blob);
                 }
                 setAudioLabelReady(record.fileName, partId);
                 return true;
             } catch (error) {
                 console.warn("[AudioPersistence] restore failed:", error);
-                if (isPartActive(partId)) clearAudioSource();
+                if (canApply()) clearAudioSource();
                 return false;
             }
         }
@@ -4520,6 +4531,7 @@
 
             const restoredCurrent = await restoreAudioForCurrentSet(activePartId || 1, getCurrentInstantQuestionNumber());
             if (restoredCurrent && audio.src) return true;
+            if (isInstantFeedbackMode() && Number(activePartId || 1) === 1 && !getCurrentInstantQuestionNumber()) return false;
 
             try {
                 // Try to get audio from Cloudflare for the current set.
