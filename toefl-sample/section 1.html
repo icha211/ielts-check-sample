@@ -4996,7 +4996,13 @@
                         ? existingDraft.parts[p].explanationSchemas
                         : {})
                 };
-                for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
+                // Practice Part B/C are numbered from 1 ("Part 2 / Question 1"), not from the mock range (31+).
+                const bulkQuestionNumbers = [...Object.keys(bulkEnglishByUid), ...Object.keys(bulkBahasaByUid)]
+                    .filter((key) => key.startsWith(`${p}_`))
+                    .map((key) => Number(key.split("_")[1]));
+                const questionNumbers = new Set(bulkQuestionNumbers);
+                for (let n = part.start; n <= part.end; n += 1) questionNumbers.add(n);
+                for (const questionNumber of [...questionNumbers].sort((a, b) => a - b)) {
                     const uid = `${p}_${questionNumber}`;
                     const english = String(bulkEnglishByUid[uid] || "").trim();
                     const bahasa = String(bulkBahasaByUid[uid] || "").trim();
@@ -5016,6 +5022,15 @@
                             explanationId: bahasa,
                             showBahasaExplanation: true
                         };
+                        // The answered page only reads schemas, so a Bahasa-only paste still needs one.
+                        if (!explanationSchemas[questionNumber]?.explanation_payload) {
+                            const normalizedBahasa = bahasa
+                                .replace(/\*{2}PENJELASAN\*{2}/gi, "**EXPLAINATION**")
+                                .replace(/\*{2}KENAPA OPSI LAIN SALAH\*{2}/gi, "**WHY THE OTHER OPTION IS INCORRECT**");
+                            explanationSchemas[questionNumber] = applyExplanationCardToSchema(
+                                explanationSchemas[questionNumber], p, questionNumber, normalizedBahasa
+                            );
+                        }
                     }
                 }
 
@@ -5495,19 +5510,21 @@
                         <div id="audio-file-name-1-q-${questionNumber}" style="font-size:11px; color:#64748b; font-weight:600; overflow-wrap:anywhere; text-align:left;">No question audio selected.</div>
                     </div>`;
             }).join("");
-            const partCAudioGroupMarkup = getAudioGroupsForPart(3, isPracticeTestType()).map((group, index) => {
+            const buildGroupAudioMarkup = (partId, letter) => getAudioGroupsForPart(partId, isPracticeTestType()).map((group, index) => {
                 const groupId = String(group.key).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
                 const groupLabel = isPracticeTestType() ? group.key : `Questions ${group.start}-${group.end}`;
-                const inputId = `audio-upload-file-c-group-${groupId}`;
-                const textareaId = `input-group-transcript-3-${group.key}`;
+                const inputId = `audio-upload-file-${letter}-group-${groupId}`;
+                const textareaId = `input-group-transcript-${partId}-${group.key}`;
                 const groupKey = String(group.key).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
                 return `
                                     <label for="${inputId}" class="audio-upload-label"${index ? ' style="margin-top:10px;"' : ""}>Upload Audio ${escapeHtml(groupLabel)}</label>
-                                    <input type="file" class="audio-upload-file" id="${inputId}" accept="audio/*" onchange="handleGroupAudioUpload(event, 3, '${groupKey}')">
-                                    <div id="group-audio-status-3-${group.key}" style="margin-top:6px; color:#64748b; font-size:12px; font-weight:600;">No audio selected for ${escapeHtml(groupLabel)}.</div>
-                                    <textarea id="${textareaId}" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript for ${escapeHtml(groupLabel)}" onchange="handleGroupTranscriptChange(3, '${groupKey}')"></textarea>
-                                    <div id="group-transcript-status-3-${group.key}" style="margin-top:4px; color:#64748b; font-size:12px; font-weight:600;">No transcript saved for ${escapeHtml(groupLabel)}.</div>`;
+                                    <input type="file" class="audio-upload-file" id="${inputId}" accept="audio/*" onchange="handleGroupAudioUpload(event, ${partId}, '${groupKey}')">
+                                    <div id="group-audio-status-${partId}-${group.key}" style="margin-top:6px; color:#64748b; font-size:12px; font-weight:600;">No audio selected for ${escapeHtml(groupLabel)}.</div>
+                                    <textarea id="${textareaId}" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript for ${escapeHtml(groupLabel)}" onchange="handleGroupTranscriptChange(${partId}, '${groupKey}')"></textarea>
+                                    <div id="group-transcript-status-${partId}-${group.key}" style="margin-top:4px; color:#64748b; font-size:12px; font-weight:600;">No transcript saved for ${escapeHtml(groupLabel)}.</div>`;
             }).join("");
+            const partBAudioGroupMarkup = buildGroupAudioMarkup(2, "b");
+            const partCAudioGroupMarkup = buildGroupAudioMarkup(3, "c");
 
             devContainer.innerHTML += `
             <div id="dev-audio-setup" class="sub-content active">
@@ -5570,16 +5587,7 @@
                                 <div id="audio-file-name-2" style="margin-top:12px; color:#334155; font-weight:600;">No audio file selected.</div>
                                 <div style="margin-top:16px; padding-top:14px; border-top:1px solid #e2e8f0; text-align:left;">
                                     <div style="font-size:12px; font-weight:700; color:#475569; margin-bottom:8px;">Explanation audio per conversation group</div>
-                                    <label for="audio-upload-file-b-group-31-34" class="audio-upload-label">Upload Audio 31-34</label>
-                                    <input type="file" class="audio-upload-file" id="audio-upload-file-b-group-31-34" accept="audio/*" onchange="handleGroupAudioUpload(event, 2, '31-34')">
-                                    <div id="group-audio-status-2-31-34" style="margin-top:6px; color:#64748b; font-size:12px; font-weight:600;">No audio selected for questions 31-34.</div>
-                                    <textarea id="input-group-transcript-2-31-34" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript for questions 31-34" onchange="handleGroupTranscriptChange(2, '31-34')"></textarea>
-                                    <div id="group-transcript-status-2-31-34" style="margin-top:4px; color:#64748b; font-size:12px; font-weight:600;">No transcript saved for questions 31-34.</div>
-                                    <label for="audio-upload-file-b-group-35-38" class="audio-upload-label" style="margin-top:10px;">Upload Audio 35-38</label>
-                                    <input type="file" class="audio-upload-file" id="audio-upload-file-b-group-35-38" accept="audio/*" onchange="handleGroupAudioUpload(event, 2, '35-38')">
-                                    <div id="group-audio-status-2-35-38" style="margin-top:6px; color:#64748b; font-size:12px; font-weight:600;">No audio selected for questions 35-38.</div>
-                                    <textarea id="input-group-transcript-2-35-38" class="explanation-textarea" style="height:120px; margin-top:8px; text-align:left;" placeholder="Paste transcript for questions 35-38" onchange="handleGroupTranscriptChange(2, '35-38')"></textarea>
-                                    <div id="group-transcript-status-2-35-38" style="margin-top:4px; color:#64748b; font-size:12px; font-weight:600;">No transcript saved for questions 35-38.</div>
+                                    ${partBAudioGroupMarkup}
                                 </div>
                             </div>
                             <div id="audio-card-part-3" style="padding:18px; background:#fff; border:2px dashed #cbd5e1; text-align:center; border-radius:8px;">
@@ -7991,7 +7999,13 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const questionNo = Number(questionNumber || 0);
             const groupTranscripts = savedDraft?.parts?.[normalizedPartId]?.groupTranscript || {};
             const group = getAudioGroupForQuestion(normalizedPartId, questionNo);
-            const practiceTranscript = group ? String(groupTranscripts[group.key] || "").trim() : "";
+            let practiceTranscript = group ? String(groupTranscripts[group.key] || "").trim() : "";
+            // Older practice Part B drafts saved transcripts under the mock keys (31-34, 35-38).
+            if (!practiceTranscript && group && isPracticeTestType()) {
+                const groupIndex = getAudioGroupsForPart(normalizedPartId, true).findIndex((item) => item.key === group.key);
+                const legacyGroup = getAudioGroupsForPart(normalizedPartId, false)[groupIndex];
+                if (legacyGroup) practiceTranscript = String(groupTranscripts[legacyGroup.key] || "").trim();
+            }
             if (practiceTranscript) return parseGroupTranscriptSegments(practiceTranscript);
 
             return [];
