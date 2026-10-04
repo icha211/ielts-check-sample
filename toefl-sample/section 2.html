@@ -557,7 +557,13 @@
             padding-top: 2px;
         }
 
-
+        .section2-qc-bullet {
+            width: 5px;
+            height: 5px;
+            margin-top: 8px;
+            border-radius: 999px;
+            background: #000000;
+        }
 
     @media (max-width: 720px) {
         .qc-core__item { grid-template-columns: 1fr; }
@@ -2246,11 +2252,19 @@
                     <div class="qc-core__body"><div class="qc-core__text">${markdownInlineToHtml(explanationSource)}</div>${buildInstantCompleteSentenceHtml(uid)}</div>
                 </div></section>`;
             }
-
-            const rowsHtml = parsed.rows.map((row) => `
-                <div class="qc-core__row"><strong>${escapeHtml(row.label)}</strong>${row.isBullet
-                    ? '<span class="qc-core__row-value is-bullet" aria-label="No value"></span>'
-                    : `<span class="qc-core__row-value">: ${markdownInlineToHtml(row.value)}</span>`}</div>`).join("");
+        
+            const rowsHtml = parsed.rows.map((row) => {
+                const isBulletOnly = !row.value; // adjust condition as needed (e.g., row.value === "" or row.isBullet)
+                
+                return `
+                    <div class="qc-core__row">
+                        <span class="section2-qc-bullet" aria-hidden="true"></span>
+                        <strong>${escapeHtml(row.label)}</strong>
+                        ${isBulletOnly 
+                            ? '<span class="qc-core__row-value is-bullet" aria-label="No value"></span>' 
+                            : `<span class="qc-core__row-value">: ${markdownInlineToHtml(row.value)}</span>`}
+                    </div>`;
+            }).join("");
 
             const optionsHtml = parsed.options.map((option) => {
                 const state = option.verdict || (option.letter === correct ? "correct" : "incorrect");
