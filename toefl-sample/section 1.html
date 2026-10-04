@@ -820,6 +820,10 @@
                         </div>
                     </div>
                     <div class="features">
+                        <button class="header-feature-btn nav-toggle-btn" type="button" id="toggle-language-btn" aria-label="Explanation Language" onclick="toggleExplanationLanguage(event)">
+                            <i lucide-icon="languages" aria-hidden="true"></i>
+                            <i class="ph-fill ph-translate icon-filled" aria-hidden="true"></i>
+                        </button>
                         <button class="header-feature-btn nav-toggle-btn" type="button" id="fullscreen-btn" aria-label="Enter fullscreen" onclick="toggleFullScreenMode()">
                             <i class="ph ph-frame-corners icon-regular" aria-hidden="true"></i>
                             <i class="ph-fill ph-frame-corners icon-filled" aria-hidden="true"></i>
@@ -1273,6 +1277,11 @@
             } finally {
                 handleFullScreenStateChange();
             }
+        }
+
+        function toggleExplanationLanguage(event) {
+            // Implement the logic to toggle the explanation language here.
+            console.log("Toggling explanation language", event);
         }
 
         function isPracticeTestType(testType = currentTestType) {
@@ -2684,10 +2693,12 @@
                 if (!input || (!force && input.dataset.focusedPart === String(forcedPracticePartId))) return;
                 const section = getBulkExplanationPart(input.value, forcedPracticePartId);
                 const part = PARTS.find((item) => item.id === forcedPracticePartId) || {};
+                // Practice Part B/C restart numbering at 1; only mock tests use 31-38 / 39-50.
+                const firstQuestion = forcedPracticePartId === 1 ? (part.start || 1) : 1;
                 input.value = section;
                 input.placeholder = id.includes("-id-")
-                    ? `Part ${forcedPracticePartId}\n\n## Question ${part.start || 1}\n\n**Jawaban Benar:** A - ...\n\n**PENJELASAN**\n\n...\n\n**KENAPA OPSI LAIN SALAH**\n\n* **(B) ...:** ...`
-                    : `Part ${forcedPracticePartId}\n\n## Question ${part.start || 1}\n\n**Correct Answer:** A - ...\n\n**EXPLAINATION**\n\n...\n\n**WHY THE OTHER OPTION IS INCORRECT**\n\n* **(B) ...:** ...`;
+                    ? `Part ${forcedPracticePartId}\n\n## Question ${firstQuestion}\n\n**Jawaban Benar:** A - ...\n\n**PENJELASAN**\n\n...\n\n**KENAPA OPSI LAIN SALAH**\n\n* **(B) ...:** ...`
+                    : `Part ${forcedPracticePartId}\n\n## Question ${firstQuestion}\n\n**Correct Answer:** A - ...\n\n**EXPLAINATION**\n\n...\n\n**WHY THE OTHER OPTION IS INCORRECT**\n\n* **(B) ...:** ...`;
                 input.dataset.focusedPart = String(forcedPracticePartId);
             });
         }
@@ -4996,42 +5007,42 @@
                         ? existingDraft.parts[p].explanationSchemas
                         : {})
                 };
-                // Practice Part B/C are numbered from 1 ("Part 2 / Question 1"), not from the mock range (31+).
-                const bulkQuestionNumbers = [...Object.keys(bulkEnglishByUid), ...Object.keys(bulkBahasaByUid)]
-                    .filter((key) => key.startsWith(`${p}_`))
-                    .map((key) => Number(key.split("_")[1]));
-                const questionNumbers = new Set(bulkQuestionNumbers);
-                for (let n = part.start; n <= part.end; n += 1) questionNumbers.add(n);
-                for (const questionNumber of [...questionNumbers].sort((a, b) => a - b)) {
+                // Practice Part B/C are numbered from 1 ("Part 2 / Question 1"); mock tests use 31-38 / 39-50.
+                const usesPracticeNumbering = isPracticeTestType() && p !== 1;
+                const firstNumber = usesPracticeNumbering ? 1 : part.start;
+                const lastNumber = usesPracticeNumbering ? part.end - part.start + 1 : part.end;
+                const questionNumbers = new Set();
+                for (let n = firstNumber; n <= lastNumber; n += 1) questionNumbers.add(n);
+                for (const questionNumber of [...questionNumbers]) {
                     const uid = `${p}_${questionNumber}`;
                     const english = String(bulkEnglishByUid[uid] || "").trim();
                     const bahasa = String(bulkBahasaByUid[uid] || "").trim();
-                    if (english && !isGenericExplanationFallback(english)) {
-                        explanationTexts[questionNumber] = {
-                            ...(explanationTexts[questionNumber] || {}),
+                    const hasEnglish = english && !isGenericExplanationFallback(english);
+                    if (!hasEnglish && !bahasa) continue;
+                    const target = questionNumber;
+                    if (hasEnglish) {
+                        explanationTexts[target] = {
+                            ...(explanationTexts[target] || {}),
                             explanation: english,
                             explanationId: bahasa,
                             showBahasaExplanation: Boolean(bahasa)
                         };
-                        explanationSchemas[questionNumber] = applyExplanationCardToSchema(
-                            explanationSchemas[questionNumber], p, questionNumber, english
-                        );
-                    } else if (bahasa) {
-                        explanationTexts[questionNumber] = {
-                            ...(explanationTexts[questionNumber] || {}),
+                    } else {
+                        explanationTexts[target] = {
+                            ...(explanationTexts[target] || {}),
                             explanationId: bahasa,
                             showBahasaExplanation: true
                         };
-                        // The answered page only reads schemas, so a Bahasa-only paste still needs one.
-                        if (!explanationSchemas[questionNumber]?.explanation_payload) {
-                            const normalizedBahasa = bahasa
-                                .replace(/\*{2}PENJELASAN\*{2}/gi, "**EXPLAINATION**")
-                                .replace(/\*{2}KENAPA OPSI LAIN SALAH\*{2}/gi, "**WHY THE OTHER OPTION IS INCORRECT**");
-                            explanationSchemas[questionNumber] = applyExplanationCardToSchema(
-                                explanationSchemas[questionNumber], p, questionNumber, normalizedBahasa
-                            );
-                        }
                     }
+                    // Bahasa is the primary display language; English is only used when no Bahasa text exists.
+                    const schemaSource = bahasa
+                        ? bahasa
+                            .replace(/\*{2}PENJELASAN\*{2}/gi, "**EXPLAINATION**")
+                            .replace(/\*{2}KENAPA OPSI LAIN SALAH\*{2}/gi, "**WHY THE OTHER OPTION IS INCORRECT**")
+                        : english;
+                    explanationSchemas[target] = applyExplanationCardToSchema(
+                        explanationSchemas[target], p, target, schemaSource
+                    );
                 }
 
                 // An empty editor usually means the draft has not hydrated yet, so never let
