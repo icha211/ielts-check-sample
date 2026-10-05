@@ -67,17 +67,17 @@ const MOCK_MODULE_OPTIONS = [
 
 // Create-modal options shown for Practice Test: fixed 20-question presets per module/difficulty.
 const PRACTICE_MODULE_OPTIONS = [
-    { module: "listening", focus: "part1", label: "Listening - Part 1 (15 Qs)", icon: "headset.png" },
-    { module: "listening", focus: "part2", label: "Listening - Part 2 (15 Qs)", icon: "headset.png" },
-    { module: "listening", focus: "part3", label: "Listening - Part 3 (15 Qs)", icon: "headset.png" },
-    { module: "structure", difficulty: "beginner", focus: "partA", label: "Structure - Beginner (Part A \u00b7 20 Qs)", icon: "paper-pencil.png" },
-    { module: "structure", difficulty: "intermediate", focus: "partA", label: "Structure - Intermediate (Part A \u00b7 20 Qs)", icon: "paper-pencil.png" },
-    { module: "structure", difficulty: "advanced", focus: "partA", label: "Structure - Advanced (Part A \u00b7 20 Qs)", icon: "paper-pencil.png" },
-    { module: "structure", difficulty: "beginner", focus: "partB", label: "Writing - Beginner (Part B \u00b7 20 Qs)", icon: "paper-pencil.png" },
-    { module: "structure", difficulty: "intermediate", focus: "partB", label: "Writing - Intermediate (Part B \u00b7 20 Qs)", icon: "paper-pencil.png" },
-    { module: "structure", difficulty: "advanced", focus: "partB", label: "Writing - Advanced (Part B \u00b7 20 Qs)", icon: "paper-pencil.png" },
-    { module: "reading", difficulty: "beginner", label: "Reading - 1 Passages Beginner (10 Qs each)", icon: "blue-book.png" },
-    { module: "reading", difficulty: "intermediate", label: "Reading - 1 Passages Intermediate (10 Qs each)", icon: "blue-book.png" }
+    { id: "pkg_1", module: "listening", focus: "part1", label: "Listening - Part 1 (15 Qs)", icon: "headset.png" },
+    { id: "pkg_2", module: "listening", focus: "part2", label: "Listening - Part 2 (15 Qs)", icon: "headset.png" },
+    { id: "pkg_3", module: "listening", focus: "part3", label: "Listening - Part 3 (15 Qs)", icon: "headset.png" },
+    { id: "pkg_4", module: "structure", difficulty: "beginner", focus: "partA", label: "Structure - Beginner (Part A \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { id: "pkg_5", module: "structure", difficulty: "intermediate", focus: "partA", label: "Structure - Intermediate (Part A \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { id: "pkg_6", module: "structure", difficulty: "advanced", focus: "partA", label: "Structure - Advanced (Part A \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { id: "pkg_7", module: "structure", difficulty: "beginner", focus: "partB", label: "Writing - Beginner (Part B \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { id: "pkg_8", module: "structure", difficulty: "intermediate", focus: "partB", label: "Writing - Intermediate (Part B \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { id: "pkg_9", module: "structure", difficulty: "advanced", focus: "partB", label: "Writing - Advanced (Part B \u00b7 20 Qs)", icon: "paper-pencil.png" },
+    { id: "pkg_10", module: "reading", difficulty: "beginner", label: "Reading - 1 Passages Beginner (10 Qs each)", icon: "blue-book.png" },
+    { id: "pkg_11", module: "reading", difficulty: "intermediate", label: "Reading - 1 Passages Intermediate (10 Qs each)", icon: "blue-book.png" }
 ];
 
 const DIFFICULTY_LABELS = {
@@ -929,6 +929,188 @@ function changeCalendarYear(delta) {
     renderMonthCalendar();
 }
 
+const PACKAGE_VIEW_KEY = "toefl_package_view";
+const PACKAGE_COUNT_KEY = "toefl_practice_package_count";
+
+function getStoredPackageCount() {
+    const value = parseInt(localStorage.getItem(PACKAGE_COUNT_KEY) || "0", 10);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function setStoredPackageCount(count) {
+    localStorage.setItem(PACKAGE_COUNT_KEY, String(Math.max(1, count)));
+}
+
+// setIds embed a creation timestamp (e.g. practicetest_reading_beginner_1791106351299_xxxx); fall back to updatedAt.
+function getSetCreatedTime(item) {
+    const match = String(item.setId || "").match(/_(\d{13})_/);
+    if (match) return Number(match[1]);
+    const updated = Date.parse(item.updatedAt || "");
+    return Number.isNaN(updated) ? Number.MAX_SAFE_INTEGER : updated;
+}
+
+// Same matching rules as renderLibrary: focus is case-insensitive, difficulty only checked when the option defines one.
+// Sorted oldest-first so the Nth set of each option belongs to Package N (no schema change needed).
+function getSetsForPracticeOption(opt) {
+    const optFocus = String(opt.focus || "").toLowerCase();
+    return sectionSets
+        .filter((item) => item
+            && item.module === opt.module
+            && String(item.focus || "").toLowerCase() === optFocus
+            && (!opt.difficulty || item.difficulty === opt.difficulty))
+        .sort((a, b) => getSetCreatedTime(a) - getSetCreatedTime(b));
+}
+// Practice sets are per category, so only the same module+focus+difficulty counts as a duplicate.
+function findSetCreatedToday(module, focus, difficulty) {
+    const today = new Date().toISOString().slice(0, 10);
+    const isPractice = currentTestType === "practicetest";
+    const sameCategory = (item) => !isPractice
+        || (String(item.focus || "") === String(focus || "")
+            && (!difficulty || String(item.difficulty || "") === String(difficulty)));
+    return sectionSets.find((item) => item
+        && item.module === module
+        && sameCategory(item)
+        && (normalizeDateKey(item.setDate) === today || normalizeDateKey(item.updatedAt) === today));
+}
+
+function getPackageView() {
+    return localStorage.getItem(PACKAGE_VIEW_KEY) === "list" ? "list" : "grid";
+}
+
+function renderPackageOptionRow(opt, set, slotIndex, nextSlotIndex) {
+    const icon = `<img class="package-option-icon" src="../asset/icon/${opt.icon}" alt="" />`;
+    if (set) {
+        const dateLabel = set.setDate
+            ? formatCompactSetDate(set.setDate)
+            : set.updatedAt ? new Date(set.updatedAt).toLocaleDateString() : "Saved";
+        return `
+            <a class="month-action complete package-option" href="${buildEditorUrl(set.module, set.setDate, set.setId, "practicetest", { focus: set.focus, difficulty: set.difficulty })}" title="${escapeHtml(set.setId || "")}">
+                <span>${icon}<span class="package-option-label">${escapeHtml(opt.label)}</span></span>
+                <span>Open · ${escapeHtml(dateLabel)}</span>
+            </a>
+        `;
+    }
+    // New sets are appended to the option's sequence, so only the next open slot can be created.
+    if (slotIndex === nextSlotIndex) {
+        const createUrl = buildEditorUrl(opt.module, undefined, undefined, "practicetest", {
+            startBlank: true,
+            difficulty: opt.difficulty,
+            focus: opt.focus,
+            editorTab: "questions"
+        });
+        return `
+            <a class="month-action create package-option" href="${createUrl}">
+                <span>${icon}<span class="package-option-label">${escapeHtml(opt.label)}</span></span>
+                <span>＋ Create</span>
+            </a>
+        `;
+    }
+    return `
+        <div class="month-action locked-note package-option" title="Create this option in Package ${nextSlotIndex + 1} first">
+            <span>${icon}<span class="package-option-label">${escapeHtml(opt.label)}</span></span>
+            <span>🔒 Package ${nextSlotIndex + 1} first</span>
+        </div>
+    `;
+}
+
+function renderPracticePackageDetail(host) {
+    const optionSets = PRACTICE_MODULE_OPTIONS.map((opt) => getSetsForPracticeOption(opt));
+    const maxSets = Math.max(0, ...optionSets.map((sets) => sets.length));
+    // Packages backed by saved sets always show; extra empty packages come from "+ Package" (UI-only, localStorage).
+    const packageCount = Math.max(maxSets, getStoredPackageCount(), 1);
+    const totalOptions = PRACTICE_MODULE_OPTIONS.length;
+    let completePackages = 0;
+
+    const packageCards = Array.from({ length: packageCount }, (_, slotIndex) => {
+        const filled = optionSets.filter((sets) => Boolean(sets[slotIndex])).length;
+        const isComplete = filled === totalOptions;
+        if (isComplete) completePackages += 1;
+        const statusClass = isComplete ? "complete" : filled ? "partial" : "empty-package";
+        const isRemovable = slotIndex === packageCount - 1 && slotIndex >= maxSets && slotIndex > 0;
+        const rows = PRACTICE_MODULE_OPTIONS.map((opt, optIdx) =>
+            renderPackageOptionRow(opt, optionSets[optIdx][slotIndex], slotIndex, optionSets[optIdx].length)
+        ).join("");
+
+        return `
+            <article class="month-detail-day package-card ${statusClass}" data-package="${slotIndex + 1}">
+                <div class="package-card-head">
+                    <span class="package-badge">Package ${slotIndex + 1}</span>
+                    <span class="package-head-right">
+                        <span class="package-progress">${String(filled).padStart(2, "0")}/${String(totalOptions).padStart(2, "0")}</span>
+                        ${isRemovable ? `<button type="button" class="package-remove-btn" data-remove-package aria-label="Remove empty Package ${slotIndex + 1}" title="Remove empty package">✕</button>` : ""}
+                    </span>
+                </div>
+                <div class="month-actions package-options">${rows}</div>
+                <div class="detail-note">${isComplete ? "All practice options saved" : filled ? `${totalOptions - filled} option(s) still to create` : "New package · no saved sets yet"}</div>
+            </article>
+        `;
+    });
+
+    const view = getPackageView();
+    host.innerHTML = `
+        <div class="month-detail-head">
+            <div>
+                <h3>Practice Test Packages</h3>
+                <div class="month-detail-meta">
+                    <span>${packageCount} package(s)</span>
+                    <span>${completePackages} fully-covered package(s)</span>
+                </div>
+            </div>
+            <div class="package-head-actions">
+                <div class="detail-note">Each package holds all ${totalOptions} practice options with module, focus, and difficulty prefilled.</div>
+                <button type="button" class="btn-add-package" id="addPackageBtn" title="Add a new empty package">＋ Package</button>
+                <div class="view-toggle" id="packageViewToggle" role="group" aria-label="Package layout">
+                    <button type="button" class="view-toggle-btn${view === "grid" ? " active" : ""}" data-view="grid" aria-label="Grid view" title="Grid view" aria-pressed="${view === "grid"}">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                            <rect x="3" y="3" width="7.5" height="7.5" rx="1.6"></rect>
+                            <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"></rect>
+                            <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"></rect>
+                            <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"></rect>
+                        </svg>
+                    </button>
+                    <button type="button" class="view-toggle-btn${view === "list" ? " active" : ""}" data-view="list" aria-label="List view" title="List view" aria-pressed="${view === "list"}">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+                            <rect x="3" y="4" width="3" height="3" rx="1"></rect>
+                            <rect x="8.5" y="4.5" width="12.5" height="2" rx="1"></rect>
+                            <rect x="3" y="10.5" width="3" height="3" rx="1"></rect>
+                            <rect x="8.5" y="11" width="12.5" height="2" rx="1"></rect>
+                            <rect x="3" y="17" width="3" height="3" rx="1"></rect>
+                            <rect x="8.5" y="17.5" width="12.5" height="2" rx="1"></rect>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="month-detail-grid package-grid${view === "list" ? " list-view" : ""}">
+            ${packageCards.join("")}
+        </div>
+    `;
+
+    host.querySelector("#packageViewToggle").addEventListener("click", (event) => {
+        const btn = event.target.closest(".view-toggle-btn");
+        if (!btn) return;
+        const nextView = btn.dataset.view === "list" ? "list" : "grid";
+        localStorage.setItem(PACKAGE_VIEW_KEY, nextView);
+        host.querySelector(".package-grid").classList.toggle("list-view", nextView === "list");
+        host.querySelectorAll("#packageViewToggle .view-toggle-btn").forEach((item) => {
+            const isActive = item.dataset.view === nextView;
+            item.classList.toggle("active", isActive);
+            item.setAttribute("aria-pressed", String(isActive));
+        });
+    });
+    host.querySelector("#addPackageBtn").addEventListener("click", () => {
+        setStoredPackageCount(packageCount + 1);
+        renderPracticePackageDetail(host);
+        const cards = host.querySelectorAll(".package-card");
+        cards[cards.length - 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        toast(`Package ${packageCount + 1} added`);
+    });
+    host.querySelector("[data-remove-package]")?.addEventListener("click", () => {
+        setStoredPackageCount(packageCount - 1);
+        renderPracticePackageDetail(host);
+    });
+    host.classList.add("show");
+}
 function renderMonthDetail(year, monthIndex) {
     const host = document.getElementById("monthDetail");
     const monthLabel = MONTH_LABELS[monthIndex];
@@ -937,6 +1119,11 @@ function renderMonthDetail(year, monthIndex) {
     const { completeDays, activeDays, scheduleMap } = getMonthStats(year, monthIndex);
     const ratio = `${String(activeDays).padStart(2, "0")}/${String(daysInMonth).padStart(2, "0")}`;
     const dayCards = [];
+
+    if (currentTestType === "practicetest") {
+        renderPracticePackageDetail(host);
+        return;
+    }
 
     for (let index = 0; index < firstWeekday; index += 1) {
         dayCards.push('<div class="month-detail-day empty"></div>');
@@ -1222,17 +1409,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const focus = option.dataset.focus || "";
             console.log("Selected module:", module, "difficulty:", difficulty, "focus:", focus, "for test type:", currentTestType);
 
-            const today = new Date().toISOString().slice(0, 10);
-            // Practice sets are per category, so only the same module+focus+difficulty counts as a duplicate.
-            const isPractice = currentTestType === "practicetest";
-            const sameCategory = (item) => !isPractice
-                || (String(item.focus || "") === String(focus || "")
-                    && (!difficulty || String(item.difficulty || "") === String(difficulty)));
-            const existingToday = sectionSets.find((item) => item
-                && item.module === module
-                && sameCategory(item)
-                && (normalizeDateKey(item.setDate) === today || normalizeDateKey(item.updatedAt) === today));
-            if (existingToday) {
+            if (findSetCreatedToday(module, focus, difficulty)) {
                 const categoryLabel = option.textContent.trim() || MODULE_CONFIG[module]?.label || module;
                 toast(`${categoryLabel} already has a ${currentTestType} set for today.`);
                 return;
