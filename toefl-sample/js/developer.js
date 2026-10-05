@@ -353,6 +353,8 @@ function normalizeSet(item, fallbackModule) {
         difficultyLabel: DIFFICULTY_LABELS[difficultyKey],
         focus: String(item?.focus || ""),
         updatedAt: String(item?.updatedAt || ""),
+        packageNumber: getPracticePackageNumber(item?.packageNumber),
+        packageId: String(item?.packageId || ""),
         year: validDate ? dateValue.getFullYear() : null,
         monthIndex: validDate ? dateValue.getMonth() : null,
         day: validDate ? dateValue.getDate() : null,
@@ -505,7 +507,9 @@ function persistSets(records) {
             setDate: item.setDate,
             difficulty: item.difficulty,
             focus: item.focus || "",
-            updatedAt: item.updatedAt || new Date().toISOString()
+            updatedAt: item.updatedAt || new Date().toISOString(),
+            // Keep the package link so a full re-save never drops it.
+            ...(getPracticePackageNumber(item.packageNumber) ? { packageNumber: getPracticePackageNumber(item.packageNumber), packageId: `package_${getPracticePackageNumber(item.packageNumber)}_practice_test` } : {})
         };
     });
     const localKey = currentTestType === "practicetest" 
@@ -650,6 +654,7 @@ function buildEditorUrl(moduleId, setDate, setId, testType = "mocktest", options
     if (options && options.difficulty) params.set("difficulty", options.difficulty);
     if (options && options.focus) params.set("focus", options.focus);
     if (options && options.editorTab) params.set("editorTab", options.editorTab);
+    if (options && options.packageNumber) params.set("package", String(options.packageNumber));
     params.set("mode", "dev");
     params.set("testType", testType);
     const query = params.toString();
@@ -930,15 +935,85 @@ function changeCalendarYear(delta) {
 }
 
 const PACKAGE_VIEW_KEY = "toefl_package_view";
-const PACKAGE_COUNT_KEY = "toefl_practice_package_count";
+// Mirror of toefl_itp/practicetest/packages_v1 (loaded in renderAll for the Practice Test tab).
+let practicePackages = [];
 
-function getStoredPackageCount() {
-    const value = parseInt(localStorage.getItem(PACKAGE_COUNT_KEY) || "0", 10);
-    return Number.isFinite(value) && value > 0 ? value : 0;
+function getPracticePackageNumber(value) {
+    const parsed = parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
-function setStoredPackageCount(count) {
-    localStorage.setItem(PACKAGE_COUNT_KEY, String(Math.max(1, count)));
+// Maps package number -> set for one option. Sets with a saved packageNumber stay in that package;
+// older sets without one (or duplicates) fill the lowest free packages, oldest first.
+function getPracticeOptionSlots(opt) {
+    const slots = new Map();
+    const unassigned = [];
+    getSetsForPracticeOption(opt).forEach((set) => {
+        const number = getPracticePackageNumber(set.packageNumber);
+        if (number && !slots.has(number)) slots.set(number, set);
+        else unassigned.push(set);
+    });
+    let next = 1;
+    unassigned.forEach((set) => {
+        while (slots.has(next)) next += 1;
+        slots.set(next, set);
+    });
+    return slots;
+}
+
+// Firebase rules only accept writes from the developer account (signed in via the sidebar profile).
+function isDeveloperSignedIn() {
+    return localStorage.getItem("toefl_firebase_auth_mode") === "developer"
+        && localStorage.getItem("toefl_firebase_auth_email") === "quickcheck.edu@gmail.com"
+        && Boolean(localStorage.getItem("toefl_firebase_refresh_token"));
+}
+
+let practicePackageSyncState = "idle";
+
+// Links existing sets to their package and writes toefl_itp/practicetest/package_N_practice_test.
+// On sets, only packageNumber/packageId are written; set content and drafts are never touched.
+async function syncPracticePackages() {
+    if (!window.toeflStorage || typeof toeflStorage.getPracticePackages !== "function") return false;
+    practicePackages = await toeflStorage.getPracticePackages();
+    if (!isDeveloperSignedIn()) {
+        practicePackageSyncState = "signed-out";
+        return false;
+    }
+    let changed = false;
+    try {
+        const packageSets = new Map();
+        for (const opt of PRACTICE_MODULE_OPTIONS) {
+            for (const [number, set] of getPracticeOptionSlots(opt)) {
+                if (!set.setId) continue;
+                if (!packageSets.has(number)) packageSets.set(number, {});
+                packageSets.get(number)[set.setId] = opt.id;
+                if (getPracticePackageNumber(set.packageNumber) === number && set.packageId) continue;
+                await toeflStorage.assignPracticeSetPackage(set.setId, number);
+                set.packageNumber = number;
+                set.packageId = toeflStorage.buildPracticePackageId(number);
+                changed = true;
+            }
+        }
+        if (!packageSets.has(1)) packageSets.set(1, {});
+        practicePackages.forEach((item) => {
+            if (!packageSets.has(item.packageNumber)) packageSets.set(item.packageNumber, {});
+        });
+        const registered = new Map(practicePackages.map((item) => [item.packageNumber, item]));
+        for (const [number, sets] of packageSets) {
+            const current = registered.get(number);
+            const sameSets = current && JSON.stringify(Object.keys(current.sets || {}).sort().map((id) => [id, current.sets[id]]))
+                === JSON.stringify(Object.keys(sets).sort().map((id) => [id, sets[id]]));
+            if (sameSets) continue;
+            await toeflStorage.savePracticePackage(number, sets);
+            changed = true;
+        }
+        practicePackageSyncState = "synced";
+    } catch (error) {
+        practicePackageSyncState = "error";
+        console.warn("[Packages] Firebase package sync failed:", error.message);
+    }
+    if (changed) practicePackages = await toeflStorage.getPracticePackages();
+    return changed;
 }
 
 // setIds embed a creation timestamp (e.g. practicetest_reading_beginner_1791106351299_xxxx); fall back to updatedAt.
@@ -977,58 +1052,76 @@ function getPackageView() {
     return localStorage.getItem(PACKAGE_VIEW_KEY) === "list" ? "list" : "grid";
 }
 
-function renderPackageOptionRow(opt, set, slotIndex, nextSlotIndex) {
+function openDeveloperSignIn() {
+    const profile = document.querySelector(".sidebar-profile");
+    if (profile) profile.click();
+    else toast("Sign in with the developer account to save packages to Firebase.");
+}
+
+function renderPackageSyncChip() {
+    const states = {
+        "signed-out": ["signed-out", "🔒 Sign in to save packages to Firebase"],
+        synced: ["synced", "☁️ Packages saved in Firebase"],
+        error: ["error", "⚠️ Firebase sync failed · retry"],
+        idle: ["idle", "⏳ Syncing packages…"]
+    };
+    const [cls, label] = states[practicePackageSyncState] || states.idle;
+    return `<button type="button" class="package-sync-chip ${cls}" id="packageSyncChip">${label}</button>`;
+}
+
+async function runPracticePackageSync() {
+    practicePackageSyncState = "idle";
+    const host = document.getElementById("monthDetail");
+    if (currentTestType === "practicetest" && host) renderPracticePackageDetail(host);
+    await syncPracticePackages().catch((error) => console.warn("[Packages] Sync failed (non-blocking):", error));
+    if (currentTestType === "practicetest" && host) renderPracticePackageDetail(host);
+}
+
+function renderPackageOptionRow(opt, set, packageNumber) {
     const icon = `<img class="package-option-icon" src="../asset/icon/${opt.icon}" alt="" />`;
     if (set) {
         const dateLabel = set.setDate
             ? formatCompactSetDate(set.setDate)
             : set.updatedAt ? new Date(set.updatedAt).toLocaleDateString() : "Saved";
         return `
-            <a class="month-action complete package-option" href="${buildEditorUrl(set.module, set.setDate, set.setId, "practicetest", { focus: set.focus, difficulty: set.difficulty })}" title="${escapeHtml(set.setId || "")}">
+            <a class="month-action complete package-option" href="${buildEditorUrl(set.module, set.setDate, set.setId, "practicetest", { focus: set.focus, difficulty: set.difficulty, packageNumber })}" title="${escapeHtml(set.setId || "")}">
                 <span>${icon}<span class="package-option-label">${escapeHtml(opt.label)}</span></span>
                 <span>Open · ${escapeHtml(dateLabel)}</span>
             </a>
         `;
     }
-    // New sets are appended to the option's sequence, so only the next open slot can be created.
-    if (slotIndex === nextSlotIndex) {
-        const createUrl = buildEditorUrl(opt.module, undefined, undefined, "practicetest", {
-            startBlank: true,
-            difficulty: opt.difficulty,
-            focus: opt.focus,
-            editorTab: "questions"
-        });
-        return `
-            <a class="month-action create package-option" href="${createUrl}">
-                <span>${icon}<span class="package-option-label">${escapeHtml(opt.label)}</span></span>
-                <span>＋ Create</span>
-            </a>
-        `;
-    }
+    const createUrl = buildEditorUrl(opt.module, undefined, undefined, "practicetest", {
+        startBlank: true,
+        difficulty: opt.difficulty,
+        focus: opt.focus,
+        editorTab: "questions",
+        packageNumber
+    });
     return `
-        <div class="month-action locked-note package-option" title="Create this option in Package ${nextSlotIndex + 1} first">
+        <a class="month-action create package-option" href="${createUrl}">
             <span>${icon}<span class="package-option-label">${escapeHtml(opt.label)}</span></span>
-            <span>🔒 Package ${nextSlotIndex + 1} first</span>
-        </div>
+            <span>＋ Create</span>
+        </a>
     `;
 }
 
 function renderPracticePackageDetail(host) {
-    const optionSets = PRACTICE_MODULE_OPTIONS.map((opt) => getSetsForPracticeOption(opt));
-    const maxSets = Math.max(0, ...optionSets.map((sets) => sets.length));
-    // Packages backed by saved sets always show; extra empty packages come from "+ Package" (UI-only, localStorage).
-    const packageCount = Math.max(maxSets, getStoredPackageCount(), 1);
+    const optionSlots = PRACTICE_MODULE_OPTIONS.map((opt) => getPracticeOptionSlots(opt));
+    const maxUsed = Math.max(0, ...optionSlots.flatMap((slots) => [...slots.keys()]));
+    const maxRegistered = Math.max(0, ...practicePackages.map((item) => item.packageNumber));
+    const packageCount = Math.max(maxUsed, maxRegistered, 1);
     const totalOptions = PRACTICE_MODULE_OPTIONS.length;
     let completePackages = 0;
 
     const packageCards = Array.from({ length: packageCount }, (_, slotIndex) => {
-        const filled = optionSets.filter((sets) => Boolean(sets[slotIndex])).length;
+        const packageNumber = slotIndex + 1;
+        const filled = optionSlots.filter((slots) => slots.has(packageNumber)).length;
         const isComplete = filled === totalOptions;
         if (isComplete) completePackages += 1;
         const statusClass = isComplete ? "complete" : filled ? "partial" : "empty-package";
-        const isRemovable = slotIndex === packageCount - 1 && slotIndex >= maxSets && slotIndex > 0;
+        const isRemovable = packageNumber === packageCount && filled === 0 && packageNumber > 1;
         const rows = PRACTICE_MODULE_OPTIONS.map((opt, optIdx) =>
-            renderPackageOptionRow(opt, optionSets[optIdx][slotIndex], slotIndex, optionSets[optIdx].length)
+            renderPackageOptionRow(opt, optionSlots[optIdx].get(packageNumber), packageNumber)
         ).join("");
 
         return `
@@ -1058,6 +1151,7 @@ function renderPracticePackageDetail(host) {
             </div>
             <div class="package-head-actions">
                 <div class="detail-note">Each package holds all ${totalOptions} practice options with module, focus, and difficulty prefilled.</div>
+                ${renderPackageSyncChip()}
                 <button type="button" class="btn-add-package" id="addPackageBtn" title="Add a new empty package">＋ Package</button>
                 <div class="view-toggle" id="packageViewToggle" role="group" aria-label="Package layout">
                     <button type="button" class="view-toggle-btn${view === "grid" ? " active" : ""}" data-view="grid" aria-label="Grid view" title="Grid view" aria-pressed="${view === "grid"}">
@@ -1098,15 +1192,46 @@ function renderPracticePackageDetail(host) {
             item.setAttribute("aria-pressed", String(isActive));
         });
     });
-    host.querySelector("#addPackageBtn").addEventListener("click", () => {
-        setStoredPackageCount(packageCount + 1);
+    host.querySelector("#packageSyncChip")?.addEventListener("click", () => {
+        if (!isDeveloperSignedIn()) openDeveloperSignIn();
+        else runPracticePackageSync();
+    });
+    host.querySelector("#addPackageBtn").addEventListener("click", async (event) => {
+        if (!isDeveloperSignedIn()) {
+            openDeveloperSignIn();
+            return;
+        }
+        const nextNumber = packageCount + 1;
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+            await toeflStorage.addPracticePackage(nextNumber);
+        } catch (error) {
+            button.disabled = false;
+            toast("Package not saved to Firebase. Sign in with the developer account and retry.");
+            return;
+        }
+        practicePackages = await toeflStorage.getPracticePackages();
         renderPracticePackageDetail(host);
         const cards = host.querySelectorAll(".package-card");
         cards[cards.length - 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-        toast(`Package ${packageCount + 1} added`);
+        toast(`package_${nextNumber}_practice_test saved to Firebase`);
     });
-    host.querySelector("[data-remove-package]")?.addEventListener("click", () => {
-        setStoredPackageCount(packageCount - 1);
+    host.querySelector("[data-remove-package]")?.addEventListener("click", async (event) => {
+        if (!isDeveloperSignedIn()) {
+            openDeveloperSignIn();
+            return;
+        }
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+            await toeflStorage.removePracticePackage(packageCount);
+        } catch (error) {
+            button.disabled = false;
+            toast("Package not removed from Firebase. Sign in with the developer account and retry.");
+            return;
+        }
+        practicePackages = await toeflStorage.getPracticePackages();
         renderPracticePackageDetail(host);
     });
     host.classList.add("show");
@@ -1251,6 +1376,10 @@ async function renderAll() {
     const loadedSets = await loadSetsFromFirebase();
     // Don't filter sets - show all recovered data even if empty
     sectionSets = Array.isArray(loadedSets) ? loadedSets : [];
+    if (currentTestType === "practicetest") {
+        // Runs in the background so the package cards render immediately.
+        runPracticePackageSync();
+    }
     syncLibraryModuleFilter();
     renderStats();
     renderModuleOverview();
@@ -1280,6 +1409,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
     await loadMaterialsLibraryFromFirebase();
+
+    const sidebarProfile = document.querySelector(".sidebar-profile");
+    if (sidebarProfile && typeof MutationObserver !== "undefined") {
+        let lastAuth = sidebarProfile.dataset.authenticated;
+        new MutationObserver(() => {
+            const nowAuth = sidebarProfile.dataset.authenticated;
+            if (nowAuth === lastAuth) return;
+            lastAuth = nowAuth;
+            if (currentTestType === "practicetest") runPracticePackageSync();
+        }).observe(sidebarProfile, { attributes: true, attributeFilter: ["data-authenticated"] });
+    }
     
     initLibraryViewToggle();
     document.getElementById("libraryModuleFilter")?.addEventListener("change", (event) => {

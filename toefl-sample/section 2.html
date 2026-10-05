@@ -962,7 +962,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="toefl-storage-sync.js?v=20260915b"></script>
+    <script src="toefl-storage-sync.js?v=20261005a"></script>
     <script src="toefl-test-history.js?v=20261003a"></script>
     <script>
         const PARTS = [
@@ -1116,7 +1116,21 @@
             return { focus, difficulty, slug: [focus, difficulty].filter(Boolean).join("-") };
         }
 
+        // Dashboard package links pass ?package=N so each package resolves to its own set.
+        function getRequestedPracticePackage() {
+            const value = parseInt(new URLSearchParams(window.location.search).get("package"), 10);
+            return Number.isFinite(value) && value > 0 ? value : 0;
+        }
+
+        function recordMatchesRequestedPackage(record) {
+            const requested = getRequestedPracticePackage();
+            if (!requested || currentTestType !== "practicetest") return true;
+            const own = parseInt(record?.packageNumber, 10);
+            return (Number.isFinite(own) && own > 0 ? own : 1) === requested;
+        }
+
         function setRecordMatchesPracticeVariant(record, variant) {
+            if (!recordMatchesRequestedPackage(record)) return false;
             if (currentTestType !== "practicetest" || !variant || !variant.slug) return true;
             const slug = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
             const recordFocus = slug(record?.focus);
@@ -1627,6 +1641,7 @@
                 focus: getPracticeVariant().focus,
                 updatedAt: new Date().toISOString()
             };
+            if (currentTestType === "practicetest" && getRequestedPracticePackage()) record.packageNumber = getRequestedPracticePackage();
             if (window.toeflStorage && typeof toeflStorage.upsertSetRecord === "function") {
                 try {
                     await toeflStorage.upsertSetRecordWithType(record, currentTestType);

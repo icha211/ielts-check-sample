@@ -37,6 +37,9 @@ class ToeflStorageSync {
     this._mockTestDraftsPath = "toefl_itp/mocktest/drafts_v2";
     this._practiceTestSetsPath = "toefl_itp/practicetest/sets_v2";
     this._practiceTestDraftsPath = "toefl_itp/practicetest/drafts_v2";
+    // Registry of practice packages (Package 1, 2, ...); sets link to it via packageNumber/packageId.
+    this._practicePackagesPath = "toefl_itp/practicetest";
+    this._practicePackagesLocalKey = "toefl_developer_practicetest_packages_v2";
     
     this.isRemoteAvailable = true;
     // localStorage fallback keys
@@ -365,6 +368,7 @@ class ToeflStorageSync {
       : "";
     const setId = String(item.setId || fallbackSetId || "");
     if (!setId) return null;
+    const packageNumber = this.parsePracticePackageNumber(item.packageNumber);
     return {
       setId,
       module: moduleId,
@@ -373,8 +377,128 @@ class ToeflStorageSync {
       cloudflare_folder: String(item.cloudflare_folder || item.cloudflareFolder || ""),
       difficulty: String(item.difficulty || "intermediate"),
       focus: String(item.focus || ""),
-      updatedAt: String(item.updatedAt || item._updatedAt || "")
+      updatedAt: String(item.updatedAt || item._updatedAt || ""),
+      // Optional: only practice sets carry a package, so other records keep their exact shape.
+      ...(packageNumber ? { packageNumber, packageId: this.buildPracticePackageId(packageNumber) } : {})
     };
+  }
+
+  // ─── PRACTICE PACKAGES ──────────────────────────────────────────────────
+  parsePracticePackageNumber(value) {
+    const parsed = parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }
+
+  buildPracticePackageId(packageNumber) {
+    return `package_${packageNumber}_practice_test`;
+  }
+
+  _isSamePracticeVariant(left, right) {
+    const lower = (value) => String(value || "").toLowerCase();
+    return lower(left?.module) === lower(right?.module)
+      && lower(left?.focus) === lower(right?.focus)
+      && (lower(left?.module) === "listening" || lower(left?.difficulty) === lower(right?.difficulty));
+  }
+
+  // Keeps a set in its package when a writer doesn't send packageNumber; brand-new sets
+  // without one take the lowest package that has no set of the same category yet.
+  async _resolvePracticePackageNumber(record) {
+    const requested = this.parsePracticePackageNumber(record.packageNumber);
+    if (requested) return requested;
+    const records = await this.getSetRecordsByTestType("practicetest").catch(() => []);
+    const existing = records.find((item) => item.setId === record.setId);
+    if (existing) return this.parsePracticePackageNumber(existing.packageNumber);
+    const taken = new Set(records
+      .filter((item) => this._isSamePracticeVariant(item, record))
+      .map((item) => this.parsePracticePackageNumber(item.packageNumber) || 1));
+    let next = 1;
+    while (taken.has(next)) next += 1;
+    return next;
+  }
+
+  _readLocalPracticePackages() {
+    const map = this._safeParse(localStorage.getItem(this._practicePackagesLocalKey), {});
+    return map && typeof map === "object" && !Array.isArray(map) ? map : {};
+  }
+
+  _packageRecordsFromMap(map) {
+    return Object.values(map || {})
+      .filter((item) => item && typeof item === "object")
+      .map((item) => ({ ...item, packageNumber: this.parsePracticePackageNumber(item.packageNumber) }))
+      .filter((item) => item.packageNumber)
+      .sort((left, right) => left.packageNumber - right.packageNumber);
+  }
+
+  // Packages live beside sets_v2/drafts_v2 as toefl_itp/practicetest/package_N_practice_test.
+  // A $key range query reads only those nodes, so the large drafts_v2 branch is never downloaded.
+  async getPracticePackages() {
+    try {
+      const query = `orderBy=${encodeURIComponent('"$key"')}&startAt=${encodeURIComponent('"package_"')}&endAt=${encodeURIComponent('"package_\uf8ff"')}`;
+      const response = await this._request(`${this._url(this._practicePackagesPath)}?${query}`, { method: "GET" });
+      if (!response.ok) throw new Error(`Firebase GET failed (${response.status})`);
+      const remote = await response.json();
+      const map = remote && typeof remote === "object" && !Array.isArray(remote) ? remote : {};
+      localStorage.setItem(this._practicePackagesLocalKey, JSON.stringify(map));
+      return this._packageRecordsFromMap(map);
+    } catch (e) {
+      console.warn("[ToeflSync] Offline – using local practice packages:", e.message);
+      return this._packageRecordsFromMap(this._readLocalPracticePackages());
+    }
+  }
+
+  // Writes toefl_itp/practicetest/package_N_practice_test. `sets` maps setId -> practice option id.
+  // Must reach Firebase; a local-only entry would be dropped by the next remote read.
+  async savePracticePackage(packageNumber, sets = {}) {
+    const number = this.parsePracticePackageNumber(packageNumber);
+    if (!number) throw new Error("Invalid package number");
+    const packageId = this.buildPracticePackageId(number);
+    const local = this._readLocalPracticePackages();
+    const record = {
+      packageId,
+      packageNumber: number,
+      label: `Package ${number}`,
+      testType: "practicetest",
+      createdAt: local[packageId]?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      setCount: Object.keys(sets || {}).length
+    };
+    if (record.setCount) record.sets = sets;
+    await this._put(`${this._practicePackagesPath}/${packageId}`, record);
+    local[packageId] = record;
+    localStorage.setItem(this._practicePackagesLocalKey, JSON.stringify(local));
+    return record;
+  }
+
+  async addPracticePackage(packageNumber) {
+    return this.savePracticePackage(packageNumber, {});
+  }
+
+  // Only removes the registry entry; callers must ensure the package has no sets.
+  async removePracticePackage(packageNumber) {
+    const number = this.parsePracticePackageNumber(packageNumber);
+    if (!number) return;
+    const packageId = this.buildPracticePackageId(number);
+    const response = await this._request(this._url(`${this._practicePackagesPath}/${packageId}`), { method: "DELETE" });
+    if (!response.ok) throw new Error(`Firebase DELETE failed (${response.status})`);
+    const local = this._readLocalPracticePackages();
+    delete local[packageId];
+    localStorage.setItem(this._practicePackagesLocalKey, JSON.stringify(local));
+  }
+
+  // Writes only the two package fields of an existing set; question content and drafts are untouched.
+  async assignPracticeSetPackage(setId, packageNumber) {
+    const number = this.parsePracticePackageNumber(packageNumber);
+    if (!setId || !number) return false;
+    const paths = this._getPathsForTestType("practicetest");
+    const packageId = this.buildPracticePackageId(number);
+    await this._put(`${paths.setsPath}/${setId}/packageNumber`, number);
+    await this._put(`${paths.setsPath}/${setId}/packageId`, packageId);
+    const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    if (local[setId]) {
+      local[setId] = { ...local[setId], packageNumber: number, packageId };
+      localStorage.setItem(paths.setsLocalKey, JSON.stringify(local));
+    }
+    return true;
   }
 
   _recordsToMap(records) {
@@ -622,8 +746,12 @@ class ToeflStorageSync {
   }
 
   async upsertSetRecordWithType(record, testType = "mocktest") {
-    const normalized = this._normalizeRecord(record, record?.setId);
+    let normalized = this._normalizeRecord(record, record?.setId);
     if (!normalized) throw new Error("Invalid set record");
+    if (testType === "practicetest") {
+      const packageNumber = await this._resolvePracticePackageNumber(normalized);
+      normalized = this._normalizeRecord({ ...normalized, packageNumber }, normalized.setId);
+    }
     await this.assertUniqueSetDate(normalized, testType);
     const paths = this._getPathsForTestType(testType);
     const payload = { ...normalized, _updatedAt: new Date().toISOString() };
