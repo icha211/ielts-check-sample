@@ -257,7 +257,33 @@
     }
 
     .instant-options label.selected .instant-option-letter { background: #005FAA; border-color: #005faa; color: #fff; }
-    .instant-options label.is-correct .instant-option-letter { background: #0d9488; border-color: #0d9488; color: #fff; }
+    .instant-options label.is-correct .instant-option-letter,
+    .qc-core__item.is-correct .instant-option-letter { 
+        background: #0d9488 !important; 
+        border-color: #0d9488 !important; 
+        color: #ffffff !important; 
+    }
+    .instant-options label.is-incorrect .instant-option-letter,
+    .qc-core__item.is-incorrect .instant-option-letter { 
+        background: #dc2626 !important; 
+        border-color: #dc2626 !important; 
+        color: #ffffff !important; 
+    }
+
+    .instant-option-letter-observe {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        margin-left: 4px;
+        border: 1px solid #e2e8f0;
+        border-radius: 50%;
+        background: #fde047;
+        color: #64748b;
+        font: 600 11px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        vertical-align: middle;
+    }
 
     .instant-option-text { flex: 1; min-width: 0; font: 400 18px/1 "Times New Roman", Times, serif; }
 
@@ -361,11 +387,15 @@
             flex-wrap: wrap;
             row-gap: 12px;
             column-gap: 8px;
-            padding: 8px 0 14px;
+            padding: clamp(14px, 2.2vw, 22px);
             color: #0f172a;
             font: 500 15px/1.4 "Plus Jakarta Sans", Arial, sans-serif;
         white-space: pre-wrap;
         overflow-wrap: anywhere;
+        background: linear-gradient(180deg, #fbfdff, #f7faff);
+        border: 1px solid #dce8f8;
+        border-radius: 8px;
+
     }
 
     .qc-core__observe-token {
@@ -398,9 +428,62 @@
         white-space: nowrap;
     }
 
+    /* Base underlined word container */
+    .qc-core__observe-word.is-underlined {
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+
+    .qc-core__observe mark {
+        background: #fde047;
+        color: #0f172a;
+        border-radius: 4px;
+        font-weight: 600;
+        padding: 0 1px;
+    }
+
+    .qc-core__observe mark.instant-option-letter-observe {
+        border-radius: 50%;
+        padding: 0;
+    }
+
     .qc-core__concept mark { background: #fde047; padding: 1px 5px; border-radius: 3px; font-weight: 600; }
 
-    .qc-core__rows { display: grid; gap: 4px; }
+    .qc-core__rows {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .qc-core__row {
+        display: grid;
+        /* Column 1: Bullet dot | Column 2: Label (Subject, Verb, etc.) | Column 3: Value text */
+        grid-template-columns: 14px 120px auto 1fr;
+        align-items: center;
+        gap: 8px;
+        font: 400 13px/1.6 "Plus Jakarta Sans", Arial, sans-serif;
+        color: #0f172a;
+    }
+
+    .section2-qc-bullet {
+        width: 5px;
+        height: 5px;
+        border-radius: 999px;
+        background: #000000;
+        /* Center dot visually with line-height */
+        align-self: center;
+    }
+
+    .qc-core__row strong {
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .qc-core__row-value {
+        word-break: break-word;
+    }
+    
+    /* .qc-core__rows { display: grid; gap: 4px; }
 
     .qc-core__row {
         display: grid;
@@ -422,9 +505,9 @@
         content: "•";
         font-size: 18px;
         line-height: 1;
-    }
+    } */
 
-    .qc-core__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    /* .qc-core__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 
     .qc-core__item {
         display: grid;
@@ -436,6 +519,68 @@
     }
 
     .qc-core__item-mark { font-weight: 700; }
+    .qc-core__item.is-correct .qc-core__item-mark { color: #0d9488; }
+    .qc-core__item.is-incorrect .qc-core__item-mark { color: #dc2626; } */
+
+    .qc-core__list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+    }
+
+    .qc-core__item {
+        display: grid;
+        /* Col 1: Badge + Text | Col 2: Mark Icon | Col 3: Colon | Col 4: Reason */
+        grid-template-columns: 100px 20px 10px minmax(0, 1fr);
+        gap: 8px;
+        align-items: center; /* Vertically aligns all 4 columns */
+        font: 400 14px/1.55 "Plus Jakarta Sans", Arial, sans-serif;
+        color: #0f172a;
+        padding: 10px 12px;
+        border-radius: 8px;
+    }
+
+        /* Zebra striping for alternating rows */
+    .qc-core__item:nth-child(odd) {
+        background-color: #FBFCFF;
+    }
+
+    .qc-core__item:nth-child(even) {
+        background-color: #F5F7FF;
+    }
+
+    /* Container for letter badge + option text with 8px gap */
+    .qc-core__label-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .section2-qc-bullet {
+        width: 5px;
+        height: 5px;
+        border-radius: 999px;
+        background: #000000;
+    }
+
+    .qc-colon {
+        font-weight: 400;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+
+    .qc-core__item-mark { 
+        font-weight: 700; 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+    }
+
     .qc-core__item.is-correct .qc-core__item-mark { color: #0d9488; }
     .qc-core__item.is-incorrect .qc-core__item-mark { color: #dc2626; }
 
@@ -466,20 +611,19 @@
         padding: 16px 20px;
         border: 1px solid #d1dce8;
         border-radius: 8px;
-        background: #ffffff;
-        color: #000000;
+        background: linear-gradient(135deg, #f4fffb, #fff);
         letter-spacing: 0.04em;
     }
 
     .instant-panel .section2-complete-sentence-box h3 {
         margin: 0;
-        color: #111827;
-        font: 600 14px "Plus Jakarta Sans", Arial, sans-serif;
+        color: #28786f;
+        font: 700 14px "Plus Jakarta Sans", Arial, sans-serif;
     }
 
     .instant-panel .section2-complete-sentence {
         margin: 0;
-        color: #111827;
+        color: #526176;
         font: 400 18px/1.45 "Times New Roman", Times, serif;
         text-align: center;
         overflow-wrap: anywhere;
@@ -557,13 +701,13 @@
             padding-top: 2px;
         }
 
-        .section2-qc-bullet {
+        /* .section2-qc-bullet {
             width: 5px;
             height: 5px;
             margin-top: 8px;
             border-radius: 999px;
             background: #000000;
-        }
+        } */
 
     @media (max-width: 720px) {
         .qc-core__item { grid-template-columns: 1fr; }
@@ -2091,29 +2235,64 @@
                 .replace(/\n/g, "<br>");
         }
 
-        function renderQcObserveText(value) {
-            return escapeHtml(String(value || ""))
+        function renderQcObserveText(value, options) {
+            let html = escapeHtml(String(value || ""));
+            const optionPatterns = (options || [])
+                .map((option) => ({
+                    letter: option.letter,
+                    text: escapeHtml(option.text),
+                    pattern: escapeHtml(option.text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+")
+                }))
+                .filter((option) => option.pattern)
+                .sort((left, right) => right.pattern.length - left.pattern.length);
+            if (optionPatterns.length) {
+                const optionPattern = new RegExp(
+                    `(^|[^\\p{L}\\p{N}_])(${optionPatterns.map((option) => `(?:${option.pattern})`).join("|")})(?=$|[^\\p{L}\\p{N}_])`,
+                    "giu"
+                );
+                html = html.replace(optionPattern, (fullMatch, before, matchedText) => {
+                    const matchedOption = optionPatterns.find((option) => {
+                        return option.text.toLocaleLowerCase() === matchedText.toLocaleLowerCase();
+                    });
+                    const letter = matchedOption ? matchedOption.letter : "";
+                    const badge = letter
+                        ? `<mark class="instant-option-letter-observe" aria-label="Option ${letter}">${escapeHtml(letter)}</mark>`
+                        : "";
+                    return `${before}<mark>${matchedText}</mark>${badge}`;
+                });
+            }
+            return html
                 .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
                 .replace(/\n/g, "<br>");
         }
 
-        function renderQcObserveHtml(value) {
+        function renderQcObserveHtml(value, questionUid) {
             const source = String(value || "");
             const roleToken = /\[([^\]\n]+?)\s+\(([^)\n]+)\)\]/g;
+            const question = typeof questionUid === "string" ? globalQuestions[questionUid] || {} : {};
+            const options = Object.entries(question.options || {})
+                .map(([letter, text]) => ({ letter: letter.toUpperCase(), text: String(text || "").trim() }))
+                .filter((option) => /^[A-D]$/.test(option.letter) && option.text);
+
             let html = "";
             let cursor = 0;
             let match;
 
             while ((match = roleToken.exec(source)) !== null) {
-                html += renderQcObserveText(source.slice(cursor, match.index));
+                html += renderQcObserveText(source.slice(cursor, match.index), options);
+
+                const wordText = match[1].trim();
+                const roleLabel = match[2].trim();
                 html += '<span class="qc-core__observe-token">'
-                    + '<span class="qc-core__observe-word">' + renderQcObserveText(match[1].trim()) + '</span>'
-                    + '<span class="qc-core__observe-role">' + escapeHtml(match[2].trim()) + '</span>'
+                    + `<span class="qc-core__observe-word is-underlined">${renderQcObserveText(wordText, options)}</span>`
+                    + `<span class="qc-core__observe-role">${escapeHtml(roleLabel)}</span>`
                     + '</span>';
+
                 cursor = roleToken.lastIndex;
             }
 
-            html += renderQcObserveText(source.slice(cursor));
+            html += renderQcObserveText(source.slice(cursor), options);
+
             return '<div class="qc-core__observe">' + html + '</div>';
         }
 
@@ -2210,7 +2389,10 @@
             if (!rationale) rationale = "Karena pilihan ini melengkapi struktur kalimat dengan tepat.";
 
             return '<section class="section2-complete-sentence-box">'
-                + '<h3>Maka kalimat lengkapnya</h3>'
+                + '<div style="display: flex; align-items: center; gap: 8px;">'
+                +   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#28786f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+                +   '<h3 style="margin: 0;">Maka kalimat lengkapnya</h3>'
+                + '</div>'
                 + '<p class="section2-complete-sentence">&ldquo;' + sentenceHtml + '&rdquo;</p>'
                 + '<p class="section2-complete-rationale">' + markdownInlineToHtml(rationale) + '</p>'
                 + '</section>';
@@ -2253,26 +2435,35 @@
                 </div></section>`;
             }
         
-            const rowsHtml = parsed.rows.map((row) => {
-                const isBulletOnly = !row.value; // adjust condition as needed (e.g., row.value === "" or row.isBullet)
-                
-                return `
-                    <div class="qc-core__row">
-                        <span class="section2-qc-bullet" aria-hidden="true"></span>
-                        <strong>${escapeHtml(row.label)}</strong>
-                        ${isBulletOnly 
-                            ? '<span class="qc-core__row-value is-bullet" aria-label="No value"></span>' 
-                            : `<span class="qc-core__row-value">: ${markdownInlineToHtml(row.value)}</span>`}
-                    </div>`;
-            }).join("");
+            const rowsHtml = parsed.rows.map((row) => `
+                <div class="qc-core__row">
+                    <span class="section2-qc-bullet" aria-hidden="true"></span>
+                    <strong>${escapeHtml(row.label)}</strong>
+                    <span class="qc-colon">:</span>
+                    <span class="qc-core__row-value">${markdownInlineToHtml(row.value || "")}</span>
+                </div>
+            `).join("");
 
             const optionsHtml = parsed.options.map((option) => {
-                const state = option.verdict || (option.letter === correct ? "correct" : "incorrect");
+                // The answer key determines the correct choice, not the explanation verdict.
+                const isCorrect = correct
+                    ? String(option.letter || "").trim().toUpperCase() === correct
+                    : option.verdict === true || option.verdict === "correct";
+
+                const state = isCorrect ? "correct" : "incorrect";
+
                 return `
                 <li class="qc-core__item is-${state}">
-                    <span><strong>(${option.letter})</strong> ${escapeHtml(option.label.replace(/^\([A-D]\)\s*/i, ""))}</span>
-                    <span class="qc-core__item-mark">${state === "correct" ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` 
-                    : '✕'}</span>
+                    <span class="qc-core__label-wrap">
+                        <span class="instant-option-letter">${option.letter}</span>
+                        <strong>${escapeHtml(option.label.replace(/^\([A-D]\)\s*/i, ""))}</strong>
+                    </span>
+                    <span class="qc-core__item-mark">${
+                        state === "correct" 
+                            ? `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` 
+                            : '<span style="color: #dc2626; font-weight: bold; line-height: 1;">✕</span>'
+                    }</span>
+                    <span class="qc-colon">:</span>
                     <span>${markdownInlineToHtml(option.reason)}</span>
                 </li>`;
             }).join("");
@@ -2288,7 +2479,7 @@
                             </div>` : ""}
                             ${(parsed.observe || rowsHtml) ? `<div class="qc-core__block">
                                 <div class="qc-core__label">O – Observe S-V-C :</div>
-                                ${parsed.observe ? renderQcObserveHtml(parsed.observe) : ""}
+                                ${parsed.observe ? renderQcObserveHtml(parsed.observe, uid) : ""}
                                 ${rowsHtml ? `<div class="qc-core__rows">${rowsHtml}</div>` : ""}
                             </div>` : ""}
                             ${parsed.requirement ? `<div class="qc-core__block">
@@ -3863,4 +4054,3 @@
     </script>
 </body>
 </html>
-

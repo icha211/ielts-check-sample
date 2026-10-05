@@ -1621,6 +1621,7 @@
             var lines = source.split(/\r?\n/);
             var html = '';
             var preserveEliminateQualifier = !!(options && options.preserveEliminateQualifier);
+            var conceptTitle = String(options && options.conceptTitle || '').trim();
             var optionAnswerTexts = (options && options.optionAnswerTexts || []).map(function (optionText) {
                 return normalizeText(optionText).replace(/<[^>]*>|\*+/g, '').toLowerCase();
             }).filter(Boolean);
@@ -1763,6 +1764,13 @@
                     if (letterKey === 'e' && preserveEliminateQualifier && qualifier) headerLabel += ' ' + qualifier;
                     var inlineRest = String(headerMatch[4] || '').trim();
                     html += '<p class="section2-qc-core-key">' + escapeHtml(headerLabel) + ':</p>';
+                    if (letterKey === 'c') {
+                        var conceptText = inlineRest;
+                        if (!conceptText && i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].match(headerRegex)) conceptText = lines[++i].trim();
+                        var conceptHtml = conceptTitle ? escapeHtml(conceptTitle) : inlineText(conceptText.replace(/\*+/g, ''));
+                        if (conceptHtml) html += '<p class="qc-concept-text"><mark class="qc-concept-badge">' + conceptHtml + '</mark></p>';
+                        continue;
+                    }
                     if (letterKey === 'o') {
                         if (inlineRest) {
                             html += renderObserveLine(inlineRest);
@@ -1862,9 +1870,6 @@
             var questionNumber = Number(question && question.number) || 0;
             var isExpanded = qcCoreExpandState[questionNumber] !== false;
             var savedText = String(question && question.explanation || '').trim();
-            if (question && question.materialTopic && question.materialTopic.title) {
-                savedText = savedText.replace(/^\*\*C\s*-\s*Concept:\*\*.*$/m, '**C - Concept:** ' + question.materialTopic.title);
-            }
             if (!savedText) return '';
             var savedTextWithoutCompleteSentence = savedText
                 .replace(/Maka\s+(?:perbaikan\s+)?kalimat\s+lengkapnya\s*:?\s*\n+[\s\S]*?(?=\n\s*\*{0,2}[CORE]\s*-|$)/i, '')
@@ -1884,6 +1889,7 @@
                 + '</div>'
                 + '<div class="section2-qc-core-body">'
                 + renderSavedQcCoreMarkdown(savedTextWithoutCompleteSentence, {
+                    conceptTitle: normalizeText(question && question.materialTopic && question.materialTopic.title),
                     preserveEliminateQualifier: Number(question && question.partId) === 2,
                     optionAnswerTexts: Number(question && question.partId) === 2
                         ? Object.keys(question && question.options || {}).map(function (letter) {
@@ -1982,7 +1988,8 @@
                 + '</div>'
                 + '</div>'
                 + '<div class="section2-qc-core-body">'
-                + '<p><span class="section2-qc-core-key">C - Concept</span> : <mark>' + escapeHtml(conceptTitle) + '</mark></p>'
+                + '<p class="section2-qc-core-key">C - Concept :</p>'
+                + '<p class="qc-concept-text"><mark class="qc-concept-badge">' + escapeHtml(conceptTitle) + '</mark></p>'
                 + '<p><span class="section2-qc-core-key">O - Observe S-V-C</span>:</p>'
                 + observeVisualHtml
                 + '<p><span class="section2-qc-core-key">R - Requirement</span>:</p>'
