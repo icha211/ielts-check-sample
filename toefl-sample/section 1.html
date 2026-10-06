@@ -6774,7 +6774,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     ? savedSegments.filter((segment) => Number(segment?.questionNumber || segment?.question_number || 0) === qNum)
                     : (((transcriptMapsByPart[partId] || {})[qNum]) || [])
                 ).map((segment) => ({ ...segment }));
-                const resolvedSegments = transcriptSegments.length ? transcriptSegments : groupSegments;
+                const resolvedSegments = selectGroupTranscriptSegments(transcriptSegments, groupSegments);
                 const partMeta = PARTS.find((item) => Number(item.id) === partId) || {};
                 return {
                     uid,
@@ -7398,7 +7398,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     ? savedSegments.filter((segment) => Number(segment?.questionNumber || segment?.question_number || 0) === qNum)
                     : ((transcriptMapsByPart[pId] || {})[qNum] || [])
                 ).map((segment) => ({ ...segment }));
-                const resolvedSegments = transcriptSegments.length ? transcriptSegments : groupSegments;
+                const resolvedSegments = selectGroupTranscriptSegments(transcriptSegments, groupSegments);
                 return {
                     uid,
                     number: qNum,
@@ -8018,6 +8018,13 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             } catch (error) {
                 console.warn('[Group Transcript] draft save failed:', error);
             }
+        }
+
+        function selectGroupTranscriptSegments(questionSegments, groupSegments) {
+            if (!groupSegments.length) return questionSegments;
+            const text = (segments) => segments.map((segment) => String(segment.text || "").trim())
+                .join(" ").replace(/\s+/g, " ").trim();
+            return text(questionSegments) === text(groupSegments) ? questionSegments : groupSegments;
         }
 
         function resolveGroupTranscriptSegments(savedDraft, partId, questionNumber) {

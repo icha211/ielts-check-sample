@@ -45,6 +45,19 @@ restoring deleted data from a stale cache.
 
 Regression checks: `node --test toefl-sample/reading-data-flow.test.js`.
 
+## Listening Part B/C transcript groups
+
+Listening review reads the selected test's existing `parts[partId].groupTranscript`
+fields. Practice keys such as `Talk 1: 1-4` and `Talk 2: 5-8` map to their
+own questions, including legacy global-number aliases. Numeric Mock Test keys
+remain supported. Separate saved talks override older full-part transcript text
+and stale result alignment; matching alignment timestamps are preserved.
+A missing or cleared talk never falls back to another talk or part. Routed
+reviews do not read the shared latest Listening draft.
+
+No Firebase schema migration or rewrite is required.
+Regression checks: `node --test toefl-sample/listening-transcript-groups.test.js`.
+
 ## 1) Item Bank (question metadata + explanations)
 
 Recommended file: item_bank.csv
