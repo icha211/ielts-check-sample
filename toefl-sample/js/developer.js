@@ -530,22 +530,34 @@ function updateSyncStatus(online) {
     el._hideTimer = setTimeout(() => { el.style.display = "none"; }, 3000);
 }
 
-async function deleteSet(setId, module) {
+async function deleteSet(setId, module, testType = currentTestType) {
+    if (testType === "practicetest" && !isDeveloperSignedIn()) {
+        openDeveloperSignIn();
+        return;
+    }
     const moduleLabel = MODULE_CONFIG[module]?.label || module;
 
     const confirmed = confirm(`Delete "${moduleLabel}" set?\n\nThis removes it from the website and from Firebase.`);
     if (!confirmed) return;
 
+    if (testType === "practicetest") {
+        if (practicePackageMutationInProgress) return;
+        practicePackageMutationInProgress = true;
+        await practicePackageSyncPromise;
+    }
     try {
         // Always fully delete: removes from active Firebase data and local storage/UI
-        await toeflStorage.deleteSetRecordWithType(setId, currentTestType);
+        await toeflStorage.deleteSetRecordWithType(setId, testType);
         purgeLocalSetCaches(setId);
+        practicePackageMutationInProgress = false;
         updateSyncStatus(toeflStorage.online);
         toast(`${moduleLabel} deleted. 🗑️`);
         await renderAll();
     } catch (error) {
         updateSyncStatus(false);
         toast(`Delete failed: ${error?.message || "unknown error"}`);
+    } finally {
+        if (testType === "practicetest") practicePackageMutationInProgress = false;
     }
 }
 
@@ -935,7 +947,7 @@ function changeCalendarYear(delta) {
 }
 
 const PACKAGE_VIEW_KEY = "toefl_package_view";
-// Mirror of toefl_itp/practicetest/packages_v1 (loaded in renderAll for the Practice Test tab).
+// Mirror of toefl_itp/practicetest/package_N_practice_test.
 let practicePackages = [];
 
 function getPracticePackageNumber(value) {
@@ -969,6 +981,8 @@ function isDeveloperSignedIn() {
 }
 
 let practicePackageSyncState = "idle";
+let practicePackageSyncPromise = null;
+let practicePackageMutationInProgress = false;
 
 // Links existing sets to their package and writes toefl_itp/practicetest/package_N_practice_test.
 // On sets, only packageNumber/packageId are written; set content and drafts are never touched.
@@ -994,7 +1008,6 @@ async function syncPracticePackages() {
                 changed = true;
             }
         }
-        if (!packageSets.has(1)) packageSets.set(1, {});
         practicePackages.forEach((item) => {
             if (!packageSets.has(item.packageNumber)) packageSets.set(item.packageNumber, {});
         });
@@ -1070,6 +1083,17 @@ function renderPackageSyncChip() {
 }
 
 async function runPracticePackageSync() {
+    if (practicePackageMutationInProgress) return;
+    if (practicePackageSyncPromise) return practicePackageSyncPromise;
+    practicePackageSyncPromise = refreshPracticePackageSync();
+    try {
+        await practicePackageSyncPromise;
+    } finally {
+        practicePackageSyncPromise = null;
+    }
+}
+
+async function refreshPracticePackageSync() {
     practicePackageSyncState = "idle";
     const host = document.getElementById("monthDetail");
     if (currentTestType === "practicetest" && host) renderPracticePackageDetail(host);
@@ -1084,10 +1108,13 @@ function renderPackageOptionRow(opt, set, packageNumber) {
             ? formatCompactSetDate(set.setDate)
             : set.updatedAt ? new Date(set.updatedAt).toLocaleDateString() : "Saved";
         return `
+            <div class="package-option-row">
             <a class="month-action complete package-option" href="${buildEditorUrl(set.module, set.setDate, set.setId, "practicetest", { focus: set.focus, difficulty: set.difficulty, packageNumber })}" title="${escapeHtml(set.setId || "")}">
                 <span>${icon}<span class="package-option-label">${escapeHtml(opt.label)}</span></span>
                 <span>Open · ${escapeHtml(dateLabel)}</span>
             </a>
+            <button type="button" class="btn-mini package-delete-set" data-delete-practice-set="${escapeHtml(set.setId)}" data-module="${escapeHtml(set.module)}" aria-label="Delete ${escapeHtml(opt.label)} from Package ${packageNumber}">Delete</button>
+            </div>
         `;
     }
     const createUrl = buildEditorUrl(opt.module, undefined, undefined, "practicetest", {
@@ -1107,30 +1134,30 @@ function renderPackageOptionRow(opt, set, packageNumber) {
 
 function renderPracticePackageDetail(host) {
     const optionSlots = PRACTICE_MODULE_OPTIONS.map((opt) => getPracticeOptionSlots(opt));
-    const maxUsed = Math.max(0, ...optionSlots.flatMap((slots) => [...slots.keys()]));
-    const maxRegistered = Math.max(0, ...practicePackages.map((item) => item.packageNumber));
-    const packageCount = Math.max(maxUsed, maxRegistered, 1);
+    const packageNumbers = [...new Set([
+        ...optionSlots.flatMap((slots) => [...slots.keys()]),
+        ...practicePackages.map((item) => item.packageNumber)
+    ])].sort((a, b) => a - b);
+    const packageCount = packageNumbers.length;
     const totalOptions = PRACTICE_MODULE_OPTIONS.length;
     let completePackages = 0;
 
-    const packageCards = Array.from({ length: packageCount }, (_, slotIndex) => {
-        const packageNumber = slotIndex + 1;
+    const packageCards = packageNumbers.map((packageNumber) => {
         const filled = optionSlots.filter((slots) => slots.has(packageNumber)).length;
         const isComplete = filled === totalOptions;
         if (isComplete) completePackages += 1;
         const statusClass = isComplete ? "complete" : filled ? "partial" : "empty-package";
-        const isRemovable = packageNumber === packageCount && filled === 0 && packageNumber > 1;
         const rows = PRACTICE_MODULE_OPTIONS.map((opt, optIdx) =>
             renderPackageOptionRow(opt, optionSlots[optIdx].get(packageNumber), packageNumber)
         ).join("");
 
         return `
-            <article class="month-detail-day package-card ${statusClass}" data-package="${slotIndex + 1}">
+            <article class="month-detail-day package-card ${statusClass}" data-package="${packageNumber}">
                 <div class="package-card-head">
-                    <span class="package-badge">Package ${slotIndex + 1}</span>
+                    <span class="package-badge">Package ${packageNumber}</span>
                     <span class="package-head-right">
                         <span class="package-progress">${String(filled).padStart(2, "0")}/${String(totalOptions).padStart(2, "0")}</span>
-                        ${isRemovable ? `<button type="button" class="package-remove-btn" data-remove-package aria-label="Remove empty Package ${slotIndex + 1}" title="Remove empty package">✕</button>` : ""}
+                        <button type="button" class="package-remove-btn" data-remove-package="${packageNumber}" aria-label="Delete Package ${packageNumber} and all its tests">Delete package</button>
                     </span>
                 </div>
                 <div class="month-actions package-options">${rows}</div>
@@ -1178,6 +1205,7 @@ function renderPracticePackageDetail(host) {
         <div class="month-detail-grid package-grid${view === "list" ? " list-view" : ""}">
             ${packageCards.join("")}
         </div>
+        ${packageCount ? "" : '<div class="detail-note">No practice packages. Click + Package to create one.</div>'}
     `;
 
     host.querySelector("#packageViewToggle").addEventListener("click", (event) => {
@@ -1201,7 +1229,8 @@ function renderPracticePackageDetail(host) {
             openDeveloperSignIn();
             return;
         }
-        const nextNumber = packageCount + 1;
+        if (practicePackageMutationInProgress) return;
+        const nextNumber = Math.max(0, ...packageNumbers) + 1;
         const button = event.currentTarget;
         button.disabled = true;
         try {
@@ -1217,23 +1246,38 @@ function renderPracticePackageDetail(host) {
         cards[cards.length - 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
         toast(`package_${nextNumber}_practice_test saved to Firebase`);
     });
-    host.querySelector("[data-remove-package]")?.addEventListener("click", async (event) => {
+    host.querySelectorAll("[data-delete-practice-set]").forEach((button) => {
+        button.addEventListener("click", () => deleteSet(button.dataset.deletePracticeSet, button.dataset.module, "practicetest"));
+    });
+    host.querySelectorAll("[data-remove-package]").forEach((button) => button.addEventListener("click", async () => {
         if (!isDeveloperSignedIn()) {
             openDeveloperSignIn();
             return;
         }
-        const button = event.currentTarget;
+        if (practicePackageMutationInProgress) return;
+        const packageNumber = Number(button.dataset.removePackage);
+        const setIds = new Set(optionSlots.map((slots) => slots.get(packageNumber)?.setId).filter(Boolean));
+        sectionSets.filter((set) => getPracticePackageNumber(set.packageNumber) === packageNumber)
+            .forEach((set) => setIds.add(set.setId));
+        if (!confirm(`Delete Package ${packageNumber} and ALL tests inside it?\n\nIts saved tests and drafts will be removed from Firebase and the website. Tests remain available in the recovery archive. Other packages will not be changed.`)) return;
         button.disabled = true;
+        practicePackageMutationInProgress = true;
+        await practicePackageSyncPromise;
         try {
-            await toeflStorage.removePracticePackage(packageCount);
+            const deletedIds = await toeflStorage.deletePracticePackage(packageNumber, [...setIds]);
+            deletedIds.forEach(purgeLocalSetCaches);
+            practicePackages = await toeflStorage.getPracticePackages();
+            practicePackageMutationInProgress = false;
+            await renderAll();
+            toast(`Package ${packageNumber} and ${deletedIds.length} test(s) deleted.`);
         } catch (error) {
             button.disabled = false;
-            toast("Package not removed from Firebase. Sign in with the developer account and retry.");
-            return;
+            updateSyncStatus(false);
+            toast(`Package delete failed: ${error?.message || "unknown error"}`);
+        } finally {
+            practicePackageMutationInProgress = false;
         }
-        practicePackages = await toeflStorage.getPracticePackages();
-        renderPracticePackageDetail(host);
-    });
+    }));
     host.classList.add("show");
 }
 function renderMonthDetail(year, monthIndex) {

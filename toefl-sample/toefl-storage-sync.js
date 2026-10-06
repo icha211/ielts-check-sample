@@ -485,6 +485,95 @@ class ToeflStorageSync {
     localStorage.setItem(this._practicePackagesLocalKey, JSON.stringify(local));
   }
 
+  // Archive and remove active practice data in one update; never replace sibling sets/drafts.
+  async _deletePracticeData(records, packageNumber = 0) {
+    const paths = this._getPathsForTestType("practicetest");
+    const updatedAt = new Date().toISOString();
+    const updates = {};
+    const packages = this._readLocalPracticePackages();
+    for (const [setId, record] of Object.entries(records)) {
+      const draft = await this._get(`${paths.draftsPath}/${setId}`);
+      if (record && typeof record === "object") {
+        updates[`archive/practicetest/sets/${setId}`] = {
+          ...record, _archived: true, _archivedAt: updatedAt,
+          _archivedFrom: "practicetest", _archivedFromPath: paths.setsPath
+        };
+      }
+      if (draft && typeof draft === "object") {
+        updates[`archive/practicetest/drafts/${setId}`] = {
+          ...draft, _archived: true, _archivedAt: updatedAt
+        };
+      }
+      updates[`practicetest/sets_v2/${setId}`] = null;
+      updates[`practicetest/drafts_v2/${setId}`] = null;
+      const number = this.parsePracticePackageNumber(record?.packageNumber);
+      if (!packageNumber && number) {
+        const packageId = this.buildPracticePackageId(number);
+        const registry = await this._get(`${this._practicePackagesPath}/${packageId}`);
+        if (registry) {
+          const remaining = { ...(registry.sets || {}) };
+          delete remaining[setId];
+          updates[`practicetest/${packageId}/sets/${setId}`] = null;
+          updates[`practicetest/${packageId}/setCount`] = Object.keys(remaining).length;
+          updates[`practicetest/${packageId}/updatedAt`] = updatedAt;
+          packages[packageId] = { ...registry, sets: remaining, setCount: Object.keys(remaining).length, updatedAt };
+        }
+      }
+    }
+    updates["practicetest/sets_v2/_updatedAt"] = updatedAt;
+    updates["practicetest/drafts_v2/_updatedAt"] = updatedAt;
+    if (packageNumber) {
+      const packageId = this.buildPracticePackageId(packageNumber);
+      updates[`practicetest/${packageId}`] = null;
+      delete packages[packageId];
+    }
+    const response = await this._request(this._url("toefl_itp"), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates)
+    });
+    if (!response.ok) {
+      this.isRemoteAvailable = false;
+      throw new Error(`Firebase package deletion failed (${response.status})`);
+    }
+    this.isRemoteAvailable = true;
+    for (const key of [paths.setsLocalKey, paths.draftsLocalKey]) {
+      const local = this._safeParse(localStorage.getItem(key), {});
+      Object.keys(records).forEach((setId) => delete local[setId]);
+      localStorage.setItem(key, JSON.stringify(local));
+    }
+    localStorage.setItem(this._practicePackagesLocalKey, JSON.stringify(packages));
+    return Object.keys(records);
+  }
+
+  async deletePracticePackage(packageNumber, displayedSetIds = []) {
+    const number = this.parsePracticePackageNumber(packageNumber);
+    if (!number) throw new Error("Invalid package number");
+    const packageId = this.buildPracticePackageId(number);
+    const paths = this._getPathsForTestType("practicetest");
+    const [sets, registry] = await Promise.all([
+      this._get(paths.setsPath),
+      this._get(`${this._practicePackagesPath}/${packageId}`)
+    ]);
+    const ids = new Set([...displayedSetIds, ...Object.keys(registry?.sets || {})]);
+    Object.entries(sets || {}).forEach(([setId, record]) => {
+      if (record && typeof record === "object"
+          && (this.parsePracticePackageNumber(record.packageNumber) === number || record.packageId === packageId)) {
+        ids.add(setId);
+      }
+    });
+    const records = {};
+    for (const setId of ids) {
+      const record = sets?.[setId];
+      const assigned = this.parsePracticePackageNumber(record?.packageNumber);
+      if ((assigned && assigned !== number) || (record?.packageId && record.packageId !== packageId)) {
+        throw new Error(`Test ${setId} belongs to another package. Refresh before deleting.`);
+      }
+      records[setId] = record || null;
+    }
+    return this._deletePracticeData(records, number);
+  }
+
   // Writes only the two package fields of an existing set; question content and drafts are untouched.
   async assignPracticeSetPackage(setId, packageNumber) {
     const number = this.parsePracticePackageNumber(packageNumber);
@@ -788,6 +877,10 @@ class ToeflStorageSync {
   async deleteSetRecordWithType(setId, testType = "mocktest") {
     if (!setId) return;
     const paths = this._getPathsForTestType(testType);
+    if (testType === "practicetest") {
+      const record = await this._get(`${paths.setsPath}/${setId}`);
+      return this._deletePracticeData({ [setId]: record });
+    }
     
     console.log(`[ToeflSync] Archiving (soft-delete) ${setId} from ${testType}...`);
     

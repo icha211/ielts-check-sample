@@ -7,6 +7,23 @@ This file defines practical schemas for data collection and model training for:
 
 Use UTF-8 CSV files with stable IDs and ISO 8601 timestamps.
 
+## Practice package deletion in the developer console
+
+Practice packages are stored at `toefl_itp/practicetest/package_N_practice_test`;
+their active test metadata and drafts remain in `sets_v2` and `drafts_v2`.
+In either the grid or list layout, **Delete** removes one test, while
+**Delete package** removes the package and every test assigned to it.
+Both actions require developer sign-in and confirmation.
+
+Deletion archives the affected metadata and drafts under
+`toefl_itp/archive/practicetest`, then removes the active records in the same
+atomic Firebase update. The recovery archive and uploaded audio assets are
+retained; other packages and Mock Test data are not changed. Surviving package
+numbers are not renumbered, and deleting the last package leaves an empty view
+with **+ Package** available.
+
+Regression checks: `node --test toefl-sample/practice-package-delete.test.js`.
+
 ## 1) Item Bank (question metadata + explanations)
 
 Recommended file: item_bank.csv
