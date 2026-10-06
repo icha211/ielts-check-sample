@@ -2096,6 +2096,14 @@
         function getReviewAudioGroup(partId, questionNumber) {
             var groups = REVIEW_AUDIO_GROUPS[Number(partId || 0)] || [];
             var qNum = Number(questionNumber || 0);
+            if (/practice/i.test(getReviewTestType()) && (Number(partId) === 2 || Number(partId) === 3)) {
+                var offset = Number(partId) === 2 ? 30 : 38;
+                if (qNum > offset) qNum -= offset;
+                groups = [
+                    { key: '01-04', start: 1, end: 4 },
+                    { key: '05-08', start: 5, end: 8 }
+                ];
+            }
             for (var i = 0; i < groups.length; i += 1) {
                 if (qNum >= groups[i].start && qNum <= groups[i].end) return groups[i];
             }
@@ -2118,6 +2126,7 @@
             var questionNumber = Number((question && question.number) || 0);
             var group = getReviewAudioGroup(partId, questionNumber);
             var isPartAQuestion = partId === 1 && questionNumber >= 1 && questionNumber <= 30;
+            var isPracticeGroup = !!group && /practice/i.test(getReviewTestType());
             if (!isPartAQuestion && !group) return null;
 
             var record = (question && question.questionAudio && typeof question.questionAudio === 'object') ? question.questionAudio : {};
@@ -2136,8 +2145,9 @@
                 objectKey: objectKey,
                 partId: partId,
                 questionNumber: questionNumber,
-                fallbackUrls: (savedUrl && savedUrl !== url) ? [savedUrl] : [],
-                label: group ? ('Questions ' + group.key) : ('Question ' + String(questionNumber))
+                fallbackUrls: (!isPracticeGroup && savedUrl && savedUrl !== url) ? [savedUrl] : [],
+                label: isPracticeGroup ? (group.start === 1 ? 'Talk 1 (Questions 1-4)' : 'Talk 2 (Questions 5-8)')
+                    : group ? ('Questions ' + group.key) : ('Question ' + String(questionNumber))
             };
         }
 
@@ -2155,7 +2165,7 @@
 
         function getReviewQuestionAudioSourceKey(questionAudio) {
             if (!questionAudio) return '';
-            return String(reviewSetId || '') + '_part_' + String(questionAudio.partId || 1) + '_question_' + String(questionAudio.questionNumber) + '_' + String(questionAudio.objectKey || questionAudio.url || '');
+            return String(reviewSetId || '') + '_part_' + String(questionAudio.partId || 1) + '_' + String(questionAudio.objectKey || questionAudio.url || '');
         }
 
         async function loadAudioForQuestion(question) {

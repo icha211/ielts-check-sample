@@ -30,7 +30,7 @@ function fixture(type = "practicetest", parts = {}) {
         extractQuestionBlockBoundaries: () => ({})
     });
     for (const name of [
-        "titleCaseSpeakerLabel", "normalizeSpeakerCode", "parsePlainSpeakerTranscript",
+        "titleCaseSpeakerLabel", "parseTranscriptSpeakerLine", "normalizeSpeakerCode", "parsePlainSpeakerTranscript",
         "mapTranscriptByQuestion", "inferPartIdFromQuestion", "transcriptsMatch",
         "getQuestionTranscriptSegments", "refreshResultQuestionTranscriptSegments",
         "collectGroupTranscriptText", "parseQuestionRangeKey", "buildGroupTranscriptQuestionMap",
@@ -128,4 +128,53 @@ test("preview and submission prefer group text without discarding matching times
     assert.equal(context.selectGroupTranscriptSegments(aligned, group), aligned);
     assert.equal(context.selectGroupTranscriptSegments([{ text: "Combined" }], group), group);
     assert.equal((editor.match(/const resolvedSegments = selectGroupTranscriptSegments/g) || []).length, 2);
+});
+
+test("practice explanation audio selects the uploaded talk clip for Part B and C", () => {
+    const context = fixture();
+    context.REVIEW_AUDIO_GROUPS = {
+        2: [{ key: "31-34", start: 31, end: 34 }, { key: "35-38", start: 35, end: 38 }],
+        3: [{ key: "39-42", start: 39, end: 42 }, { key: "43-46", start: 43, end: 46 }]
+    };
+    for (const name of ["getReviewAudioGroup", "buildReviewQuestionAudioObjectKey", "getReviewQuestionAudioSourceKey"]) {
+        load(context, review, name);
+    }
+    for (const partId of [2, 3]) {
+        const offset = partId === 2 ? 30 : 38;
+        for (let number = 1; number <= 8; number++) {
+            const clip = number <= 4 ? "01-04" : "05-08";
+            for (const questionNumber of [number, number + offset]) {
+                assert.equal(context.buildReviewQuestionAudioObjectKey(partId, questionNumber),
+                    `audio/listening/sets/selected/question_set/part_${partId}/q_${clip}.mp3`);
+            }
+        }
+    }
+    assert.equal(context.getReviewQuestionAudioSourceKey({ partId: 2, questionNumber: 1, objectKey: "clip" }),
+        context.getReviewQuestionAudioSourceKey({ partId: 2, questionNumber: 4, objectKey: "clip" }));
+    context.getReviewTestType = () => "mocktest";
+    assert.ok(context.buildReviewQuestionAudioObjectKey(2, 31).endsWith("q_31-34.mp3"));
+});
+
+test("practice playback uses the talk clip without falling back to stale full-part audio", async () => {
+    const context = fixture();
+    context.REVIEW_AUDIO_GROUPS = {};
+    context.REVIEW_R2_PUBLIC_BASE_URL = "https://audio.example.test";
+    for (const name of ["getReviewAudioGroup", "buildReviewQuestionAudioObjectKey",
+        "getReviewQuestionAudioRecord", "getReviewQuestionAudioSourceKey", "loadAudioForQuestion"]) {
+        load(context, review, name);
+    }
+    context.getCloudflareQuestionAudioSource = async (key, url) => ({ url, fallbackUrls: [] });
+    context.loadAudioForPart = () => { throw new Error("Must not load full-part audio"); };
+    const played = [];
+    context.setReviewAudioSource = (...args) => played.push(args);
+    for (const partId of [2, 3]) {
+        for (const number of [1, 4, 5, 8]) {
+            await context.loadAudioForQuestion({
+                partId, number, questionAudioUrl: "https://audio.example.test/full-part.mp3"
+            });
+            const clip = number <= 4 ? "01-04" : "05-08";
+            assert.ok(played.at(-1)[0].endsWith(`/part_${partId}/q_${clip}.mp3`));
+            assert.equal(played.at(-1)[4].length, 0);
+        }
+    }
 });

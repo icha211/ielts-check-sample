@@ -55,6 +55,13 @@ and stale result alignment; matching alignment timestamps are preserved.
 A missing or cleared talk never falls back to another talk or part. Routed
 reviews do not read the shared latest Listening draft.
 
+Practice Part B/C explanation audio uses the existing uploaded talk clips:
+questions 1-4 play `q_01-04.mp3` and questions 5-8 play `q_05-08.mp3`
+under the selected set's `question_set/part_2` or `question_set/part_3`.
+Legacy global question numbers resolve to the same clips. A stale full-part
+audio URL is not used as a fallback for these practice groups.
+Mock Test audio mapping and Part A are unchanged.
+
 No Firebase schema migration or rewrite is required.
 Regression checks: `node --test toefl-sample/listening-transcript-groups.test.js`.
 
