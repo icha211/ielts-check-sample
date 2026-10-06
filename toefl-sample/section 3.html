@@ -1373,6 +1373,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="toefl-storage-sync.js?v=20261005a"></script>
     <script src="toefl-test-history.js?v=20261003a"></script>
+    <script src="js/reading-explanations.js?v=20261006a"></script>
     <script>
         const TOTAL_PASSAGES = 5; 
         const PRACTICE_READING_TOTAL_PASSAGES = 1;
@@ -1385,6 +1386,9 @@
         let currentTestType = "mocktest";
         let lastValidSetDate = "";
         let forcedReadingPartsCount = TOTAL_PASSAGES;
+        let activeSectionDraft = {};
+        let sectionReady = false;
+        let sectionSaveQueue = Promise.resolve();
 
         function getReadingPracticePartsCount() {
             const params = new URLSearchParams(window.location.search);
@@ -1440,6 +1444,7 @@
         function updateEditorUrl(setId, setDate) {
             const params = new URLSearchParams(window.location.search);
             params.set("setId", setId);
+            params.delete("new");
             if (setDate) params.set("setDate", setDate);
             const query = params.toString();
             const hash = window.location.hash || "#dev-view";
@@ -1491,7 +1496,7 @@
             
             // CRITICAL FIX: Check if a set ALREADY EXISTS for this date/testType/module
             // Only create a new one if none exists (idempotency constraint per day per testType)
-            const existingSet = await resolveSetRecordByDate(setDate);
+            const existingSet = isExplicitNewPackageRequest() ? null : await resolveSetRecordByDate(setDate);
             if (existingSet && existingSet.setId) {
                 console.log(`[SetIdempotency] Reusing existing set for date ${setDate}:`, existingSet.setId);
                 currentSetId = existingSet.setId;
@@ -1529,6 +1534,7 @@
             const local = getStoredSetMap();
             return Object.values(local)
                 .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
+                .filter((item) => String(item.setId || "").startsWith(`${testTypeToCheck}_`))
                 .filter((item) => setRecordMatchesPracticeVariant(item, variant))
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
@@ -1536,8 +1542,8 @@
         async function resolveLatestSetRecord() {
             const variant = getPracticeVariant();
             try {
-                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
-                    const records = await toeflStorage.getSetRecords();
+                if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
+                    const records = await toeflStorage.getSetRecordsByTestType(currentTestType);
                     const latest = (records || [])
                         .filter((item) => item && item.module === MODULE_ID)
                         .filter((item) => setRecordMatchesPracticeVariant(item, variant))
@@ -1551,10 +1557,13 @@
             const local = getStoredSetMap();
             return Object.values(local)
                 .filter((item) => item && item.module === MODULE_ID)
+                .filter((item) => String(item.setId || "").startsWith(`${currentTestType}_`))
+                .filter((item) => setRecordMatchesPracticeVariant(item, variant))
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 
         function clearSectionDraftInputs() {
+            activeSectionDraft = {};
             const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
             for (let p = 1; p <= maxPassages; p++) {
                 const titleEl = document.getElementById(`input-title-${p}`);
@@ -1598,7 +1607,10 @@
         function mergeBulkPassageSection(savedText, editedText, passageNumber) {
             const saved = String(savedText || "").replace(/\r/g, "");
             const edited = String(editedText || "").trim();
-            if (!edited) return saved;
+            if (!edited) {
+                const range = getBulkPassageRange(saved, passageNumber);
+                return range ? `${saved.slice(0, range.start)}${saved.slice(range.end)}`.trim() : "";
+            }
             const replacement = getBulkPassageSection(edited, passageNumber) || `Passage ${passageNumber}\n\n${edited}`;
             const range = getBulkPassageRange(saved, passageNumber);
             if (!range) return [saved.trim(), replacement].filter(Boolean).join("\n\n");
@@ -1610,12 +1622,15 @@
             ["input-bulk-explanation-id-all", "input-bulk-explanation-en-all"].forEach((id) => {
                 const input = document.getElementById(id);
                 if (!input || (!force && input.dataset.practicePassage === "1")) return;
-                input.value = getBulkPassageSection(input.value, 1);
+                const hasPassageHeading = /^\s*(?:\*\*\s*)?(?:passage|part)\s+\d+/im.test(input.value);
+                input.value = getBulkPassageSection(input.value, 1) || (hasPassageHeading ? "" : input.value);
                 input.dataset.practicePassage = "1";
             });
         }
 
         async function handleSetDateChange() {
+            clearTimeout(autoSaveTimeout);
+            await sectionSaveQueue;
             const dateInput = document.getElementById("set-date");
             const selectedDate = dateInput?.value;
             if (!selectedDate) return;
@@ -1641,6 +1656,10 @@
 
             if (isDeveloperMode()) {
                 currentSetId = "";
+                const params = new URLSearchParams(window.location.search);
+                params.delete("setId");
+                params.set("new", "1");
+                window.history.replaceState({}, "", `${window.location.pathname}?${params}${window.location.hash}`);
                 clearSectionDraftInputs();
                 await saveSectionMeta();
                 updateUserView();
@@ -1655,12 +1674,12 @@
         }
 
         async function saveSectionDraft() {
-            const existingDraft = safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
+            const existingDraft = activeSectionDraft;
             const bulkExplanationIdInput = (document.getElementById("input-bulk-explanation-id-all") || {}).value || "";
             const bulkExplanationEnInput = (document.getElementById("input-bulk-explanation-en-all") || {}).value || "";
             const isSinglePassagePractice = currentTestType === "practicetest" && forcedReadingPartsCount === 1;
             const draft = {
-                passages: {},
+                passages: { ...(existingDraft.passages || {}) },
                 bulkExplanationId: isSinglePassagePractice
                     ? mergeBulkPassageSection(existingDraft.bulkExplanationId, bulkExplanationIdInput, 1)
                     : bulkExplanationIdInput,
@@ -1675,14 +1694,14 @@
                     passage: (document.getElementById(`input-passage-${p}`) || {}).value || "",
                     questions: (document.getElementById(`input-magic-questions-${p}`) || {}).value || "",
                     answerKey: (document.getElementById(`input-answer-key-${p}`) || {}).value || "",
-                    explanation: (document.getElementById(`input-explanation-${p}`) || {}).value || "",
-                    bulkExplanationId: (document.getElementById(`input-bulk-explanation-id-${p}`) || {}).value || "",
-                    bulkExplanationEn: (document.getElementById(`input-bulk-explanation-en-${p}`) || {}).value || ""
+                    explanation: ""
                 };
             }
-            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
             const setDate = (document.getElementById("set-date") || {}).value || new Date().toISOString().split("T")[0];
             const setId = await ensureCurrentSetId(setDate);
+            draft.setId = setId;
+            draft.testType = currentTestType;
+            activeSectionDraft = draft;
             if (setId) {
                 localStorage.setItem(`${DRAFT_KEY}_${setId}`, JSON.stringify(draft));
             }
@@ -1694,7 +1713,7 @@
                     return false;
                 }
             }
-            return true;
+            throw new Error("Shared storage is unavailable");
         }
 
         async function loadSectionDraft() {
@@ -1712,27 +1731,34 @@
                 return;
             }
 
+            clearSectionDraftInputs();
             let draft = {};
+            let remoteReadFailed = !window.toeflStorage;
             if (currentSetId && window.toeflStorage) {
                 try {
                     draft = await toeflStorage.getDraftBySetIdAndType(currentSetId, currentTestType);
-                } catch { /* fallback below */ }
+                } catch (error) {
+                    remoteReadFailed = true;
+                    console.warn("[ToeflSync] Draft load failed:", error);
+                }
             }
 
-            // Local fallback (per-set, then latest generic draft) so test tab always picks up updates.
-            if ((!draft || typeof draft !== "object" || !draft.passages) && currentSetId) {
+            // Only fall back to this set's cache when the remote read failed.
+            if ((!draft || typeof draft !== "object" || !draft.passages) && currentSetId
+                && (remoteReadFailed || !window.toeflStorage?.isRemoteAvailable)) {
                 draft = safeParse(localStorage.getItem(`${DRAFT_KEY}_${currentSetId}`), {});
             }
-            if (!draft || typeof draft !== "object" || !draft.passages) {
-                draft = safeParse(localStorage.getItem(DRAFT_KEY), {});
-            }
-
             if (!draft || typeof draft !== "object" || !draft.passages) return;
+            if ((draft.setId && draft.setId !== currentSetId) || (draft.testType && draft.testType !== currentTestType)) {
+                console.error("[Reading Draft] Ignoring draft belonging to another test");
+                return;
+            }
+            activeSectionDraft = draft;
 
             const allBulkIdEl = document.getElementById("input-bulk-explanation-id-all");
             const allBulkEnEl = document.getElementById("input-bulk-explanation-en-all");
-            if (allBulkIdEl && typeof draft.bulkExplanationId === "string") allBulkIdEl.value = draft.bulkExplanationId;
-            if (allBulkEnEl && typeof draft.bulkExplanationEn === "string") allBulkEnEl.value = draft.bulkExplanationEn;
+            if (allBulkIdEl) allBulkIdEl.value = readingExplanations.getDraftBulkText(draft, "id");
+            if (allBulkEnEl) allBulkEnEl.value = readingExplanations.getDraftBulkText(draft, "en");
             scopePracticeExplanationInputs(true);
 
             const maxPassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
@@ -1757,6 +1783,7 @@
         }
 
         async function refreshFromStorageSync() {
+            if (!sectionReady || isDeveloperMode()) return;
             try {
                 await loadSectionMeta();
                 await loadSectionDraft();
@@ -1780,7 +1807,7 @@
             const requestedDate = params.get("setDate");
             currentSetId = params.get("setId") || "";
             let stored = {};
-            if (!currentSetId && requestedDate) {
+            if (!currentSetId && requestedDate && !forceBlankNew) {
                 const byDate = await resolveSetRecordByDate(requestedDate);
                 if (byDate?.setId) {
                     currentSetId = byDate.setId;
@@ -1998,7 +2025,7 @@
         }
 
         function getInstantDraft() {
-            return safeParse(localStorage.getItem(DRAFT_KEY), {}) || {};
+            return activeSectionDraft;
         }
 
         function escapeHtml(value) {
@@ -2408,28 +2435,18 @@
         }
 
         function parseAllReadingBulkExplanations(rawText) {
-            var text = String(rawText || '').replace(/\r/g, '');
-            var blocks = {};
-            var passages = Array.from(text.matchAll(/^\s*(?:\*\*\s*)?(?:passage|part)\s+(\d+)\s*(?:\*\*)?\s*$/gim));
-            passages.forEach(function(match, index) {
-                var start = match.index + match[0].length;
-                var end = index + 1 < passages.length ? passages[index + 1].index : text.length;
-                var partBlocks = parseReadingBulkExplanations(text.slice(start, end), Number(match[1]));
-                Object.keys(partBlocks).forEach(function(questionNumber) {
-                    blocks[String(match[1]) + '_' + questionNumber] = partBlocks[questionNumber];
-                });
-            });
-            return blocks;
+            return readingExplanations.parseAll(rawText);
         }
 
         async function hydrateReviewFromFirebase(result) {
             var params = new URLSearchParams(window.location.search);
             var setId = String(params.get('setId') || '').trim();
             var testType = String(params.get('testType') || 'mocktest').toLowerCase();
+            if (setId && (result?.setId !== setId || result?.testType !== testType)) result = null;
             if (!setId || !window.toeflStorage || typeof window.toeflStorage.getDraftBySetIdAndType !== 'function') return result;
 
-            var draft = await window.toeflStorage.getDraftBySetIdAndType(setId, testType).catch(function() { return null; });
-            if (!draft || !draft.passages) return result;
+            var draft = await window.toeflStorage.getDraftBySetIdAndType(setId, testType).catch(function(error) { console.error("[Reading Review] Draft load failed:", error); return null; });
+            if (!draft || !draft.passages) return null;
 
             var previousAnswers = {};
             ((result && result.questions) || []).forEach(function(question) {
@@ -2438,8 +2455,8 @@
 
             var questions = [];
             var passages = {};
-            var allBahasa = parseAllReadingBulkExplanations(draft.bulkExplanationId);
-            var allEnglish = parseAllReadingBulkExplanations(draft.bulkExplanationEn);
+            var allBahasa = parseAllReadingBulkExplanations(readingExplanations.getDraftBulkText(draft, "id"));
+            var allEnglish = parseAllReadingBulkExplanations(readingExplanations.getDraftBulkText(draft, "en"));
             Object.keys(draft.passages).forEach(function(passageKey) {
                 var passageId = Number(passageKey);
                 var passage = draft.passages[passageKey] || {};
@@ -2459,7 +2476,7 @@
                 });
             });
 
-            if (!questions.length) return result;
+            if (!questions.length) return null;
             return Object.assign({}, result || {}, { setId: setId, testType: testType, totalQuestions: questions.length, questions: questions, passages: passages });
         }
 
@@ -2601,7 +2618,7 @@
             }
 
             renderOptionRows(question);
-            if (explanationEl) explanationEl.innerHTML = renderExplanationHtml(question.explanation, question);
+            if (explanationEl) explanationEl.innerHTML = renderExplanationHtml(question.explanation || question.explanationEnglish, question);
 
             if (reviewResultData && Array.isArray(reviewResultData.questions)) {
                 reviewQuestionIndex = typeof indexHint === 'number' ? indexHint : reviewQuestionIndex;
@@ -2707,14 +2724,12 @@
                 return;
             }
 
-            applyOctoberFirstSample(result);
 
             result.questions = result.questions.slice().sort(function (a, b) {
                 return Number(a.number || 0) - Number(b.number || 0);
             });
 
             reviewResultData = result;
-            ensureQuestionOneFallback(reviewResultData);
             buildPassageQuestionRanges(reviewResultData);
             renderListeningScaledScore(reviewResultData);
             updatePackageLabel(reviewResultData);
@@ -3094,10 +3109,6 @@
                             <div style="flex:1;">
                                 <div class="format-toolbar" style="background:#27ae60; color:white; padding:8px 10px; border-radius:5px 5px 0 0;"><img src="../asset/icon/key.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;"> Kunci Jawaban</div>
                                 <textarea id="input-answer-key-${p}" class="answer-textarea" placeholder="Contoh: \n34. a\n35. b..."></textarea>
-                            </div>
-                            <div style="flex:2;">
-                                <div class="format-toolbar" style="background:#3498db; color:white; padding:8px 10px; border-radius:5px 5px 0 0;"><img src="../asset/icon/light.png" style="width:15px;height:15px;vertical-align:middle;margin-right:5px;"> Pembahasan (Opsional)</div>
-                                <textarea id="input-explanation-${p}" class="explanation-textarea" placeholder="Contoh:\n34. Terdapat pada baris ke-4..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -3552,8 +3563,8 @@
 
             if (button) button.disabled = true;
             try {
-                await saveSectionMeta();
-                await saveSectionDraft();
+                const saved = await queueSectionSave();
+                if (!saved) throw new Error("Preview was not saved to Firebase");
                 const params = new URLSearchParams(window.location.search);
                 params.set("runMode", runMode);
                 window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}${window.location.hash}`);
@@ -3591,6 +3602,7 @@
             const end = textArea.selectionEnd;
             const text = textArea.value;
             textArea.value = text.substring(0, start) + openTag + text.substring(start, end) + closeTag + text.substring(end);
+            textArea.dispatchEvent(new Event("input", { bubbles: true }));
             textArea.focus();
         }
 
@@ -3631,15 +3643,7 @@
         }
 
         function parseAllBulkExplanations(rawText) {
-            const text = String(rawText || '').replace(/\r/g, '');
-            const blocks = {};
-            const passages = Array.from(text.matchAll(/^\s*(?:\*\*\s*)?(?:passage|part)\s+(\d+)\s*(?:\*\*)?\s*$/gim));
-            passages.forEach((match, index) => {
-                const start = match.index + match[0].length;
-                const end = index + 1 < passages.length ? passages[index + 1].index : text.length;
-                Object.assign(blocks, parseBulkExplanations(text.slice(start, end), Number(match[1])));
-            });
-            return blocks;
+            return readingExplanations.parseAll(rawText);
         }
 
         function renderPassageParagraphHtml(paragraph, lineState) {
@@ -3713,8 +3717,7 @@
 
         function updateUserView(shouldSaveMeta = false) {
             if (shouldSaveMeta) {
-                saveSectionMeta();
-                saveSectionDraft();
+                return saveAndUpdateUserView();
             }
             document.getElementById('global-score-board').style.display = 'none';
             globalAnswerKey = {};
@@ -3745,13 +3748,6 @@
                 document.getElementById(`input-answer-key-${p}`).value.split('\n').forEach(l => {
                     let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
                     if(m) globalAnswerKey[`${p}_${m[1]}`] = m[2].trim().toLowerCase();
-                });
-
-                let currentExpNum = null;
-                document.getElementById(`input-explanation-${p}`).value.split('\n').forEach(l => {
-                    let m = l.match(/^(\d+)[\.\)]?\s+(.*)/);
-                    if(m) { currentExpNum = `${p}_${m[1]}`; globalExplanations[currentExpNum] = m[2].trim(); }
-                    else if(currentExpNum && l.trim()) globalExplanations[currentExpNum] += "<br>" + l.trim();
                 });
 
                 const lines = document.getElementById(`input-magic-questions-${p}`).value.split('\n');
@@ -3852,7 +3848,7 @@
             const passages = {};
             for (let pid in globalPassages) passages[pid] = globalPassages[pid];
 
-            const result = { sectionTitle: "Section 3: Reading Comprehension", sectionKey: "reading", totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), questions: answeredQs, passages };
+            const result = { setId: currentSetId, testType: currentTestType, sectionTitle: "Section 3: Reading Comprehension", sectionKey: "reading", totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), questions: answeredQs, passages };
             localStorage.setItem('toefl_section3_result', JSON.stringify(result));
             if (window.toeflTestHistory) window.toeflTestHistory.record(result);
             if (isFullTest) {
@@ -3860,7 +3856,9 @@
                 window.location.href = `full-test-summary.html?${urlParams.toString()}`; // Adjust filename if your final summary page has a different name
             } else {
                 // Normal single-section flow
-                window.location.href = 'section 3-answered.html';
+                const reviewParams = new URLSearchParams({ testType: currentTestType });
+                if (currentSetId) reviewParams.set("setId", currentSetId);
+                window.location.href = `section 3-answered.html?${reviewParams}`;
             }
         }
 
@@ -3973,10 +3971,10 @@
 
         async function performAutoSave() {
             try {
-                await saveSectionMeta();
-                await saveSectionDraft();
+                const savedRemotely = await queueSectionSave();
+                updateUserView();
                 lastAutoSaveTime = Date.now();
-                showAutoSaveStatus("? Auto-saved", true);
+                showAutoSaveStatus(savedRemotely ? "Saved to Firebase" : "Saved locally; Firebase unavailable", savedRemotely);
             } catch (error) {
                 console.error("[Auto-save] Error:", error);
                 showAutoSaveStatus("? Save failed", false);
@@ -3984,6 +3982,7 @@
         }
 
         function triggerAutoSave() {
+            if (!sectionReady) return;
             clearTimeout(autoSaveTimeout);
             showAutoSaveStatus("? Saving...", true);
             autoSaveTimeout = setTimeout(() => {
@@ -4005,8 +4004,7 @@
             if (button) button.disabled = true;
             showAutoSaveStatus("? Saving to Firebase...", true);
             try {
-                await saveSectionMeta();
-                const savedRemotely = await saveSectionDraft();
+                const savedRemotely = await queueSectionSave();
                 updateUserView();
                 showAutoSaveStatus(savedRemotely ? "Saved to Firebase" : "Saved locally; Firebase unavailable", savedRemotely);
             } catch (error) {
@@ -4018,11 +4016,24 @@
         }
         // ===== END AUTO-SAVE FUNCTIONALITY =====
 
+        function queueSectionSave() {
+            if (!sectionReady) return Promise.reject(new Error("Wait for the selected test to finish loading"));
+            clearTimeout(autoSaveTimeout);
+            const task = sectionSaveQueue.then(async () => {
+                await saveSectionMeta();
+                return saveSectionDraft();
+            });
+            sectionSaveQueue = task.catch((error) => {
+                console.error("[Reading Save] Failed:", error);
+                showAutoSaveStatus("Save failed", false);
+            });
+            return task;
+        }
+
         
 
         window.onload = async () => {
             initStructure();
-            initAutoSave();
             applyViewMode();
             activateInitialTab();
             bindUserToolbarActions();
@@ -4033,6 +4044,8 @@
                 await loadSectionDraft();
                 updateUserView();
                 applyPracticeRunMode();
+                sectionReady = true;
+                initAutoSave();
             } catch (error) {
                 console.warn("[Init] Failed to fully restore section data:", error);
             }
@@ -4049,15 +4062,32 @@
             const setDateEl = document.getElementById("set-date");
             const setDifficultyEl = document.getElementById("set-difficulty");
             if (setDateEl) setDateEl.addEventListener("change", handleSetDateChange);
-            if (setDifficultyEl) setDifficultyEl.addEventListener("change", saveSectionMeta);
+            if (setDifficultyEl) setDifficultyEl.addEventListener("change", triggerAutoSave);
+            document.getElementById("view-explanation-link")?.addEventListener("click", async (event) => {
+                event.preventDefault();
+                try {
+                    const saved = await queueSectionSave();
+                    updateUserView();
+                    if (!saved) {
+                        showAutoSaveStatus("Saved locally; Firebase unavailable", false);
+                        return;
+                    }
+                    window.location.href = document.getElementById("view-explanation-link").href;
+                } catch (error) {
+                    console.error("[Reading Review] Save failed:", error);
+                    showAutoSaveStatus("Save failed; explanation page not opened", false);
+                }
+            });
 
             // Keep user test tab synced when developer tab updates draft/meta in another tab.
             window.addEventListener("storage", (event) => {
                 const syncKeys = [
-                    DRAFT_KEY,
+                    `${DRAFT_KEY}_${currentSetId}`,
                     SETS_KEY_V2,
                     "toefl_developer_drafts_v2",
-                    "toefl_developer_sets_v2"
+                    "toefl_developer_sets_v2",
+                    `toefl_developer_${currentTestType}_drafts_v2`,
+                    `toefl_developer_${currentTestType}_sets_v2`
                 ];
                 if (event.key && syncKeys.includes(event.key)) {
                     refreshFromStorageSync();
@@ -4067,4 +4097,3 @@
     </script>
 </body>
 </html>
-

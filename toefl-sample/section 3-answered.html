@@ -834,10 +834,13 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="toefl-storage-sync.js?v=20260801a"></script>
+    <script src="toefl-storage-sync.js?v=20261006a"></script>
+    <script src="js/reading-explanations.js?v=20261006a"></script>
     <script>
         var reviewResultData = null;
         var reviewQuestionIndex = 0;
+        var reviewRefreshTimer = null;
+        var reviewRefreshInProgress = false;
         var reviewPassageRanges = {};
 
         function escapeHtml(value) {
@@ -1439,28 +1442,18 @@
         }
 
         function parseAllReadingBulkExplanations(rawText) {
-            var text = String(rawText || '').replace(/\r/g, '');
-            var blocks = {};
-            var passages = Array.from(text.matchAll(/^\s*(?:\*\*\s*)?(?:passage|part)\s+(\d+)\s*(?:\*\*)?\s*$/gim));
-            passages.forEach(function(match, index) {
-                var start = match.index + match[0].length;
-                var end = index + 1 < passages.length ? passages[index + 1].index : text.length;
-                var partBlocks = parseReadingBulkExplanations(text.slice(start, end), Number(match[1]));
-                Object.keys(partBlocks).forEach(function(questionNumber) {
-                    blocks[String(match[1]) + '_' + questionNumber] = partBlocks[questionNumber];
-                });
-            });
-            return blocks;
+            return readingExplanations.parseAll(rawText);
         }
 
         async function hydrateReviewFromFirebase(result) {
             var params = new URLSearchParams(window.location.search);
             var setId = String(params.get('setId') || '').trim();
             var testType = String(params.get('testType') || 'mocktest').toLowerCase();
+            if (setId && (result?.setId !== setId || result?.testType !== testType)) result = null;
             if (!setId || !window.toeflStorage || typeof window.toeflStorage.getDraftBySetIdAndType !== 'function') return result;
 
-            var draft = await window.toeflStorage.getDraftBySetIdAndType(setId, testType).catch(function() { return null; });
-            if (!draft || !draft.passages) return result;
+            var draft = await window.toeflStorage.getDraftBySetIdAndType(setId, testType).catch(function(error) { console.error("[Reading Review] Draft load failed:", error); return null; });
+            if (!draft || !draft.passages) return null;
 
             var previousAnswers = {};
             ((result && result.questions) || []).forEach(function(question) {
@@ -1469,8 +1462,8 @@
 
             var questions = [];
             var passages = {};
-            var allBahasa = parseAllReadingBulkExplanations(draft.bulkExplanationId);
-            var allEnglish = parseAllReadingBulkExplanations(draft.bulkExplanationEn);
+            var allBahasa = parseAllReadingBulkExplanations(readingExplanations.getDraftBulkText(draft, "id"));
+            var allEnglish = parseAllReadingBulkExplanations(readingExplanations.getDraftBulkText(draft, "en"));
             Object.keys(draft.passages).forEach(function(passageKey) {
                 var passageId = Number(passageKey);
                 var passage = draft.passages[passageKey] || {};
@@ -1490,7 +1483,7 @@
                 });
             });
 
-            if (!questions.length) return result;
+            if (!questions.length) return null;
             return Object.assign({}, result || {}, { setId: setId, testType: testType, totalQuestions: questions.length, questions: questions, passages: passages });
         }
 
@@ -1632,7 +1625,7 @@
             }
 
             renderOptionRows(question);
-            if (explanationEl) explanationEl.innerHTML = renderExplanationHtml(question.explanation, question);
+            if (explanationEl) explanationEl.innerHTML = renderExplanationHtml(question.explanation || question.explanationEnglish, question);
 
             if (reviewResultData && Array.isArray(reviewResultData.questions)) {
                 reviewQuestionIndex = typeof indexHint === 'number' ? indexHint : reviewQuestionIndex;
@@ -1700,12 +1693,22 @@
         }
 
         async function refreshReviewFromFirebase() {
-            if (!reviewResultData) return;
+            if (reviewRefreshInProgress) return;
+            reviewRefreshInProgress = true;
+            try {
+            if (!reviewResultData) {
+                await init();
+                return;
+            }
             var refreshed = await hydrateReviewFromFirebase(reviewResultData);
-            if (!refreshed || !Array.isArray(refreshed.questions)) return;
+            if (!refreshed || !Array.isArray(refreshed.questions) || !refreshed.questions.length) {
+                reviewResultData = null;
+                await init();
+                return;
+            }
 
-            var currentSignature = JSON.stringify(reviewResultData.questions);
-            var refreshedSignature = JSON.stringify(refreshed.questions);
+            var currentSignature = JSON.stringify([reviewResultData.questions, reviewResultData.passages]);
+            var refreshedSignature = JSON.stringify([refreshed.questions, refreshed.passages]);
             if (currentSignature === refreshedSignature) return;
 
             var activeQuestionNumber = Number(reviewResultData.questions[reviewQuestionIndex] && reviewResultData.questions[reviewQuestionIndex].number);
@@ -1716,9 +1719,15 @@
                 return Number(question.number) === activeQuestionNumber;
             });
             renderQuestion(reviewResultData.questions[nextIndex >= 0 ? nextIndex : 0], nextIndex >= 0 ? nextIndex : 0);
+            } finally {
+                reviewRefreshInProgress = false;
+            }
         }
 
         async function init() {
+            if (!reviewRefreshTimer && new URLSearchParams(window.location.search).get('setId')) {
+                reviewRefreshTimer = window.setInterval(refreshReviewFromFirebase, 3000);
+            }
             var result = null;
             try {
                 var raw = localStorage.getItem('toefl_section3_result');
@@ -1732,20 +1741,20 @@
             if (!result || !Array.isArray(result.questions) || !result.questions.length) {
                 document.getElementById('reviewQuestionText').textContent = 'No review data found. Complete Section 3 first.';
                 document.getElementById('reviewExplanationText').textContent = 'No explanation available.';
+                document.getElementById('reviewOptionList').innerHTML = '';
+                document.getElementById('reviewPassageBox').innerHTML = '';
                 renderHeaderNavigator({ questions: [] }, 1);
                 document.getElementById('headerPrevQuestionBtn').disabled = true;
                 document.getElementById('headerNextQuestionBtn').disabled = true;
                 return;
             }
 
-            applyOctoberFirstSample(result);
 
             result.questions = result.questions.slice().sort(function (a, b) {
                 return Number(a.number || 0) - Number(b.number || 0);
             });
 
             reviewResultData = result;
-            ensureQuestionOneFallback(reviewResultData);
             buildPassageQuestionRanges(reviewResultData);
             renderListeningScaledScore(reviewResultData);
             updatePackageLabel(reviewResultData);
@@ -1761,9 +1770,6 @@
             }
             renderQuestion(firstQuestion, firstIndex);
             initReadingPassageScrollbars();
-            if (new URLSearchParams(window.location.search).get('setId')) {
-                window.setInterval(refreshReviewFromFirebase, 3000);
-            }
 
             var featuresOverlay = document.getElementById('features-overlay');
             if (featuresOverlay) {
@@ -1782,4 +1788,3 @@
     </script>
 </body>
 </html>
-

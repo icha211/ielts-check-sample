@@ -24,6 +24,27 @@ with **+ Package** available.
 
 Regression checks: `node --test toefl-sample/practice-package-delete.test.js`.
 
+## Reading editor explanations and test isolation
+
+Section 3 saves bulk Bahasa and English explanations in the selected test's
+`bulkExplanationId` and `bulkExplanationEn` draft fields. The reading editor,
+instant preview, and explanation page use the same parser. For a single-passage
+practice test, `Question N` headings can be pasted without a `Passage 1` heading.
+Older per-passage explanations are loaded into the bulk editor; the removed
+optional explanation box is no longer required.
+
+Autosave and both save/update buttons serialize writes. **View Explanation**
+saves first and routes with `setId` and `testType`. The explanation page polls
+that test's draft every three seconds, including passage edits, and never uses
+another test's saved answers or injects demonstration questions.
+
+A `new=1` editor starts blank and creates its own set id on the first save.
+Draft caches and explanation merges are scoped to the selected test, not a
+shared latest-draft key. A missing remote draft is treated as blank rather than
+restoring deleted data from a stale cache.
+
+Regression checks: `node --test toefl-sample/reading-data-flow.test.js`.
+
 ## 1) Item Bank (question metadata + explanations)
 
 Recommended file: item_bank.csv
