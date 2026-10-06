@@ -42,6 +42,8 @@
         const field = language === "en" ? "bulkExplanationEn" : "bulkExplanationId";
         const blocks = {};
         Object.entries(draft.passages || {}).forEach(([passage, row]) => {
+            // Firebase may serialize numeric passage keys as an array with null gaps.
+            if (row == null) return;
             if (language !== "en") Object.assign(blocks, parseQuestions(row.explanation, passage));
             Object.assign(blocks, parseQuestions(row[field], passage));
         });

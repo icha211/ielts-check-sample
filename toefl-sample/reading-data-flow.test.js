@@ -104,6 +104,48 @@ test("new test ignores shared latest draft and does not reuse an existing test i
     assert.ok(local.get("latest-draft").includes("Old test passage"));
 });
 
+test("Firebase null passage gaps restore bulk explanations and allow Save & Update", async () => {
+    for (const passages of [
+        [null, { passage: "Saved passage", explanation: "1. Legacy reason", bulkExplanationEn: "Question 1\nEnglish reason" }, null],
+        { 1: { passage: "Saved passage", explanation: "1. Legacy reason", bulkExplanationEn: "Question 1\nEnglish reason" }, 2: null }
+    ]) {
+        const { context, window, elements } = fixture("?testType=practicetest&setId=selected");
+        context.currentSetId = "selected";
+        const writes = [];
+        window.toeflStorage = {
+            isRemoteAvailable: true,
+            getDraftBySetIdAndType: async () => ({ setId: "selected", testType: "practicetest", passages }),
+            saveDraftBySetIdAndType: async (id, module, draft, type) => {
+                writes.push({ id, module, draft, type });
+                return true;
+            }
+        };
+        context.toeflStorage = window.toeflStorage;
+        await context.loadSectionDraft();
+        assert.equal(elements.get("input-passage-1").value, "Saved passage");
+        assert.equal(context.readingExplanations.parseAll(elements.get("input-bulk-explanation-id-all").value)["1_1"], "Legacy reason");
+        assert.equal(context.readingExplanations.parseAll(elements.get("input-bulk-explanation-en-all").value)["1_1"], "English reason");
+        context.sectionReady = true;
+        context.sectionSaveQueue = Promise.resolve();
+        context.clearTimeout = () => {};
+        context.autoSaveTimeout = null;
+        context.saveSectionMeta = async () => {};
+        context.updateUserView = () => {};
+        context.showAutoSaveStatus = () => {};
+        loadFunction(context, editor, "queueSectionSave");
+        loadFunction(context, editor, "saveAndUpdateUserView");
+        elements.get("input-bulk-explanation-id-all").value = "Question 1\nUpdated reason";
+        const button = { disabled: false };
+        await context.saveAndUpdateUserView(button);
+        assert.equal(button.disabled, false);
+        assert.equal(writes.length, 1);
+        assert.equal(writes[0].id, "selected");
+        assert.equal(writes[0].type, "practicetest");
+        assert.equal(writes[0].draft.passages[1].passage, "Saved passage");
+        assert.equal(context.readingExplanations.parseAll(writes[0].draft.bulkExplanationId)["1_1"], "Updated reason");
+    }
+});
+
 test("missing remote draft stays blank rather than importing stale local drafts", async () => {
     const { context, window, local, elements } = fixture("?testType=practicetest&setId=selected");
     context.currentSetId = "selected";

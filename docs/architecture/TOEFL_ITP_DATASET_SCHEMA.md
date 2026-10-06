@@ -32,6 +32,8 @@ instant preview, and explanation page use the same parser. For a single-passage
 practice test, `Question N` headings can be pasted without a `Passage 1` heading.
 Older per-passage explanations are loaded into the bulk editor; the removed
 optional explanation box is no longer required.
+Null passage gaps in Firebase's numeric-key arrays are treated as absent
+passages, allowing existing drafts to load and save normally.
 
 Autosave and both save/update buttons serialize writes. **View Explanation**
 saves first and routes with `setId` and `testType`. The explanation page polls
