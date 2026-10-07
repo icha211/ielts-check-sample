@@ -1619,7 +1619,6 @@
             var source = String(markdown || '').trim();
             if (!source) return '';
             var lines = source.split(/\r?\n/);
-            var html = '';
             var preserveEliminateQualifier = !!(options && options.preserveEliminateQualifier);
             var conceptTitle = String(options && options.conceptTitle || '').trim();
             var optionAnswerTexts = (options && options.optionAnswerTexts || []).map(function (optionText) {
@@ -1628,11 +1627,8 @@
 
             function inlineText(value) {
                 var text = String(value || '');
-                // Convert markdown **bold** to <strong>bold</strong>
                 text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-                // Normalize <b> to <strong>
                 text = text.replace(/<b\b[^>]*>/gi, '<strong>').replace(/<\/b>/gi, '</strong>');
-                // Escape non-markup and restore allowed tags
                 return escapeHtml(text)
                     .replace(/&lt;(\/?)strong&gt;/gi, '<$1strong>')
                     .replace(/&lt;(\/?)u&gt;/gi, '<$1u>')
@@ -1640,10 +1636,10 @@
                     .replace(/&lt;(\/?)i&gt;/gi, '<$1em>');
             }
 
-            function statusIcon(status) {
-                var isCorrect = String(status || '').toUpperCase() === 'BENAR' || String(status || '').toUpperCase() === 'TRUE' || String(status || '').toUpperCase() === 'CORRECT';
-                var path = isCorrect ? 'M20 6 9 17l-5-5' : 'M18 6 6 18M6 6l12 12';
-                return '<svg class="section2-qc-status-icon ' + (isCorrect ? 'is-correct' : 'is-wrong') + '" viewBox="0 0 24 24" aria-hidden="true"><path d="' + path + '"></path></svg>';
+            function renderStatusMark(isCorrect) {
+                return isCorrect
+                    ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+                    : '<span style="color: #dc2626; font-weight: bold; line-height: 1;">✕</span>';
             }
 
             function renderObservePlainText(value) {
@@ -1692,13 +1688,11 @@
                     var role = (match[2] || match[4] || '').trim();
                     var trail = (match[5] || '').trim();
 
-                    // If word ends with punctuation like comma/semicolon, move it to trail
                     var wordPunc = word.match(/[,.;:]+$/);
                     if (wordPunc) {
                         trail = wordPunc[0] + trail;
                         word = word.slice(0, -wordPunc[0].length).trim();
                     }
-                    // If role ends with punctuation, move it to trail
                     var rolePunc = role.match(/[,.;:]+$/);
                     if (rolePunc) {
                         trail = rolePunc[0] + trail;
@@ -1736,76 +1730,132 @@
             }
 
             function renderKeyValueRow(label, value) {
-                return '<div class="section2-qc-elimination-row section2-qc-keyvalue-row">'
+                return '<div class="qc-core__row">'
                     + '<span class="section2-qc-bullet" aria-hidden="true"></span>'
-                    + '<span class="section2-qc-elimination-choice"><strong>' + inlineText(label) + '</strong></span>'
-                    + '<span class="section2-qc-elimination-colon">:</span>'
-                    + '<span class="section2-qc-elimination-reason">' + inlineText(value) + '</span>'
+                    + '<strong>' + inlineText(label) + '</strong>'
+                    + '<span class="qc-colon">:</span>'
+                    + '<span class="qc-core__row-value">' + inlineText(value) + '</span>'
                     + '</div>';
             }
 
-            // Header lines are matched loosely: with or without "**" or "<strong>" bold markers, and with or
-            // without a space before the colon, so rich/hand-edited explanations still get styled.
             var headerRegex = /^(?:[-*•#>\s]|<\/?(?:strong|b|p|div|span|em)\b[^>]*>)*\*{0,2}\s*([CORE])\s*-\s*(Concept|Observe\s*S-?V-?C|Requirement|Eliminate)(\s*\([^)]*\))?\s*\*{0,2}\s*:\s*\*{0,2}(?:<\/(?:strong|b|span)>)?\s*(.*)$/i;
-            var HEADER_LABELS = { c: 'C - Concept', o: 'O - Observe S-V-C', r: 'R - Requirement', e: 'E - Eliminate' };
+
+            var conceptHtml = '';
+            var observeLinesHtml = '';
+            var observeRowsHtml = '';
+            var requirementHtml = '';
+            var optionsHtml = '';
+            var footerHtml = '';
+            var currentSection = null;
 
             for (var i = 0; i < lines.length; i += 1) {
                 var line = lines[i].trim();
                 if (!line) continue;
-                if (/^(?:[-*•#>\s]|<\/?(?:strong|b|p|div|span)\b[^>]*>)*Question\s*:/i.test(line)) {
-                    html += '<div class="section2-qc-core-question">' + inlineText(line) + '</div>';
-                    continue;
-                }
+
                 var headerMatch = line.match(headerRegex);
                 if (headerMatch) {
-                    var letterKey = headerMatch[1].toLowerCase();
-                    var headerLabel = HEADER_LABELS[letterKey] || (headerMatch[1] + ' - ' + headerMatch[2]);
-                    var qualifier = String(headerMatch[3] || '').trim();
-                    if (letterKey === 'e' && preserveEliminateQualifier && qualifier) headerLabel += ' ' + qualifier;
+                    currentSection = headerMatch[1].toLowerCase();
                     var inlineRest = String(headerMatch[4] || '').trim();
-                    html += '<p class="section2-qc-core-key">' + escapeHtml(headerLabel) + ':</p>';
-                    if (letterKey === 'c') {
+
+                    if (currentSection === 'c') {
                         var conceptText = inlineRest;
-                        if (!conceptText && i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].match(headerRegex)) conceptText = lines[++i].trim();
-                        var conceptHtml = conceptTitle ? escapeHtml(conceptTitle) : inlineText(conceptText.replace(/\*+/g, ''));
-                        if (conceptHtml) html += '<p class="qc-concept-text"><mark class="qc-concept-badge">' + conceptHtml + '</mark></p>';
-                        continue;
-                    }
-                    if (letterKey === 'o') {
-                        if (inlineRest) {
-                            html += renderObserveLine(inlineRest);
-                        } else if (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].match(/^\s*[*#•-]/) && !lines[i + 1].match(headerRegex)) {
-                            html += renderObserveLine(lines[++i]);
+                        if (!conceptText && i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].match(headerRegex)) {
+                            conceptText = lines[++i].trim();
                         }
-                        continue;
+                        conceptHtml = conceptTitle ? escapeHtml(conceptTitle) : inlineText(conceptText.replace(/\*+/g, ''));
+                    } else if (currentSection === 'o') {
+                        if (inlineRest) {
+                            observeLinesHtml += renderObserveLine(inlineRest);
+                        } else if (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].match(/^\s*[*#•-]/) && !lines[i + 1].match(headerRegex)) {
+                            observeLinesHtml += renderObserveLine(lines[++i]);
+                        }
+                    } else if (currentSection === 'r') {
+                        if (inlineRest) requirementHtml += inlineText(inlineRest);
                     }
-                    if (inlineRest) html += '<p>' + inlineText(inlineRest) + '</p>';
                     continue;
                 }
+
+                if (currentSection === 'c' && !conceptHtml) {
+                    conceptHtml = inlineText(line);
+                    continue;
+                }
+
+                if (currentSection === 'r' && !requirementHtml) {
+                    requirementHtml = inlineText(line);
+                    continue;
+                }
+
                 if (/\[[^\]\n]+\s+\([^)\n]+\)\]/.test(line)) {
-                    html += renderObserveLine(line);
+                    observeLinesHtml += renderObserveLine(line);
                     continue;
                 }
+
                 var eliminationMatch = line.match(/^(?:[-*•\s]|<\/?(?:strong|b|span)\b[^>]*>)*\*{0,2}\(?\s*([A-D])\s*\)?\s*(.*?)\s*\*{0,2}(?:<\/(?:strong|b|span)>)?\s*\((BENAR|SALAH|TRUE|FALSE|CORRECT|INCORRECT)\)\s*:\s*(.*)$/i);
                 if (eliminationMatch) {
-                    var choiceLabel = '(' + eliminationMatch[1].toUpperCase() + ') ' + eliminationMatch[2].replace(/<\/?(?:strong|b|span)\b[^>]*>/gi, '').trim();
-                    html += '<div class="section2-qc-elimination-row">'
-                        + '<span class="section2-qc-bullet" aria-hidden="true"></span>'
-                        + '<span class="section2-qc-elimination-choice"><strong>' + inlineText(choiceLabel) + '</strong></span>'
-                        + '<span class="section2-qc-elimination-icon">' + statusIcon(eliminationMatch[3]) + '</span>'
-                        + '<span class="section2-qc-elimination-colon">:</span>'
-                        + '<span class="section2-qc-elimination-reason">' + inlineText(eliminationMatch[4]) + '</span>'
-                        + '</div>';
+                    var optionLetter = eliminationMatch[1].toUpperCase();
+                    var optionLabelText = eliminationMatch[2].replace(/<\/?(?:strong|b|span)\b[^>]*>/gi, '').trim();
+                    var statusStr = eliminationMatch[3].toUpperCase();
+                    var isCorrect = statusStr === 'BENAR' || statusStr === 'TRUE' || statusStr === 'CORRECT';
+                    var state = isCorrect ? 'correct' : 'incorrect';
+                    var reasonText = eliminationMatch[4];
+
+                    optionsHtml += '<li class="qc-core__item is-' + state + '">'
+                        + '<span class="qc-core__label-wrap">'
+                        + '<span class="instant-option-letter">' + escapeHtml(optionLetter) + '</span>'
+                        + '<strong>' + inlineText(optionLabelText.replace(/^\([A-D]\)\s*/i, '')) + '</strong>'
+                        + '</span>'
+                        + '<span class="qc-core__item-mark">' + renderStatusMark(isCorrect) + '</span>'
+                        + '<span class="qc-colon">:</span>'
+                        + '<span>' + inlineText(reasonText) + '</span>'
+                        + '</li>';
                     continue;
                 }
+
                 var keyValueMatch = line.match(/^(?:[-*•\s]|<\/?(?:strong|b|span)\b[^>]*>)*\*{0,2}(Subject\s+\d+\s*\+\s*Verb\s+\d+|Subject(?:\s+\d+)?|Verb(?:\s+\d+)?|Compliance|Connector|Requirement|Eliminate|Reason|Alasan|[A-Za-z\s]+?)\*{0,2}(?:<\/(?:strong|b|span)>)?\s*:\s*(.*)$/i);
                 if (keyValueMatch && keyValueMatch[1].trim() && !/^Maka\s+(?:perbaikan\s+)?kalimat/i.test(keyValueMatch[1])) {
-                    html += renderKeyValueRow(keyValueMatch[1].trim(), keyValueMatch[2].trim());
+                    observeRowsHtml += renderKeyValueRow(keyValueMatch[1].trim(), keyValueMatch[2].trim());
                     continue;
                 }
-                html += '<p>' + inlineText(line) + '</p>';
+
+                footerHtml += '<p>' + inlineText(line) + '</p>';
             }
-            return html;
+
+            var resultHtml = '';
+
+            if (conceptHtml) {
+                resultHtml += '<div class="qc-core__block qc-core__concept">'
+                    + '<div class="qc-core__label">C – Concept :</div>'
+                    + '<div class="qc-core__text"><strong>' + conceptHtml + '</strong></div>'
+                    + '</div>';
+            }
+
+            if (observeLinesHtml || observeRowsHtml) {
+                resultHtml += '<div class="qc-core__block">'
+                    + '<div class="qc-core__label">O – Observe S-V-C :</div>'
+                    + (observeLinesHtml ? observeLinesHtml : '')
+                    + (observeRowsHtml ? '<div class="qc-core__rows">' + observeRowsHtml + '</div>' : '')
+                    + '</div>';
+            }
+
+            if (requirementHtml) {
+                resultHtml += '<div class="qc-core__block">'
+                    + '<div class="qc-core__label">R – Requirement :</div>'
+                    + '<div class="qc-core__text">' + requirementHtml + '</div>'
+                    + '</div>';
+            }
+
+            if (optionsHtml) {
+                resultHtml += '<div class="qc-core__block">'
+                    + '<div class="qc-core__label">E – Eliminate :</div>'
+                    + '<ul class="qc-core__list">' + optionsHtml + '</ul>'
+                    + '</div>';
+            }
+
+            if (footerHtml) {
+                resultHtml += footerHtml;
+            }
+
+            return resultHtml;
         }
 
         function buildCompleteSentenceBox(question, blueprint) {
@@ -1860,7 +1910,10 @@
             }
 
             return '<section class="section2-complete-sentence-box">'
-                + '<h3>Maka kalimat lengkapnya</h3>'
+                + '<div style="display: flex; align-items: center; gap: 8px;">'
+                +   '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#28786f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+                +   '<h3 style="margin: 0;">Maka kalimat lengkapnya</h3>'
+                + '</div>'
                 + '<p class="section2-complete-sentence">&ldquo;' + sentenceHtml + '&rdquo;</p>'
                 + '<p class="section2-complete-rationale">' + inlineText(rationale) + '</p>'
                 + '</section>';
