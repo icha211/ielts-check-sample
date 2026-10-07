@@ -1919,42 +1919,114 @@
                 + '</section>';
         }
 
+        // function buildSavedQcCoreAnalysisBlock(question) {
+        //     var questionNumber = Number(question && question.number) || 0;
+        //     var isExpanded = qcCoreExpandState[questionNumber] !== false;
+        //     var savedText = String(question && question.explanation || '').trim();
+        //     if (!savedText) return '';
+        //     var savedTextWithoutCompleteSentence = savedText
+        //         .replace(/Maka\s+(?:perbaikan\s+)?kalimat\s+lengkapnya\s*:?\s*\n+[\s\S]*?(?=\n\s*\*{0,2}[CORE]\s*-|$)/i, '')
+        //         .trim();
+        //     return '<section class="section2-qc-analysis ' + (isExpanded ? 'is-expanded' : 'is-collapsed') + '">'
+        //         + '<div class="section2-qc-core-banner">'
+        //         + '<button type="button" class="section2-qc-core-head" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" onclick="toggleQcCoreExpand(' + questionNumber + ')">'
+        //         + '<span style="display:inline-flex;align-items:center;gap:8px;"><img src="../asset/icon/light.png" alt="" style="width:16px;height:16px;object-fit:contain;">QC CORE ANALYSIS</span>'
+        //         + '<i class="ph ' + (isExpanded ? 'ph-caret-circle-up' : 'ph-caret-circle-down') + '" aria-hidden="true"></i>'
+        //         + '</button>'
+        //         + '<div class="section2-qc-core-expand-lines">'
+        //         + '<p><b>C - Concept</b><span>Menentukan Topik Grammar atau materi apa yang sedang diuji</span></p>'
+        //         + '<p><b>O - Observe S-V-C (Subject-Verb-Complement)</b><span>Melakukan Identifikasi S-V-C dan Mencari apa yang sudah ada dan apa yang hilang di kalimat</span></p>'
+        //         + '<p><b>R - Requirement</b><span>Menarik Kesimpulan Kebutuhan dan Menentukan apa yang harus dicari di pilihan ganda</span></p>'
+        //         + '<p><b>E - Eliminate</b><span>Melakukan Eliminasi Opsi dengan Membedah A, B, C, D dengan alasan kenapa salah/benar berdasarkan S-V-C</span></p>'
+        //         + '</div>'
+        //         + '</div>'
+        //         + '<div class="section2-qc-core-body">'
+        //         + renderSavedQcCoreMarkdown(savedTextWithoutCompleteSentence, {
+        //             conceptTitle: normalizeText(question && question.materialTopic && question.materialTopic.title),
+        //             preserveEliminateQualifier: Number(question && question.partId) === 2,
+        //             optionAnswerTexts: Number(question && question.partId) === 2
+        //                 ? Object.keys(question && question.options || {}).map(function (letter) {
+        //                     return extractChoiceText(question.options, letter);
+        //                 })
+        //                 : []
+        //         })
+        //         + buildCompleteSentenceBox(question)
+        //         + '</div>'
+        //         + '</section>';
+        // }
         function buildSavedQcCoreAnalysisBlock(question) {
-            var questionNumber = Number(question && question.number) || 0;
-            var isExpanded = qcCoreExpandState[questionNumber] !== false;
-            var savedText = String(question && question.explanation || '').trim();
-            if (!savedText) return '';
-            var savedTextWithoutCompleteSentence = savedText
-                .replace(/Maka\s+(?:perbaikan\s+)?kalimat\s+lengkapnya\s*:?\s*\n+[\s\S]*?(?=\n\s*\*{0,2}[CORE]\s*-|$)/i, '')
-                .trim();
-            return '<section class="section2-qc-analysis ' + (isExpanded ? 'is-expanded' : 'is-collapsed') + '">'
-                + '<div class="section2-qc-core-banner">'
-                + '<button type="button" class="section2-qc-core-head" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" onclick="toggleQcCoreExpand(' + questionNumber + ')">'
+            if (!question) return '';
+
+            var qNum = question.number || question.questionNumber || '';
+            var numericQNum = Number(qNum);
+
+            var markdownSource = String(question.explanation || question.qc_core_markdown || '').trim();
+            if (!markdownSource && typeof buildQcCoreMarkdown === 'function') {
+                markdownSource = buildQcCoreMarkdown(qNum, question, normalizeLetter(question.correctAnswer) || '');
+            }
+
+            if (typeof window.qcCoreExpandState === 'undefined') {
+                window.qcCoreExpandState = {};
+            }
+
+            // Question 1 banner is open by default; Question 2+ purple banner is collapsed by default
+            var isExpanded;
+            if (window.qcCoreExpandState.hasOwnProperty(qNum)) {
+                isExpanded = window.qcCoreExpandState[qNum] !== false;
+            } else {
+                isExpanded = (numericQNum === 1);
+                window.qcCoreExpandState[qNum] = isExpanded;
+            }
+
+            var coreBodyHtml = renderSavedQcCoreMarkdown(markdownSource, {
+                conceptTitle: question.conceptTitle || ''
+            });
+
+            if (!coreBodyHtml) return '';
+
+            return '<div class="qc-core">'
+                + '<button type="button" class="qc-core__head" aria-expanded="' + (isExpanded ? 'true' : 'false') + '" onclick="toggleQcCoreExpand(\'' + qNum + '\')">'
                 + '<span style="display:inline-flex;align-items:center;gap:8px;"><img src="../asset/icon/light.png" alt="" style="width:16px;height:16px;object-fit:contain;">QC CORE ANALYSIS</span>'
                 + '<i class="ph ' + (isExpanded ? 'ph-caret-circle-up' : 'ph-caret-circle-down') + '" aria-hidden="true"></i>'
                 + '</button>'
-                + '<div class="section2-qc-core-expand-lines">'
-                + '<p><b>C - Concept</b><span>Menentukan Topik Grammar atau materi apa yang sedang diuji</span></p>'
-                + '<p><b>O - Observe S-V-C (Subject-Verb-Complement)</b><span>Melakukan Identifikasi S-V-C dan Mencari apa yang sudah ada dan apa yang hilang di kalimat</span></p>'
-                + '<p><b>R - Requirement</b><span>Menarik Kesimpulan Kebutuhan dan Menentukan apa yang harus dicari di pilihan ganda</span></p>'
-                + '<p><b>E - Eliminate</b><span>Melakukan Eliminasi Opsi dengan Membedah A, B, C, D dengan alasan kenapa salah/benar berdasarkan S-V-C</span></p>'
+                
+                // ONLY the purple banner is wrapped inside the collapsible container
+                + '<div class="qc-core__banner-collapsible' + (isExpanded ? '' : ' is-hidden') + '" style="display: ' + (isExpanded ? 'block' : 'none') + ';">'
+                    + '<div class="section2-qc-core-banner">'
+                    + '<div class="section2-qc-core-banner-item"><strong>C – Concept</strong><span>Menentukan Topik Grammar atau materi apa yang sedang diuji</span></div>'
+                    + '<div class="section2-qc-core-banner-item"><strong>O – Observe S–V–C (Subject–Verb–Complement)</strong><span>Melakukan Identifikasi S–V–C dan Mencari apa yang sudah ada dan apa yang hilang di kalimat</span></div>'
+                    + '<div class="section2-qc-core-banner-item"><strong>R – Requirement</strong><span>Menarik Kesimpulan Kebutuhan dan Menentukan apa yang harus dicari di pilihan ganda</span></div>'
+                    + '<div class="section2-qc-core-banner-item"><strong>E – Eliminate</strong><span>Melakukan Eliminasi Opsi dengan Membedah A, B, C, D dengan alasan kenapa salah/benar berdasarkan S–V–C</span></div>'
+                    + '</div>'
                 + '</div>'
-                + '</div>'
-                + '<div class="section2-qc-core-body">'
-                + renderSavedQcCoreMarkdown(savedTextWithoutCompleteSentence, {
-                    conceptTitle: normalizeText(question && question.materialTopic && question.materialTopic.title),
-                    preserveEliminateQualifier: Number(question && question.partId) === 2,
-                    optionAnswerTexts: Number(question && question.partId) === 2
-                        ? Object.keys(question && question.options || {}).map(function (letter) {
-                            return extractChoiceText(question.options, letter);
-                        })
-                        : []
-                })
-                + buildCompleteSentenceBox(question)
-                + '</div>'
-                + '</section>';
+                
+                // Body content stays outside and remains visible at all times
+                + '<div class="qc-core__body">' + coreBodyHtml + '</div>'
+                
+                + '</div>';
         }
 
+        function toggleQcCoreExpand(qNum) {
+            if (typeof window.qcCoreExpandState === 'undefined') {
+                window.qcCoreExpandState = {};
+            }
+            
+            // Toggle state
+            window.qcCoreExpandState[qNum] = !window.qcCoreExpandState[qNum];
+            var isNowExpanded = window.qcCoreExpandState[qNum];
+            
+            var card = document.querySelector('#explainationTabContent .qc-core');
+            if (card) {
+                var button = card.querySelector('.qc-core__head');
+                var bannerWrapper = card.querySelector('.qc-core__banner-collapsible');
+                var icon = button ? button.querySelector('i.ph') : null;
+
+                if (button) button.setAttribute('aria-expanded', isNowExpanded ? 'true' : 'false');
+                if (bannerWrapper) bannerWrapper.style.display = isNowExpanded ? 'block' : 'none';
+                if (icon) icon.className = 'ph ' + (isNowExpanded ? 'ph-caret-circle-up' : 'ph-caret-circle-down');
+            }
+        }
+        
             function inlineText(value) {
                 var text = String(value || '');
                 text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -2513,6 +2585,7 @@
         function renderExplainationTabDetail(question) {
             var host = document.getElementById('explainationTabContent');
             if (!host || !question) return;
+
             if (isPartBQuestion16FigmaCase(question)) {
                 host.innerHTML = renderPartBQuestion16Explanation(question);
                 return;
@@ -2526,22 +2599,62 @@
                 cacheQcCoreExplanation(question.number, host);
                 return;
             }
+
             var correct = normalizeLetter(question.correctAnswer) || 'A';
             var isCorrect = !!question.isCorrect;
-            var blueprint = deriveGrammarBlueprint(question);
+
+            // Build Question Stem HTML (Part A vs Part B)
+            var stemContentHtml = question.isPartB
+                ? buildPartBInlineSentenceHtml(question)
+                : buildQuestionStemHtml(question);
+
+            // Build Options HTML (Part A only)
+            var optionsBlockHtml = question.isPartB
+                ? ''
+                : '<div class="explaination-figma-options">' 
+                    + buildOptionMarkup(question, { selected: 'Your Answer', correct: 'Correct Answer' }) 
+                    + '</div>';
 
             host.innerHTML = '<div class="explaination-figma section2-figma-shell section2-aiqc-host">'
                 + '<div class="section2-figma-top">'
                 + '<div class="section2-figma-question-row">'
                 + '<div class="explaination-figma-qnum ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + escapeHtml(String(question.number || '-')) + '</div>'
-                + '<div class="section2-figma-question-text">' + buildQuestionStemHtml(question) + '</div>'
+                + '<div class="section2-figma-question-text">' + stemContentHtml + '</div>'
                 + '</div>'
                 + '<b class="explaination-figma-status ' + (isCorrect ? 'is-correct' : 'is-wrong') + '">' + (isCorrect ? 'CORRECT' : 'INCORRECT') + '</b>'
                 + '</div>'
-                + '<div class="explaination-figma-options">' + buildOptionMarkup(question, { selected: 'Jawaban Kamu', correct: 'Jawaban Benar' }) + '</div>'
-                + buildPartAAnalysisBlock(question, blueprint)
+                + optionsBlockHtml
+                + buildSavedQcCoreAnalysisBlock(question)
                 + '</div>';
+
             cacheQcCoreExplanation(question.number, host);
+        }
+
+        function buildPartBInlineSentenceHtml(question) {
+            var uid = question.id || question.number;
+            var correct = normalizeLetter(question.correctAnswer);
+            var selected = normalizeLetter(question.userAnswer);
+
+            var partBSentence = document.querySelector('#q-container-' + uid + ' .inline-question-text')?.cloneNode(true);
+            if (!partBSentence) {
+                return '<p class="instant-partb-sentence">' + escapeHtml(question.questionText || '') + '</p>';
+            }
+
+            partBSentence.classList.add("instant-partb-sentence");
+            partBSentence.querySelectorAll('.inline-error-wrapper').forEach(function (wrapper) {
+                var input = wrapper.querySelector('input[type="radio"]');
+                if (!input) return;
+
+                var letter = input.value.toUpperCase();
+                
+                // Highlight logic matching section2.html
+                if (letter === correct) wrapper.classList.add("is-correct");
+                else if (letter === selected && selected !== correct) wrapper.classList.add("is-incorrect");
+
+                input.disabled = true;
+            });
+
+            return partBSentence.outerHTML;
         }
 
         function renderGlobalAiQcWidget(question) {

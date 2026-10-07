@@ -554,6 +554,7 @@
         var reviewCurrentAudioSourceKind = '';
 
         var reviewTranscriptMapByPart = { 1: {}, 2: {}, 3: {} };
+        var reviewGroupTranscriptMapByPart = { 1: null, 2: null, 3: null };
         var reviewQuestionBoundaryMapByPart = { 1: {}, 2: {}, 3: {} };
         var reviewDetailSteps = [];
         var reviewDetailOpenSteps = [];
@@ -1764,6 +1765,11 @@
         function inferPartIdFromQuestion(question) {
             var explicitPart = Number((question && question.partId) || 0);
             if (explicitPart >= 1 && explicitPart <= 3) return explicitPart;
+            if (/practice/i.test(getReviewTestType())) {
+                var focus = new URLSearchParams(window.location.search || '').get('focus');
+                if (focus === 'part2') return 2;
+                if (focus === 'part3') return 3;
+            }
 
             var qNum = Number((question && question.number) || 0);
             if (qNum >= 1 && qNum <= 30) return 1;
@@ -1772,10 +1778,23 @@
             return 1;
         }
 
+        function transcriptsMatch(left, right) {
+            function text(segments) {
+                return (segments || []).map(function(seg) { return String(seg.text || '').trim(); }).join(' ').replace(/\s+/g, ' ').trim();
+            }
+            return text(left) === text(right);
+        }
+
         function getQuestionTranscriptSegments(question) {
             var partId = inferPartIdFromQuestion(question);
             var qNum = Number((question && question.number) || 0);
             var map = reviewTranscriptMapByPart[partId] || {};
+            var groups = reviewGroupTranscriptMapByPart[partId];
+            if (groups) {
+                var selected = groups[qNum] || [];
+                return selected.length && transcriptsMatch(question && question.transcriptSegments, selected)
+                    ? question.transcriptSegments : selected;
+            }
 
             // Prefer saved WhisperX alignment over raw transcript parsing. The raw
             // fallback creates synthetic 0, 8, 16... positions when timing is absent.
@@ -1835,6 +1854,10 @@
                 var partId = inferPartIdFromQuestion(question);
                 var qNum = Number(question.number || 0);
                 var map = reviewTranscriptMapByPart[partId] || {};
+                if (reviewGroupTranscriptMapByPart[partId]) {
+                    question.transcriptSegments = getQuestionTranscriptSegments(question);
+                    continue;
+                }
                 var fresh = map[qNum] || [];
 
                 // Preserve aligned result timestamps when the raw transcript fallback
@@ -1917,6 +1940,10 @@
                 }
 
                 if (reviewCurrentAudioSourceKind === 'question-cloudflare') {
+                    if (/practice/i.test(getReviewTestType()) && getReviewAudioGroup(reviewCurrentPartId, reviewCurrentQuestion && reviewCurrentQuestion.number)) {
+                        setAudioStatus('Talk clip unavailable. Check the uploaded audio for this group.');
+                        return;
+                    }
                     setAudioStatus('Question clip unavailable. Loading full part audio...');
                     loadAudioForPart(reviewCurrentPartId || 1);
                     return;
@@ -2080,6 +2107,11 @@
         function getReviewAudioGroup(partId, questionNumber) {
             var groups = REVIEW_AUDIO_GROUPS[Number(partId || 0)] || [];
             var qNum = Number(questionNumber || 0);
+            if (/practice/i.test(getReviewTestType()) && (Number(partId) === 2 || Number(partId) === 3)) {
+                var offset = Number(partId) === 2 ? 30 : 38;
+                if (qNum > offset) qNum -= offset;
+                groups = [{ key: '01-04', start: 1, end: 4 }, { key: '05-08', start: 5, end: 8 }];
+            }
             for (var i = 0; i < groups.length; i += 1) {
                 if (qNum >= groups[i].start && qNum <= groups[i].end) return groups[i];
             }
@@ -2120,7 +2152,7 @@
                 objectKey: objectKey,
                 partId: partId,
                 questionNumber: questionNumber,
-                fallbackUrls: (savedUrl && savedUrl !== url) ? [savedUrl] : [],
+                fallbackUrls: (!(group && /practice/i.test(getReviewTestType())) && savedUrl && savedUrl !== url) ? [savedUrl] : [],
                 label: group ? ('Questions ' + group.key) : ('Question ' + String(questionNumber))
             };
         }
@@ -2139,7 +2171,7 @@
 
         function getReviewQuestionAudioSourceKey(questionAudio) {
             if (!questionAudio) return '';
-            return String(reviewSetId || '') + '_part_' + String(questionAudio.partId || 1) + '_question_' + String(questionAudio.questionNumber) + '_' + String(questionAudio.objectKey || questionAudio.url || '');
+            return String(reviewSetId || '') + '_part_' + String(questionAudio.partId || 1) + '_' + String(questionAudio.objectKey || questionAudio.url || '');
         }
 
         async function loadAudioForQuestion(question) {
@@ -4964,7 +4996,7 @@
         }
 
         function parseQuestionRangeKey(key) {
-            var match = String(key || '').trim().match(/^(\d+)\s*-\s*(\d+)$/);
+            var match = String(key || '').trim().match(/^(?:Talk\s+\d+\s*:\s*)?(\d+)\s*[-\u2013\u2014]\s*(\d+)$/i);
             if (!match) return null;
             var start = Number(match[1]);
             var end = Number(match[2]);
@@ -4976,20 +5008,26 @@
         // "35-38"); parsing them as one joined blob loses that boundary, so
         // every question in the part ends up showing the first group's dialogue.
         // Keep each group's segments scoped to its own question numbers instead.
-        function buildGroupTranscriptQuestionMap(groupTranscriptObj) {
+        function buildGroupTranscriptQuestionMap(groupTranscriptObj, partId, isPractice) {
             var byQuestion = {};
             var combined = [];
             var groupMap = groupTranscriptObj && typeof groupTranscriptObj === 'object' ? groupTranscriptObj : {};
-            Object.keys(groupMap).forEach(function(key) {
+            Object.keys(groupMap).sort(function(left, right) {
+                return Number(/^Talk/i.test(left)) - Number(/^Talk/i.test(right));
+            }).forEach(function(key) {
                 var text = String(groupMap[key] || '').trim();
-                if (!text) return;
                 var segments = parsePlainSpeakerTranscript(text);
-                if (!segments.length) return;
                 combined = combined.concat(segments);
                 var range = parseQuestionRangeKey(key);
                 if (!range) return;
+                var offset = Number(partId) === 2 ? 30 : 38;
+                if (isPractice && range.start > offset) {
+                    range.start -= offset;
+                    range.end -= offset;
+                }
                 for (var qNum = range.start; qNum <= range.end; qNum += 1) {
-                    byQuestion[qNum] = segmttents;
+                    byQuestion[qNum] = segments;
+                    if (isPractice) byQuestion[qNum + offset] = segments;
                 }
             });
             return { byQuestion: byQuestion, combined: combined };
@@ -5003,6 +5041,7 @@
         async function hydrateTranscriptFallbackMaps(result) {
 
             reviewTranscriptMapByPart = { 1: {}, 2: {}, 3: {} };
+            reviewGroupTranscriptMapByPart = { 1: null, 2: null, 3: null };
             reviewQuestionBoundaryMapByPart = { 1: {}, 2: {}, 3: {} };
             if (!result) return;
 
@@ -5018,13 +5057,21 @@
                         var testType = String(params.get('testType') || (result && result.testType) || 'mocktest');
                         var typedDraft = await window.toeflStorage.getDraftBySetIdAndType(reviewSetId, testType);
                         var typedPart = (((typedDraft || {}).parts || {})[p] || {});
+                        if ((p === 2 || p === 3) && typedPart.groupTranscript && Object.keys(typedPart.groupTranscript).length) {
+                            reviewGroupTranscriptMapByPart[p] = buildGroupTranscriptQuestionMap(
+                                typedPart.groupTranscript, p, /practice/i.test(testType)
+                            ).byQuestion;
+                        }
                         rawTranscript = String(typedPart.transcript || '');
                         if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) {
                             rawTranscript = collectGroupTranscriptText(typedPart);
                             if (rawTranscript) groupTranscriptSourceMap = typedPart.groupTranscript;
                         }
                         savedAlignedSegments = Array.isArray(typedPart.transcriptSegments) ? typedPart.transcriptSegments : [];
-                    } catch (_) { rawTranscript = ''; }
+                    } catch (error) {
+                        console.error('[Listening Review] Selected draft transcript load failed:', error);
+                        rawTranscript = '';
+                    }
                 }
 
                 if (!rawTranscript && window.toeflStorage && reviewSetId && typeof window.toeflStorage.getDraftBySetId === 'function') {
@@ -5032,7 +5079,7 @@
                         var draft = await window.toeflStorage.getDraftBySetId(reviewSetId);
                         var draftPart = (((draft || {}).parts || {})[p] || {});
                         rawTranscript = String(draftPart.transcript || '');
-                        if (!rawTranscript) {
+                        if (!rawTranscript && !reviewSetId) {
                             rawTranscript = String((((draft || {}).transcripts || {})['part_' + p] || ''));
                         }
                         if (!rawTranscript || isTagOnlyTranscript(rawTranscript)) {
@@ -5070,7 +5117,7 @@
                 }
 
                 // Source 5: V1 Firebase draft via toeflStorage.getDraft('listening')
-                if (!rawTranscript && window.toeflStorage && typeof window.toeflStorage.getDraft === 'function') {
+                if (!rawTranscript && !reviewSetId && window.toeflStorage && typeof window.toeflStorage.getDraft === 'function') {
                     try {
                         var v1FirebaseDraft = await window.toeflStorage.getDraft('listening');
                         var v1FirebasePart = (((v1FirebaseDraft || {}).parts || {})[p] || {});
@@ -5094,7 +5141,7 @@
                 // Overlay per-group segments so each question only ever sees its
                 // own conversation group's transcript instead of the merged blob.
                 if (groupTranscriptSourceMap) {
-                    var groupResult = buildGroupTranscriptQuestionMap(groupTranscriptSourceMap);
+                    var groupResult = buildGroupTranscriptQuestionMap(groupTranscriptSourceMap, p, /practice/i.test(getReviewTestType()));
                     if (groupResult.combined.length) {
                         var overlaidMap = reviewTranscriptMapByPart[p];
                         Object.keys(groupResult.byQuestion).forEach(function(qNum) {

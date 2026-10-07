@@ -47,6 +47,24 @@ test("Listening editor and review inline JavaScript parses", () => {
     }
 });
 
+test("practice route focus resolves local questions without part metadata", async () => {
+    for (const partId of [2, 3]) {
+        const context = fixture("practicetest", {
+            [partId]: {
+                transcript: "Narrator: Both talks",
+                groupTranscript: { "Talk 1: 1-4": "Man: First only", "Talk 2: 5-8": "Woman: Second only" }
+            }
+        });
+        context.window.location.search += `&focus=part${partId}`;
+        await context.hydrateTranscriptFallbackMaps({});
+        for (const number of [1, 4, 5, 8]) {
+            const question = { number, transcriptSegments: [{ text: "Both talks", timestamp: "0 - 90" }] };
+            assert.equal(context.inferPartIdFromQuestion(question), partId);
+            assert.equal(context.getQuestionTranscriptSegments(question)[0].text, number <= 4 ? "First only" : "Second only");
+        }
+    }
+});
+
 for (const partId of [2, 3]) {
     test(`Part ${partId} maps each practice talk to local and offset question numbers`, async () => {
         const groupTranscript = { "Talk 1: 1-4": "Man: First talk only", "Talk 2: 5-8": "Woman: Second talk only" };

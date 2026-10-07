@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -422,6 +422,9 @@
     .instant-explanation .explaination-correct-answer-card { align-items: center; background: #003d46; }
 
     .instant-explanation .explaination-content-card {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
         padding: 26px;
         background: #fff;
         border: 1px solid #c7e3f7;
@@ -438,6 +441,26 @@
         justify-content: center;
         border-radius: 999px;
         background: #09a982;
+    }
+
+    .instant-explanation .explaination-header-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+    }
+
+    /* Title wrapper to stack h2 and accent line */
+    .instant-explanation .explaination-title-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .instant-explanation .explaination-title-wrapper h2 {
+        margin: 0;
+        color: #082f5e;
+        font: 600 16px/1.4 "Plus Jakarta Sans", Arial, sans-serif;
     }
 
     .instant-explanation .explaination-answer-copy,
@@ -3501,34 +3524,43 @@
             const incorrectHeading = bahasa ? "KENAPA OPSI LAIN SALAH" : "WHY THE OTHER OPTION IS INCORRECT";
 
             return `
-                <div class="instant-explanation explaination-figma-why-block">
-                    <section class="explaination-correct-answer-card">
-                        <div class="explaination-icon-badge explaination-icon-badge--correct"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8.5 12.5l2.5 2.5 4.5-5"></path></svg></div>
-                        <div class="explaination-answer-copy"><div class="explaination-answer-text">${escapeHtml(correctLetter || "?")} - ${escapeHtml(correctText || "Correct answer")}</div></div>
-                    </section>
-                    <div class="instant-explanation__body">
-                        <section class="instant-explanation__pane">
-                            <div class="instant-pane-card">
-                                <h4 class="instant-pane-title">TRANSCRIPT</h4>
-                                ${transcriptHtml}
-                            </div>
-                        </section>
-                        <section class="instant-explanation__pane explaination-figma-why-body">
-                            <section class="explaination-content-card">
-                                <div class="explaination-icon-badge explaination-icon-badge--idea"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.47c.53.5.83 1.2.83 1.93V16h6.34v-.6c0-.73.3-1.43.83-1.93A6 6 0 0 0 12 3z"></path></svg></div>
-                                <div class="explaination-copy-column">
-                                    <h2>${explanationHeading}</h2><div class="explaination-accent" aria-hidden="true"></div>
-                                    <div class="explaination-content-text">${explanationHtml}</div>
-                                </div>
-                            </section>
-                            <section class="explaination-incorrect-section">
-                                <div class="explaination-incorrect-heading"><h2>${incorrectHeading}</h2></div>
-                                <div class="explaination-incorrect-divider" aria-hidden="true"></div>
-                                <div class="explaination-incorrect-grid">${wrongOptionsHtml || `<p class="instant-empty">No distractor analysis saved yet.</p>`}</div>
-                            </section>
-                        </section>
+        <div class="instant-explanation explaination-figma-why-block">
+            <section class="explaination-correct-answer-card">
+                <div class="explaination-icon-badge explaination-icon-badge--correct"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8.5 12.5l2.5 2.5 4.5-5"></path></svg></div>
+                <div class="explaination-answer-copy"><div class="explaination-answer-text">${escapeHtml(correctLetter || "?")}
+${escapeHtml(correctText || "Correct answer")}</div></div>
+            </section>
+            <div class="instant-explanation__body">
+                <section class="instant-explanation__pane">
+                    <div class="instant-pane-card">
+                        <h4 class="instant-pane-title">TRANSCRIPT</h4>
+                        ${transcriptHtml}
                     </div>
-                </div>`;
+                </section>
+                <section class="instant-explanation__pane explaination-figma-why-body">
+                    <section class="explaination-content-card">
+                        <div class="explaination-header-group">
+                            <div class="explaination-icon-badge explaination-icon-badge--idea">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.47c.53.5.83 1.2.83 1.93V16h6.34v-.6c0-.73.3-1.43.83-1.93A6 6 0 0 0 12 3z"></path>
+                                </svg>
+                            </div>
+                            <div class="explaination-title-wrapper">
+                                <h2>${explanationHeading}</h2>
+                                <div class="explaination-accent" aria-hidden="true"></div>
+                            </div>
+                        </div>
+                        <div class="explaination-content-text">${explanationHtml}</div>
+                    </section>
+                    <section class="explaination-incorrect-section">
+                        <div class="explaination-incorrect-heading"><h2>${incorrectHeading}</h2></div>
+                        <div class="explaination-incorrect-divider" aria-hidden="true"></div>
+                        <div class="explaination-incorrect-grid">${wrongOptionsHtml || `<p class="instant-empty">No distractor analysis saved yet.</p>`}</div>
+                    </section>
+                </section>
+            </div>
+        </div>`;
+
         }
 
         function isTranscriptListScrollable(list) {

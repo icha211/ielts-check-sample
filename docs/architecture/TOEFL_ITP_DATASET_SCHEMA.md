@@ -62,6 +62,9 @@ questions 1-4 play `q_01-04.mp3` and questions 5-8 play `q_05-08.mp3`
 under the selected set's `question_set/part_2` or `question_set/part_3`.
 Legacy global question numbers resolve to the same clips. A stale full-part
 audio URL is not used as a fallback for these practice groups.
+If a talk clip cannot load, review reports the missing clip rather than playing
+the full-part recording. Practice route focus identifies Part B/C for older
+results whose questions have local numbers but no part metadata.
 Mock Test audio mapping and Part A are unchanged.
 
 No Firebase schema migration or rewrite is required.
