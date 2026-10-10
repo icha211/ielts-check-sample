@@ -549,16 +549,16 @@
             }));
 
             const setDate = getCurrentDaySetDate();
-            const structureParams = new URLSearchParams({ setDate, setId: selected.setId });
-            if (selected.setId.startsWith("practicetest_")) {
-                structureParams.set("testType", "practicetest");
-                structureParams.set("runMode", "full");
-                if (selected.focus) structureParams.set("focus", selected.focus);
+            const testType = selected.setId.toLowerCase().startsWith("practicetest_") ? "practicetest" : "mocktest";
+            const sectionParams = new URLSearchParams({ setDate, setId: selected.setId, testType });
+            if (testType === "practicetest") {
+                sectionParams.set("runMode", "full");
+                if (selected.focus) sectionParams.set("focus", selected.focus);
             }
             const sectionMap = {
-                listening: `section 1.html?setDate=${setDate}&setId=${encodeURIComponent(selected.setId)}`,
-                structure: `section 2.html?${structureParams.toString()}`,
-                reading: `section 3.html?setDate=${setDate}&setId=${encodeURIComponent(selected.setId)}`
+                listening: `section 1.html?${sectionParams.toString()}`,
+                structure: `section 2.html?${sectionParams.toString()}`,
+                reading: `section 3.html?${sectionParams.toString()}`
             };
 
             window.location.href = sectionMap[sectionId] || "study-plan.html";

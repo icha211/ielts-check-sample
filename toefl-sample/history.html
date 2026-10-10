@@ -28,12 +28,43 @@
         button, a, select { -webkit-tap-highlight-color: transparent; }
         .app-shell { min-height: 100vh; display: grid; grid-template-columns: 218px minmax(0, 1fr); grid-template-rows: 70px minmax(0, 1fr); }
         .topbar { grid-column: 1 / -1; grid-row: 1; display: grid; grid-template-columns: 218px minmax(0, 1fr); background: var(--white); border-bottom: 1px solid var(--line); }
-        .brand-area { display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-right: 1px solid var(--line); }
-        .brand { display: inline-flex; align-items: center; gap: 6px; color: var(--teal); text-decoration: none; font-size: 15px; font-weight: 800; white-space: nowrap; }
-        .brand img { width: 25px; height: 25px; object-fit: contain; }
-        .collapse-button, .icon-button { display: inline-grid; place-items: center; flex: 0 0 auto; width: 34px; height: 34px; border: 0; border-radius: 8px; background: transparent; color: #475569; cursor: pointer; }
+        .brand-area { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 16px 22px;           /* Match Figma padding (top/bottom: 16px, left/right: 15px) */
+            gap: 12px;                    /* Match Figma spacing between logo and toggle button */
+            border-right: 1px solid var(--line); 
+            box-sizing: border-box;       /* Include padding within width/height dimensions */
+        }
+
+        .brand { 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px;                     /* Spacing between the icon and the text image */
+            color: var(--teal); 
+            text-decoration: none; 
+            font-size: 15px; 
+            font-weight: 800; 
+            white-space: nowrap; 
+        }
+
+        .brand img:nth-child(1) {
+            width: 36px;                  /* Calendar check icon size */
+            height: 36px;
+            object-fit: contain;
+        }
+
+        .brand img:nth-child(2) {
+            height: 28px;                 /* "QUICK CHECK" text graphic height */
+            width: auto;                  /* Keeps text graphic from distorting */
+            object-fit: contain;
+        }
+        .collapse-button, .icon-button { display: inline-grid; align-items: center; place-items: center; flex: 0 0 auto; width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #475569; cursor: pointer; }
         .collapse-button:hover, .icon-button:hover { background: #f1f5f9; }
         .topbar-main { display: flex; align-items: center; justify-content: space-between; gap: 18px; min-width: 0; padding: 0 24px; }
+        .nav-calendar-icon { width: 13.3px; height: 15px; flex: 0 0 auto; stroke-width: 1.5; }
+        .nav-calendar-day { font: 700 6px "Space Grotesk", sans-serif; }
         .top-links, .top-actions { display: flex; align-items: center; gap: 10px; }
         .top-link { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 14px; border: 1px solid transparent; border-radius: 22px; color: #0e7067; text-decoration: none; font-size: 12px; font-weight: 600; white-space: nowrap; }
         .top-link.is-current { border-color: #e3edf0; background: #fff; box-shadow: 0 1px 4px rgba(14,112,103,.1); }
@@ -183,8 +214,11 @@
     <div class="app-shell">
         <header class="topbar">
             <div class="brand-area">
-                <a class="brand" href="index.html" aria-label="Quick Check dashboard"><img src="../asset/figma/sidebar-profile.png" alt=""><span>QUICK CHECK</span></a>
-                <button class="collapse-button" type="button" aria-label="Collapse sidebar" title="Collapse sidebar"><i data-lucide="panel-left-close"></i></button>
+                <a class="brand" href="index.html" aria-label="Quick Check dashboard">
+                <img src="../asst/icon/Logoqc_without_name.png" alt="Quick Check Logo Icon">
+                <img src="../asst/icon/logoqcname.png" alt="Quick Check Logo Name">
+                </a>
+                <button class="collapse-button" type="button" aria-label="Collapse sidebar" title="Collapse sidebar"><i data-lucide="panel-left-close" style="width: 20px; height: 20px;"></i></button>
             </div>
             <div class="topbar-main">
                 <nav class="top-links" aria-label="Main navigation">
@@ -206,7 +240,7 @@
                 </div>
                 <div class="side-group">
                     <p class="side-heading">TOEFL ITP</p>
-                    <a class="side-link" href="study-plan.html" data-tooltip="Today"><i data-lucide="calendar-days"></i><span>Today</span></a>
+                    <a class="sidebar-link active" href="study-plan.html" data-tooltip="Today"><svg width="13.3" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><text id="studyTodayNumber" x="12" y="18" text-anchor="middle" stroke="none" fill="currentColor" style="font:700 6px Inter">1</text></svg><span id="studyTodayLabel">Today</span></a>              
                 </div>
                 <div class="side-group">
                     <p class="side-heading">STUDY PROGRESS</p>

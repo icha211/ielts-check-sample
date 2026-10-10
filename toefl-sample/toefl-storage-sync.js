@@ -314,6 +314,18 @@ class ToeflStorageSync {
     try { return JSON.parse(raw) || fallback; } catch { return fallback; }
   }
 
+  _hasDraftContent(draft) {
+    const metadataKeys = new Set(["_updatedAt", "setId", "module", "testType"]);
+    const hasContent = (value) => {
+      if (typeof value === "string") return Boolean(value.trim());
+      if (typeof value === "number" || typeof value === "boolean") return true;
+      if (Array.isArray(value)) return value.some(hasContent);
+      if (!value || typeof value !== "object") return false;
+      return Object.entries(value).some(([key, nested]) => !metadataKeys.has(key) && hasContent(nested));
+    };
+    return hasContent(draft);
+  }
+
   async getMaterialsLibrary() {
     try {
       const data = await this._get("toefl_itp/materials_library");
@@ -769,10 +781,21 @@ class ToeflStorageSync {
     try {
       const v2 = await this._get(paths.setsPath);
       const v2Map = (v2 && typeof v2 === "object" && !Array.isArray(v2)) ? v2 : {};
-      const records = Object.entries(v2Map)
+      let records = Object.entries(v2Map)
         .filter(([key]) => key !== "_updatedAt")
         .map(([setId, value]) => this._normalizeRecord({ ...value, setId }, setId))
         .filter(Boolean);
+      if (testType === "mocktest") {
+        const legacyRecords = await this.getSetRecords();
+        const mockRecords = legacyRecords.filter((record) => {
+          const recordType = String(record.testType || "").toLowerCase();
+          const setId = String(record.setId || "").toLowerCase();
+          return recordType === "mocktest" || (!recordType && setId.startsWith("mocktest_"));
+        });
+        const byId = new Map(mockRecords.map((record) => [record.setId, record]));
+        records.forEach((record) => byId.set(record.setId, record));
+        records = Array.from(byId.values());
+      }
       if (records.length > 0) {
         localStorage.setItem(paths.setsLocalKey, JSON.stringify(this._recordsToMap(records)));
         this.isRemoteAvailable = true;
@@ -786,9 +809,20 @@ class ToeflStorageSync {
     }
 
     const localV2 = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
-    const localRecords = Object.entries(localV2 || {})
+    let localRecords = Object.entries(localV2 || {})
       .map(([setId, value]) => this._normalizeRecord({ ...value, setId }, setId))
       .filter(Boolean);
+    if (testType === "mocktest") {
+      const legacyLocal = this._safeParse(localStorage.getItem(this._setsV2LocalKey), {});
+      const legacyRecords = Object.entries(legacyLocal || {})
+        .map(([setId, value]) => this._normalizeRecord({ ...value, setId }, setId))
+        .filter((record) => record
+          && (String(record.testType || "").toLowerCase() === "mocktest"
+            || (!record.testType && String(record.setId || "").toLowerCase().startsWith("mocktest_"))));
+      const byId = new Map(legacyRecords.map((record) => [record.setId, record]));
+      localRecords.forEach((record) => byId.set(record.setId, record));
+      localRecords = Array.from(byId.values());
+    }
     return localRecords;
   }
 
@@ -804,12 +838,17 @@ class ToeflStorageSync {
         localStorage.setItem(paths.setsLocalKey, JSON.stringify(local));
       }
       this.isRemoteAvailable = true;
-      return normalized;
+      if (normalized) return normalized;
     } catch {
       this.isRemoteAvailable = false;
     }
     const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
-    return this._normalizeRecord({ ...(local[setId] || {}), setId }, setId);
+    const localRecord = this._normalizeRecord({ ...(local[setId] || {}), setId }, setId);
+    if (localRecord) return localRecord;
+    if (testType === "mocktest") {
+      return this.getSetRecordById(setId);
+    }
+    return null;
   }
 
   async assertUniqueSetDate(record, testType = "mocktest") {
@@ -1006,20 +1045,52 @@ class ToeflStorageSync {
   async getDraftBySetIdAndType(setId, testType = "mocktest") {
     if (!setId) return {};
     const paths = this._getPathsForTestType(testType);
+    let remoteDraft = {};
     try {
       const data = await this._get(`${paths.draftsPath}/${setId}`);
-      const draft = (data && typeof data === "object" && !Array.isArray(data)) ? data : {};
-      const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
-      local[setId] = draft;
-      localStorage.setItem(paths.draftsLocalKey, JSON.stringify(local));
+      remoteDraft = (data && typeof data === "object" && !Array.isArray(data)) ? data : {};
       this.isRemoteAvailable = true;
-      return draft;
     } catch (e) {
       this.isRemoteAvailable = false;
       console.warn(`[ToeflSync] Offline – using localStorage for ${testType} set draft ${setId}:`, e.message);
     }
+
+    if (this._hasDraftContent(remoteDraft)) {
+      const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+      local[setId] = remoteDraft;
+      localStorage.setItem(paths.draftsLocalKey, JSON.stringify(local));
+      return remoteDraft;
+    }
+
     const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
-    return local[setId] || {};
+    if (this._hasDraftContent(local[setId])) return local[setId];
+
+    if (testType === "mocktest") {
+      try {
+        const legacyData = await this._get(`${this._draftsV2Path}/${setId}`);
+        const legacyDraft = (legacyData && typeof legacyData === "object" && !Array.isArray(legacyData))
+          ? legacyData
+          : {};
+        if (this._hasDraftContent(legacyDraft)) {
+          const legacyLocal = this._safeParse(localStorage.getItem(this._draftsV2LocalKey), {});
+          legacyLocal[setId] = legacyDraft;
+          localStorage.setItem(this._draftsV2LocalKey, JSON.stringify(legacyLocal));
+          const typedLocal = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
+          typedLocal[setId] = legacyDraft;
+          localStorage.setItem(paths.draftsLocalKey, JSON.stringify(typedLocal));
+          this.isRemoteAvailable = true;
+          return legacyDraft;
+        }
+      } catch (error) {
+        this.isRemoteAvailable = false;
+        console.warn(`[ToeflSync] Legacy mock-test draft lookup failed for ${setId}:`, error.message);
+      }
+
+      const legacyLocal = this._safeParse(localStorage.getItem(this._draftsV2LocalKey), {});
+      if (this._hasDraftContent(legacyLocal[setId])) return legacyLocal[setId];
+    }
+
+    return remoteDraft;
   }
 
   async saveDraftBySetIdAndType(setId, module, draft, testType = "mocktest") {

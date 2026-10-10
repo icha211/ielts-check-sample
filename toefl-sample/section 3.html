@@ -1371,7 +1371,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <script src="toefl-storage-sync.js?v=20261005a"></script>
+    <script src="toefl-storage-sync.js?v=20261010b"></script>
     <script src="toefl-test-history.js?v=20261003a"></script>
     <script src="js/reading-explanations.js?v=20261006b"></script>
     <script>
@@ -1885,18 +1885,36 @@
         function updateHeaderPackageLabel(dateString) {
             const label = document.getElementById("header-package-label");
             if (!label) return;
-            if (!dateString) {
-                label.textContent = "Package";
-                return;
+
+            const params = new URLSearchParams(window.location.search);
+            const type = String(params.get("testType") || currentTestType || "").toLowerCase().trim();
+            const mode = getPracticeRunMode();
+
+            let formattedDate = "";
+            if (dateString) {
+                const date = new Date(dateString);
+                if (!Number.isNaN(date.getTime())) {
+                    const day = String(date.getDate()).padStart(2, "0");
+                    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    formattedDate = `${day} ${months[date.getMonth()]}`;
+                }
             }
-            const date = new Date(dateString);
-            if (Number.isNaN(date.getTime())) {
-                label.textContent = "Package";
-                return;
+
+            if (type === "full_mock" || type === "full mock test") {
+                label.textContent = `Full Mock Test Package ${formattedDate}`.trim();
+            } else if (type === "mock" || type === "mocktest") {
+                label.textContent = `Mock Test ${formattedDate}`.trim();
+            } else if (type === "practice" || type === "practice test" || type === "practicetest") {
+                if (mode === "instant") {
+                    label.textContent = `Practice Test ${formattedDate} (Instant Feedback)`.replace(/\s{2,}/g, " ").trim();
+                } else if (mode === "full") {
+                    label.textContent = `Practice Test ${formattedDate} (Full Test Mode)`.replace(/\s{2,}/g, " ").trim();
+                } else {
+                    label.textContent = `Practice Test ${formattedDate}`.trim();
+                }
+            } else {
+                label.textContent = `Package ${formattedDate}`.trim();
             }
-            const day = String(date.getDate()).padStart(2, "0");
-            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            label.textContent = `Package ${day} ${months[date.getMonth()]}`;
         }
 
         // ===== Practice test: instant feedback engine =====
@@ -1954,7 +1972,7 @@
 
             if (navigatorPanel) navigatorPanel.style.display = instant ? "none" : "";
             if (progressBlock) progressBlock.style.display = instant ? "none" : "";
-            if (dots) dots.style.display = instant ? "flex" : "none";
+            if (dots) dots.style.display = instant ? "flex" : "";
             if (questionStack) questionStack.style.display = instant ? "none" : "";
             if (instantHost) {
                 instantHost.hidden = !instant;

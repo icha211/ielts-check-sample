@@ -1440,7 +1440,7 @@
         </div>
     </div>
 
-    <script src="toefl-storage-sync.js?v=20260801a"></script>
+    <script src="toefl-storage-sync.js?v=20261010b"></script>
     <script src="../study-plan-firestore-sync.js?v=20260508"></script>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="toefl-navigation.js?v=20260918b"></script>
@@ -1462,16 +1462,13 @@
                 reading: { icon: `<img src="../asset/figma/mock-reading.png" style="width:35px;height:35px;" alt="">`, title: "Reading Mock Test", difficultyBase: 2, minutes: 55, questions: 50, colorClass: "#F4F0FF", file: "section 3.html" }
             };
 
-            const planStartDate = new Date("2026-11-01"); 
+            const planStartDate = new Date("2026-11-01");
 
             function getDynamicTestType(selectedDate) {
                 const start = new Date(planStartDate.getFullYear(), planStartDate.getMonth(), planStartDate.getDate());
                 const current = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
-                const diffTime = current.getTime() - start.getTime();
-                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-                if (diffDays < 0) return "mocktest";
-                return (diffDays % 4 === 0) ? "mocktest" : "practicetest";
+                if (current < start) return "mocktest";
+                return ((selectedDate.getDate() - 1) % 4 === 0) ? "mocktest" : "practicetest";
             }
 
             let activeModalState = {
@@ -1614,12 +1611,14 @@
             function getAvailableSetsByDate(dateValue) {
                 const parts = dateValue.split("-");
                 const altDateValue = parts.length === 3 ? `${parts[0]}-${parseInt(parts[1], 10)}-${parseInt(parts[2], 10)}` : dateValue;
+                const expectedType = getDynamicTestType(new Date(`${dateValue}T00:00:00`));
 
                 const records = getRecordsSource()
                     .filter((item) => {
                         if (!item || !item.module) return false;
                         const itemDate = String(item.setDate || "").trim();
-                        return itemDate === dateValue || itemDate === altDateValue;
+                        return (itemDate === dateValue || itemDate === altDateValue)
+                            && getSetTestType(item) === expectedType;
                     });
 
                 const byModule = {};
