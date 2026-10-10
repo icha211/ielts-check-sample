@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="toefl-navigation.css?v=20260918b">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
     <style>
         :root {
             color-scheme: light;
@@ -64,30 +65,264 @@
         .hero-art { width: 170px; height: 130px; object-fit: contain; }
 
         .score-panel { display: grid; grid-template-columns: 1.1fr repeat(3, minmax(0, 1fr)); gap: 16px; padding: 18px; border-radius: 18px; background: linear-gradient(120deg, #0a5fc0, #1786f0); }
-        .total-card { display: flex; flex-direction: column; justify-content: space-between; gap: 14px; padding: 20px; border-radius: 14px; background: #08265f; color: #fff; }
-        .total-head { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: #bcd6ff; }
-        .total-head i { color: #ffd166; }
-        .total-score { font: 800 46px/1 "Outfit", sans-serif; }
-        .total-score small { font-size: 18px; color: #9db8e6; font-weight: 600; }
-        .total-note { margin: 0; color: #c8dcfb; font-size: 12px; line-height: 1.45; }
-        .section-score { display: grid; gap: 10px; padding: 18px; border-radius: 14px; }
-        .section-score.listening { background: #e3f7f1; --accent: var(--teal); }
-        .section-score.structure { background: #e6f0fd; --accent: var(--blue); }
-        .section-score.reading { background: #efe9ff; --accent: var(--purple); }
-        .score-head { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: var(--navy); }
-        .score-head img { width: 34px; height: 34px; object-fit: contain; }
-        .score-value { font: 800 30px/1 "Outfit", sans-serif; color: var(--accent); }
-        .score-value small { font-size: 15px; color: #6a7f96; font-weight: 600; }
-        .score-meta { display: flex; justify-content: space-between; color: #4d6177; font-size: 12px; }
-        .bar { height: 7px; border-radius: 6px; background: rgba(8,38,95,.1); overflow: hidden; }
-        .bar span { display: block; height: 100%; border-radius: inherit; background: var(--accent, var(--blue)); }
-        .missing { color: #6a7f96; font-size: 12px; }
+
+.score-panel { 
+  display: grid; 
+  grid-template-columns: 1.1fr repeat(3, minmax(0, 1fr)); 
+  gap: 16px; 
+  padding: 18px; 
+  border-radius: 18px; 
+  background: linear-gradient(120deg, #0a5fc0, #1786f0); 
+}
+
+/* Total Card Container */
+.total-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 28px 24px;
+  border-radius: 20px;
+  background: linear-gradient(222.3deg, #005FAA 0%, #033C6F 57.21%);
+  color: #ffffff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* 1. Upper-Left Rectangle Light Accent */
+.rectangle-div {
+  position: absolute;
+  top: -10px;
+  left: -40px;
+  width: 220px;
+  height: 60px;
+  background-color: #56d8df;
+  filter: blur(80px);
+  transform: rotate(-16.1deg);
+  transform-origin: 0 0;
+  mix-blend-mode: screen; /* Replaced linear-dodge for standard CSS compliance */
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 2. Bottom-Right Circle SVG Accent */
+.background-circle {
+  position: absolute;
+  bottom: -30px;
+  right: -30px;
+  width: 197px;
+  height: 197px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.85;
+}
+
+.background-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Wrapper to stack text content cleanly over absolute background glows */
+.total-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Typography & Layout Adjustments */
+.total-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.total-head img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.total-score {
+  font-family: "Outfit", sans-serif;
+  font-size: 52px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.total-score small {
+  font-size: 32px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  margin-left: 4px;
+}
+
+.total-note {
+  font-size: 14px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.section-score { 
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 24px 20px;
+  border-radius: 20px;
+  background: #ffffff;
+}
+
+.section-score.listening { 
+  background: #eafaf5; 
+  --accent: #2e8b75; 
+  --bar-bg: #d3f3e9;
+}
+
+.section-score.structure { 
+  background: #f0f5fe; 
+  --accent: #2f61ad; 
+  --bar-bg: #dbe6fa;
+}
+
+.section-score.reading { 
+  background: #f5f0ff; 
+  --accent: #7c4dff; 
+  --bar-bg: #e6d8ff;
+}
+
+/* Header & Titles */
+.score-head { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: flex-start; 
+  margin-bottom: 12px;
+}
+
+.score-head img { 
+  width: 48px; 
+  height: 48px; 
+  object-fit: contain; 
+  margin-bottom: 12px;
+}
+
+.section-label {
+  font-size: 15px;
+  font-weight: 800;
+  color: #12284c;
+  line-height: 1.2;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4a5d78;
+  line-height: 1.3;
+}
+
+/* Big Score Display (e.g. 68 / 68) */
+.score-value { 
+  font-family: "Outfit", sans-serif;
+  font-size: 40px; 
+  font-weight: 800; 
+  line-height: 1; 
+  color: #12284c;
+  margin-bottom: 12px;
+}
+
+.score-value small { 
+  font-size: 28px; 
+  color: #4a5d78; 
+  font-weight: 700; 
+  margin-left: 4px;
+}
+
+/* Correct Answers Subtext */
+.score-correct {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+/* Progress Bar Row */
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bar { 
+  flex: 1;
+  height: 8px; 
+  border-radius: 999px; 
+  background: var(--bar-bg); 
+  overflow: hidden; 
+}
+
+.bar span { 
+  display: block; 
+  height: 100%; 
+  border-radius: inherit; 
+  background: var(--accent); 
+}
+
+.accuracy-percent {
+  font-size: 13px;
+  font-weight: 800;
+  color: #12284c;
+}
+
+/* Missing State */
+.missing { 
+  color: #6a7f96; 
+  font-size: 13px; 
+}
 
         .ai-box { padding: 22px; border-radius: 16px; background: #fff; border: 1px solid var(--line); }
-        .ai-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; color: var(--navy); font: 700 18px "Outfit", sans-serif; }
-        .ai-head i { color: var(--purple); }
-        .ai-copy { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.5; }
-        .priority-row { 
+        /* AI Header Layout */
+.ai-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #12284c;
+}
+
+/* Circular Icon Badge Wrapper */
+.ai-icon-wrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4299e1 0%, #667eea 50%, #7f53ac 100%);
+  box-shadow: 0px 4px 16px rgba(103, 108, 255, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Explicit SVG Icon Styling */
+.ai-icon-svg {
+  width: 20px;
+  height: 20px;
+  fill: #ffffff;
+  display: block;
+  flex-shrink: 0;
+  stroke-width: 1.5px;
+}
+.ai-copy { 
+  margin: 0 0 18px; 
+  color: var(--muted); 
+  font-size: 13px; 
+  line-height: 1.5; 
+}        
+.priority-row { 
             display: flex; 
             align-items: center; 
             gap: 12px; 
@@ -530,6 +765,8 @@
         </main>
     </div>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+
     <script>
         (() => {
             const SECTIONS = [
@@ -585,27 +822,81 @@
                 return "Keep practicing — focus on your priority areas below.";
             }
 
+            // function renderScores(sections) {
+            //     const complete = sections.every(Boolean);
+            //     const total = complete ? Math.round(sections.reduce((s, x) => s + x.scaled, 0) * 10 / 3) : null;
+            //     const cards = SECTIONS.map((cfg, i) => {
+            //         const s = sections[i];
+            //         if (!s) return `<article class="section-score ${cfg.key}"><div class="score-head"><img src="../asset/figma/${cfg.icon}" alt="">${esc(cfg.name)}</div><p class="missing">Not completed yet.</p></article>`;
+            //         return `<article class="section-score ${cfg.key}">
+            //             <div class="score-head"><img src="../asset/figma/${cfg.icon}" alt="">${esc(cfg.name)}</div>
+            //             <div class="score-value">${s.scaled} <small>/ ${cfg.max}</small></div>
+            //             <div class="score-meta"><span>${s.correct} / ${s.total} correct</span><strong>${s.accuracy}%</strong></div>
+            //             <div class="bar"><span style="width:${s.accuracy}%"></span></div>
+            //         </article>`;
+            //     }).join("");
+
+            //     return `<section class="score-panel" aria-label="Score overview">
+            //         <article class="total-card">
+            //             <div class="rectangle-div"></div>
+            //             <div class="background-circle"><img src="../asset/figma/total-card-circle-back.svg" alt=""></div>
+            //             <div class="total-content">
+            //                 <div class="total-head"><img src="../asset/figma/test-history-trophy.png" alt="">Total Score</div>
+            //                 <div class="total-score">${total ?? "—"} <small>/ 677</small></div>
+            //                 <p class="total-note">${complete ? esc(totalNote(total)) : "Complete all three sections to see your total score."}</p>
+            //             </div>
+            //         </article>${cards}
+            //     </section>`;
+            // }
+
             function renderScores(sections) {
-                const complete = sections.every(Boolean);
-                const total = complete ? Math.round(sections.reduce((s, x) => s + x.scaled, 0) * 10 / 3) : null;
-                const cards = SECTIONS.map((cfg, i) => {
-                    const s = sections[i];
-                    if (!s) return `<article class="section-score ${cfg.key}"><div class="score-head"><img src="../asset/figma/${cfg.icon}" alt="">${esc(cfg.name)}</div><p class="missing">Not completed yet.</p></article>`;
-                    return `<article class="section-score ${cfg.key}">
-                        <div class="score-head"><img src="../asset/figma/${cfg.icon}" alt="">${esc(cfg.name)}</div>
-                        <div class="score-value">${s.scaled} <small>/ ${cfg.max}</small></div>
-                        <div class="score-meta"><span>${s.correct} / ${s.total} correct</span><strong>${s.accuracy}%</strong></div>
-                        <div class="bar"><span style="width:${s.accuracy}%"></span></div>
-                    </article>`;
-                }).join("");
-                return `<section class="score-panel" aria-label="Score overview">
-                    <article class="total-card">
-                        <div class="total-head"><i data-lucide="trophy"></i>Total Score</div>
-                        <div class="total-score">${total ?? "—"} <small>/ 677</small></div>
-                        <p class="total-note">${complete ? esc(totalNote(total)) : "Complete all three sections to see your total score."}</p>
-                    </article>${cards}
-                </section>`;
-            }
+    const complete = sections.every(Boolean);
+    const total = complete ? Math.round(sections.reduce((s, x) => s + x.scaled, 0) * 10 / 3) : null;
+    
+    const cards = SECTIONS.map((cfg, i) => {
+        const s = sections[i];
+        
+        if (!s) {
+            return `<article class="section-score ${cfg.key}">
+                <div class="score-head">
+                    <img src="../asset/figma/${cfg.icon}" alt="">
+                    <span class="section-label">Section ${i + 1}</span>
+                    <span class="section-title">${esc(cfg.name)}</span>
+                </div>
+                <p class="missing">Not completed yet.</p>
+            </article>`;
+        }
+
+        return `<article class="section-score ${cfg.key}">
+            <div class="score-head">
+                <img src="../asset/figma/${cfg.icon}" alt="">
+                <span class="section-label">Section ${i + 1}</span>
+                <span class="section-title">${esc(cfg.name)}</span>
+            </div>
+            
+            <div class="score-value">${s.scaled} <small>/ ${cfg.max}</small></div>
+            
+            <div class="score-correct">${s.correct} / ${s.total} correct</div>
+            
+            <div class="progress-row">
+                <div class="bar"><span style="width:${s.accuracy}%"></span></div>
+                <span class="accuracy-percent">${s.accuracy}%</span>
+            </div>
+        </article>`;
+    }).join("");
+
+    return `<section class="score-panel" aria-label="Score overview">
+        <article class="total-card">
+            <div class="rectangle-div"></div>
+            <div class="background-circle"><img src="../asset/figma/total-card-circle-back.svg" alt=""></div>
+            <div class="total-content">
+                <div class="total-head"><img src="../asset/figma/test-history-trophy.png" alt="">Total Score</div>
+                <div class="total-score">${total ?? "—"} <small>/ 677</small></div>
+                <p class="total-note">${complete ? esc(totalNote(total)) : "Complete all three sections to see your total score."}</p>
+            </div>
+        </article>${cards}
+    </section>`;
+}
 
             function renderPriorities(sections) {
                 const ranked = sections.filter(Boolean).map((s) => {
@@ -673,7 +964,15 @@
                 }).join("");
 
                 return `<section class="ai-box" aria-label="Recommended focus">
-                    <div class="ai-head"><i data-lucide="sparkles"></i>AI Study Recommendation</div>
+                    <div class="ai-head">
+                        <div class="ai-icon-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="ai-icon-svg">
+                                <path d="M17.964 2.733c.156 .563 .312 1 .484 1.353c.342 .71 .758 1.125 1.47 1.467c.353 .17 .79 .326 1.352 .484c.98 .276 .97 1.668 -.013 1.93a8.3 8.3 0 0 0 -1.34 .481c-.71 .342 -1.127 .757 -1.463 1.453a8 8 0 0 0 -.486 1.352c-.258 .988 -1.658 1 -1.932 .015c-.156 -.565 -.312 -1.002 -.484 -1.354c-.342 -.71 -.758 -1.124 -1.458 -1.46a8 8 0 0 0 -1.374 -.495a.4 .4 0 0 1 -.06 -.02l-.044 -.017l-.045 -.02l-.049 -.025l-.035 -.02a.4 .4 0 0 1 -.049 -.03l-.032 -.023l-.043 -.034l-.033 -.028l-.036 -.035l-.034 -.035l-.028 -.033l-.035 -.043l-.022 -.032a.4 .4 0 0 1 -.032 -.049l-.02 -.035l-.025 -.05l-.02 -.044l-.017 -.043a.4 .4 0 0 1 -.02 -.06l-.01 -.034a.5 .5 0 0 1 -.02 -.098l-.006 -.065l-.005 -.035v-.05a.4 .4 0 0 1 .003 -.085a.5 .5 0 0 1 .013 -.093a.5 .5 0 0 1 .024 -.103a.4 .4 0 0 1 .02 -.06l.017 -.044l.02 -.045l.025 -.049l.02 -.035a.4 .4 0 0 1 .03 -.049l.023 -.032l.043 -.043l.028 -.033l.035 -.036l.035 -.034q .015 -.015 .033 -.028l.043 -.035l.032 -.022a.4 .4 0 0 1 .049 -.032l.035 -.02l.05 -.025l.044 -.02l.043 -.017a.4 .4 0 0 1 .06 -.02l.027 -.008a8.3 8.3 0 0 0 1.339 -.48c.71 -.342 1.127 -.757 1.47 -1.466c.17 -.354 .327 -.792 .483 -1.355c.272 -.976 1.657 -.976 1.928 0" />
+                                <path d="M10.965 6.737q .219 .801 .503 1.574c.856 2.28 1.945 3.363 4.23 4.22q .708 .265 1.571 .506c.976 .272 .974 1.656 -.002 1.927q -.798 .221 -1.568 .504c-2.288 .858 -3.376 1.94 -4.229 4.216a19 19 0 0 0 -.505 1.579c-.268 .983 -1.662 .983 -1.93 0a19 19 0 0 0 -.503 -1.574c-.856 -2.281 -1.944 -3.363 -4.226 -4.219a20 20 0 0 0 -1.594 -.513a.4 .4 0 0 1 -.054 -.018l-.044 -.017l-.043 -.02a.3 .3 0 0 1 -.048 -.024l-.036 -.02a.4 .4 0 0 1 -.048 -.03l-.032 -.024l-.044 -.034l-.033 -.029l-.037 -.034l-.034 -.037l-.03 -.033l-.033 -.044l-.023 -.032a.4 .4 0 0 1 -.03 -.048l-.021 -.036a.3 .3 0 0 1 -.024 -.048l-.02 -.043l-.017 -.044a.4 .4 0 0 1 -.018 -.054a.2 .2 0 0 1 -.01 -.039a.4 .4 0 0 1 -.014 -.059l-.007 -.04l-.007 -.056l-.003 -.044l-.002 -.05v-.05q 0 -.023 .004 -.044q .001 -.03 .007 -.057l.007 -.04a.4 .4 0 0 1 .017 -.076l.007 -.021a.4 .4 0 0 1 .018 -.054l.017 -.044l.02 -.043a.3 .3 0 0 1 .024 -.048l.02 -.036a.4 .4 0 0 1 .03 -.048l.024 -.032l.034 -.044l.029 -.033l.034 -.037l.037 -.034l.033 -.03l.044 -.033l.032 -.023a.4 .4 0 0 1 .048 -.03l.036 -.021a.3 .3 0 0 1 .048 -.024l.043 -.02l.044 -.017a.4 .4 0 0 1 .054 -.018l.021 -.007a20 20 0 0 0 1.568 -.504c2.287 -.858 3.375 -1.94 4.229 -4.216a19 19 0 0 0 .505 -1.579c.268 -.983 1.662 -.983 1.93 0" />
+                            </svg>
+                        </div>
+                        <span>AI RECOMMENDATION</span>
+                    </div>
                     <p class="ai-copy">Based on everything you've completed so far, here is where to focus next — ordered by your weakest areas.</p>
                     <div class="priority-row">${cards}</div>
                 </section>`;
