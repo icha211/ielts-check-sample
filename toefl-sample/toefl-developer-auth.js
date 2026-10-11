@@ -528,11 +528,13 @@
             closeDialog();
         });
 
-        profile.addEventListener("click", openDialog);
+        profile.addEventListener("click", () => {
+            window.location.assign("signup.html");
+        });
         profile.addEventListener("keydown", (event) => {
             if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                openDialog();
+                window.location.assign("signup.html");
             }
         });
         action?.addEventListener("click", (event) => event.stopPropagation());

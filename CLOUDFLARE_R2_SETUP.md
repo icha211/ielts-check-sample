@@ -225,6 +225,16 @@ gcloud run deploy ielts-api-gateway `
   --set-env-vars IELTS_API_CORS_ORIGINS=https://icha211.github.io,R2_ACCOUNT_ID=YOUR_R2_ACCOUNT_ID,R2_BUCKET_NAME=YOUR_BUCKET,R2_ACCESS_KEY_ID=YOUR_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY=YOUR_SECRET_ACCESS_KEY,R2_PUBLIC_BASE_URL=https://YOUR-R2-PUBLIC-BASE
 ```
 
+
+gcloud run deploy ielts-api-gateway `
+  --source apps\api-gateway `
+  --region asia-southeast1 `
+  --allow-unauthenticated `
+  --set-env-vars IELTS_API_CORS_ORIGINS=https://icha211.github.io,
+R2_ACCOUNT_ID="3b625308535ff3275dac34f5392e8822"
+R2_BUCKET_NAME="toefl-test-assets"
+R2_ACCESS_KEY_ID="c25357e563d25f43b3514c11618ce0b8"
+R2_SECRET_ACCESS_KEY="3b1fe070bacc0c3c56f6ad32a27ee8cc7c41fff6ea0ba2ad05320f18aefa03c4"
 If you later use a custom domain, add that origin too in the Cloud Run env var.
 
 Then add the Cloud Run service URL to GitHub Pages localStorage:

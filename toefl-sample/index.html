@@ -1703,7 +1703,9 @@
                 </div>
                 <div class="nav-profile">
                     <div class="nav-profile-info"><div class="nav-avatar" aria-hidden="true">QC</div><div><p class="nav-profile-name">Quick Check</p><p class="nav-profile-plan">TOEFL workspace</p></div></div>
-                    <button class="nav-profile-action" type="button" aria-label="Sign out" title="Sign out"><i data-lucide="log-out" aria-hidden="true"></i></button>
+                    <a class="nav-profile-action" id="authActionButton" href="signup.html" title="Sign In / Sign Out" aria-label="Sign In or Sign Out">
+                        <i data-lucide="log-out" aria-hidden="true"></i>
+                    </a>
                 </div>
             </div>
         </nav>
@@ -2655,6 +2657,71 @@
                 }
             });
         })();
+    </script>
+    <!-- Add Firebase Auth Guard -->
+    <script type="module">
+        import { auth, db } from "./js/firebase-config.js";
+        import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { get, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // DOM Elements
+        const welcomeHeading = document.getElementById("welcomeHeading");
+        const userDisplayName = document.getElementById("userDisplayName");
+        const userNavName = document.getElementById("userNavName");
+        const userNavAvatar = document.getElementById("userNavAvatar");
+        const userProfileImage = document.getElementById("userProfileImage");
+        const authActionButton = document.getElementById("authActionButton");
+
+        // Listen for Authentication State Changes
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // User is logged in
+                console.log("Logged in user:", user.email);
+
+                // Fetch the user's profile from Realtime Database
+                try {
+                    const userProfile = await get(ref(db, `users/${user.uid}`));
+
+                    let nameToDisplay = user.displayName || user.email?.split("@")[0] || "Student";
+
+                    if (userProfile.exists()) {
+                        const data = userProfile.val();
+                        const firstName = data.first_name || data.firstName;
+                        const lastName = data.last_name || data.lastName || "";
+                        if (firstName) {
+                            nameToDisplay = `${firstName} ${lastName}`.trim();
+                        }
+                    }
+
+                    // Update UI with user information
+                    if (welcomeHeading) welcomeHeading.textContent = `Welcome, ${nameToDisplay}`;
+                    if (userDisplayName) userDisplayName.textContent = nameToDisplay;
+                    if (userNavName) userNavName.textContent = nameToDisplay;
+
+                    // Set user profile picture or avatar initials
+                    if (user.photoURL && userProfileImage) {
+                        userProfileImage.src = user.photoURL;
+                    }
+                    if (userNavAvatar) {
+                        userNavAvatar.textContent = nameToDisplay.charAt(0).toUpperCase();
+                    }
+
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                }
+
+                // Configure sign-out click handler
+                if (authActionButton) {
+                    authActionButton.setAttribute("title", "Sign Out");
+                    authActionButton.addEventListener("click", async (e) => {
+                        e.preventDefault();
+                        await signOut(auth);
+                        window.location.href = "signup.html";
+                    });
+                }
+
+            }
+        });
     </script>
 </body>
 </html>

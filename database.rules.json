@@ -1,10 +1,82 @@
 {
   "rules": {
-    "toefl_itp": {
-      ".read": "auth != null",
-      ".write": "auth != null && auth.token.email == 'quickcheck.edu@gmail.com'"
-    },
     ".read": false,
-    ".write": false
+    ".write": false,
+
+    "user_history_summaries": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.role === 'developer')",
+        ".write": "auth != null && auth.token.role === 'developer'",
+        ".indexOn": ["timestamp"]
+      }
+    },
+
+    "user_submission_details": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.role === 'developer')",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      }
+    },
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.role === 'developer')",
+        ".write": "auth != null && (auth.uid === $uid || auth.token.role === 'developer')"
+      }
+    },
+
+    "subscriptions": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.role === 'developer')",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      }
+    },
+
+    "toefl_itp": {
+      "cloudflare_audio_folders": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      },
+      "materials_library": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      },
+      "sets_v2": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      },
+      "drafts_v2": {
+        ".read": "auth != null && auth.token.role === 'developer'",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      },
+      "sets_v1": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      },
+      "drafts_v1": {
+        ".read": "auth != null && auth.token.role === 'developer'",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      },
+      "mocktest": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      },
+      "practicetest": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      },
+      "archive": {
+        ".read": "auth != null && auth.token.role === 'developer'",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      },
+      "audio_urls": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      },
+      "transcript_urls": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.role === 'developer'"
+      }
+    }
   }
 }

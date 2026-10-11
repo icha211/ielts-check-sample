@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication | TOEFL ITP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff477e;
+            --primary-hover: #e03e6f;
+            --text-dark: #1e293b;
+            --text-muted: #64748b;
+            --input-bg: #f1f5f9;
+            --border: #e2e8f0;
+            --white: #ffffff;
+            --right-bg: #0b192c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background-color: var(--white);
+            color: var(--text-dark);
+        }
+
+        .auth-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+        }
+
+        /* Left Pane - Form Section */
+        .auth-left {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            overflow-y: auto;
+        }
+
+        .auth-card {
+            width: 100%;
+            max-width: 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .logo-container {
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .logo-container img {
+            max-height: 48px;
+            object-fit: contain;
+        }
+
+        .auth-heading {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .google-btn {
+            width: 100%;
+            height: 48px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .google-btn:hover {
+            background-color: #f8fafc;
+        }
+
+        .divider {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            margin: 20px 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .divider span {
+            padding: 0 12px;
+        }
+
+        .form-grid {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .name-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .form-control {
+            width: 100%;
+            height: 46px;
+            padding: 0 16px;
+            background-color: var(--input-bg);
+            border: 1px solid transparent;
+            border-radius: 10px;
+            font-size: 14px;
+            color: var(--text-dark);
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            background-color: var(--white);
+        }
+
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            cursor: pointer;
+        }
+
+        .password-container {
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .phone-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .phone-code {
+            width: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0 8px;
+        }
+
+        .terms-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 4px;
+            font-size: 13px;
+            color: var(--text-dark);
+        }
+
+        .terms-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .terms-group a {
+            color: var(--text-dark);
+            text-decoration: underline;
+            font-weight: 600;
+        }
+
+        .submit-btn {
+            width: 100%;
+            height: 48px;
+            background-color: var(--primary);
+            color: var(--white);
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 8px;
+        }
+
+        .submit-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .auth-footer {
+            margin-top: 20px;
+            font-size: 13px;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        .auth-footer a {
+            color: var(--text-dark);
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        #auth-message {
+            min-height: 20px;
+            margin-top: 12px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        #auth-message[data-type="error"] {
+            color: #b91c1c;
+        }
+
+        #auth-message[data-type="info"] {
+            color: var(--text-muted);
+        }
+
+        /* Helper class to toggle sign-up specific fields */
+        .signup-only {
+            display: flex;
+        }
+
+        .auth-card.signin-mode .signup-only {
+            display: none !important;
+        }
+
+        /* Right Pane - Solid Color Panel */
+        .auth-right {
+            background-color: var(--right-bg);
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Mobile View Handling */
+        @media (max-width: 900px) {
+            .auth-container {
+                grid-template-columns: 1fr;
+            }
+            .auth-right {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container">
+        <!-- Left Side Form Pane -->
+        <div class="auth-left">
+            <div class="auth-card" id="authCard">
+                
+                <!-- Logo -->
+                <div class="logo-container">
+                    <img src="../asst/icon/QuickCheckLogo.png" alt="Quick Check Logo">
+                </div>
+
+                <!-- Heading -->
+                <h1 class="auth-heading" id="authHeading">Master Your TOEFL ITP Journey</h1>
+
+                <!-- Google SSO Button -->
+                <button type="button" class="google-btn" id="google-signin-button">
+                    <svg width="18" height="18" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                    </svg>
+                    Continue with Google
+                </button>
+
+                <div class="divider">
+                    <span>Or</span>
+                </div>
+
+                <!-- Registration / Login Form -->
+                <form class="form-grid" id="authForm">
+                    
+                    <!-- First & Last Name (Sign Up Only) -->
+                    <div class="name-row signup-only">
+                        <div class="form-group" style="width: 100%;">
+                            <label for="firstName">First Name</label>
+                            <input type="text" id="firstName" class="form-control" placeholder="First Name" required>
+                        </div>
+                        <div class="form-group" style="width: 100%;">
+                            <label for="lastName">Last Name</label>
+                            <input type="text" id="lastName" class="form-control" placeholder="Last Name" required>
+                        </div>
+                    </div>
+
+                    <!-- Email Address -->
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" class="form-control" placeholder="Email" required>
+                    </div>
+
+                    <!-- Nationality Select Field (Sign Up Only) -->
+                    <div class="form-group signup-only">
+                        <label for="nationality">Nationality</label>
+                        <select id="nationality" class="form-control" required>
+                            <option value="" disabled selected>Select your nationality</option>
+                            <option value="ID">Indonesian</option>
+                            <option value="AU">Australian</option>
+                            <option value="US">American</option>
+                            <option value="GB">British</option>
+                            <option value="CN">Chinese</option>
+                            <option value="IN">Indian</option>
+                            <option value="JP">Japanese</option>
+                            <option value="KR">South Korean</option>
+                            <option value="OTHER">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Phone Number (Sign Up Only) -->
+                    <div class="form-group signup-only">
+                        <label for="phone">Phone Number (Optional)</label>
+                        <div class="phone-group">
+                            <div class="phone-code">
+                                <span>🇮🇩</span>
+                                <span style="font-size: 13px; font-weight: 600;">+62</span>
+                            </div>
+                            <input type="tel" id="phone" class="form-control" placeholder="Phone Number">
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="password-container">
+                            <input type="password" id="password" class="form-control" placeholder="Password" autocomplete="new-password" minlength="6" required>
+                            <button type="button" class="toggle-password" onclick="togglePasswordVisibility()">
+                                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Terms & Conditions Checkbox (Sign Up Only) -->
+                    <div class="terms-group signup-only">
+                        <input type="checkbox" id="terms" required>
+                        <label for="terms">I agree to the <a href="#">Terms and Conditions</a></label>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="submit-btn" id="submitBtn">Sign Up</button>
+                    
+                    <!-- Switch View Link Below Submit Button -->
+                    <p class="auth-footer" id="authFooter">
+                        Already have an account? <a href="#" id="toggleAuthMode">Sign In</a>
+                    </p>
+
+                    <p id="auth-message" role="status" aria-live="polite"></p>
+                </form>
+
+            </div>
+        </div>
+
+        <!-- Right Side Blank Color Panel -->
+        <div class="auth-right"></div>
+    </div>
+
+    <script>
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+        }
+
+    </script>
+    <script type="module" src="./js/auth.js"></script>
+</body>
+</html>
