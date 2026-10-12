@@ -1,6 +1,7 @@
 import { auth, db, googleProvider } from "./firebase-config.js";
 import {
     createUserWithEmailAndPassword,
+    sendEmailVerification,
     sendPasswordResetEmail,
     signInWithEmailAndPassword,
     signInWithPopup,
@@ -11,8 +12,14 @@ import {
     ref,
     update
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import {
+    getFunctions,
+    httpsCallable
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 const DEVELOPER_EMAIL = "quickcheck.edu@gmail.com";
+const developerFunctions = getFunctions(auth.app, "australia-southeast1");
+const ensureDeveloperRole = httpsCallable(developerFunctions, "ensureDeveloperRole");
 const authForm = document.getElementById("authForm");
 const googleSignInButton = document.getElementById("google-signin-button");
 const messageEl = document.getElementById("auth-message");
@@ -34,6 +41,14 @@ function showMessage(message, type = "error") {
 }
 
 function getErrorMessage(error) {
+    if (error.code === "developer/email-not-verified") {
+        return error.message;
+    }
+
+    if (error.code === "functions/permission-denied") {
+        return "Developer CRUD access requires a verified quickcheck.edu@gmail.com account. Verify that email, then sign in again.";
+    }
+
     if (error.code === "auth/unauthorized-domain") {
         return `Google sign-in is blocked for "${window.location.hostname}". Add this hostname in Firebase Console under Authentication > Settings > Authorized domains, then try again.`;
     }
@@ -49,6 +64,51 @@ function getErrorMessage(error) {
         "auth/weak-password": "Choose a password with at least 6 characters."
     };
     return messages[error.code] || error.message || "Sign-up failed. Please try again.";
+}
+
+async function saveDeveloperSession(user, password) {
+    if (!user.emailVerified) {
+        await sendEmailVerification(user);
+        throw Object.assign(
+            new Error("A verification email was sent to quickcheck.edu@gmail.com. Verify the address, then sign in again to enable developer CRUD."),
+            { code: "developer/email-not-verified" }
+        );
+    }
+
+    await ensureDeveloperRole();
+    await user.getIdToken(true);
+
+    const response = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${encodeURIComponent(auth.app.options.apiKey)}`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: user.email,
+                password,
+                returnSecureToken: true
+            })
+        }
+    );
+    const session = await response.json();
+    if (!response.ok) {
+        throw new Error(session.error?.message || "Could not create the developer CRUD session.");
+    }
+    if (session.localId !== user.uid || !session.idToken || !session.refreshToken) {
+        throw new Error("Firebase returned an invalid developer CRUD session.");
+    }
+
+    const encodedPayload = session.idToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const tokenPayload = JSON.parse(atob(encodedPayload.padEnd(Math.ceil(encodedPayload.length / 4) * 4, "=")));
+    if (tokenPayload.role !== "developer") {
+        throw new Error("Firebase did not issue the developer role claim. Sign in again and retry.");
+    }
+
+    localStorage.setItem("toefl_firebase_id_token", session.idToken);
+    localStorage.setItem("toefl_firebase_id_token_expiry", String(Date.now() + Number(session.expiresIn || 3600) * 1000));
+    localStorage.setItem("toefl_firebase_refresh_token", session.refreshToken);
+    localStorage.setItem("toefl_firebase_auth_email", DEVELOPER_EMAIL);
+    localStorage.setItem("toefl_firebase_auth_mode", "developer");
 }
 
 async function saveUserProfile(user, profile = {}) {
@@ -121,6 +181,10 @@ export async function handleEmailAuth(event) {
             const credential = await signInWithEmailAndPassword(auth, email, passwordInput.value);
             user = credential.user;
             await saveUserProfile(user);
+            if (user.email?.toLowerCase() === DEVELOPER_EMAIL) {
+                showMessage("Preparing developer access...", "info");
+                await saveDeveloperSession(user, passwordInput.value);
+            }
         }
         window.location.assign("index.html");
     } catch (error) {

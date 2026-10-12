@@ -537,8 +537,11 @@
                 window.location.assign("signup.html");
             }
         });
-        action?.addEventListener("click", (event) => event.stopPropagation());
-        action?.addEventListener("click", openDialog);
+        action?.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            window.location.assign("signup.html");
+        });
         modal.querySelector(".developer-auth-close").addEventListener("click", closeDialog);
         modal.addEventListener("click", (event) => {
             if (event.target === modal) closeDialog();
