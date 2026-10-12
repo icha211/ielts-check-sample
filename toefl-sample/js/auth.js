@@ -12,6 +12,7 @@ import {
     update
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+const DEVELOPER_EMAIL = "quickcheck.edu@gmail.com";
 const authForm = document.getElementById("authForm");
 const googleSignInButton = document.getElementById("google-signin-button");
 const messageEl = document.getElementById("auth-message");
@@ -22,6 +23,7 @@ const authFooter = document.getElementById("authFooter");
 const firstNameInput = document.getElementById("firstName");
 const lastNameInput = document.getElementById("lastName");
 const nationalityInput = document.getElementById("nationality");
+const emailInput = document.getElementById("email");
 const termsInput = document.getElementById("terms");
 const passwordInput = document.getElementById("password");
 let isSignUp = true;
@@ -79,6 +81,7 @@ function setSubmitting(isSubmitting) {
 
 function setAuthMode(signUp) {
     isSignUp = signUp;
+    if (!isSignUp) emailInput.value = DEVELOPER_EMAIL;
     authCard.classList.toggle("signin-mode", !isSignUp);
     authHeading.textContent = isSignUp ? "Master Your TOEFL ITP Journey" : "Welcome Back";
     submitButton.textContent = isSignUp ? "Sign Up" : "Sign In";
@@ -98,7 +101,7 @@ export async function handleEmailAuth(event) {
     event.preventDefault();
     setSubmitting(true);
 
-    const email = document.getElementById("email").value.trim();
+    const email = emailInput.value.trim();
 
     try {
         let user;
@@ -154,7 +157,7 @@ authFooter.addEventListener("click", (event) => {
 
     if (event.target.closest("#resetPassword")) {
         event.preventDefault();
-        const email = document.getElementById("email").value.trim();
+        const email = emailInput.value.trim();
         if (!email) {
             showMessage("Enter your account email first, then choose Forgot password.", "error");
             return;
