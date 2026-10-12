@@ -249,3 +249,14 @@ If you want, you can also set these in Cloud Run:
 - `R2_ACCESS_KEY_ID`
 - `R2_SECRET_ACCESS_KEY`
 - `R2_PUBLIC_BASE_URL`
+
+
+$env:R2_ACCOUNT_ID = "your-cloudflare-account-id"
+
+gcloud run deploy ielts-api-gateway `
+  --project=quickcheck-25590 `
+  --source apps\api-gateway `
+  --region asia-southeast1 `
+  --allow-unauthenticated `
+  --update-env-vars "IELTS_API_CORS_ORIGINS=https://icha211.github.io,R2_ACCOUNT_ID=$env:R2_ACCOUNT_ID,R2_BUCKET_NAME=toefl-test-assets" `
+  --update-secrets "R2_ACCESS_KEY_ID=r2-access-key-id:latest,R2_SECRET_ACCESS_KEY=r2-secret-access-key:latest"

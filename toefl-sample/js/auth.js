@@ -1,6 +1,7 @@
 import { auth, db, googleProvider } from "./firebase-config.js";
 import {
     createUserWithEmailAndPassword,
+    sendPasswordResetEmail,
     signInWithEmailAndPassword,
     signInWithPopup,
     updateProfile
@@ -31,11 +32,18 @@ function showMessage(message, type = "error") {
 }
 
 function getErrorMessage(error) {
+    if (error.code === "auth/unauthorized-domain") {
+        return `Google sign-in is blocked for "${window.location.hostname}". Add this hostname in Firebase Console under Authentication > Settings > Authorized domains, then try again.`;
+    }
+
     const messages = {
         "auth/email-already-in-use": "An account with this email already exists. Sign in instead.",
         "auth/invalid-email": "Enter a valid email address.",
+        "auth/invalid-credential": "The email or password is incorrect. For the developer account, use Forgot password to reset its Firebase password.",
         "auth/operation-not-allowed": "Email and password sign-up is not enabled in Firebase Authentication.",
         "auth/popup-closed-by-user": "The Google sign-in window was closed before sign-in finished.",
+        "auth/user-not-found": "No account was found for this email. Check the address or create an account.",
+        "auth/wrong-password": "The password is incorrect. Use Forgot password to reset it.",
         "auth/weak-password": "Choose a password with at least 6 characters."
     };
     return messages[error.code] || error.message || "Sign-up failed. Please try again.";
@@ -75,13 +83,14 @@ function setAuthMode(signUp) {
     authHeading.textContent = isSignUp ? "Master Your TOEFL ITP Journey" : "Welcome Back";
     submitButton.textContent = isSignUp ? "Sign Up" : "Sign In";
     passwordInput.autocomplete = isSignUp ? "new-password" : "current-password";
+    passwordInput.minLength = isSignUp ? 6 : 0;
     firstNameInput.required = isSignUp;
     lastNameInput.required = isSignUp;
     nationalityInput.required = isSignUp;
     termsInput.required = isSignUp;
     authFooter.innerHTML = isSignUp
         ? 'Already have an account? <a href="#" id="toggleAuthMode">Sign In</a>'
-        : 'Don\'t have an account? <a href="#" id="toggleAuthMode">Sign Up</a>';
+        : 'Don\'t have an account? <a href="#" id="toggleAuthMode">Sign Up</a><br><a href="#" id="resetPassword">Forgot password?</a>';
     messageEl.textContent = "";
 }
 
@@ -140,5 +149,22 @@ authFooter.addEventListener("click", (event) => {
     if (event.target.closest("#toggleAuthMode")) {
         event.preventDefault();
         setAuthMode(!isSignUp);
+        return;
+    }
+
+    if (event.target.closest("#resetPassword")) {
+        event.preventDefault();
+        const email = document.getElementById("email").value.trim();
+        if (!email) {
+            showMessage("Enter your account email first, then choose Forgot password.", "error");
+            return;
+        }
+
+        sendPasswordResetEmail(auth, email)
+            .then(() => showMessage("Password reset email sent. Check your inbox and spam folder.", "info"))
+            .catch((error) => {
+                console.error("Password reset error:", error);
+                showMessage(getErrorMessage(error));
+            });
     }
 });
