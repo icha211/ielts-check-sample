@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="toefl-navigation.css?v=20260918b">
+    <link rel="stylesheet" href="site-navbar.css?v=20261013a">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
     <style>
         :root {
@@ -28,7 +29,7 @@
         * { box-sizing: border-box; }
         body { margin: 0; min-width: 320px; min-height: 100vh; color: var(--ink); background: var(--surface); font-family: "Inter", sans-serif; }
         button { font: inherit; }
-        .app-shell { min-height: 100vh; display: grid; grid-template-columns: 218px minmax(0, 1fr); grid-template-rows: 70px minmax(0, 1fr); }
+        .app-shell { min-height: calc(100vh - 64px); }
         .topbar { grid-column: 1 / -1; grid-row: 1; display: grid; grid-template-columns: 218px minmax(0, 1fr); background: var(--white); border-bottom: 1px solid var(--line); }
         .brand-area { display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border-right: 1px solid var(--line); }
         .brand { display: inline-flex; align-items: center; gap: 6px; color: var(--teal); text-decoration: none; font-size: 15px; font-weight: 800; white-space: nowrap; }
@@ -707,49 +708,8 @@
     </style>
 </head>
 <body>
+    <script src="site-navbar.js?v=20261013a"></script>
     <div class="app-shell">
-        <header class="topbar">
-            <div class="brand-area">
-                <a class="brand" href="index.html" aria-label="Quick Check dashboard">
-                <img src="../asst/icon/Logoqc_without_name.png" alt="Quick Check Logo Icon">
-                <img src="../asst/icon/logoqcname.png" alt="Quick Check Logo Name">
-                </a><button class="collapse-button" type="button" aria-label="Collapse sidebar"><i data-lucide="panel-left-close"></i></button>
-            </div>
-            <div class="topbar-main">
-                <nav class="top-links" aria-label="Main navigation">
-                    <a class="top-link is-current" href="index.html"><i data-lucide="house"></i> TOEFL ITP Dashboard</a>
-                    <a class="top-link" href="developer.html"><i data-lucide="book-open"></i> English Materials</a>
-                </nav>
-                <div class="top-actions">
-                    <a class="upgrade-link" href="index.html#upgrade">Upgrade</a>
-                    <a class="icon-button" href="../index.html#settings" aria-label="Settings"><i data-lucide="settings"></i></a>
-                    <a class="icon-button" href="../index.html#notifications" aria-label="Notifications"><i data-lucide="bell"></i></a>
-                    <img class="top-avatar" src="../asset/figma/sidebar-avatar.jpeg" alt="User profile">
-                </div>
-            </div>
-        </header>
-        <aside class="sidebar" aria-label="TOEFL navigation">
-            <div class="side-groups">
-                <div class="side-group">
-                    <a class="side-link" href="index.html"><i data-lucide="house"></i><span>Dashboard</span></a>
-                </div>
-                <div class="side-group">
-                    <p class="side-heading">TOEFL ITP</p>
-                    <a class="side-link" href="study-plan.html"><i data-lucide="calendar-days"></i><span>Today</span></a>
-                </div>
-                <div class="side-group">
-                    <p class="side-heading">STUDY PROGRESS</p>
-                    <a class="side-link" href="../study-progress.html"><i data-lucide="chart-no-axes-column-increasing"></i><span>View Progress</span></a>
-                    <a class="side-link is-active" href="history.html"><i data-lucide="history"></i><span>Test History</span></a>
-                </div>
-                <div class="side-group">
-                    <p class="side-heading">SOCIAL</p>
-                    <a class="side-link" href="index.html#messages"><i data-lucide="message-square"></i><span>Message</span></a>
-                    <a class="side-link" href="index.html#community"><i data-lucide="users-round"></i><span>Community</span></a>
-                </div>
-            </div>
-            <div class="side-profile"><img src="../asset/figma/sidebar-avatar.jpeg" alt=""><div><strong id="summaryUserName">Your account</strong><small>Test Results</small></div></div>
-        </aside>
         <main class="summary-main">
             <div class="summary-content">
                 <section class="hero" aria-labelledby="pageTitle">
@@ -788,7 +748,8 @@
                     if (!payload) return;
                     const claims = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
                     const name = claims.name || (claims.email ? String(claims.email).split("@")[0] : "");
-                    if (name) document.getElementById("summaryUserName").textContent = name;
+                    const nameEl = document.querySelector(".qcnav-sidebar .sidebar-profile-name");
+                    if (name && nameEl) nameEl.textContent = name;
                 } catch (_) {}
             }
 

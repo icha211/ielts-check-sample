@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     r2_presign_expire_seconds: int = Field(default=900, validation_alias="R2_PRESIGN_EXPIRE_SECONDS")
     r2_read_expire_seconds: int = Field(default=3600, validation_alias="R2_READ_EXPIRE_SECONDS")
     whisperx_aligner_url: str | None = Field(default=None, validation_alias="WHISPERX_ALIGNER_URL")
+
+    @field_validator("r2_access_key_id", "r2_secret_access_key", mode="before")
+    @classmethod
+    def strip_r2_credential_whitespace(cls, value: object) -> object:
+        return value.strip() if isinstance(value, str) else value
 
     model_config = SettingsConfigDict(
         env_prefix="IELTS_API_",
