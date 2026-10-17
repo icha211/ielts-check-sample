@@ -13,8 +13,8 @@ class CardCalendar {
 
     // State management
     this.currentView = 'MONTH'; // 'MONTH' or 'YEAR_RANGE'
-    this.selectedYear = options.defaultYear || new Date().getFullYear();
-    this.selectedMonthIndex = options.defaultMonth || new Date().getMonth();
+    this.selectedYear = Number.isInteger(options.defaultYear) ? options.defaultYear : new Date().getFullYear();
+    this.selectedMonthIndex = Number.isInteger(options.defaultMonth) ? options.defaultMonth : new Date().getMonth();
     this.startYearRange = options.startYearRange || 2018; // 12-year window (2018–2029)
 
     // DOM Element References
@@ -42,9 +42,9 @@ class CardCalendar {
       if (isHidden) {
         this.currentView = 'MONTH';
         this.renderView();
-        this.calendarPicker.classList.remove('hidden');
+        this.setOpen(true);
       } else {
-        this.calendarPicker.classList.add('hidden');
+        this.setOpen(false);
       }
     });
 
@@ -87,12 +87,25 @@ class CardCalendar {
     // Close calendar popover when clicking outside
     document.addEventListener('click', (e) => {
       if (!this.calendarPicker.contains(e.target) && !this.widgetBtn.contains(e.target)) {
-        this.calendarPicker.classList.add('hidden');
+        this.setOpen(false);
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !this.calendarPicker.classList.contains('hidden')) {
+        this.setOpen(false);
+        this.widgetBtn.focus();
       }
     });
   }
 
+  setOpen(isOpen) {
+    this.calendarPicker.classList.toggle('hidden', !isOpen);
+    this.widgetBtn.setAttribute('aria-expanded', String(isOpen));
+  }
+
   renderView() {
+    if (!this.gridContainer || !this.headerLabel) return;
     this.gridContainer.innerHTML = '';
 
     if (this.currentView === 'MONTH') {
@@ -117,7 +130,7 @@ class CardCalendar {
           if (this.selectedFilterText) {
             this.selectedFilterText.textContent = `${month} ${this.selectedYear}`;
           }
-          this.calendarPicker.classList.add('hidden');
+          this.setOpen(false);
         });
 
         this.gridContainer.appendChild(item);
@@ -156,9 +169,5 @@ class CardCalendar {
 
 // Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-  window.cardCalendar = new CardCalendar({
-    defaultYear: 2026,
-    defaultMonth: 9, // Oktober
-    startYearRange: 2018
-  });
+  window.cardCalendar = new CardCalendar({ startYearRange: 2018 });
 });

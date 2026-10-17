@@ -1229,7 +1229,7 @@
         .partner-card__face { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
         .partner-card-front { padding: 20px 18px 18px; display: flex; flex-direction: column; align-items: center; }
         .partner-card-back { --network-space-xs: 4px; --network-space-sm: 8px; --network-space-md: 16px; --network-space-lg: 24px; --network-space-xl: 32px; padding: var(--network-space-sm); background: #D8FFF7; color: #111111; transform: rotateY(180deg); font-family: "Plus Jakarta Sans", sans-serif; }
-        .partner-content { position: relative; z-index: 1; width: 100%; display: grid; justify-items: center; margin: auto 0; transform: translateY(-52px); }
+        .partner-content { position: relative; z-index: 1; width: 100%; display: grid; justify-items: center; margin: auto 0; }
         .partner-card h2 { position: relative; z-index: 1; margin: 12px 0 0; color: #1c1c1c; font: 700 20px "Plus Jakarta Sans", sans-serif; }
         .partner-status-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; }
         .partner-status { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; color: #0d9488; font: 600 10px "Outfit", sans-serif; }
@@ -1256,11 +1256,6 @@
         .partner-popover { position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 2; padding: 3px 8px; border-radius: 6px; background: #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.12); color: #40536a; font: 600 8px "Plus Jakarta Sans", sans-serif; text-align: center; white-space: nowrap; }
         .partner-popover small { display: block; color: #9aafc4; font-size: 7px; font-weight: 400; }
         .partner-popover.partner-profile-popover { width: 250px; padding: 12px 14px; display: grid; gap: 8px; border-radius: 24px; color: #000000; box-shadow: 0 0 4px rgba(0, 0, 0, 0.1); font-family: Inter, sans-serif; text-align: left; white-space: normal; transform: translateX(-50%) scale(0.6); transform-origin: top center; }
-        .partner-search-result { position: absolute; top: calc(100% + 8px); left: 50%; z-index: 2; width: 100%; max-width: 225px; display: grid; grid-template-rows: 0fr; overflow: hidden; opacity: 0; pointer-events: none; transform: translate(-50%, -8px); transition: grid-template-rows 220ms cubic-bezier(0.23, 1, 0.32, 1), opacity 160ms ease-out, transform 220ms cubic-bezier(0.23, 1, 0.32, 1); }
-        .partner-card .partner-search-result.is-visible { grid-template-rows: 1fr; opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
-        .partner-search-result > * { min-height: 0; }
-        .partner-search-result .partner-profile-popover { position: static; width: 250px; margin: 0 auto; transform: scale(0.64); transform-origin: top center; }
-        @media (prefers-reduced-motion: reduce) { .partner-search-result { transition: none; } }
         .partner-profile-popover__header { display: flex; align-items: center; gap: 8px; }
         .partner-profile-popover__avatar { width: 64px; height: 64px; flex: 0 0 auto; border-radius: 50%; object-fit: cover; }
         .partner-profile-popover__details { min-width: 0; flex: 1; display: grid; gap: 8px; }
@@ -1278,7 +1273,7 @@
         .partner-profile-popover__request:active { transform: scale(0.97); }
         .partner-profile-popover__request img { width: 20px; height: 20px; flex: 0 0 auto; }
         .partner-match { position: relative; z-index: 1; margin-top: 32px; color: #0d9488; font: 700 13px "Plus Jakarta Sans", sans-serif; }
-        .partner-search { position: relative; z-index: 1; width: 100%; max-width: 225px; margin-top: 4px; margin-bottom: auto; display: flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border: 1.5px solid #0d9488; border-radius: 20px; color: #7a8fa6; }
+        .partner-search { position: relative; z-index: 1; width: 100%; max-width: none; margin: 0; display: flex; align-items: center; gap: 6px; height: auto; padding: 0 10px; border: 1.5px solid #0d9488; border-radius: 20px; color: #7a8fa6; }
         .partner-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: 400 10px "Plus Jakarta Sans", sans-serif; color: #40536a; }
         .partner-search .ti-arrow-right { color: #0d9488; }
         .partner-discord-link { position: absolute; right: 18px; bottom: 18px; z-index: 1; display: inline-flex; align-items: center; gap: 12px; color: #7a8fa6; font: 400 11px "Plus Jakarta Sans", sans-serif; text-decoration: none; }
@@ -2036,11 +2031,791 @@ body {
                 display: none !important;
             }
         }
+
+        body {
+            display: block;
+            min-height: 100vh;
+        }
+
+        .dashboard-summary {
+            display: grid;
+            width: 100%;
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-rows: auto auto;
+            gap: 18px;
+            align-items: stretch;
+            overflow-x: clip;
+        }
+
+        .dashboard-summary > .promo-banner {
+            grid-column: 1 / -1;
+            grid-row: 1;
+            width: 100%;
+            min-height: 170px;
+            height: 170px;
+        }
+
+        .month-panel {
+            padding: 0;
+            overflow: hidden;
+            border: 1px solid #dce8eb;
+            border-radius: 20px;
+            background: #ffffff;
+            box-shadow: 0 8px 24px rgba(21, 67, 78, 0.06);
+        }
+
+        .calendar-layout-shell {
+            width: 100%;
+            max-width: none;
+            margin: 0;
+            gap: 0;
+        }
+
+        .calendar-layout-shell > .calendar-head {
+            display: grid;
+            height: auto;
+            min-height: 132px;
+            grid-template-columns: minmax(0, 1fr) auto auto auto;
+            grid-template-rows: auto auto;
+            gap: 8px 12px;
+            padding: 18px 24px 14px;
+            border-bottom: 1px solid #dce8eb;
+        }
+
+        .calendar-layout-shell > .calendar-head > div:first-child {
+            display: grid;
+            min-width: 0;
+            grid-column: 1 / -1;
+            grid-row: 1;
+            grid-template-columns: minmax(0, 1fr) auto;
+            grid-template-rows: auto auto;
+            align-items: center;
+            gap: 4px 16px;
+        }
+
+        .calendar-head-title {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .calendar-legend {
+            grid-column: 1;
+            grid-row: 2;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 16px;
+            color: #526d77;
+            font: 500 12px/1.3 "Outfit", sans-serif;
+        }
+
+        .calendar-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .calendar-legend i {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+        }
+
+        .calendar-legend__mock {
+            background: #0d9488;
+        }
+
+        .calendar-legend__recommended {
+            background: #a78bfa;
+        }
+
+        .calendar-head-actions {
+            grid-column: 2;
+            grid-row: 1;
+            align-self: start;
+        }
+
+        .planner-toefl-action {
+            grid-column: 2;
+            grid-row: 2;
+            align-self: center;
+            justify-self: end;
+        }
+
+        .calendar-layout-shell .calendar-head-title h2 {
+            margin: 2px 0 4px;
+            color: #0d9488;
+            font: 700 clamp(24px, 2.4vw, 32px)/1.15 "Plus Jakarta Sans", sans-serif;
+        }
+
+        .calendar-layout-shell .calendar-head-title p {
+            margin: 0;
+            color: #6f8791;
+            font: 400 12px/1.45 "Outfit", sans-serif;
+        }
+
+        .calendar-layout-shell .filter-btn {
+            min-height: 36px;
+            padding: 7px 14px;
+            border: 1px solid #c7e6e2;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #0d9488;
+            font: 600 12px/1.2 "Outfit", sans-serif;
+        }
+
+        .calendar-layout-shell .filter-btn:hover {
+            border-color: #0d9488;
+            background: #f2faf8;
+        }
+
+        .calendar-main-layout {
+            grid-template-columns: minmax(250px, 30.7%) minmax(0, 1fr);
+            gap: 0;
+            align-items: stretch;
+        }
+
+        .agenda-panel {
+            min-width: 0;
+            min-height: 0;
+            padding: 20px 22px;
+            border: 0;
+            border-right: 1px solid #dce8eb;
+            border-radius: 0;
+            background: #f5fbfa;
+        }
+
+        .agenda-panel h3 {
+            color: #0d9488;
+            font-size: 13px;
+            letter-spacing: 0.04em;
+        }
+
+        .agenda-list {
+            gap: 10px;
+        }
+
+        .agenda-item {
+            min-height: 92px;
+            padding: 12px;
+            gap: 8px;
+            border: 1px solid #dce8eb;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px rgba(21, 67, 78, 0.04);
+        }
+
+        .agenda-item:first-child {
+            border-color: #54bcb2;
+        }
+
+        .agenda-item strong {
+            color: #315760;
+            font-size: 14px;
+        }
+
+        .agenda-item-main img {
+            width: 38px;
+            height: 38px;
+            background: #eef8f7;
+        }
+
+        .agenda-item-copy span {
+            color: #315760;
+            font-size: 12px;
+        }
+
+        .agenda-item-copy a {
+            width: min(100%, 160px);
+            height: 26px;
+            border-radius: 999px;
+            font: 600 11px/1.2 "Outfit", sans-serif;
+        }
+
+        .agenda-progress {
+            padding: 12px;
+            gap: 8px;
+            border: 1px solid #dce8eb;
+            border-radius: 14px;
+            background: #ffffff;
+            color: #315760;
+        }
+
+        .agenda-progress h4 {
+            color: #0d9488;
+        }
+
+        .agenda-progress-score strong {
+            color: #18394a;
+            font-size: 32px;
+        }
+
+        .daily-calendar-block {
+            --cell-w: 100px;
+            min-width: 0;
+            width: 100%;
+            min-height: 0;
+            padding: 14px 20px 20px;
+            border: 0;
+            border-radius: 0;
+            background: #ffffff;
+        }
+
+        .daily-calendar-block .calendar-head {
+            display: grid;
+            height: auto;
+            min-height: 58px;
+            grid-template-columns: minmax(0, 1fr) minmax(200px, auto) minmax(0, 1fr);
+            align-items: center;
+            gap: 12px;
+            padding: 0 0 12px;
+        }
+
+        .daily-calendar-block > .calendar-head > button {
+            display: inline-flex;
+            min-width: 0;
+            min-height: 48px;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 8px 18px;
+            border: 1px solid #d6e0ed;
+            border-radius: 999px;
+            background: #fbfcfe;
+            color: #527d7b;
+            font: 600 15px/1.2 "Outfit", sans-serif;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+        }
+
+        .daily-calendar-block > .calendar-head > button:first-child {
+            justify-self: start;
+        }
+
+        .daily-calendar-block > .calendar-head > button:last-child {
+            justify-self: end;
+        }
+
+        .daily-calendar-block > .calendar-head > button:hover {
+            border-color: #b6d0e0;
+            background: #f3f8fb;
+            box-shadow: 0 3px 9px rgba(21, 67, 78, 0.08);
+            transform: translateY(-1px);
+        }
+
+        .daily-calendar-block > .calendar-head > button:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .daily-calendar-block > .calendar-head > button:focus-visible {
+            outline: 3px solid rgba(13, 148, 136, 0.3);
+            outline-offset: 2px;
+        }
+
+        .daily-calendar-block > .calendar-head > button .ti {
+            flex: 0 0 auto;
+            color: #527d7b;
+            font-size: 18px;
+        }
+
+        .daily-calendar-block > .calendar-head > #dashboardMonthTitle {
+            display: flex;
+            min-width: 200px;
+            min-height: 48px;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 0;
+            padding: 8px 22px;
+            border: 1px solid #d6e0ed;
+            border-radius: 999px;
+            background: #ffffff;
+            box-shadow: 0 3px 8px rgba(21, 67, 78, 0.09);
+            color: #0d817b;
+            font: 600 16px/1.2 "Plus Jakarta Sans", sans-serif;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .daily-calendar-block > .calendar-head > #dashboardMonthTitle > .month-title-icon {
+            width: 18px;
+            height: 18px;
+            flex: 0 0 18px;
+            color: currentColor;
+            stroke-width: 2;
+        }
+
+        .daily-calendar-block > .calendar-head > #prevDashboardMonth,
+        .daily-calendar-block > .calendar-head > #nextDashboardMonth {
+            width: min(100%, 210px);
+        }
+
+        .daily-calendar-block .calendar-title {
+            color: #315760;
+            font-size: 13px;
+            letter-spacing: 0.04em;
+        }
+
+        .daily-calendar-block .toefl-101-trigger {
+            min-height: 34px;
+            padding: 7px 12px;
+            border-width: 1px;
+            background: #ffffff;
+            color: #0d9488;
+            font-size: 11px;
+        }
+
+        .planner-toefl-action .toefl-101-trigger {
+            min-height: 34px;
+            padding: 7px 12px;
+            border-width: 1px;
+            background: #ffffff;
+            color: #0d9488;
+            font-size: 11px;
+        }
+
+        .calendar-weekdays {
+            height: 58px;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 2px;
+            border-radius: 12px 12px 0 0;
+        }
+
+        .calendar-weekdays span {
+            font-size: clamp(11px, 1.2vw, 16px);
+        }
+
+        .dashboard-calendar-grid {
+            width: 100%;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            grid-auto-rows: minmax(82px, auto);
+            gap: 4px;
+            padding: 4px 0 0;
+            background: transparent;
+        }
+
+        .dashboard-day {
+            width: auto;
+            min-width: 0;
+            max-width: none;
+            height: auto;
+            min-height: 82px;
+            max-height: none;
+            padding: 8px;
+            border-radius: 12px;
+        }
+
+        @media (max-width: 980px) {
+            .calendar-main-layout {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .agenda-panel {
+                min-height: 0;
+                border-right: 0;
+                border-bottom: 1px solid #dce8eb;
+            }
+        }
+
+        .dashboard-summary > .dashboard-widget {
+            grid-column: 1 / -1;
+            grid-row: 2;
+            display: grid;
+            width: 100%;
+            min-width: 0;
+            min-height: 0;
+            grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr) minmax(280px, 330px);
+            align-items: stretch;
+            gap: 16px;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .dashboard-widget > .widget-summary {
+            display: flex;
+            min-width: 0;
+            flex-direction: column;
+            gap: 14px;
+            padding: 18px;
+            border: 1px solid #dce8eb;
+            border-radius: 20px;
+            background: #ffffff;
+            box-shadow: 0 8px 24px rgba(21, 67, 78, 0.07);
+        }
+
+        .dashboard-widget .widget-header {
+            min-width: 0;
+            margin: 0;
+            gap: 12px;
+        }
+
+        .dashboard-widget .user-info {
+            min-width: 0;
+        }
+
+        .dashboard-widget .welcome-title {
+            flex-wrap: wrap;
+            font-size: 16px;
+        }
+
+        .dashboard-widget .subtitle {
+            font-size: 11px;
+        }
+
+        .dashboard-widget .calendar-wrapper {
+            z-index: 5;
+        }
+
+        .dashboard-widget .calendar-picker {
+            width: min(320px, calc(100vw - 32px));
+            max-width: calc(100vw - 32px);
+        }
+
+        .dashboard-widget .progress-banner {
+            min-height: 108px;
+            margin: 0;
+            padding: 12px 14px;
+            border-radius: 16px;
+            background: #f2faf8;
+            gap: 12px;
+        }
+
+        .dashboard-widget .progress-ring-container {
+            width: 68px;
+            height: 68px;
+            flex: 0 0 68px;
+        }
+
+        .dashboard-widget .progress-ring {
+            width: 68px;
+            height: 68px;
+        }
+
+        .dashboard-widget .progress-title {
+            font-size: 16px;
+        }
+
+        .dashboard-widget .progress-subtext {
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .dashboard-widget .stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 9px;
+        }
+
+        .dashboard-widget .stats-grid .stat-card {
+            min-width: 0;
+            min-height: 68px;
+            flex-direction: row;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 9px;
+            padding: 10px;
+        }
+
+        .dashboard-widget .icon-badge {
+            flex: 0 0 30px;
+            width: 30px;
+            height: 30px;
+        }
+
+        .dashboard-widget .stat-value {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .dashboard-widget > .stacked-cards {
+            display: grid;
+            min-width: 0;
+            grid-column: 2;
+            grid-row: 1;
+            grid-template-rows: minmax(225px, 1fr) auto;
+            align-content: stretch;
+            gap: 12px;
+        }
+
+        .dashboard-widget .strike-card {
+            min-width: 0;
+            min-height: 225px;
+        }
+
+        .dashboard-widget .strike-card .days-grid {
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 4px;
+            overflow: visible;
+        }
+
+        .dashboard-widget .score-summary {
+            min-width: 0;
+            min-height: 130px;
+        }
+
+        .dashboard-widget > .partner-card {
+            grid-column: 3;
+            grid-row: 1;
+            width: 100%;
+            min-width: 0;
+            min-height: 0;
+            height: auto;
+            align-self: stretch;
+        }
+
+        .partner-card .partner-carousel {
+            width: 100%;
+            min-width: 0;
+            gap: 6px;
+        }
+
+        .dashboard-widget :focus-visible {
+            outline: 3px solid rgba(13, 148, 136, 0.45);
+            outline-offset: 3px;
+        }
+
+        .partner-discovery { width: 100%; min-width: 0; text-align: center; }
+        .partner-carousel { width: 100%; margin: 8px 0 0; }
+        .partner-orbit { position: relative; display: flex; min-height: 88px; align-items: center; justify-content: center; isolation: isolate; }
+        .partner-orbit::before { position: absolute; z-index: -1; width: min(94%, 250px); height: 62px; border-radius: 50%; background: linear-gradient(110deg, #d9f5ef, #edf3fb); content: ""; transform: rotate(-5deg); }
+        .partner-avatar { position: relative; z-index: 1; display: grid; width: 52px; height: 52px; flex: 0 0 52px; place-items: center; margin: 0 -4px; padding: 3px; overflow: visible; border: 2px solid #fff; border-radius: 50%; background: #e4f4f1; box-shadow: 0 4px 12px #235f7826; cursor: pointer; transition: transform 180ms ease, box-shadow 180ms ease; }
+        .partner-avatar img { display: block; width: 100%; height: 100%; border-radius: 50%; background: #e6f5f5; object-fit: cover; }
+        .partner-avatar--fallback::before { color: #0b897e; content: attr(data-initials); font: 700 14px "Outfit", sans-serif; }
+        .partner-avatar-0, .partner-avatar-4 { width: 44px; height: 44px; flex-basis: 44px; opacity: .94; }
+        .partner-avatar-1, .partner-avatar-3 { width: 52px; height: 52px; flex-basis: 52px; }
+        .partner-avatar-2 { z-index: 3; width: 64px; height: 64px; flex-basis: 64px; box-shadow: 0 0 0 3px #fff, 0 0 0 5px #54c4b5, 0 7px 18px #235f7833; }
+        .partner-avatar:hover, .partner-avatar:focus-visible { z-index: 5; transform: translateY(-4px) scale(1.05); box-shadow: 0 0 0 3px #fff, 0 0 0 5px #0eaa98, 0 8px 16px #235f7833; }
+        .partner-avatar.is-selected { box-shadow: 0 0 0 3px #fff, 0 0 0 5px #0eaa98, 0 8px 16px #235f7833; }
+        .partner-avatar:focus-visible, .partner-arrow:focus-visible, .partner-match:focus-visible, .partner-search input:focus-visible, .partner-search-option:focus-visible { outline: 3px solid #0d9488; outline-offset: 3px; }
+        .nationality-badge { position: absolute; right: -3px; bottom: -2px; display: grid; width: 22px; height: 22px; place-items: center; border: 2px solid #fff; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px #163f5230; font-size: 13px; line-height: 1; }
+        .partner-controls { display: flex; min-height: 27px; align-items: center; justify-content: center; gap: 12px; margin: 0 0 4px; }
+        .partner-arrow { display: grid; width: 26px; height: 26px; place-items: center; border: 1px solid #d7e9ee; border-radius: 50%; background: #fff; color: #0b897e; cursor: pointer; transition: background 160ms ease, border-color 160ms ease, transform 160ms ease; }
+        .partner-arrow:hover { transform: translateY(-1px); border-color: #75d3c4; background: #edfbf8; }
+        .partner-pagination { display: flex; align-items: center; gap: 5px; }
+        .partner-pagination i { display: block; width: 5px; height: 5px; border-radius: 6px; background: #c9dce2; }
+        .partner-pagination i.active { width: 17px; background: #0b9c8b; }
+        .partner-selected { display: flex; min-height: 42px; max-width: 270px; align-items: center; justify-content: flex-start; gap: 9px; margin: 0 auto 5px; padding: 6px 10px; border-radius: 12px; background: #f1faf8; color: #315c70; text-align: left; }
+        .partner-selected-icon { display: grid; width: 27px; height: 27px; flex: 0 0 27px; place-items: center; border-radius: 9px; background: #dff8f2; color: #079b8f; font-size: 17px; }
+        .partner-selected-copy { min-width: 0; }
+        .partner-selected b, .partner-selected small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .partner-selected b { color: #1c3e4d; font-size: 11px; }
+        .partner-selected small { margin-top: 3px; color: #708b96; font-size: 9px; }
+        .partner-match { position: relative; z-index: 1; width: 100%; min-height: 32px; margin: 4px 0 7px; padding: 6px 12px; border: 0; border-radius: 9px; background: #0d9488; color: #fff; cursor: pointer; font: 600 11px "Outfit", sans-serif; transition: background 160ms ease, transform 160ms ease; }
+        .partner-match:hover:not(:disabled) { transform: translateY(-1px); background: #087f76; }
+        .partner-match:disabled { background: #e4efed; color: #78908d; cursor: not-allowed; }
+        .partner-search-wrap { position: relative; z-index: 4; width: 100%; max-width: 270px; margin: 0 auto; }
+        .partner-search { display: flex; width: 100%; min-height: 34px; align-items: center; gap: 7px; padding: 0 10px; border: 1px solid #b9dcd7; border-radius: 20px; background: #fff; color: #7a8fa6; }
+        .partner-search:focus-within { border-color: #0d9488; box-shadow: 0 0 0 3px #0d94881c; }
+        .partner-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #40536a; font: 400 10px "Plus Jakarta Sans", sans-serif; }
+        .partner-search input:focus-visible { outline: 0; }
+        .partner-search .ti-arrow-right { color: #0d9488; }
+        .partner-search-result { position: absolute; top: calc(100% + 6px); left: 0; display: none; width: 100%; max-height: 128px; overflow-y: auto; padding: 4px; border: 1px solid #d9e9e6; border-radius: 12px; background: #fff; box-shadow: 0 8px 24px #173d4c26; text-align: left; }
+        .partner-search-result.is-visible { display: grid; gap: 2px; }
+        .partner-search-option { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; min-height: 40px; align-items: center; gap: 8px; padding: 4px 7px; border: 0; border-radius: 8px; background: transparent; color: #315c70; cursor: pointer; text-align: left; }
+        .partner-search-option:hover { background: #eff9f7; }
+        .partner-search-option img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
+        .partner-search-initials { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 50%; background: #e4f4f1; color: #0b897e; font-size: 10px; font-weight: 700; }
+        .partner-search-option b, .partner-search-option small { display: block; }
+        .partner-search-option b { font-size: 10px; }
+        .partner-search-option small { margin-top: 2px; color: #708b96; font-size: 9px; }
+        .partner-search-option .partner-search-flag { font-size: 16px; }
+        .partner-search-empty { margin: 0; padding: 9px; color: #708b96; font-size: 10px; }
+        @media (prefers-reduced-motion: reduce) {
+            .partner-avatar, .partner-arrow, .partner-match { transition: none; }
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard-summary > .dashboard-widget {
+                grid-template-columns: minmax(0, 1fr) minmax(260px, 0.9fr);
+            }
+
+            .dashboard-widget > .widget-summary {
+                grid-column: 1;
+                grid-row: 1;
+            }
+
+            .dashboard-widget > .stacked-cards {
+                grid-column: 2;
+                grid-row: 1;
+            }
+
+            .dashboard-widget > .partner-card {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                min-height: 385px;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .dashboard-summary {
+                gap: 14px;
+            }
+
+            .dashboard-summary > .promo-banner {
+                min-height: 140px;
+                height: 140px;
+            }
+
+            .dashboard-summary > .dashboard-widget {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 14px;
+            }
+
+            .dashboard-widget > .widget-summary {
+                padding: 14px;
+            }
+
+            .dashboard-widget > .stacked-cards {
+                grid-column: 1;
+                grid-row: auto;
+                grid-template-rows: auto auto;
+            }
+
+            .dashboard-widget > .partner-card {
+                grid-column: 1;
+                grid-row: auto;
+                min-height: 385px;
+            }
+
+            .dashboard-widget .strike-card {
+                min-height: 0;
+            }
+
+            .calendar-layout-shell > .calendar-head {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 8px;
+            }
+
+            .calendar-layout-shell > .calendar-head > div:first-child {
+                grid-column: 1 / -1;
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .calendar-head-title,
+            .calendar-layout-shell .calendar-head-actions {
+                grid-row: auto;
+                grid-column: 1;
+            }
+
+            .planner-toefl-action {
+                grid-row: auto;
+                grid-column: 1;
+                justify-self: end;
+            }
+
+            .daily-calendar-block > .calendar-head {
+                grid-template-columns: minmax(0, 1fr) minmax(130px, auto) minmax(0, 1fr);
+                gap: 6px;
+            }
+
+            .daily-calendar-block > .calendar-head > button {
+                width: 100%;
+                min-height: 38px;
+                gap: 5px;
+                padding: 6px 8px;
+                font-size: 12px;
+            }
+
+            .daily-calendar-block > .calendar-head > button .ti {
+                font-size: 16px;
+            }
+
+            .daily-calendar-block > .calendar-head > button span {
+                display: none;
+            }
+
+            .daily-calendar-block > .calendar-head > #dashboardMonthTitle {
+                min-width: 130px;
+                min-height: 38px;
+                gap: 6px;
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+
+            .daily-calendar-block > .calendar-head > #dashboardMonthTitle > .month-title-icon {
+                width: 15px;
+                height: 15px;
+                flex-basis: 15px;
+            }
+
+            .daily-calendar-block {
+                --cell-w: calc((100cqw - 6px) / 7);
+                min-height: 0;
+            }
+
+            .calendar-weekdays {
+                height: 36px;
+            }
+
+            .calendar-weekdays span {
+                font-size: clamp(8px, 2.4vw, 11px);
+            }
+
+            .dashboard-calendar-grid {
+                grid-auto-rows: minmax(76px, auto);
+            }
+
+            .dashboard-day {
+                height: auto;
+                min-height: 76px;
+                max-height: none;
+                padding: 4px;
+                border-radius: 8px;
+            }
+
+            .dashboard-day-number {
+                top: 5px;
+                right: 5px;
+            }
+
+            .dashboard-day-label,
+            .task-queue {
+                left: 4px;
+            }
+
+            .task-queue {
+                right: 2px;
+                gap: 2px;
+            }
+
+            .task-token {
+                width: calc(var(--cell-w) * 0.2);
+                height: calc(var(--cell-w) * 0.2);
+                border-width: 1px;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .dashboard-widget .widget-header {
+                align-items: flex-start;
+            }
+
+            .dashboard-widget .avatar {
+                width: 38px;
+                height: 38px;
+            }
+
+            .dashboard-widget .welcome-title {
+                font-size: 14px;
+            }
+
+            .dashboard-widget .dropdown-btn {
+                padding: 7px 9px;
+                font-size: 10px;
+            }
+
+            .dashboard-widget .strike-card {
+                padding: 12px 8px;
+            }
+        }
     </style>
     <link rel="stylesheet" href="toefl-navigation.css?v=20260918b">
     <link rel="stylesheet" href="site-navbar.css?v=20261013a">
-    <link rel="stylesheet" href="card-calendar.css" />
+    <link rel="stylesheet" href="card-calendar.css"/>
+    <link rel="stylesheet" href="card-strike.css"/>
     <script src="card-calendar.js" defer></script>
+    <script src="card-strike.js" defer></script>
 </head>
 <body>
     <script src="site-navbar.js?v=20261013a"></script>
@@ -2052,206 +2827,208 @@ body {
                     <article class="promo-banner" aria-label="Study promotion"><video src="../asst/icon/banner promo.mp4" autoplay muted loop playsinline></video></article>
                     <div class="dashboard-widget">
                         <div class="widget-summary">
-                    <!-- Top Header Section -->
-                    <header class="widget-header">
-                        <div class="user-info">
-                        <img src="https://via.placeholder.com/48" alt="User Avatar" class="avatar" />
-                        <div class="user-text">
-                            <h2 class="welcome-title">Welcome, ${username} <span class="wave-emoji">👋</span></h2>
-                            <p class="subtitle">Keep going! You're making progress</p>
-                        </div>
-                        </div>
-
-                        <!-- Dropdown Filter Button -->
-                        <button id="month-widget-btn" class="dropdown-btn">
-                            <span id="selected-filter-text">This month</span>
-                            <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M6 9l6 6 6-6"/>
-                            </svg>
-                        </button>
-                    </header>
-
-                    <!-- Middle Overall Progress Banner -->
-                    <section class="progress-banner">
-                        <div class="progress-ring-container">
-                        <svg class="progress-ring" width="80" height="80" viewBox="0 0 80 80">
-                            <circle class="ring-bg" cx="40" cy="40" r="32" />
-                            <circle class="ring-fill" cx="40" cy="40" r="32" />
-                        </svg>
-                        <span class="progress-percentage">62%</span>
-                        </div>
-
-                        <div class="progress-details">
-                        <h3 class="progress-title">Overall Progress</h3>
-                        <p class="progress-subtext">
-                            You’ve completed <strong>5</strong> of 8 study days
-                        </p>
-                        </div>
-
-                        <button class="action-btn" aria-label="Next">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                            <path d="M9 18l6-6-6-6"/>
-                        </svg>
-                        </button>
-                    </section>
-
-                    <!-- Bottom Stats Grid -->
-                    <section class="stats-grid">
-                        <!-- Card 1: Mock Test -->
-                        <div class="stat-card card-blue">
-                        <div class="icon-badge">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/>
-                            <line x1="16" y1="17" x2="8" y2="17"/>
-                            </svg>
-                        </div>
-                        <div class="card-content">
-                            <span class="stat-value">3</span>
-                            <span class="stat-label">Mock Test</span>
-                        </div>
-                        </div>
-
-                        <!-- Card 2: Practice Test -->
-                        <div class="stat-card card-teal">
-                        <div class="icon-badge">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <circle cx="12" cy="12" r="6"/>
-                            <circle cx="12" cy="12" r="2"/>
-                            </svg>
-                        </div>
-                        <div class="card-content">
-                            <span class="stat-value">5</span>
-                            <span class="stat-label">Practice Test</span>
-                        </div>
-                        </div>
-
-                        <!-- Card 3: Total Activities -->
-                        <div class="stat-card card-purple">
-                        <div class="icon-badge">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                            </svg>
-                        </div>
-                        <div class="card-content">
-                            <span class="stat-value">8</span>
-                            <span class="stat-label">Total Activities</span>
-                        </div>
-                        </div>
-
-                        <!-- Card 4: Study Time -->
-                        <div class="stat-card card-yellow">
-                        <div class="icon-badge">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"/>
-                            <polyline points="12 6 12 12 16 14"/>
-                            </svg>
-                        </div>
-                        <div class="card-content">
-                            <span class="stat-value">18h</span>
-                            <span class="stat-label">Study Time</span>
-                        </div>
-                        </div>               
-                    </section>
-                    </div>                    
-                    <div class="stacked-cards">
-                        <div class="strike-card">
-                            <!-- Header -->
-                            <div class="card-header">
-                            <div class="header-left">
-                                <div class="header-icon">
-                                <!-- Target / Goal Icon -->
-                                <i icon-lucide="goal" style="width:18px; height:18px; color: #0D9488;"></i>
-                                </div><h2 class="title">Daily Strike</h2>
-                            </div>
-
-                            <div class="header-right">
-                                <!-- Books Icon -->
-                                <i icon-lucide="library-big" style="width:18px; height:18px; color:#7A8FA6"></i>
-                                <span>1/3</span>
-                            </div>
-                            </div>
-
-                            <!-- Days Grid -->
-                            <div class="days-grid">
-                            
-                            <!-- Monday - Completed -->
-                            <div class="day-item completed">
-                                <div class="icon-completed">
-                                <i data-feather="check" style="width:14px; height:14px; stroke-width: 3;"></i>
+                            <!-- Top Header Section -->
+                            <header class="widget-header">
+                                <div class="user-info">
+                                    <img src="https://via.placeholder.com/48" alt="User Avatar" class="avatar"></src>
+                                        <div class="user-text">
+                                            <h2 class="welcome-title">Welcome, ${username} <span class="wave-emoji">👋</span></h2>
+                                            <p class="subtitle">Keep going! You're making progress</p>
+                                        </div>
                                 </div>
-                                <span class="day-label">Mon</span>
-                            </div>
-
-                            <!-- Tuesday - Completed -->
-                            <div class="day-item completed">
-                                <div class="icon-completed">
-                                <i data-feather="check" style="width:14px; height:14px; stroke-width: 3;"></i>
+                                <!-- Dropdown Filter Button -->
+                                <div class="calendar-wrapper">
+                                    <button id="month-widget-btn" class="dropdown-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="calendar-picker">
+                                        <span id="selected-filter-text">This month</span>
+                                        <svg class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                            <path d="M6 9l6 6 6-6"/>
+                                        </svg>
+                                    </button>
+                                    <div id="calendar-picker" class="calendar-picker hidden" role="dialog" aria-label="Select month">
+                                        <div class="calendar-header">
+                                            <button id="prev-btn" class="nav-btn" type="button" aria-label="Previous year">&#8249;</button>
+                                            <button id="view-toggle-btn" class="title-btn" type="button">
+                                                <span id="header-label"></span>
+                                                <svg id="toggle-chevron" class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                                            </button>
+                                            <button id="next-btn" class="nav-btn" type="button" aria-label="Next year">&#8250;</button>
+                                        </div>
+                                        <div id="grid-container" class="grid-container"></div>
+                                    </div>
                                 </div>
-                                <span class="day-label">Tue</span>
-                            </div>
-
-                            <!-- Wednesday - Missed / Warning -->
-                            <div class="day-item missed">
-                                <div class="icon-missed">
-                                <i data-feather="alert-circle" style="width:22px; height:22px;"></i>
+                            </header>
+                            <!-- Middle Overall Progress Banner -->
+                            <section class="progress-banner">
+                                <div class="progress-ring-container">
+                                    <svg class="progress-ring" width="80" height="80" viewBox="0 0 80 80">
+                                        <circle class="ring-bg" cx="40" cy="40" r="32" />
+                                        <circle class="ring-fill" cx="40" cy="40" r="32" />
+                                    </svg>
+                                    <span class="progress-percentage">62%</span>
                                 </div>
-                                <span class="day-label">Wed</span>
-                            </div>
 
-                            <!-- Thursday - Current Active Day with Circular Progress Ring -->
-                            <div class="day-item active">
-                                <div class="ring-container">
-                                <svg width="24" height="24" viewBox="0 0 36 36">
-                                    <!-- Outer Ring (Gray/Blue) -->
-                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#60a5fa" stroke-width="2.5" />
-                                    <!-- Inner Ring Green (Completed percentage) -->
-                                    <path d="M18 6 a 12 12 0 0 1 0 24 a 12 12 0 0 1 0 -24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-dasharray="60, 100" />
-                                    <!-- Inner Ring Purple Accent -->
-                                    <path d="M18 10 a 8 8 0 0 1 0 16 a 8 8 0 0 1 0 -16" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="25, 100" />
-                                </svg>
+                                <div class="progress-details">
+                                    <h3 class="progress-title">Overall Progress</h3>
+                                    <p class="progress-subtext">You’ve completed <strong>5</strong> of 8 study days</p>
                                 </div>
-                                <span class="day-label">Thr</span>
-                            </div>
 
-                            <!-- Friday - Upcoming Concentric Rings -->
-                            <div class="day-item upcoming">
-                                <div class="ring-container">
-                                <svg width="24" height="24" viewBox="0 0 36 36">
-                                    <circle cx="18" cy="18" r="14" fill="none" stroke="#cbd5e1" stroke-width="2" />
-                                    <circle cx="18" cy="18" r="9" fill="none" stroke="#cbd5e1" stroke-width="2" />
-                                    <circle cx="18" cy="18" r="4" fill="none" stroke="#cbd5e1" stroke-width="2" />
-                                </svg>
+                                <button class="action-btn" aria-label="Next">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                        <path d="M9 18l6-6-6-6"/>
+                                    </svg>
+                                </button>
+                            </section>
+
+                            <!-- Bottom Stats Grid -->
+                            <section class="stats-grid">
+                                <!-- Card 1: Mock Test -->
+                                <div class="stat-card card-blue">
+                                    <div class="icon-badge">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                            <polyline points="14 2 14 8 20 8"/>
+                                            <line x1="16" y1="13" x2="8" y2="13"/>
+                                            <line x1="16" y1="17" x2="8" y2="17"/>
+                                        </svg>
+                                    </div>
+                                    <div class="card-content">
+                                        <span class="stat-value">3</span>
+                                        <span class="stat-label">Mock Test</span>
+                                    </div>
                                 </div>
-                                <span class="day-label">Fri</span>
-                            </div>
 
-                            <!-- Saturday - Upcoming Concentric Rings -->
-                            <div class="day-item upcoming">
-                                <div class="ring-container">
-                                <svg width="24" height="24" viewBox="0 0 36 36">
-                                    <circle cx="18" cy="18" r="14" fill="none" stroke="#cbd5e1" stroke-width="2" />
-                                    <circle cx="18" cy="18" r="9" fill="none" stroke="#cbd5e1" stroke-width="2" />
-                                    <circle cx="18" cy="18" r="4" fill="none" stroke="#cbd5e1" stroke-width="2" />
-                                </svg>
+                            <!-- Card 2: Practice Test -->
+                            <div class="stat-card card-teal">
+                                <div class="icon-badge">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <circle cx="12" cy="12" r="6"/>
+                                        <circle cx="12" cy="12" r="2"/>
+                                    </svg>
                                 </div>
-                                <span class="day-label">Sat</span>
-                            </div>
-
-                            <!-- Sunday - Upcoming Concentric Rings -->
-                            <div class="day-item upcoming">
-                                <div class="ring-container">
-                                <svg width="24" height="24" viewBox="0 0 36 36">
-                                    <circle cx="18" cy="18" r="14" fill="none" stroke="#cbd5e1" stroke-width="2" />
-                                    <circle cx="18" cy="18" r="9" fill="none" stroke="#cbd5e1" stroke-width="2" />
-                                    <circle cx="18" cy="18" r="4" fill="none" stroke="#cbd5e1" stroke-width="2" />
-                                </svg>
+                                <div class="card-content">
+                                    <span class="stat-value">5</span>
+                                    <span class="stat-label">Practice Test</span>
                                 </div>
-                                <span class="day-label">Sun</span>
                             </div>
 
+                            <!-- Card 3: Total Activities -->
+                            <div class="stat-card card-purple">
+                                <div class="icon-badge">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                    </svg>
+                                </div>
+                                <div class="card-content">
+                                    <span class="stat-value">8</span>
+                                    <span class="stat-label">Total Activities</span>
+                                </div>
+                            </div>
+
+                            <!-- Card 4: Study Time -->
+                            <div class="stat-card card-yellow">
+                                <div class="icon-badge">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12 6 12 12 16 14"/>
+                                    </svg>
+                                </div>
+                                <div class="card-content">
+                                    <span class="stat-value">18h</span>
+                                    <span class="stat-label">Study Time</span>
+                                </div>
+                            </div>
+                            </section>
+                        </div>
+
+                        <div class="stacked-cards">
+                            <div class="strike-card">
+                                <!-- Header -->
+                                <div class="card-header">
+                                    <div class="header-left">
+                                        <div class="header-icon">
+                                        <!-- Target / Goal Icon -->
+                                        <i icon-lucide="goal" style="width:18px; height:18px; color: #0D9488;"></i>
+                                        </div><h2 class="title">Daily Strike</h2>
+                                    </div>
+
+                                    <div class="header-right">
+                                        <!-- Books Icon -->
+                                        <i icon-lucide="library-big" style="width:18px; height:18px; color:#7A8FA6"></i>
+                                        <span id="strike-progress">0/3</span>
+                                    </div>
+                                </div>
+
+                                <!-- Days Grid -->
+                                <div class="days-grid" id="strike-days" aria-live="polite">
+                                    <!-- Monday - Completed -->
+                                    <div class="day-item completed">
+                                        <div class="icon-completed">
+                                            <i data-feather="check" style="width:14px; height:14px; stroke-width: 3;"></i>
+                                        </div>
+                                        <span class="day-label">Mon</span>
+                                    </div>
+                                    <!-- Tuesday -->
+                                    <div class="day-item completed">
+                                        <div class="icon-completed">
+                                            <i data-feather="check" style="width:14px; height:14px; stroke-width: 3;"></i>
+                                        </div>
+                                        <span class="day-label">Tue</span>
+                                    </div>
+                                    <!-- Wednesday -->
+                                    <div class="day-item missed">
+                                        <div class="icon-missed">
+                                            <i data-feather="alert-circle" style="width:22px; height:22px;"></i>
+                                        </div>
+                                        <span class="day-label">Wed</span>
+                                    </div>
+                                    <!-- Thursday -->
+                                    <div class="day-item active">
+                                        <div class="ring-container">
+                                        <svg width="24" height="24" viewBox="0 0 36 36">
+                                            <!-- Outer Ring (Gray/Blue) -->
+                                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#60a5fa" stroke-width="2.5" />
+                                            <!-- Inner Ring Green (Completed percentage) -->
+                                            <path d="M18 6 a 12 12 0 0 1 0 24 a 12 12 0 0 1 0 -24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-dasharray="60, 100" />
+                                            <!-- Inner Ring Purple Accent -->
+                                            <path d="M18 10 a 8 8 0 0 1 0 16 a 8 8 0 0 1 0 -16" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="25, 100" />
+                                        </svg>
+                                        </div>
+                                        <span class="day-label">Thr</span>
+                                    </div>
+                                <!-- Friday -->
+                                <div class="day-item upcoming">
+                                    <div class="ring-container">
+                                    <svg width="24" height="24" viewBox="0 0 36 36">
+                                        <circle cx="18" cy="18" r="14" fill="none" stroke="#cbd5e1" stroke-width="2" />
+                                        <circle cx="18" cy="18" r="9" fill="none" stroke="#cbd5e1" stroke-width="2" />
+                                        <circle cx="18" cy="18" r="4" fill="none" stroke="#cbd5e1" stroke-width="2" />
+                                    </svg>
+                                    </div>
+                                    <span class="day-label">Fri</span>
+                                </div>
+                                <!-- Saturday - Upcoming Concentric Rings -->
+                                <div class="day-item upcoming">
+                                    <div class="ring-container">
+                                    <svg width="24" height="24" viewBox="0 0 36 36">
+                                        <circle cx="18" cy="18" r="14" fill="none" stroke="#cbd5e1" stroke-width="2" />
+                                        <circle cx="18" cy="18" r="9" fill="none" stroke="#cbd5e1" stroke-width="2" />
+                                        <circle cx="18" cy="18" r="4" fill="none" stroke="#cbd5e1" stroke-width="2" />
+                                    </svg>
+                                    </div>
+                                    <span class="day-label">Sat</span>
+                                </div>
+                                <!-- Sunday - Upcoming Concentric Rings -->
+                                <div class="day-item upcoming">
+                                    <div class="ring-container">
+                                    <svg width="24" height="24" viewBox="0 0 36 36">
+                                        <circle cx="18" cy="18" r="14" fill="none" stroke="#cbd5e1" stroke-width="2" />
+                                        <circle cx="18" cy="18" r="9" fill="none" stroke="#cbd5e1" stroke-width="2" />
+                                        <circle cx="18" cy="18" r="4" fill="none" stroke="#cbd5e1" stroke-width="2" />
+                                    </svg>
+                                    </div>
+                                    <span class="day-label">Sun</span>
+                                </div>
                             </div>
                         </div>
                         <article class="score-summary">
@@ -2279,61 +3056,69 @@ body {
                                     <i data-lucide="trending-up"style="width: 16px; height: 16px; margin-right: 4px; stroke-width: 2px;"></i>
                                     <i data-lucide="plus" style="width: 8px; height: 8px; margin-right: 1px;">
                                     </i><span>18 since last mock</span>
-                                </div>                                
-                                <div class="score-goal"><span>Goal 550</span><div><i style="width:82%"></i></div><b>33 pts above goal</b></div>
+                                    <div class="score-goal"><span>Goal 550</span><div><i style="width:82%"></i></div><b>33 pts above goal</b></div>
+                                </div>
+                        </article>
+
+                        <article class="summary-card partner-card" id="partnerCard" aria-label="Find your English partner">
+                            <div class="partner-card__inner">
+                            <div class="partner-card__face partner-card-front" id="partnerCardFront">
+                            <div class="partner-content">
+                                <h2>Find your English partner</h2>
+                                <div class="partner-status-row">
+                                    <p class="partner-status"><span class="status-dot"></span>Sample partners · demo</p>
+                                    <button class="you-have-50-connection-parent" id="showPartnerNetwork" type="button" aria-label="View sample partner network" aria-expanded="false" aria-controls="partnerCardBack">
+                                        <span class="you-have-50-container"><span class="connection"><span class="connection2">Explore network</span></span></span>
+                                        <i class="ti ti-arrow-right arrow-right-icon" aria-hidden="true"></i>
+                                    </button>
+                                </div>
+                                <div class="partner-carousel">
+                                    <div class="partner-discovery">
+                                        <div class="partner-orbit" id="partnerOrbit" role="group" aria-label="Suggested study partners"></div>
+                                        <div class="partner-controls">
+                                            <button class="partner-arrow" id="previousPartner" type="button" aria-label="Previous suggested partners"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
+                                            <span class="partner-pagination" id="partnerPagination" aria-hidden="true"></span>
+                                            <button class="partner-arrow" id="nextPartner" type="button" aria-label="Next suggested partners"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+                                        </div>
+                                        <div class="partner-selected" id="partnerSelected" aria-live="polite">
+                                            <span class="partner-selected-icon" aria-hidden="true">✦</span>
+                                            <span class="partner-selected-copy"><b>Choose a study partner</b><small>Sample profiles · matchmaking demo</small></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button class="partner-match" id="partnerMatchButton" type="button" disabled>Choose a partner</button>
+                                <div class="partner-search-wrap">
+                                    <label class="partner-search">
+                                        <i class="ti ti-search" aria-hidden="true"></i>
+                                        <input id="partnerSearch" type="search" placeholder="Search name, country or level" autocomplete="off" aria-label="Search sample study partners">
+                                        <i class="ti ti-arrow-right" aria-hidden="true"></i>
+                                    </label>
+                                    <div class="partner-search-result" id="partnerSearchResult" aria-live="polite"></div>
+                                </div>
+                            </div>
+                            <a class="partner-discord-link" href="https://discord.gg/APnzhYPFT8" target="_blank" rel="noopener noreferrer">
+                                <span>Talk with Your Friends</span>
+                                <img src="../asset/icon/discord.png" alt="Join Discord">
+                            </a>
+                            </div>
+                            <section class="partner-card__face partner-card-back" id="partnerCardBack" aria-label="Your global network" aria-hidden="true" inert>
+                                <div class="network-card-heading">
+                                    <h3 class="network-card-title">YOUR GLOBAL NETWORK</h3>
+                                    <div class="network-card-total"><span class="network-card-total__count"><i class="ti ti-users" aria-hidden="true"></i>78</span><strong>TOTAL CONNECTION</strong></div>
+                                </div>
+                                <div class="network-card-body">
+                                    <div class="network-insights">
+                                        <section><h4>Connection Breakdown <small>(CEFR LEVEL)</small></h4><div class="network-bars"><span class="network-bar"><strong>&nbsp;</strong><i style="--bar-height:4px"></i><span>A1</span></span><span class="network-bar"><strong>&nbsp;</strong><i style="--bar-height:17px"></i><span>A2</span></span><span class="network-bar"><strong>78</strong><i style="--bar-height:27px"></i><span>B1</span></span><span class="network-bar"><strong>48</strong><i style="--bar-height:23px"></i><span>B2</span></span><span class="network-bar"><strong>0</strong><i style="--bar-height:4px"></i><span>C1</span></span><span class="network-bar"><strong>0</strong><i style="--bar-height:4px"></i><span>C2</span></span></div></section>
+                                        <span class="network-divider" aria-hidden="true"></span>
+                                        <section class="network-countries"><h4>Top Connecting Countries</h4><div class="network-country"><span class="network-flag japan" aria-label="Japan"></span><span>Japan</span><strong>12</strong></div><div class="network-country"><span class="network-flag brazil" aria-label="Brazil"></span><span>Brazil</span><strong>8</strong></div><div class="network-country"><span class="network-flag spain" aria-label="Spain"></span><span>Spain</span><strong>7</strong></div></section>
+                                    </div>
+                                    <section class="network-connections"><h4>List of Connections</h4><div class="network-connection-grid"><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Yuki T.</span><span class="network-flag japan" aria-label="Japan"></span><span class="network-level">B1</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Einiry P.</span><span class="network-flag brazil" aria-label="Brazil"></span><span class="network-level">B1</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Carlos R.</span><span class="network-flag brazil" aria-label="Brazil"></span><span class="network-level">B2</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Glacia E.</span><span class="network-flag spain" aria-label="Spain"></span><span class="network-level">B1</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Sofia L.</span><span class="network-flag spain" aria-label="Spain"></span><span class="network-level">B2</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Jonch A.</span><span class="network-flag spain" aria-label="Spain"></span><span class="network-level">B2</span></div></div><span class="network-view-all">View All (78 Connections)</span></section>
+                                </div>
+                                <button class="network-back-button" id="hidePartnerNetwork" type="button"><span>Go Back to Matchmaking</span><i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+                            </section>
+                            </div>
                         </article>
                     </div>
-                    <article class="summary-card partner-card" id="partnerCard" aria-label="Find your English partner">
-                        <div class="partner-card__inner">
-                        <div class="partner-card__face partner-card-front" id="partnerCardFront">
-                        <div class="partner-content">
-                            <h2>Find You English Partner</h2>
-                            <div class="partner-status-row">
-                                <p class="partner-status"><span class="status-dot"></span>User Online &amp; Matching</p>
-                                <button class="you-have-50-connection-parent" id="showPartnerNetwork" type="button" aria-label="View your 50 plus connections" aria-expanded="false" aria-controls="partnerCardBack">
-                                    <span class="you-have-50-container"><span class="you-have">You have</span><span class="connection"><span class="connection2">50+ Connection</span></span></span>
-                                    <i class="ti ti-arrow-right arrow-right-icon" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                            <div class="partner-carousel">
-                                <button class="partner-nav" type="button" aria-label="Previous partner"><i class="ti ti-chevron-left"></i></button>
-                                <div class="partner-avatars">
-                                    <span class="partner-avatar"><i class="ti ti-user"></i></span>
-                                    <span class="partner-avatar"><i class="ti ti-user"></i></span>
-                                    <span class="partner-avatar active"><i class="ti ti-user"></i></span>
-                                    <span class="partner-avatar"><i class="ti ti-user"></i></span>
-                                    <span class="partner-avatar"><i class="ti ti-user"></i></span>
-                                </div>
-                                <button class="partner-nav" type="button" aria-label="Next partner"><i class="ti ti-chevron-right"></i></button>
-                            </div>
-                            <div class="partner-match">Match Now</div>
-                            <label class="partner-search"><i class="ti ti-search"></i><input id="partnerSearch" type="search" placeholder="Search Now" autocomplete="off"><i class="ti ti-arrow-right"></i></label>
-                            <div class="partner-search-result" id="partnerSearchResult" aria-live="polite">
-                                <div class="partner-popover partner-profile-popover"><div class="partner-profile-popover__header"><img class="partner-profile-popover__avatar" src="../asset/figma/partner-portrait.jpeg" alt="@user_ken profile"><div class="partner-profile-popover__details"><div class="partner-profile-popover__name">@user_ken</div><div class="partner-profile-popover__meta"><img class="partner-profile-popover__status" src="../asset/figma/partner-profile-overlay.png" alt="Online"><img class="partner-profile-popover__divider" src="../asset/figma/partner-divider.svg" alt="" aria-hidden="true"><span class="partner-profile-popover__level">A2</span><img class="partner-profile-popover__divider" src="../asset/figma/partner-divider.svg" alt="" aria-hidden="true"><span class="partner-profile-popover__connections"><strong>100+</strong><small>Connections</small></span></div><div class="partner-profile-popover__tags"><span class="partner-profile-popover__tag">#music</span><span class="partner-profile-popover__tag">#anime</span></div></div></div><a class="partner-profile-popover__request" href="https://discord.gg/APnzhYPFT8" target="_blank" rel="noopener noreferrer"><img src="../asset/figma/partner-plus.svg" alt="" aria-hidden="true"><span>Request Match</span></a></div>
-                            </div>
-                        </div>
-                        <a class="partner-discord-link" href="https://discord.gg/APnzhYPFT8" target="_blank" rel="noopener noreferrer">
-                            <span>Talk with Your Friends</span>
-                            <img src="../asset/icon/discord.png" alt="Join Discord">
-                        </a>
-                        </div>
-                        <section class="partner-card__face partner-card-back" id="partnerCardBack" aria-label="Your global network" aria-hidden="true" inert>
-                            <div class="network-card-heading">
-                                <h3 class="network-card-title">YOUR GLOBAL NETWORK</h3>
-                                <div class="network-card-total"><span class="network-card-total__count"><i class="ti ti-users" aria-hidden="true"></i>78</span><strong>TOTAL CONNECTION</strong></div>
-                            </div>
-                            <div class="network-card-body">
-                                <div class="network-insights">
-                                    <section><h4>Connection Breakdown <small>(CEFR LEVEL)</small></h4><div class="network-bars"><span class="network-bar"><strong>&nbsp;</strong><i style="--bar-height:4px"></i><span>A1</span></span><span class="network-bar"><strong>&nbsp;</strong><i style="--bar-height:17px"></i><span>A2</span></span><span class="network-bar"><strong>78</strong><i style="--bar-height:27px"></i><span>B1</span></span><span class="network-bar"><strong>48</strong><i style="--bar-height:23px"></i><span>B2</span></span><span class="network-bar"><strong>0</strong><i style="--bar-height:4px"></i><span>C1</span></span><span class="network-bar"><strong>0</strong><i style="--bar-height:4px"></i><span>C2</span></span></div></section>
-                                    <span class="network-divider" aria-hidden="true"></span>
-                                    <section class="network-countries"><h4>Top Connecting Countries</h4><div class="network-country"><span class="network-flag japan" aria-label="Japan"></span><span>Japan</span><strong>12</strong></div><div class="network-country"><span class="network-flag brazil" aria-label="Brazil"></span><span>Brazil</span><strong>8</strong></div><div class="network-country"><span class="network-flag spain" aria-label="Spain"></span><span>Spain</span><strong>7</strong></div></section>
-                                </div>
-                                <section class="network-connections"><h4>List of Connections</h4><div class="network-connection-grid"><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Yuki T.</span><span class="network-flag japan" aria-label="Japan"></span><span class="network-level">B1</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Einiry P.</span><span class="network-flag brazil" aria-label="Brazil"></span><span class="network-level">B1</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Carlos R.</span><span class="network-flag brazil" aria-label="Brazil"></span><span class="network-level">B2</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Glacia E.</span><span class="network-flag spain" aria-label="Spain"></span><span class="network-level">B1</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Sofia L.</span><span class="network-flag spain" aria-label="Spain"></span><span class="network-level">B2</span></div><div class="network-person"><i class="ti ti-user-circle" aria-hidden="true"></i><span class="network-person__name">Jonch A.</span><span class="network-flag spain" aria-label="Spain"></span><span class="network-level">B2</span></div></div><span class="network-view-all">View All (78 Connections)</span></section>
-                            </div>
-                            <button class="network-back-button" id="hidePartnerNetwork" type="button"><span>Go Back to Matchmaking</span><i class="ti ti-arrow-right" aria-hidden="true"></i></button>
-                        </section>
-                        </div>
-                    </article>
                 </section>
             </div>
         </header>
@@ -2345,38 +3130,35 @@ body {
                         <div>
                             <div class="calendar-head-title">
                                 <div class="eyebrow">MONTHLY STUDY PLAN</div>
-                                <h2>${currentMonthLabel} ${currentYear}</h2>
+                                <h2 id="monthPlannerHeading">This month</h2>
                                 <p>Mock test every 4th day · Practice on the following 3 days</p>
+                            </div>
+                            <div class="calendar-legend" aria-label="Study plan legend">
+                                <span><i class="calendar-legend__mock" aria-hidden="true"></i>Mock test</span>
+                                <span><i class="calendar-legend__recommended" aria-hidden="true"></i>Recommended study plan</span>
                             </div>
                             <div class="calendar-head-actions">
                                 <button class="filter-btn" onclick="toast('Showing this month')">This month⌄</button>
                             </div>
+                            <div class="planner-toefl-action">
+                                <button class="toefl-101-trigger" type="button" data-open-toefl101 aria-haspopup="dialog" aria-controls="toefl101Modal" aria-expanded="false"><i icon-lucide="info" aria-hidden="true"></i>What is TOEFL 101?</button>
+                            </div>
                         </div>
-                        <button type="button" id="prevDashboardMonth" aria-label="Previous month"><i class="ti ti-chevron-left" aria-hidden="true"></i><span id="previousMonthLabel">JULI 2026</span></button>
-                        <h2 class="calendar-period-current" id="dashboardMonthTitle">AGUSTUS 2026</h2>
-                        <button type="button" id="nextDashboardMonth" aria-label="Next month"><span id="nextMonthLabel">SEPTEMBER 2026</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
                     </div>
                     <div class="calendar-main-layout">
                         <aside class="agenda-panel" aria-label="Upcoming agenda">
-                            <h3>UPCOMING AGENDA</h3>
+                            <h3>RECOMMENDED PLAN</h3>
                             <div class="agenda-list">
                                 <article class="agenda-item"><strong>2 Aug</strong><div class="agenda-item-main"><img src="../asset/figma/mock-listening.png" alt=""><div class="agenda-item-copy"><span>Listening Practice Test</span><a href="section%201.html">Start Test <i class="ti ti-arrow-narrow-right"></i></a></div></div></article>
                                 <article class="agenda-item"><strong>3 Aug</strong><div class="agenda-item-main"><img src="../asset/figma/mock-structure.png" alt=""><div class="agenda-item-copy"><span>Structure Practice Test</span><a href="section%202.html?testType=practicetest&amp;runMode=full">Start Test <i class="ti ti-arrow-narrow-right"></i></a></div></div></article>
                                 <article class="agenda-item"><strong>4 Aug</strong><div class="agenda-item-main"><img src="../asset/figma/mock-reading.png" alt=""><div class="agenda-item-copy"><span>Reading Practice Test</span><a href="section%203.html">Start Test <i class="ti ti-arrow-narrow-right"></i></a></div></div></article>
-                                <article class="agenda-item"><strong>5 Aug</strong><div class="agenda-item-main"><img src="../asset/figma/mock-listening.png" alt=""><div class="agenda-item-copy"><span>Listening Practice Test</span><a href="section%201.html">Start Test <i class="ti ti-arrow-narrow-right"></i></a></div></div></article>
                             </div>
-                            <section class="agenda-progress" aria-label="Overall progress"><h4>OVERALL PROGRESS</h4><div class="agenda-progress-score"><strong>517</strong><span>accumulation score from Mock Test &amp; Practice Test</span></div><small>GOAL 550 <span>33 points to go</span></small><b>517</b><div class="agenda-progress-bar"><span></span></div><small><span>310</span><span>550</span></small></section>
                         </aside>
                         <div class="daily-calendar-block" aria-label="Daily calendar">
                             <div class="calendar-head">
-                                <div class="calendar-date-row">
-                                    <div class="calendar-date-picker">
-                                        <button class="calendar-date-badge" type="button" id="calendarDateBadge" aria-label="Choose month and year" aria-expanded="false" aria-controls="monthPickerPopover"><span class="calendar-date-badge-month" id="dashboardBadgeMonth">AUG</span><span class="calendar-date-badge-day" id="dashboardBadgeDay">1</span></button>
-                                        <div class="month-picker-popover" id="monthPickerPopover" role="dialog" aria-label="Choose month and year"><div class="month-picker-header"><h3 class="month-picker-year" id="monthPickerYear">2026</h3><div class="month-picker-year-nav"><button type="button" id="previousPickerYear" aria-label="Previous year"><i class="ti ti-chevron-left" aria-hidden="true"></i></button><button type="button" id="nextPickerYear" aria-label="Next year"><i class="ti ti-chevron-right" aria-hidden="true"></i></button></div></div><p class="month-picker-label">Month</p><div class="month-picker-grid" id="monthPickerGrid"></div></div>
-                                    </div>
-                                    <div class="calendar-date-copy"><div class="calendar-title">DAILY SCHEDULE</div><div class="calendar-range" id="dashboardMonthRange">Range</div></div>
-                                </div>
-                                <button class="toefl-101-trigger" id="openToefl101" type="button" aria-haspopup="dialog" aria-controls="toefl101Modal" aria-expanded="false">TOEFL ITP 101</button>
+                                <button type="button" id="prevDashboardMonth" aria-label="Previous month"><i class="ti ti-chevron-left" aria-hidden="true"></i><span id="previousMonthLabel">JULI 2026</span></button>
+                                <h2 class="calendar-period-current" id="dashboardMonthTitle"><i class="ti ti-calendar month-title-icon" aria-hidden="true"></i><span id="dashboardMonthLabel">AGUSTUS 2026</span></h2>
+                                <button type="button" id="nextDashboardMonth" aria-label="Next month"><span id="nextMonthLabel">SEPTEMBER 2026</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
                             </div>
                             <div class="calendar-weekdays"><span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span></div>
                             <div class="dashboard-calendar-grid" id="dashboardCalendarGrid"></div>
@@ -2446,7 +3228,8 @@ body {
         const MONTH_LABELS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
         const MONTH_LABELS_SHORT = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DES"];
         const dashboardGrid = document.getElementById("dashboardCalendarGrid");
-        const dashboardMonthTitle = document.getElementById("dashboardMonthTitle");
+        const dashboardMonthLabel = document.getElementById("dashboardMonthLabel");
+        const monthPlannerHeading = document.getElementById("monthPlannerHeading");
         const dashboardMonthRange = document.getElementById("dashboardMonthRange");
         const previousMonthLabel = document.getElementById("previousMonthLabel");
         const nextMonthLabel = document.getElementById("nextMonthLabel");
@@ -2458,8 +3241,9 @@ body {
         const monthPickerGrid = document.getElementById("monthPickerGrid");
         const dailyDrilldown = document.getElementById("dailyDrilldown");
         const toefl101Modal = document.getElementById("toefl101Modal");
-        const openToefl101Button = document.getElementById("openToefl101");
+        const openToefl101Buttons = [...document.querySelectorAll("[data-open-toefl101]")];
         const closeToefl101Button = document.getElementById("closeToefl101");
+        let toefl101ReturnFocus = openToefl101Buttons[0];
         const MONTH_PICKER_LABELS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MEI", "JUNE", "JULI", "AUGUSTUS", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
         const dashboardSync = typeof StudyPlanFirestoreSync === "function"
             ? new StudyPlanFirestoreSync({ projectId: "quickcheck-25590" })
@@ -2470,12 +3254,15 @@ body {
         let selectedDashboardDay = new Date().getDate();
         let monthPickerYear = dashboardYear;
 
-        document.getElementById("navSearch").addEventListener("input", (event) => {
-            const query = event.target.value.trim().toLowerCase();
-            document.querySelectorAll("[data-nav-label]").forEach((item) => {
-                item.hidden = Boolean(query) && !item.dataset.navLabel.toLowerCase().includes(query);
+        const navSearch = document.getElementById("navSearch");
+        if (navSearch) {
+            navSearch.addEventListener("input", (event) => {
+                const query = event.target.value.trim().toLowerCase();
+                document.querySelectorAll("[data-nav-label]").forEach((item) => {
+                    item.hidden = Boolean(query) && !item.dataset.navLabel.toLowerCase().includes(query);
+                });
             });
-        });
+        }
 
         const partnerSearch = document.getElementById("partnerSearch");
         const partnerSearchResult = document.getElementById("partnerSearchResult");
@@ -2484,9 +3271,181 @@ body {
         const partnerCardBack = document.getElementById("partnerCardBack");
         const showPartnerNetworkButton = document.getElementById("showPartnerNetwork");
         const hidePartnerNetworkButton = document.getElementById("hidePartnerNetwork");
-        partnerSearch.addEventListener("input", () => {
-            partnerSearchResult.classList.toggle("is-visible", partnerSearch.value.trim().toLowerCase() === "user_ken");
+        const partnerOrbit = document.getElementById("partnerOrbit");
+        const partnerSelected = document.getElementById("partnerSelected");
+        const partnerPagination = document.getElementById("partnerPagination");
+        const partnerMatchButton = document.getElementById("partnerMatchButton");
+        const previousPartnerButton = document.getElementById("previousPartner");
+        const nextPartnerButton = document.getElementById("nextPartner");
+
+        const partnerProfiles = [
+            {id:'maya',name:'Maya',country:'Indonesia',flag:'🇮🇩',photo:'https://randomuser.me/api/portraits/women/44.jpg',level:'B1',goal:'Listening practice'},
+            {id:'daniel',name:'Daniel',country:'Australia',flag:'🇦🇺',photo:'https://randomuser.me/api/portraits/men/32.jpg',level:'B2',goal:'Speaking confidence'},
+            {id:'sofia',name:'Sofia',country:'Spain',flag:'🇪🇸',photo:'https://randomuser.me/api/portraits/women/68.jpg',level:'B1',goal:'Academic vocabulary'},
+            {id:'kenji',name:'Kenji',country:'Japan',flag:'🇯🇵',photo:'https://randomuser.me/api/portraits/men/75.jpg',level:'B2',goal:'Reading speed'},
+            {id:'amara',name:'Amara',country:'Nigeria',flag:'🇳🇬',photo:'https://randomuser.me/api/portraits/women/65.jpg',level:'B1',goal:'Structure practice'},
+            {id:'lucas',name:'Lucas',country:'Brazil',flag:'🇧🇷',photo:'https://randomuser.me/api/portraits/men/46.jpg',level:'C1',goal:'Listening fluency'},
+            {id:'aisha',name:'Aisha',country:'Malaysia',flag:'🇲🇾',photo:'https://randomuser.me/api/portraits/women/26.jpg',level:'B2',goal:'Exam strategies'}
+        ];
+        let partnerOffset = 0;
+        let selectedPartnerId = null;
+        let partnerRequestSent = false;
+
+        function createPartnerAvatar(profile, slot) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = `partner-avatar partner-avatar-${slot}`;
+            button.dataset.profileId = profile.id;
+            button.dataset.initials = profile.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2);
+            button.setAttribute("aria-label", `Select ${profile.name}, ${profile.country}, ${profile.level} English level`);
+            button.setAttribute("aria-pressed", String(profile.id === selectedPartnerId));
+            button.title = `${profile.flag} ${profile.country} · ${profile.level}`;
+            if (profile.id === selectedPartnerId) button.classList.add("is-selected");
+
+            const image = document.createElement("img");
+            image.src = profile.photo;
+            image.alt = `${profile.name}'s profile photo`;
+            image.loading = "lazy";
+            image.addEventListener("error", () => {
+                image.remove();
+                button.classList.add("partner-avatar--fallback");
+            }, { once: true });
+
+            const flag = document.createElement("span");
+            flag.className = "nationality-badge";
+            flag.textContent = profile.flag;
+            flag.setAttribute("aria-hidden", "true");
+            button.append(image, flag);
+            button.addEventListener("click", () => selectPartner(profile.id));
+            return button;
+        }
+
+        function renderPartnerOrbit() {
+            partnerOrbit.replaceChildren();
+            const visibleProfiles = Array.from({ length: Math.min(5, partnerProfiles.length) }, (_, slot) => {
+                return partnerProfiles[(partnerOffset + slot) % partnerProfiles.length];
+            });
+            visibleProfiles.forEach((profile, slot) => {
+                partnerOrbit.append(createPartnerAvatar(profile, slot));
+            });
+
+            partnerPagination.replaceChildren();
+            partnerProfiles.forEach((_, index) => {
+                const dot = document.createElement("i");
+                if (index === partnerOffset) dot.classList.add("active");
+                partnerPagination.append(dot);
+            });
+        }
+
+        function selectPartner(profileId, centerProfile = false) {
+            const profile = partnerProfiles.find((item) => item.id === profileId);
+            if (!profile) return;
+
+            selectedPartnerId = profile.id;
+            partnerRequestSent = false;
+            if (centerProfile) {
+                const profileIndex = partnerProfiles.indexOf(profile);
+                partnerOffset = (profileIndex - 2 + partnerProfiles.length) % partnerProfiles.length;
+            }
+            renderPartnerOrbit();
+
+            const profileCopy = document.createElement("span");
+            profileCopy.className = "partner-selected-copy";
+            const name = document.createElement("b");
+            name.textContent = profile.name;
+            const details = document.createElement("small");
+            details.textContent = `${profile.flag} ${profile.country} · ${profile.level} · ${profile.goal}`;
+            profileCopy.append(name, details);
+            partnerSelected.replaceChildren();
+
+            const selectedIcon = document.createElement("span");
+            selectedIcon.className = "partner-selected-icon";
+            selectedIcon.setAttribute("aria-hidden", "true");
+            selectedIcon.textContent = "✦";
+            partnerSelected.append(selectedIcon, profileCopy);
+            partnerMatchButton.disabled = false;
+            partnerMatchButton.textContent = "Request friends";
+        }
+
+        function renderPartnerSearch(query) {
+            partnerSearchResult.replaceChildren();
+            const normalizedQuery = query.trim().toLocaleLowerCase();
+            if (!normalizedQuery) {
+                partnerSearchResult.classList.remove("is-visible");
+                return;
+            }
+
+            const matches = partnerProfiles.filter((profile) => {
+                return [profile.name, profile.country, profile.level, profile.goal]
+                    .some((value) => value.toLocaleLowerCase().includes(normalizedQuery));
+            });
+
+            if (matches.length === 0) {
+                const emptyMessage = document.createElement("p");
+                emptyMessage.className = "partner-search-empty";
+                emptyMessage.textContent = "No sample partners match that search.";
+                partnerSearchResult.append(emptyMessage);
+            } else {
+                matches.forEach((profile) => {
+                    const option = document.createElement("button");
+                    option.type = "button";
+                    option.className = "partner-search-option";
+                    option.setAttribute("aria-label", `Select ${profile.name} from ${profile.country}, ${profile.level} English level`);
+
+                    const image = document.createElement("img");
+                    image.src = profile.photo;
+                    image.alt = "";
+                    image.loading = "lazy";
+                    image.addEventListener("error", () => {
+                        const initials = document.createElement("span");
+                        initials.className = "partner-search-initials";
+                        initials.textContent = profile.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2);
+                        image.replaceWith(initials);
+                    }, { once: true });
+
+                    const details = document.createElement("span");
+                    const name = document.createElement("b");
+                    name.textContent = profile.name;
+                    const meta = document.createElement("small");
+                    meta.textContent = `${profile.level} · ${profile.goal}`;
+                    details.append(name, meta);
+
+                    const flag = document.createElement("span");
+                    flag.className = "partner-search-flag";
+                    flag.textContent = profile.flag;
+                    flag.title = profile.country;
+                    flag.setAttribute("aria-hidden", "true");
+                    option.append(image, details, flag);
+                    option.addEventListener("click", () => {
+                        selectPartner(profile.id, true);
+                        partnerSearch.value = "";
+                        renderPartnerSearch("");
+                    });
+                    partnerSearchResult.append(option);
+                });
+            }
+            partnerSearchResult.classList.add("is-visible");
+        }
+
+        partnerSearch.addEventListener("input", () => renderPartnerSearch(partnerSearch.value));
+        previousPartnerButton.addEventListener("click", () => {
+            partnerOffset = (partnerOffset - 1 + partnerProfiles.length) % partnerProfiles.length;
+            renderPartnerOrbit();
         });
+        nextPartnerButton.addEventListener("click", () => {
+            partnerOffset = (partnerOffset + 1) % partnerProfiles.length;
+            renderPartnerOrbit();
+        });
+        partnerMatchButton.addEventListener("click", () => {
+            if (!selectedPartnerId || partnerRequestSent) return;
+            partnerRequestSent = true;
+            partnerMatchButton.disabled = true;
+            partnerMatchButton.textContent = "Request noted (demo)";
+            const message = partnerSelected.querySelector("small");
+            if (message) message.textContent = "Demo request noted · no message was sent";
+        });
+
+        renderPartnerOrbit();
 
         function setPartnerCardFlipped(isFlipped) {
             partnerCard.classList.toggle("is-flipped", isFlipped);
@@ -2695,14 +3654,22 @@ body {
             const daysInPrevMonth = prevMonthDate.getDate();
             const previousMonth = new Date(dashboardYear, dashboardMonth - 1, 1);
             const nextMonth = new Date(dashboardYear, dashboardMonth + 1, 1);
+            const formatMonthLabel = (monthIndex) => {
+                const label = MONTH_LABELS[monthIndex].toLowerCase();
+                return label.charAt(0).toUpperCase() + label.slice(1);
+            };
             if (selectedDashboardDay > daysInMonth) selectedDashboardDay = daysInMonth;
 
-            dashboardMonthTitle.textContent = `${MONTH_LABELS[dashboardMonth]} ${dashboardYear}`;
-            dashboardMonthRange.textContent = `1 ${MONTH_LABELS[dashboardMonth]} ${dashboardYear} - ${daysInMonth} ${MONTH_LABELS[dashboardMonth]} ${dashboardYear}`;
-            previousMonthLabel.textContent = `${MONTH_LABELS[previousMonth.getMonth()]} ${previousMonth.getFullYear()}`;
-            nextMonthLabel.textContent = `${MONTH_LABELS[nextMonth.getMonth()]} ${nextMonth.getFullYear()}`;
-            dashboardBadgeMonth.textContent = MONTH_LABELS_SHORT[dashboardMonth];
-            dashboardBadgeDay.textContent = String(selectedDashboardDay);
+            const monthLabel = formatMonthLabel(dashboardMonth);
+            dashboardMonthLabel.textContent = `${monthLabel} ${dashboardYear}`;
+            monthPlannerHeading.textContent = `${monthLabel} ${dashboardYear}`;
+            if (dashboardMonthRange) {
+                dashboardMonthRange.textContent = `1 ${MONTH_LABELS[dashboardMonth]} ${dashboardYear} - ${daysInMonth} ${MONTH_LABELS[dashboardMonth]} ${dashboardYear}`;
+            }
+            previousMonthLabel.textContent = `${formatMonthLabel(previousMonth.getMonth())} ${previousMonth.getFullYear()}`;
+            nextMonthLabel.textContent = `${formatMonthLabel(nextMonth.getMonth())} ${nextMonth.getFullYear()}`;
+            if (dashboardBadgeMonth) dashboardBadgeMonth.textContent = MONTH_LABELS_SHORT[dashboardMonth];
+            if (dashboardBadgeDay) dashboardBadgeDay.textContent = String(selectedDashboardDay);
             dashboardGrid.innerHTML = "";
 
             for (let i = firstWeekday - 1; i >= 0; i -= 1) {
@@ -2778,23 +3745,27 @@ body {
             renderDashboardCalendar();
         });
 
-        calendarDateBadge.addEventListener("click", () => {
-            if (monthPickerPopover.classList.contains("is-open")) closeMonthPicker();
-            else openMonthPicker();
-        });
+        if (calendarDateBadge && monthPickerPopover) {
+            calendarDateBadge.addEventListener("click", () => {
+                if (monthPickerPopover.classList.contains("is-open")) closeMonthPicker();
+                else openMonthPicker();
+            });
+        }
 
-        document.getElementById("previousPickerYear").addEventListener("click", () => {
+        const previousPickerYearButton = document.getElementById("previousPickerYear");
+        if (previousPickerYearButton) previousPickerYearButton.addEventListener("click", () => {
             monthPickerYear -= 1;
             renderMonthPicker();
         });
 
-        document.getElementById("nextPickerYear").addEventListener("click", () => {
+        const nextPickerYearButton = document.getElementById("nextPickerYear");
+        if (nextPickerYearButton) nextPickerYearButton.addEventListener("click", () => {
             monthPickerYear += 1;
             renderMonthPicker();
         });
 
         document.addEventListener("click", (event) => {
-            if (monthPickerPopover.classList.contains("is-open") && !event.target.closest(".calendar-date-picker")) {
+            if (monthPickerPopover && monthPickerPopover.classList.contains("is-open") && !event.target.closest(".calendar-date-picker")) {
                 closeMonthPicker();
             }
         });
@@ -2803,7 +3774,7 @@ body {
             if (event.key === "Escape" && partnerCard.classList.contains("is-flipped")) {
                 setPartnerCardFlipped(false);
             }
-            if (event.key === "Escape" && monthPickerPopover.classList.contains("is-open")) {
+            if (event.key === "Escape" && monthPickerPopover && monthPickerPopover.classList.contains("is-open")) {
                 closeMonthPicker();
                 calendarDateBadge.focus();
             }
@@ -2815,7 +3786,7 @@ body {
         function openToefl101() {
             toefl101Modal.classList.add("is-open");
             toefl101Modal.setAttribute("aria-hidden", "false");
-            openToefl101Button.setAttribute("aria-expanded", "true");
+            openToefl101Buttons.forEach((button) => button.setAttribute("aria-expanded", "true"));
             document.body.style.overflow = "hidden";
             closeToefl101Button.focus();
         }
@@ -2823,14 +3794,17 @@ body {
         function closeToefl101() {
             toefl101Modal.classList.remove("is-open");
             toefl101Modal.setAttribute("aria-hidden", "true");
-            openToefl101Button.setAttribute("aria-expanded", "false");
+            openToefl101Buttons.forEach((button) => button.setAttribute("aria-expanded", "false"));
             document.body.style.overflow = "";
-            openToefl101Button.focus();
+            toefl101ReturnFocus.focus();
         }
 
-        openToefl101Button.addEventListener("click", () => {
-            if (toefl101Modal.classList.contains("is-open")) closeToefl101();
-            else openToefl101();
+        openToefl101Buttons.forEach((button) => {
+            button.addEventListener("click", () => {
+                toefl101ReturnFocus = button;
+                if (toefl101Modal.classList.contains("is-open")) closeToefl101();
+                else openToefl101();
+            });
         });
         closeToefl101Button.addEventListener("click", closeToefl101);
         toefl101Modal.addEventListener("click", (event) => {
@@ -2842,6 +3816,7 @@ body {
                 dashboardSnapshot = snapshot || { dailyTasks: {} };
                 renderDashboardCalendar();
                 renderDailyGoalStrip();
+                if (window.cardStrike) window.cardStrike.render();
             });
             dashboardSync.start();
         }
