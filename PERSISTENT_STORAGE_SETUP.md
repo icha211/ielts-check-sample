@@ -179,9 +179,20 @@ storage-sync.js (helper library)
 ## 🔒 Security Notes
 
 - **API Keys**: The Gemini API key is **ONLY** stored on your local machine as an environment variable
-- **Data**: All data files are stored locally on your machine
-- **Network**: By default, all services listen only on `127.0.0.1` (localhost)
-- **No Cloud**: Your data never leaves your computer (unless you explicitly deploy)
+- **Local Python storage**: Its data files remain on your machine, and the services listen on `127.0.0.1` by default
+- **Firebase features**: TOEFL account profiles and the opt-in study-partner directory use Firebase Realtime Database
+
+---
+
+## Opt-in TOEFL study-partner directory
+
+The TOEFL dashboard does not publish a profile by default. A signed-in learner must enable **Share my name, country, CEFR level and photo with learners** before their profile appears in partner search. Their online status is visible to signed-in users only while an opted-in session is connected. Email addresses and phone numbers are not copied into the directory.
+
+The directory and connection status are stored in `partnerDirectory/{uid}` and `partnerDirectory/{uid}/presence/{connectionId}`. `database.rules.json` restricts profile and presence writes to the signed-in account that owns each UID; only authenticated users can read the opted-in directory. Presence is nested under the opted-in profile, so opting out removes its visibility. Deploy the updated rules with:
+
+```bash
+firebase deploy --only database
+```
 
 ---
 

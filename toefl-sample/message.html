@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f3f6fa">
+    <title>Messages | TOEFL ITP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
+    <link rel="stylesheet" href="site-navbar.css?v=20261013a">
+    <link rel="stylesheet" href="message.css">
+</head>
+<body>
+    <main class="messages-page">
+        <header class="page-heading">
+            <div>
+                <h1>Messages</h1>
+                <p>Sample conversations for the TOEFL community.</p>
+            </div>
+            <button class="primary-button" id="newMessageButton" type="button">
+                <i class="ti ti-edit" aria-hidden="true"></i>
+                <span>New message</span>
+            </button>
+        </header>
+
+        <section class="inbox" aria-label="Messages">
+            <nav class="folder-tabs" aria-label="Message folders">
+                <button class="folder-tab" type="button" data-folder="inbox" aria-selected="true">
+                    <i class="ti ti-inbox" aria-hidden="true"></i><span>Inbox</span><span class="folder-count" data-count="inbox">0</span>
+                </button>
+                <button class="folder-tab" type="button" data-folder="favorites" aria-selected="false">
+                    <i class="ti ti-star" aria-hidden="true"></i><span>Favorites</span><span class="folder-count" data-count="favorites">0</span>
+                </button>
+                <button class="folder-tab" type="button" data-folder="archived" aria-selected="false">
+                    <i class="ti ti-archive" aria-hidden="true"></i><span>Archived</span><span class="folder-count" data-count="archived">0</span>
+                </button>
+                <button class="folder-tab" type="button" data-folder="sent" aria-selected="false">
+                    <i class="ti ti-send" aria-hidden="true"></i><span>Sent</span><span class="folder-count" data-count="sent">0</span>
+                </button>
+                <button class="folder-tab" type="button" data-folder="deleted" aria-selected="false">
+                    <i class="ti ti-trash" aria-hidden="true"></i><span>Recently deleted</span>
+                </button>
+            </nav>
+
+            <div class="message-layout">
+                <aside class="conversation-panel" id="conversationPanel" aria-label="Conversation list">
+                    <div class="conversation-tools">
+                        <label class="search-field">
+                            <i class="ti ti-search" aria-hidden="true"></i>
+                            <span class="visually-hidden">Search messages</span>
+                            <input id="conversationSearch" type="search" placeholder="Search messages" autocomplete="off">
+                            <kbd>/</kbd>
+                        </label>
+                    </div>
+                    <div class="conversation-scroll">
+                        <section class="pinned-section" id="pinnedSection">
+                            <h2><i class="ti ti-pin" aria-hidden="true"></i> Pinned chats</h2>
+                            <div id="pinnedList"></div>
+                        </section>
+                        <section class="all-messages-section">
+                            <h2 id="conversationHeading">All messages</h2>
+                            <div id="conversationList" class="conversation-list" role="list"></div>
+                            <p class="empty-list" id="conversationEmpty" hidden>No conversations match your search.</p>
+                        </section>
+                    </div>
+                </aside>
+
+                <section class="thread-panel" id="threadPanel" aria-label="Selected conversation">
+                    <header class="thread-header">
+                        <button class="back-button" id="backToConversations" type="button" aria-label="Back to conversations">
+                            <i class="ti ti-arrow-left" aria-hidden="true"></i>
+                        </button>
+                        <div class="thread-person" id="threadPerson"></div>
+                        <div class="thread-actions" id="threadActions">
+                            <button class="icon-button" id="favoriteButton" type="button" aria-label="Add to favorites" title="Add to favorites"><i class="ti ti-star" aria-hidden="true"></i></button>
+                            <button class="icon-button" id="archiveButton" type="button" aria-label="Archive conversation" title="Archive conversation"><i class="ti ti-archive" aria-hidden="true"></i></button>
+                            <button class="icon-button" id="deleteButton" type="button" aria-label="Move conversation to recently deleted" title="Move to recently deleted"><i class="ti ti-trash" aria-hidden="true"></i></button>
+                        </div>
+                    </header>
+                    <div class="thread-messages" id="threadMessages" aria-live="polite"></div>
+                    <form class="composer" id="messageForm">
+                        <label class="visually-hidden" for="messageInput">Write a message</label>
+                        <textarea id="messageInput" rows="1" placeholder="Write a message..." maxlength="2000"></textarea>
+                        <div class="composer-footer">
+                            <span class="composer-hint" id="composerHint">Enter to send, Shift + Enter for a new line</span>
+                            <button class="send-button" id="sendButton" type="submit" aria-label="Send message"><i class="ti ti-send" aria-hidden="true"></i></button>
+                        </div>
+                        <p class="form-error" id="messageError" role="alert" hidden></p>
+                    </form>
+                </section>
+
+                <section class="thread-empty" id="threadEmpty" hidden aria-live="polite">
+                    <div class="empty-symbol"><i class="ti ti-messages" aria-hidden="true"></i></div>
+                    <h2 id="emptyTitle">Choose a conversation</h2>
+                    <p id="emptyDescription">Select a name to read your messages, or start a new conversation.</p>
+                    <button class="primary-button" id="emptyComposeButton" type="button">Start a conversation</button>
+                </section>
+            </div>
+            <p class="live-status visually-hidden" id="liveStatus" aria-live="polite"></p>
+        </section>
+    </main>
+
+    <dialog class="compose-dialog" id="composeDialog" aria-labelledby="composeTitle">
+        <form method="dialog" class="dialog-topbar">
+            <button class="icon-button" type="submit" aria-label="Close new message dialog"><i class="ti ti-arrow-left" aria-hidden="true"></i></button>
+            <h2 id="composeTitle">New message</h2>
+            <button class="icon-button" type="submit" aria-label="Close dialog"><i class="ti ti-x" aria-hidden="true"></i></button>
+        </form>
+        <label class="recipient-search">
+            <span>To</span>
+            <input id="recipientSearch" type="search" placeholder="Type a name to find someone" autocomplete="off">
+        </label>
+        <div class="recipient-heading">Suggested</div>
+        <div class="recipient-list" id="recipientList" role="listbox" aria-label="Suggested people"></div>
+        <p class="recipient-empty" id="recipientEmpty" hidden>No people found. Try another name.</p>
+    </dialog>
+
+    <script src="site-navbar.js?v=20261013a"></script>
+    <script src="message.js"></script>
+</body>
+</html>
