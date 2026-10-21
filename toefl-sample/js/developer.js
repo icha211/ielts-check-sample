@@ -1145,6 +1145,7 @@ function renderPracticePackageDetail(host) {
     const packageCards = packageNumbers.map((packageNumber) => {
         const filled = optionSlots.filter((slots) => slots.has(packageNumber)).length;
         const isComplete = filled === totalOptions;
+        const scheduledDate = practicePackages.find((item) => item.packageNumber === packageNumber)?.scheduledDate || "";
         if (isComplete) completePackages += 1;
         const statusClass = isComplete ? "complete" : filled ? "partial" : "empty-package";
         const rows = PRACTICE_MODULE_OPTIONS.map((opt, optIdx) =>
@@ -1161,6 +1162,15 @@ function renderPracticePackageDetail(host) {
                     </span>
                 </div>
                 <div class="month-actions package-options">${rows}</div>
+                <div class="package-schedule">
+                    <label for="packageScheduleDate${packageNumber}">Schedule override</label>
+                    <div class="package-schedule-controls">
+                        <input id="packageScheduleDate${packageNumber}" type="date" value="${escapeHtml(scheduledDate)}" aria-label="Schedule Package ${packageNumber} for a date">
+                        <button type="button" class="btn-mini" data-save-package-date="${packageNumber}">Set date</button>
+                        <button type="button" class="btn-mini package-clear-date" data-clear-package-date="${packageNumber}" ${scheduledDate ? "" : "disabled"}>Use automatic</button>
+                    </div>
+                    <p>${scheduledDate ? `This package is assigned to ${escapeHtml(scheduledDate)} for every user.` : "Automatic per-user assignment is active."}</p>
+                </div>
                 <div class="detail-note">${isComplete ? "All practice options saved" : filled ? `${totalOptions - filled} option(s) still to create` : "New package · no saved sets yet"}</div>
             </article>
         `;
@@ -1246,6 +1256,62 @@ function renderPracticePackageDetail(host) {
         cards[cards.length - 1]?.scrollIntoView({ behavior: "smooth", block: "nearest" });
         toast(`package_${nextNumber}_practice_test saved to Firebase`);
     });
+    host.querySelectorAll("[data-save-package-date]").forEach((button) => button.addEventListener("click", async () => {
+        if (!isDeveloperSignedIn()) {
+            openDeveloperSignIn();
+            return;
+        }
+        if (practicePackageMutationInProgress) return;
+        const packageNumber = Number(button.dataset.savePackageDate);
+        const input = host.querySelector(`#packageScheduleDate${packageNumber}`);
+        const scheduledDate = String(input?.value || "");
+        if (!scheduledDate) {
+            toast("Choose a date before saving the package schedule.");
+            input?.focus();
+            return;
+        }
+        const conflict = practicePackages.find((item) => item.packageNumber !== packageNumber && item.scheduledDate === scheduledDate);
+        if (conflict) {
+            toast(`${scheduledDate} is already assigned to Package ${conflict.packageNumber}.`);
+            return;
+        }
+        practicePackageMutationInProgress = true;
+        button.disabled = true;
+        try {
+            await practicePackageSyncPromise;
+            await toeflStorage.setPracticePackageDate(packageNumber, scheduledDate);
+            practicePackages = await toeflStorage.getPracticePackages();
+            renderPracticePackageDetail(host);
+            toast(`Package ${packageNumber} is scheduled for ${scheduledDate} for every user.`);
+        } catch (error) {
+            button.disabled = false;
+            toast(`Package schedule failed: ${error?.message || "unknown error"}`);
+        } finally {
+            practicePackageMutationInProgress = false;
+        }
+    }));
+    host.querySelectorAll("[data-clear-package-date]").forEach((button) => button.addEventListener("click", async () => {
+        if (!isDeveloperSignedIn()) {
+            openDeveloperSignIn();
+            return;
+        }
+        if (practicePackageMutationInProgress) return;
+        const packageNumber = Number(button.dataset.clearPackageDate);
+        practicePackageMutationInProgress = true;
+        button.disabled = true;
+        try {
+            await practicePackageSyncPromise;
+            await toeflStorage.clearPracticePackageDate(packageNumber);
+            practicePackages = await toeflStorage.getPracticePackages();
+            renderPracticePackageDetail(host);
+            toast(`Package ${packageNumber} now uses automatic per-user assignment.`);
+        } catch (error) {
+            button.disabled = false;
+            toast(`Package schedule could not be cleared: ${error?.message || "unknown error"}`);
+        } finally {
+            practicePackageMutationInProgress = false;
+        }
+    }));
     host.querySelectorAll("[data-delete-practice-set]").forEach((button) => {
         button.addEventListener("click", () => deleteSet(button.dataset.deletePracticeSet, button.dataset.module, "practicetest"));
     });

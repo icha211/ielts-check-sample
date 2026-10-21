@@ -161,6 +161,7 @@ test("deleting an intermediate package does not render phantom packages or renum
         getPracticeOptionSlots: () => new Map(),
         practicePackages: [{ packageNumber: 1 }, { packageNumber: 3 }],
         renderPackageOptionRow: () => "row",
+        escapeHtml: (value) => value == null ? "" : String(value),
         renderPackageSyncChip: () => "",
         getPackageView: () => "grid"
     });
@@ -204,6 +205,7 @@ test("card actions use practice test routing and package confirmation without na
         practicePackageMutationInProgress: false,
         practicePackageSyncPromise: null,
         renderPackageOptionRow: () => "",
+        escapeHtml: (value) => value == null ? "" : String(value),
         renderPackageSyncChip: () => "",
         getPackageView: () => "grid",
         isDeveloperSignedIn: () => true,

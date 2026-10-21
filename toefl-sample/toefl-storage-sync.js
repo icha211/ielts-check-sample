@@ -436,7 +436,11 @@ class ToeflStorageSync {
   _packageRecordsFromMap(map) {
     return Object.values(map || {})
       .filter((item) => item && typeof item === "object")
-      .map((item) => ({ ...item, packageNumber: this.parsePracticePackageNumber(item.packageNumber) }))
+      .map((item) => ({
+        ...item,
+        packageNumber: this.parsePracticePackageNumber(item.packageNumber),
+        scheduledDate: /^\d{4}-\d{2}-\d{2}$/.test(String(item.scheduledDate || "")) ? String(item.scheduledDate) : ""
+      }))
       .filter((item) => item.packageNumber)
       .sort((left, right) => left.packageNumber - right.packageNumber);
   }
@@ -472,7 +476,8 @@ class ToeflStorageSync {
       testType: "practicetest",
       createdAt: local[packageId]?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      setCount: Object.keys(sets || {}).length
+      setCount: Object.keys(sets || {}).length,
+      ...(local[packageId]?.scheduledDate ? { scheduledDate: local[packageId].scheduledDate } : {})
     };
     if (record.setCount) record.sets = sets;
     await this._put(`${this._practicePackagesPath}/${packageId}`, record);
@@ -483,6 +488,44 @@ class ToeflStorageSync {
 
   async addPracticePackage(packageNumber) {
     return this.savePracticePackage(packageNumber, {});
+  }
+
+  async setPracticePackageDate(packageNumber, scheduledDate) {
+    const number = this.parsePracticePackageNumber(packageNumber);
+    const date = String(scheduledDate || "");
+    const parsedDate = new Date(`${date}T00:00:00Z`);
+    if (!number || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsedDate.getTime())
+        || parsedDate.toISOString().slice(0, 10) !== date) {
+      throw new Error("Invalid practice package date");
+    }
+    const packageId = this.buildPracticePackageId(number);
+    await this._put(`${this._practicePackagesPath}/${packageId}/scheduledDate`, date);
+    const local = this._readLocalPracticePackages();
+    if (!local[packageId]) {
+      local[packageId] = {
+        packageId,
+        packageNumber: number,
+        label: `Package ${number}`,
+        testType: "practicetest",
+        setCount: 0
+      };
+    }
+    local[packageId] = { ...local[packageId], scheduledDate: date, updatedAt: new Date().toISOString() };
+    localStorage.setItem(this._practicePackagesLocalKey, JSON.stringify(local));
+    return local[packageId];
+  }
+
+  async clearPracticePackageDate(packageNumber) {
+    const number = this.parsePracticePackageNumber(packageNumber);
+    if (!number) throw new Error("Invalid package number");
+    const packageId = this.buildPracticePackageId(number);
+    await this._put(`${this._practicePackagesPath}/${packageId}/scheduledDate`, null);
+    const local = this._readLocalPracticePackages();
+    if (local[packageId]) {
+      delete local[packageId].scheduledDate;
+      localStorage.setItem(this._practicePackagesLocalKey, JSON.stringify(local));
+    }
+    return true;
   }
 
   // Only removes the registry entry; callers must ensure the package has no sets.

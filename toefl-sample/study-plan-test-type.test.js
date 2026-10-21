@@ -17,16 +17,18 @@ function loadDynamicTestType() {
     return vm.runInNewContext(`${match[0]}; getDynamicTestType`);
 }
 
-function loadScheduledTestType(records) {
+function loadScheduledTestType(records, packages = []) {
     const dynamicType = studyPlan.match(/function getDynamicTestType\(selectedDate\) \{[\s\S]*?\n\s+\}/);
-    const scheduledType = studyPlan.match(/function getScheduledTestType\(dateValue\) \{[\s\S]*?\n\s+\}/);
-    assert.ok(dynamicType && scheduledType, "Missing scheduled test type lookup");
+    const packageOverride = studyPlan.match(/function getPracticePackageOverrideForDate\(dateValue, packages\) \{[\s\S]*?\n            \}/);
+    const scheduledType = studyPlan.match(/function getScheduledTestType\(dateValue\) \{[\s\S]*?\n            \}/);
+    assert.ok(dynamicType && packageOverride && scheduledType, "Missing scheduled test type lookup");
     const context = vm.createContext({
         Date,
+        cachedPracticePackages: packages,
         getRecordsSource: () => records,
         getSetTestType: (record) => record.testType
     });
-    vm.runInContext(`${dynamicType[0]}; ${scheduledType[0]}; result = getScheduledTestType`, context);
+    vm.runInContext(`${dynamicType[0]}; ${packageOverride[0]}; ${scheduledType[0]}; result = getScheduledTestType`, context);
     return context.result;
 }
 
@@ -62,6 +64,13 @@ test("practice days render recommendation cards and section-specific practice ch
     assert.match(studyPlan, /sectionGrid\.classList\.toggle\("practice-grid", !isMockTest\)/);
     assert.match(studyPlan, /openPracticeModal\(secId, \{/);
     assert.match(studyPlan, /data-practice-difficulty="\$\{option\.difficulty\}"/);
+});
+
+test("study-plan UI consistently uses Plus Jakarta Sans", () => {
+    assert.match(studyPlan, /family=Plus\+Jakarta\+Sans/);
+    assert.match(studyPlan, /body\s*\{[\s\S]*?font-family:\s*"Plus Jakarta Sans",\s*sans-serif/);
+    assert.doesNotMatch(studyPlan, /font-family:\s*"(?:Outfit|Space Grotesk|Inter)"/);
+    assert.match(studyPlan, /button,\s*input,\s*select,\s*textarea\s*\{\s*font-family:\s*inherit;/);
 });
 
 test("practice recommendations rank real saved section accuracy without fake fallback scores", () => {
@@ -139,6 +148,85 @@ test("saved developer practice schedules override the mock-day cadence", () => {
 
     assert.equal(getScheduledTestType("2026-11-01"), "practicetest");
     assert.equal(getScheduledTestType("2026-11-02"), "practicetest");
+    const scheduledWithPackageOverride = loadScheduledTestType([], [
+        { packageNumber: 1, scheduledDate: "2026-11-05" }
+    ]);
+    assert.equal(scheduledWithPackageOverride("2026-11-05"), "practicetest");
+});
+
+test("per-user package assignment repeats until a package is started, then advances even for earlier dates", () => {
+    const packageOverride = studyPlan.match(/function getPracticePackageOverrideForDate\(dateValue, packages\) \{[\s\S]*?\n            \}/);
+    const packageSelector = studyPlan.match(/function selectPracticePackageForDate\(dateValue, packages, records, consumedPackageNumbers\) \{[\s\S]*?\n            \}/);
+    assert.ok(packageOverride && packageSelector, "Missing practice package assignment helpers");
+    const context = vm.createContext({
+        getSetTestType: (record) => record.testType
+    });
+    vm.runInContext(`${packageOverride[0]}; ${packageSelector[0]}; result = selectPracticePackageForDate`, context);
+    const selectPackage = context.result;
+    const packages = [
+        { packageNumber: 1, setCount: 3 },
+        { packageNumber: 2, setCount: 3 },
+        { packageNumber: 3, setCount: 3, scheduledDate: "2026-10-24" }
+    ];
+    const records = [
+        { packageNumber: 1, testType: "practicetest" },
+        { packageNumber: 2, testType: "practicetest" },
+        { packageNumber: 3, testType: "practicetest" }
+    ];
+
+    assert.equal(selectPackage("2026-10-22", packages, records, []).packageNumber, 1);
+    assert.equal(selectPackage("2026-10-23", packages, records, []).packageNumber, 1);
+    assert.equal(selectPackage("2026-10-22", packages, records, [1]).packageNumber, 2);
+    assert.equal(selectPackage("2026-10-24", packages, records, [1]).packageNumber, 3);
+    assert.equal(selectPackage("2026-10-22", packages, records, [1, 2, 3]), null);
+});
+
+test("practice package sets are selected by the assigned package and option, not their saved calendar date", () => {
+    const start = studyPlan.indexOf("function normalizePracticeFocus(value) {");
+    const end = studyPlan.indexOf("\n            function getSetTestType(record)", start);
+    assert.ok(start >= 0 && end > start, "Missing practice set lookup");
+    const records = [
+        { module: "listening", setDate: "2026-10-22", setId: "package1_part1", testType: "practicetest", packageNumber: 1, focus: "part1" },
+        { module: "listening", setDate: "2026-10-23", setId: "package2_part2", testType: "practicetest", packageNumber: 2, focus: "part2" }
+    ];
+    const context = vm.createContext({
+        getRecordsSource: () => records,
+        getSetTestType: (record) => record.testType,
+        Date
+    });
+    vm.runInContext(`${studyPlan.slice(start, end)}; result = getAvailablePracticeSet`, context);
+
+    assert.equal(context.result("2026-10-22", "listening", { focus: "part1" }, 1).setId, "package1_part1");
+    assert.equal(context.result("2026-10-22", "listening", { focus: "part2" }, 1), null);
+    assert.equal(context.result("2026-10-22", "listening", { focus: "part2" }, 2).setId, "package2_part2");
+});
+
+test("study plan labels the assigned package and records it before launching a practice test", () => {
+    assert.match(studyPlan, /Package \$\{practicePackage\.packageNumber\}/);
+    assert.match(studyPlan, /activeModalState\.practicePackageNumber = Number\(practiceOption\.packageNumber \|\| currentPracticePackage\?\.packageNumber \|\| 0\)/);
+    assert.match(studyPlan, /selectedPackageLabel = activeModalState\.practicePackageNumber/);
+    const markIndex = studyPlan.indexOf("await practicePackageProgressApi.markPracticePackageUsed(activeModalState.practicePackageNumber)");
+    const launchIndex = studyPlan.indexOf("window.location.href = `${file}?${params.toString()}`", markIndex);
+    assert.ok(markIndex >= 0 && launchIndex > markIndex, "Package progress must be saved before navigating to the test");
+});
+
+test("study plan keeps package tests available when they have no calendar date", () => {
+    const helper = studyPlan.match(/function isStudyPlanSetRecord\(record\) \{[\s\S]*?\n            \}/);
+    assert.ok(helper, "Missing package set cache filter");
+    const context = vm.createContext({
+        getSetTestType: (record) => record.testType
+    });
+    vm.runInContext(`${helper[0]}; result = isStudyPlanSetRecord`, context);
+    assert.equal(context.result({ module: "listening", testType: "practicetest", setDate: "" }), true);
+    assert.equal(context.result({ module: "reading", testType: "practicetest", setDate: "2026-11-03" }), true);
+    assert.equal(context.result({ module: "reading", testType: "mocktest", setDate: "" }), false);
+});
+
+test("developer package cards offer a date override and a return to automatic assignment", () => {
+    assert.match(developer, /data-save-package-date/);
+    assert.match(developer, /data-clear-package-date/);
+    assert.match(developer, /setPracticePackageDate\(packageNumber, scheduledDate\)/);
+    assert.match(developer, /clearPracticePackageDate\(packageNumber\)/);
 });
 
 test("practice launch resolves the saved focus variant instead of another section set", () => {
@@ -181,6 +269,7 @@ test("section launchers keep explicit generated practice set IDs for the request
         const loader = page.slice(start, end);
         assert.match(loader, /requestedRecord = await resolveSetRecordById\(currentSetId\)/);
         assert.match(loader, /!requestedRecord\?\.setId \|\| !requested(?:Date|NormalizedDate)/);
+        assert.match(loader, /currentTestType === "practicetest" \|\| !requestedRecord\?\.setId/);
     }
 
     assert.doesNotMatch(listeningTest, /currentMatchesRequested/);

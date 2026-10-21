@@ -148,3 +148,32 @@ test("practice sets can share a date when focus or package differs", async () =>
         (error) => error.code === "DUPLICATE_SET_DATE"
     );
 });
+
+test("practice package date overrides persist and can be cleared without removing package data", async () => {
+    const { storage, values } = createStorage();
+    const writes = [];
+    storage._put = async (requestPath, data) => writes.push([requestPath, data]);
+
+    await storage.setPracticePackageDate(2, "2026-10-22");
+    await storage.savePracticePackage(2, { practice_reading_2: "reading_beginner" });
+    let packages = storage._packageRecordsFromMap(JSON.parse(values.get("toefl_developer_practicetest_packages_v2")));
+    assert.equal(packages[0].scheduledDate, "2026-10-22");
+    assert.equal(packages[0].setCount, 1);
+
+    await storage.clearPracticePackageDate(2);
+    packages = storage._packageRecordsFromMap(JSON.parse(values.get("toefl_developer_practicetest_packages_v2")));
+    assert.equal(packages[0].scheduledDate, "");
+    assert.equal(writes[0][0], "toefl_itp/practicetest/package_2_practice_test/scheduledDate");
+    assert.equal(writes[2][0], "toefl_itp/practicetest/package_2_practice_test/scheduledDate");
+    assert.equal(writes[2][1], null);
+    assert.equal(writes[1][1].sets.practice_reading_2, "reading_beginner");
+});
+
+test("practice package date overrides reject invalid calendar dates", async () => {
+    const { storage } = createStorage();
+    storage._put = async () => {
+        throw new Error("Invalid date should not be written");
+    };
+
+    await assert.rejects(storage.setPracticePackageDate(1, "2026-02-30"), /Invalid practice package date/);
+});
