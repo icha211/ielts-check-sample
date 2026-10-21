@@ -859,10 +859,19 @@ class ToeflStorageSync {
     const wantedModule = normalized.module;
     const wantedSetId = normalized.setId;
     const records = await this.getSetRecordsByTestType(testType);
+    const normalizeFocus = (value) => {
+      const focus = String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const aliases = { part1: "parta", part2: "partb", part3: "partc" };
+      return aliases[focus] || focus;
+    };
     const duplicate = records.find((item) => item
       && String(item.setId) !== wantedSetId
       && String(item.module) === wantedModule
-      && String(item.setDate || "") === wantedDate);
+      && String(item.setDate || "") === wantedDate
+      && (testType !== "practicetest"
+        || (normalizeFocus(item.focus) === normalizeFocus(normalized.focus)
+          && String(item.difficulty || "").toLowerCase() === String(normalized.difficulty || "").toLowerCase()
+          && (this.parsePracticePackageNumber(item.packageNumber) || 1) === (this.parsePracticePackageNumber(normalized.packageNumber) || 1))));
 
     if (duplicate) {
       const error = new Error(`A ${wantedModule} ${testType} already exists for ${wantedDate}.`);

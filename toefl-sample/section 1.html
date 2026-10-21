@@ -1569,6 +1569,7 @@
                 overlay.style.display = 'none'; // Ensure it hides or is removed
                 overlay.remove(); // Removes it from the DOM
             }
+            setOnboardingScrollLock(false);
         }
 
         function setupHeaderUI(dateValue, testType = 'practice', practiceMode = '') {
@@ -2494,11 +2495,17 @@
         }
 
         // Practice sets are date-independent, so the focused part is what makes them distinct.
+        function normalizePracticeFocus(value) {
+            const focus = String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const aliases = { part1: "parta", part2: "partb", part3: "partc" };
+            return aliases[focus] || focus;
+        }
+
         function getPracticeFocusSlug() {
             const params = new URLSearchParams(window.location.search);
-            const fromUrl = String(params.get("focus") || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const fromUrl = normalizePracticeFocus(params.get("focus"));
             if (fromUrl) return fromUrl;
-            return forcedPracticePartId ? `part${forcedPracticePartId}` : "";
+            return forcedPracticePartId ? normalizePracticeFocus(`part${forcedPracticePartId}`) : "";
         }
 
         // Dashboard package links pass ?package=N so each package resolves to its own set.
@@ -2517,10 +2524,10 @@
         function setRecordMatchesPracticeFocus(record, focusSlug) {
             if (!recordMatchesRequestedPackage(record)) return false;
             if (!focusSlug) return true;
-            const recordFocus = String(record?.focus || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const recordFocus = normalizePracticeFocus(record?.focus);
             // Sets saved before focus was persisted have no focus; fall back to the id segment.
             if (!recordFocus) return String(record?.setId || "").toLowerCase().includes(`_${focusSlug}_`);
-            return recordFocus === focusSlug;
+            return recordFocus === normalizePracticeFocus(focusSlug);
         }
 
         async function resolveSetRecordByDate(setDate, filterTestType = null) {
@@ -5313,16 +5320,13 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
             currentSetId = requestedSetId && requestedSetId !== "sets" ? requestedSetId : "";
             let stored = {};
 
-            if (requestedDate) {
-                const byDate = await resolveSetRecordByDate(normalizedRequestedDate || requestedDate);
-                const currentSetDate = parseSetDateFromSetId(currentSetId);
+            if (currentSetId) {
+                const requestedRecord = await resolveSetRecordById(currentSetId);
                 const requestedNormalizedDate = normalizedRequestedDate || normalizeDateKey(requestedDate);
-                const currentMatchesRequested = Boolean(currentSetId) && currentSetDate === requestedNormalizedDate;
-
-                if (byDate?.setId && (!currentSetId || !currentMatchesRequested)) {
-                    currentSetId = byDate.setId;
-                    stored = byDate;
-                } else if (!currentMatchesRequested) {
+                const recordDate = normalizeDateKey(requestedRecord?.setDate);
+                if (!requestedRecord?.setId || !requestedNormalizedDate || !recordDate || recordDate === requestedNormalizedDate) {
+                    stored = requestedRecord || {};
+                } else {
                     currentSetId = "";
                 }
             }
@@ -5464,16 +5468,16 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
             } 
         }
 
-        // Mock Test owns day 1, 5, 9, 13... (every 4th day); Practice Test owns the days in between (e.g. 2-4, 6-8).
+        // Mock tests follow the day cadence; practice dates are developer-selected.
         let lastValidSetDate = "";
         function isMockTestDayNumber(day) {
             return ((day - 1) % 4) === 0;
         }
         function isDateAllowedForTestType(dateString, testType) {
+            if (testType === "practicetest") return true;
             const parsed = new Date(`${dateString}T00:00:00`);
             if (Number.isNaN(parsed.getTime())) return true;
-            const isMockSlot = isMockTestDayNumber(parsed.getDate());
-            return testType === "practicetest" ? !isMockSlot : isMockSlot;
+            return isMockTestDayNumber(parsed.getDate());
         }
 
         async function handleSetDateChange() {
@@ -5485,8 +5489,8 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
                 ? currentTestType 
                 : (new URLSearchParams(window.location.search).get("testType") || "practicetest");
 
-            if (!isDateAllowedForTestType(selectedDate, currentTestType)) {
-                const ownerLabel = currentTestType === "practicetest" ? "Mock Test" : "Practice Test";
+            if (!isDateAllowedForTestType(selectedDate, testType)) {
+                const ownerLabel = testType === "practicetest" ? "Mock Test" : "Practice Test";
                 alert(`This date is reserved for ${ownerLabel} only. Please pick a different date.`);
                 dateInput.value = lastValidSetDate || selectedDate;
                 return;
@@ -7491,9 +7495,24 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         }
 
         function startTimer() {
-            let t = 2100;
-            clearInterval(timerInterval);
+            const params = new URLSearchParams(window.location.search);
+            const isPractice = isPracticeTestType();
+            const requestedTime = String(params.get("time") || params.get("timer") || "35").trim().toLowerCase();
             const timerElement = document.getElementById("time");
+            if (isPractice && ["unlimited", "none", "0"].includes(requestedTime)) {
+                clearInterval(timerInterval);
+                if (timerElement) {
+                    timerElement.innerText = "Unlimited";
+                    timerElement.style.animation = "none";
+                }
+                return;
+            }
+            const requestedMinutes = Number.parseInt(requestedTime, 10);
+            const durationMinutes = isPractice && Number.isFinite(requestedMinutes) && requestedMinutes > 0
+                ? requestedMinutes
+                : 35;
+            let t = durationMinutes * 60;
+            clearInterval(timerInterval);
             if (timerElement) {
                 const isDark = document.getElementById("user-view") &&
                     document.getElementById("user-view").classList.contains("is-dark");

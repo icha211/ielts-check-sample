@@ -1398,15 +1398,15 @@
             return PRACTICE_READING_TOTAL_PASSAGES;
         }
 
-        // Mock Test owns day 1, 5, 9, 13... (every 4th day); Practice Test owns the days in between (e.g. 2-4, 6-8).
+        // Mock tests follow the day cadence; practice dates are developer-selected.
         function isMockTestDayNumber(day) {
             return ((day - 1) % 4) === 0;
         }
         function isDateAllowedForTestType(dateString, testType) {
+            if (testType === "practicetest") return true;
             const parsed = new Date(`${dateString}T00:00:00`);
             if (Number.isNaN(parsed.getTime())) return true;
-            const isMockSlot = isMockTestDayNumber(parsed.getDate());
-            return testType === "practicetest" ? !isMockSlot : isMockSlot;
+            return isMockTestDayNumber(parsed.getDate());
         }
 
         function safeParse(raw, fallback) {
@@ -1539,6 +1539,19 @@
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 
+        async function resolveSetRecordById(setId) {
+            if (!setId) return null;
+            try {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecordByIdAndType === "function") {
+                    const record = await toeflStorage.getSetRecordByIdAndType(setId, currentTestType);
+                    if (record?.setId) return record;
+                }
+            } catch (error) {
+                console.warn("[ToeflSync] setId lookup failed:", error);
+            }
+            return getStoredSetMap()[setId] || null;
+        }
+
         async function resolveLatestSetRecord() {
             const variant = getPracticeVariant();
             try {
@@ -1635,8 +1648,8 @@
             const selectedDate = dateInput?.value;
             if (!selectedDate) return;
 
-            if (!isDateAllowedForTestType(selectedDate, currentTestType)) {
-                const ownerLabel = currentTestType === "practicetest" ? "Mock Test" : "Practice Test";
+            if (!isDateAllowedForTestType(selectedDate, testType)) {
+                const ownerLabel = testType === "practicetest" ? "Mock Test" : "Practice Test";
                 alert(`This date is reserved for ${ownerLabel} only. Please pick a different date.`);
                 dateInput.value = lastValidSetDate || selectedDate;
                 return;
@@ -1805,8 +1818,17 @@
                 dateContainer.style.display = currentTestType === "practicetest" ? "none" : "flex";
             }
             const requestedDate = params.get("setDate");
-            currentSetId = params.get("setId") || "";
+            const requestedSetId = params.get("setId") || "";
+            currentSetId = forceBlankNew ? "" : requestedSetId;
             let stored = {};
+            if (currentSetId) {
+                const requestedRecord = await resolveSetRecordById(currentSetId);
+                if (!requestedRecord?.setId || !requestedDate || !requestedRecord.setDate || requestedRecord.setDate === requestedDate) {
+                    stored = requestedRecord || {};
+                } else {
+                    currentSetId = "";
+                }
+            }
             if (!currentSetId && requestedDate && !forceBlankNew) {
                 const byDate = await resolveSetRecordByDate(requestedDate);
                 if (byDate?.setId) {

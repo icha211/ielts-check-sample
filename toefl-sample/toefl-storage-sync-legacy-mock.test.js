@@ -106,3 +106,45 @@ test("mock set lookup includes legacy mock records and excludes legacy practice 
     assert.equal(records.length, 1);
     assert.equal(records[0].setId, "mocktest_reading_2026-11-01_test");
 });
+
+test("practice sets can share a date when focus or package differs", async () => {
+    const { storage } = createStorage();
+    storage.getSetRecordsByTestType = async () => [{
+        setId: "practice_listening_part1",
+        module: "listening",
+        setDate: "2026-11-02",
+        focus: "part1",
+        difficulty: "intermediate",
+        packageNumber: 1
+    }];
+
+    await assert.doesNotReject(storage.assertUniqueSetDate({
+        setId: "practice_listening_part2",
+        module: "listening",
+        setDate: "2026-11-02",
+        focus: "part2",
+        difficulty: "intermediate",
+        packageNumber: 1
+    }, "practicetest"));
+
+    await assert.doesNotReject(storage.assertUniqueSetDate({
+        setId: "practice_listening_part1_package2",
+        module: "listening",
+        setDate: "2026-11-02",
+        focus: "partA",
+        difficulty: "intermediate",
+        packageNumber: 2
+    }, "practicetest"));
+
+    await assert.rejects(
+        storage.assertUniqueSetDate({
+            setId: "practice_listening_part1_duplicate",
+            module: "listening",
+            setDate: "2026-11-02",
+            focus: "partA",
+            difficulty: "intermediate",
+            packageNumber: 1
+        }, "practicetest"),
+        (error) => error.code === "DUPLICATE_SET_DATE"
+    );
+});

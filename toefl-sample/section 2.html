@@ -1068,10 +1068,16 @@
         }
 
         // Practice sets are per category, so focus+difficulty is what makes them distinct.
+        function normalizePracticeFocus(value) {
+            const focus = String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+            const aliases = { part1: "parta", part2: "partb", part3: "partc" };
+            return aliases[focus] || focus;
+        }
+
         function getPracticeVariant() {
             const params = new URLSearchParams(window.location.search);
             const slug = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-            const focus = slug(params.get("focus")) || (forcedPracticeFocusPart ? `part${forcedPracticeFocusPart === 2 ? "b" : "a"}` : "");
+            const focus = normalizePracticeFocus(params.get("focus")) || (forcedPracticeFocusPart ? normalizePracticeFocus(`part${forcedPracticeFocusPart === 2 ? "b" : "a"}`) : "");
             const difficulty = slug(params.get("difficulty")) || slug((document.getElementById("set-difficulty") || {}).value);
             return { focus, difficulty, slug: [focus, difficulty].filter(Boolean).join("-") };
         }
@@ -1093,26 +1099,26 @@
             if (!recordMatchesRequestedPackage(record)) return false;
             if (currentTestType !== "practicetest" || !variant || !variant.slug) return true;
             const slug = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-            const recordFocus = slug(record?.focus);
+            const recordFocus = normalizePracticeFocus(record?.focus);
             const recordDifficulty = slug(record?.difficulty);
             // Sets saved before the category was persisted fall back to the id segment.
             if (!recordFocus && !recordDifficulty) {
                 return String(record?.setId || "").toLowerCase().includes(`_${variant.slug}_`);
             }
-            if (variant.focus && recordFocus && recordFocus !== variant.focus) return false;
+            if (variant.focus && recordFocus && recordFocus !== normalizePracticeFocus(variant.focus)) return false;
             if (variant.difficulty && recordDifficulty && recordDifficulty !== variant.difficulty) return false;
             return true;
         }
 
-        // Mock Test owns day 1, 5, 9, 13... (every 4th day); Practice Test owns the days in between (e.g. 2-4, 6-8).
+        // Mock tests follow the day cadence; practice dates are developer-selected.
         function isMockTestDayNumber(day) {
             return ((day - 1) % 4) === 0;
         }
         function isDateAllowedForTestType(dateString, testType) {
+            if (testType === "practicetest") return true;
             const parsed = new Date(`${dateString}T00:00:00`);
             if (Number.isNaN(parsed.getTime())) return true;
-            const isMockSlot = isMockTestDayNumber(parsed.getDate());
-            return testType === "practicetest" ? !isMockSlot : isMockSlot;
+            return isMockTestDayNumber(parsed.getDate());
         }
 
         function safeParse(raw, fallback) {
@@ -1203,6 +1209,19 @@
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
 
+        async function resolveSetRecordById(setId) {
+            if (!setId) return null;
+            try {
+                if (window.toeflStorage && typeof toeflStorage.getSetRecordByIdAndType === "function") {
+                    const record = await toeflStorage.getSetRecordByIdAndType(setId, currentTestType);
+                    if (record?.setId) return record;
+                }
+            } catch (error) {
+                console.warn("[ToeflSync] setId lookup failed:", error);
+            }
+            return getStoredSetMap()[setId] || null;
+        }
+
         async function resolveLatestSetRecord() {
             const variant = getPracticeVariant();
             try {
@@ -1286,8 +1305,8 @@
             const selectedDate = dateInput?.value;
             if (!selectedDate) return;
 
-            if (!isDateAllowedForTestType(selectedDate, currentTestType)) {
-                const ownerLabel = currentTestType === "practicetest" ? "Mock Test" : "Practice Test";
+            if (!isDateAllowedForTestType(selectedDate, testType)) {
+                const ownerLabel = testType === "practicetest" ? "Mock Test" : "Practice Test";
                 alert(`This date is reserved for ${ownerLabel} only. Please pick a different date.`);
                 dateInput.value = lastValidSetDate || selectedDate;
                 return;
@@ -1535,9 +1554,18 @@
                 dateContainer.style.display = currentTestType === "practicetest" ? "none" : "flex";
             }
             const requestedDate = params.get("setDate");
-            currentSetId = params.get("setId") || "";
+            const requestedSetId = params.get("setId") || "";
+            currentSetId = forceBlankNew ? "" : requestedSetId;
             let stored = {};
-            if (!currentSetId && requestedDate) {
+            if (currentSetId) {
+                const requestedRecord = await resolveSetRecordById(currentSetId);
+                if (!requestedRecord?.setId || !requestedDate || !requestedRecord.setDate || requestedRecord.setDate === requestedDate) {
+                    stored = requestedRecord || {};
+                } else {
+                    currentSetId = "";
+                }
+            }
+            if (!currentSetId && requestedDate && !forceBlankNew) {
                 const byDate = await resolveSetRecordByDate(requestedDate);
                 if (byDate?.setId) {
                     currentSetId = byDate.setId;
@@ -3815,17 +3843,38 @@
         }
 
         function startTimer() {
-            let t = 1500; 
+            const params = new URLSearchParams(window.location.search);
+            const isPractice = isPracticeTestType();
+            const requestedTime = String(params.get("time") || params.get("timer") || "25").trim().toLowerCase();
+            const timerElement = document.getElementById("time");
+            if (isPractice && ["unlimited", "none", "0"].includes(requestedTime)) {
+                clearInterval(timerInterval);
+                if (timerElement) {
+                    timerElement.textContent = "Unlimited";
+                    timerElement.style.animation = "none";
+                }
+                return;
+            }
+            const requestedMinutes = Number.parseInt(requestedTime, 10);
+            const durationMinutes = isPractice && Number.isFinite(requestedMinutes) && requestedMinutes > 0
+                ? requestedMinutes
+                : 25;
+            let t = durationMinutes * 60;
             clearInterval(timerInterval);
-            const timerElement = document.getElementById('time');
             const isDark = document.getElementById("user-view")?.classList.contains("is-dark");
-            timerElement.style.color = isDark ? "#E0F2FE" : "#005faa";
+            if (timerElement) {
+                timerElement.style.color = isDark ? "#E0F2FE" : "#005faa";
+                timerElement.style.animation = "none";
+                timerElement.textContent = `${String(Math.floor(t / 60)).padStart(2, "0")}:00`;
+            }
             timerInterval = setInterval(() => {
                 let m = Math.floor(t/60), s = t%60;
-                document.getElementById('time').innerText = `${m<10?'0'+m:m}:${s<10?'0'+s:s}`;
+                if (timerElement) timerElement.innerText = `${m<10?'0'+m:m}:${s<10?'0'+s:s}`;
                 if(t <= 180) {
-                    document.getElementById('time').style.animation = "blink 1s infinite";
-                    document.getElementById('time').style.color = "#d32f2f";
+                    if (timerElement) {
+                        timerElement.style.animation = "blink 1s infinite";
+                        timerElement.style.color = "#d32f2f";
+                    }
                 }
                 if(--t < 0) { 
                     clearInterval(timerInterval); 

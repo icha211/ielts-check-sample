@@ -678,14 +678,14 @@ function dateKey(year, monthIndex, day) {
     return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-// Mock Test owns day 1, 5, 9, 13... (every 4th day); Practice Test owns the days in between (e.g. 2-4, 6-8).
+// Mock tests follow the day cadence; practice dates are developer-selected.
 function isMockTestDayNumber(day) {
     return ((day - 1) % 4) === 0;
 }
 
 function isDayOpenForTestType(day, testType) {
     const isMockSlot = isMockTestDayNumber(day);
-    return testType === "practicetest" ? !isMockSlot : isMockSlot;
+    return testType === "practicetest" || isMockSlot;
 }
 
 function buildScheduleMap() {
