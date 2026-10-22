@@ -6,7 +6,7 @@
 	<title>My Progress | TOEFL ITP</title>
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
 	<link rel="stylesheet" href="site-navbar.css?v=20261013a">
 	<style>
@@ -510,10 +510,277 @@
 	.view-all{font-size:12.5px;font-weight:700;color:var(--blue);background:none;border:none;cursor:pointer;margin-top:14px;}
 
 	.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+
+	:root{
+		--bg:#f2f7fa;
+		--surface:#ffffff;
+		--surface-sunken:#f4f9fb;
+		--border:rgba(121,164,183,.24);
+		--border-strong:rgba(101,151,174,.4);
+		--ink:#183247;
+		--ink-soft:#4d687a;
+		--ink-mute:#71899a;
+		--blue:#347db8;
+		--blue-dim:#e6f2f8;
+		--teal:#27988b;
+		--teal-dim:#e4f4f0;
+		--green:#258a6d;
+		--green-dim:#e4f3ed;
+		--amber:#ad672f;
+		--amber-dim:#f8eee5;
+		--purple:#7567b4;
+		--purple-dim:#efedf8;
+		--page-glow:#dff2f3;
+		--motion-curve:cubic-bezier(.22,1,.36,1);
+	}
+	@media (prefers-color-scheme: dark){
+		:root:not([data-theme="light"]){--page-glow:rgba(44,132,139,.14);}
+	}
+	:root[data-theme="dark"]{--page-glow:rgba(44,132,139,.14);}
+	body{
+		background:radial-gradient(ellipse at 8% 0%,var(--page-glow),transparent 42%),var(--bg);
+		color:var(--ink);
+		font-family:"Outfit","Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,sans-serif;
+	}
+	.serif{font-family:"Outfit","Plus Jakarta Sans",sans-serif;}
+	main{width:min(100% - 48px,1180px);padding:24px 0 64px;}
+	.topbar{gap:16px;padding:6px 0 20px;}
+	.back-btn,.pill-btn,.main-tabs button,.tabs button,.module-tabs button,.rec-cta,.view-all{
+		transition:background-color .42s var(--motion-curve),color .42s var(--motion-curve),border-color .42s var(--motion-curve),box-shadow .42s var(--motion-curve),transform .5s var(--motion-curve);
+	}
+	.back-btn:hover{transform:translateX(-2px);}
+	.avatar{border-radius:14px;background:linear-gradient(145deg,#55b9b1,#367fb9);box-shadow:0 5px 14px rgba(38,132,153,.2);}
+	.identity h1{font-size:22px;letter-spacing:-.035em;}
+	.identity .sub{margin-top:3px;font-size:13px;}
+	.streak-chip{
+		padding:8px 13px;border-color:#d2ebe6;background:#e9f7f3;color:#347c75;
+	}
+	.streak-chip strong{color:#247e75;}
+	.card{
+		border-color:var(--border);border-radius:22px;
+		box-shadow:0 0 0 4px rgba(255,255,255,.64),inset 0 1px 0 rgba(255,255,255,.88),0 18px 42px rgba(40,103,130,.075);
+	}
+	.insight{
+		isolation:isolate;gap:16px;padding:22px 24px;
+		border:1px solid rgba(255,255,255,.38);border-radius:20px;
+		background:linear-gradient(112deg,#287fae 0%,#36a8b2 54%,#51bca8 100%);
+		box-shadow:0 0 0 4px rgba(255,255,255,.62),inset 0 1px 0 rgba(255,255,255,.36),0 20px 42px rgba(41,133,153,.16);
+	}
+	.insight::before,.insight::after{content:"";position:absolute;pointer-events:none;z-index:0;}
+	.insight::before{
+		width:62%;height:155%;right:-6%;bottom:-103%;
+		border:1px solid rgba(255,255,255,.2);border-radius:50%;
+		box-shadow:0 -16px 0 -15px rgba(255,255,255,.17),0 -33px 0 -32px rgba(255,255,255,.15),0 -51px 0 -50px rgba(255,255,255,.11);
+		transform:rotate(-9deg);
+	}
+	.insight::after{
+		right:4%;top:-100px;width:250px;height:250px;
+		background:radial-gradient(circle,rgba(226,255,247,.24),rgba(226,255,247,0) 70%);
+	}
+	.insight .icon{
+		width:44px;height:44px;border:1px solid rgba(255,255,255,.3);
+		border-radius:15px;background:rgba(255,255,255,.17);
+	}
+	.insight-body,.insight .icon,.insight-actions{position:relative;z-index:1;}
+	.insight-tag{color:#e2fffa;}
+	.insight p{max-width:76ch;color:rgba(255,255,255,.9);}
+	.insight p strong{color:#fff;}
+	.pill-btn{padding:8px 8px 8px 15px;}
+	.insight-actions .pill-btn{white-space:nowrap;}
+	.insight-actions .pill-btn.primary{display:inline-flex;align-items:center;gap:12px;}
+	.insight-actions .pill-btn.primary::after{
+		content:"↗";width:28px;height:28px;display:grid;place-items:center;flex:0 0 auto;
+		border:1px solid rgba(39,109,121,.1);border-radius:50%;background:rgba(39,109,121,.09);
+		transition:transform .55s var(--motion-curve),background-color .45s var(--motion-curve);
+	}
+	.pill-btn.primary{color:#246d79;}
+	.pill-btn:hover{transform:translateY(-1px);background:rgba(255,255,255,.18);}
+	.pill-btn.primary:hover{background:#effcf9;}
+	.pill-btn.primary:hover::after{transform:translate(2px,-2px) scale(1.06);background:rgba(39,109,121,.14);}
+	.pill-btn:active,.main-tabs button:active,.tabs button:active,.module-tabs button:active,.rec-cta:active{transform:scale(.98);}
+	.main-tabs{
+		gap:7px;margin:18px 0 5px;padding:8px;
+		border:1px solid var(--border);border-radius:999px;
+		background:rgba(255,255,255,.82);
+		box-shadow:0 7px 20px rgba(40,103,130,.06);
+		backdrop-filter:blur(12px);
+	}
+	.main-tabs button{
+		border-color:transparent;border-radius:999px;background:transparent;
+		padding:9px 16px;color:var(--ink-soft);
+	}
+	.main-tabs button:hover:not([aria-pressed="true"]){background:var(--surface-sunken);color:var(--ink);}
+	.main-tabs button[aria-pressed="true"]{
+		border-color:transparent;background:linear-gradient(110deg,var(--teal),var(--blue));
+		box-shadow:0 4px 10px rgba(38,132,153,.2);
+	}
+	.hero-grid{grid-template-columns:minmax(230px,.9fr) minmax(280px,1.12fr) minmax(280px,1.12fr);gap:16px;margin-top:16px;}
+	@media (min-width:981px){
+		.hero-grid{grid-template-columns:minmax(240px,.82fr) minmax(300px,1.13fr) minmax(300px,1.05fr);gap:20px;}
+		.hero-grid>.ring-card{translate:0 8px;}
+	}
+	.hero-grid>.card{padding:22px;}
+	.ring-card{
+		position:relative;overflow:hidden;
+		background:radial-gradient(ellipse at 50% 8%,#e6f6f5 0,rgba(230,246,245,0) 65%),var(--surface);
+	}
+	.ring-wrap{width:156px;height:156px;}
+	.ring-center .num{font-family:"Outfit","Plus Jakarta Sans",sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.04em;}
+	.score-card .big{font-variant-numeric:tabular-nums;letter-spacing:-.04em;}
+	.score-card .kicker{font-size:12px;letter-spacing:.015em;}
+	.score-card .card-foot-note,.ring-card .card-foot-note{line-height:1.55;}
+	.block-head h2{color:var(--ink);font-size:21px;letter-spacing:-.025em;}
+	.block-head .desc{color:var(--ink-mute);line-height:1.5;}
+	section.block{margin-top:18px;}
+	.comp-row,.rec-card,.module-card{border-radius:16px;}
+	.module-card{transition:transform .55s var(--motion-curve),border-color .42s var(--motion-curve),box-shadow .55s var(--motion-curve);}
+	.module-card:hover{transform:translateY(-3px);border-color:var(--border-strong);box-shadow:0 10px 24px rgba(40,103,130,.1);}
+	.bar-fill{transition:height .65s var(--motion-curve),transform .55s var(--motion-curve);}
+	.rec-cta{background:linear-gradient(110deg,var(--teal),var(--blue));}
+	.rec-cta:hover{box-shadow:0 6px 14px rgba(38,132,153,.2);transform:translateY(-1px);}
+	.reveal-ready .topbar.is-visible,.reveal-ready .insight.is-visible,.reveal-ready .main-tabs.is-visible,.reveal-ready .tabpanel.is-visible{
+		animation:progress-enter .8s var(--motion-curve);
+	}
+	@keyframes progress-enter{
+		from{transform:translateY(16px);}
+		to{transform:translateY(0);}
+	}
+	.reveal-ready .hero-grid>.card{transition-delay:var(--reveal-delay,0ms);}
+	@media (prefers-color-scheme:dark){
+		:root:not([data-theme="light"]) .card{
+			box-shadow:0 0 0 4px rgba(220,239,245,.045),inset 0 1px 0 rgba(220,239,245,.06),0 18px 42px rgba(0,30,40,.2);
+		}
+	}
+	:root[data-theme="dark"] .card{
+		box-shadow:0 0 0 4px rgba(220,239,245,.045),inset 0 1px 0 rgba(220,239,245,.06),0 18px 42px rgba(0,30,40,.2);
+	}
+	@media (prefers-reduced-motion:reduce){
+		.reveal-ready .topbar.is-visible,.reveal-ready .insight.is-visible,.reveal-ready .main-tabs.is-visible,.reveal-ready .tabpanel.is-visible{animation:none;}
+	}
+	.back-btn:focus-visible,.pill-btn:focus-visible,.main-tabs button:focus-visible,.tabs button:focus-visible,.module-tabs button:focus-visible,.rec-cta:focus-visible,.view-all:focus-visible{
+		outline:3px solid #54a9b8;outline-offset:3px;
+	}
+	@media (max-width:980px){.hero-grid{grid-template-columns:1fr;}}
+	@media (max-width:640px){
+		main{width:auto;margin:0;padding:16px 14px 48px;}
+		.topbar{gap:7px;padding-bottom:16px;}
+		.topbar .divider{display:none;}
+		.avatar{width:36px;height:36px;}
+		.identity{gap:8px;}
+		.identity h1{font-size:17px;white-space:nowrap;}
+		.identity .sub{font-size:12px;}
+		.streak-chip{gap:4px;padding:6px 8px;font-size:10px;}
+		.insight{gap:12px;padding:18px 16px;}
+		.insight p{font-size:13.5px;}
+		.insight-actions{gap:8px;}
+		.pill-btn{padding:8px 11px;font-size:12px;}
+		.insight-actions .pill-btn.primary{gap:7px;padding-left:11px;}
+		.insight-actions .pill-btn.primary::after{width:24px;height:24px;}
+		.main-tabs{border-radius:16px;padding:6px;}
+		.main-tabs button{padding:8px 11px;font-size:12px;}
+		.hero-grid>.card,.card{padding:18px;}
+		.hero-grid>.ring-card{translate:none;}
+		.block-head{align-items:flex-start;}
+		.block-head-left{max-width:100%;}
+		.rec-card{gap:11px;padding:13px;}
+	}
+	@media (prefers-color-scheme:dark){
+		:root:not([data-theme="light"]) .main-tabs{background:rgba(22,29,44,.9);}
+		:root:not([data-theme="light"]) .streak-chip{border-color:var(--border);background:var(--surface-sunken);color:var(--ink-soft);}
+		:root:not([data-theme="light"]) .streak-chip strong{color:var(--ink);}
+		:root:not([data-theme="light"]) .ring-card{background:radial-gradient(ellipse at 50% 8%,rgba(48,146,143,.14),transparent 65%),var(--surface);}
+	}
+	:root[data-theme="dark"] .main-tabs{background:rgba(22,29,44,.9);}
+	:root[data-theme="dark"] .streak-chip{border-color:var(--border);background:var(--surface-sunken);color:var(--ink-soft);}
+	:root[data-theme="dark"] .streak-chip strong{color:var(--ink);}
+	:root[data-theme="dark"] .ring-card{background:radial-gradient(ellipse at 50% 8%,rgba(48,146,143,.14),transparent 65%),var(--surface);}
+	/* Progress dashboard refresh: share the Today page's typography and blue palette. */
+	:root{
+		--bg:#f3f8fd;
+		--surface:#fff;
+		--surface-sunken:#f3f8fd;
+		--border:rgba(111,157,190,.2);
+		--border-strong:rgba(58,126,184,.34);
+		--ink:#10243a;
+		--ink-soft:#536b83;
+		--ink-mute:#7890a7;
+		--blue:#1d72bf;
+		--blue-dim:#e8f5ff;
+		--teal:#078c9d;
+		--teal-dim:#e5f6f5;
+		--green:#0f9f7f;
+		--page-glow:rgba(115,186,255,.27);
+	}
+	body{font-family:"Plus Jakarta Sans",sans-serif;background:radial-gradient(circle at 14% -8%,var(--page-glow),transparent 30%),linear-gradient(180deg,#f2f8fe 0%,#f8fbff 40%,#f3f8fd 100%);}
+	.serif,.ring-center .num{font-family:"Plus Jakarta Sans",sans-serif;}
+	main{width:min(100% - 48px,1120px);padding:34px 0 80px;}
+	.topbar{padding:8px 0 24px;}
+	.identity h1{font-size:26px;font-weight:700;letter-spacing:-.045em;}
+	.insight{background:linear-gradient(118deg,#0a3560 0%,#1463ad 54%,#078c9d 100%);box-shadow:0 0 0 4px rgba(255,255,255,.7),inset 0 1px 0 rgba(255,255,255,.25),0 22px 46px rgba(10,53,96,.14);}
+	.main-tabs{margin:24px 0 8px;}
+	.hero-grid{grid-template-columns:minmax(220px,.78fr) minmax(280px,1.08fr) minmax(280px,1.08fr);gap:18px;}
+	.hero-grid>.card,.card{border-radius:22px;}
+	.card{box-shadow:0 0 0 4px rgba(255,255,255,.68),inset 0 1px 0 rgba(255,255,255,.9),0 18px 40px rgba(10,53,96,.065);}
+	.block-head h2{font-size:20px;letter-spacing:-.035em;}
+	.progress-hero{position:relative;isolation:isolate;overflow:hidden;background:radial-gradient(ellipse at 100% 0%,rgba(71,177,221,.2),transparent 46%),linear-gradient(145deg,#0a3560,#1463ad 65%,#078c9d);color:#fff;}
+	.progress-hero::after{content:"";position:absolute;z-index:-1;width:82%;height:75%;right:-25%;bottom:-47%;border:1px solid rgba(255,255,255,.17);border-radius:50%;box-shadow:0 -18px 0 -17px rgba(255,255,255,.13),0 -38px 0 -37px rgba(255,255,255,.1);transform:rotate(-14deg);}
+	.progress-hero .kicker,.progress-hero .card-foot-note{color:rgba(236,246,255,.76);}
+	.progress-hero .ring-center .num{color:#fff;}
+	.progress-hero .ring-center .lbl,.progress-hero .ring-caption{color:rgba(236,246,255,.82);}
+	.progress-hero .ring-caption b{color:#a6eee2;}
+	.progress-hero .ring-wrap svg circle:first-child{stroke:rgba(255,255,255,.16);}
+	.progress-hero .ring-wrap svg circle:last-child{stroke:#7be0d0;}
+	.score-card .big{font-size:40px;font-weight:700;letter-spacing:-.06em;}
+	.score-card .kicker{font-size:11px;letter-spacing:.075em;}
+	.score-card .mini-rows{gap:9px;}
+	.score-card .mini-row .track{background:#e8f1f8;}
+	.block.card{padding:24px;}
+	.chart-row{min-height:205px;}
+	.bar-track{background:rgba(29,114,191,.08);}
+	.bar-fill{border-radius:999px 999px 7px 7px!important;background:linear-gradient(180deg,#48a1df,#1d72bf)!important;}
+	.bar-label{font-size:11px;}
+	.streak-strip{border-radius:15px;background:var(--surface-sunken);}
+	.comp-row{grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;}
+	.comp-row .cat{grid-column:1/-1;justify-self:start;}
+	.comp-row .evidence{color:var(--ink-mute);}
+	.rec-card{grid-template-columns:32px minmax(0,1fr) auto;}
+	.rec-cta{border-radius:999px;padding:10px 15px;}
+	.module-tabs button,.tabs button,.main-tabs button{font-family:inherit;}
+	.traj-table{width:100%;}
+	.traj-table tbody tr:hover{background:rgba(29,114,191,.035);}
+	.empty-state{padding:30px 18px;text-align:center;color:var(--ink-mute);background:var(--surface-sunken);border-radius:16px;line-height:1.6;}
+	.empty-state strong{display:block;margin-bottom:5px;color:var(--ink);font-size:14px;}
+	.metric-progress{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;align-items:center;}
+	.metric-progress .track{grid-column:1/-1;height:6px;overflow:hidden;border-radius:99px;background:var(--blue-dim);}
+	.metric-progress .track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#1d72bf,#078c9d);}
+	.performance-card{min-width:0;padding:17px 18px;border:1px solid var(--border);border-radius:16px;background:linear-gradient(180deg,var(--surface),var(--surface-sunken));}
+	#sectionPerformance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+	.performance-head{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+	.performance-latest{color:var(--ink-mute);font-size:11px;text-align:right;}
+	.performance-value{margin-top:20px;color:var(--ink);font-size:34px;font-weight:700;letter-spacing:-.055em;font-variant-numeric:tabular-nums;}
+	.performance-evidence{margin:6px 0;color:var(--ink-mute);font-size:11px;line-height:1.5;}
+	.performance-card .metric-progress{display:block;margin:14px 0 10px;}
+	.performance-card .metric-progress .track{height:7px;}
+	#trajEmpty{min-height:220px;display:grid;place-content:center;}
+	#trajSvg[hidden]{display:none;}
+	.history-label{display:inline-flex;padding:4px 8px;border-radius:999px;background:var(--blue-dim);color:var(--blue);font-size:10px;font-weight:700;letter-spacing:.04em;}
+	@media (max-width:980px){.hero-grid{grid-template-columns:1fr 1fr;}.hero-grid>.progress-hero{grid-column:1/-1;}}
+	@media (max-width:980px){#sectionPerformance{grid-template-columns:repeat(2,minmax(0,1fr));}}
+	@media (max-width:640px){main{width:auto;margin:0;padding:20px 16px 56px;}.identity h1{font-size:21px;}.hero-grid{grid-template-columns:1fr;gap:14px;}.hero-grid>.progress-hero{grid-column:auto;}.block.card{padding:18px;}.streak-strip{grid-template-columns:1fr 1fr;}#sectionPerformance{grid-template-columns:1fr;}.rec-card{grid-template-columns:28px minmax(0,1fr);}.rec-card .rec-cta{grid-column:2;justify-self:start;}.main-tabs{overflow-x:auto;justify-content:flex-start;}.main-tabs button{white-space:nowrap;}}
+	@media (prefers-color-scheme:dark){
+		:root:not([data-theme="light"]){--page-glow:rgba(48,132,200,.15);}
+		:root:not([data-theme="light"]) body{background:radial-gradient(circle at 14% -8%,var(--page-glow),transparent 30%),var(--bg);}
+	}
+	:root[data-theme="dark"]{--page-glow:rgba(48,132,200,.15);}
+	:root[data-theme="dark"] body{background:radial-gradient(circle at 14% -8%,var(--page-glow),transparent 30%),var(--bg);}
+	@media (prefers-reduced-motion:reduce){
+		*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}
+	}
 	</style>
 </head>
 <body>
 	<script src="site-navbar.js?v=20261013a"></script>
+	<script src="toefl-test-history.js?v=20261003a"></script>
 	<div class="app">
 		<main>
 					<!-- top bar -->
@@ -521,39 +788,39 @@
 			<button class="back-btn" aria-label="Back">← Back</button>
 			<div class="divider"></div>
 			<div class="identity">
-			<div class="avatar">U1</div>
+			<div class="avatar"><i class="ti ti-chart-dots-3"></i></div>
 			<div>
-				<h1>Your Progress</h1>
-				<div class="sub">User 1 · Trial plan</div>
+				<h1>Your progress</h1>
+				<div class="sub">A clear view of the work you’ve completed.</div>
 			</div>
 			</div>
-			<div class="streak-chip">🔥 <strong>3-day</strong> streak</div>
+			<div class="streak-chip"><i class="ti ti-flame"></i> <strong id="streakValue">0 days</strong> streak</div>
 		</div>
 
-		<!-- AI insight -->
+		<!-- Today's focus is derived from the learner's recorded section results. -->
 		<section class="insight">
-			<div class="icon">✦</div>
+			<div class="icon"><i class="ti ti-sparkles"></i></div>
 			<div class="insight-body">
-			<div class="insight-tag">TODAY'S PRIORITY</div>
-			<p><strong>Listening Part B</strong> is your highest-priority practice — accuracy sits at 50%, the weakest result of anything you've been tested on, backed by a full 20-question sample. Two quiet days this week have also nudged your risk of falling behind pace up a notch.</p>
+			<div class="insight-tag" id="focusEyebrow">YOUR PROGRESS</div>
+			<p id="focusCopy"><strong>Every practice attempt counts.</strong> Your activity and section results will appear here as you complete TOEFL practice.</p>
 			<div class="insight-actions">
-				<button class="pill-btn primary">Start Listening Part B · 15 min</button>
-				<button class="pill-btn">See full plan</button>
+				<a class="pill-btn primary" id="focusAction" href="study-plan.html">Start a practice</a>
+				<a class="pill-btn" href="study-plan.html">See today’s plan</a>
 			</div>
 			</div>
 		</section>
 
 		<!-- main section tabs -->
 		<nav class="main-tabs" id="mainTabs" role="tablist" aria-label="Progress sections">
-			<button role="tab" aria-pressed="true" data-panel="overview">📊 Overview</button>
-			<button role="tab" aria-pressed="false" data-panel="activity">🗓️ Activity</button>
-			<button role="tab" aria-pressed="false" data-panel="trajectory">📈 Trajectory</button>
-			<button role="tab" aria-pressed="false" data-panel="modules">🧩 Modules</button>
+			<button role="tab" aria-pressed="true" data-panel="overview"><i class="ti ti-layout-dashboard"></i> Overview</button>
+			<button role="tab" aria-pressed="false" data-panel="activity"><i class="ti ti-calendar-stats"></i> Activity</button>
+			<button role="tab" aria-pressed="false" data-panel="trajectory"><i class="ti ti-chart-line"></i> Score trend</button>
+			<button role="tab" aria-pressed="false" data-panel="modules"><i class="ti ti-list-check"></i> Attempts</button>
 		</nav>
 
-		<!-- hero: overall + two score cards -->
+		<!-- Real activity summary -->
 		<section class="hero-grid tabpanel" data-panel="overview">
-			<div class="card ring-card">
+			<div class="card ring-card progress-hero">
 			<div class="kicker" style="align-self:flex-start;"><span class="dot" style="background:var(--blue)"></span>OVERALL PROGRESS</div>
 			<div class="ring-wrap">
 				<svg viewBox="0 0 160 160">
@@ -561,55 +828,40 @@
 				<circle id="overallRing" cx="80" cy="80" r="68" fill="none" stroke="var(--blue)" stroke-width="14" stroke-linecap="round"/>
 				</svg>
 				<div class="ring-center">
-				<div class="num serif">517</div>
-				<div class="lbl">of 550 goal</div>
+				<div class="num serif" id="overallScore">—</div>
+				<div class="lbl" id="overallLabel">Complete a full mock</div>
 				</div>
 			</div>
-			<div class="ring-caption"><b>30% ahead</b> of your target pace</div>
-			<div class="card-foot-note" style="width:100%;text-align:left;">Baseline 310 → Goal 550. Combines your latest mock composite with drilled practice accuracy.</div>
+			<div class="ring-caption" id="overallCaption"><b>TOEFL ITP</b> composite score</div>
+			<div class="card-foot-note" id="overallNote" style="width:100%;text-align:left;">A composite appears when all three sections from the same full mock are complete.</div>
 			</div>
 
 			<div class="card score-card">
 			<div class="card-top">
-				<div class="kicker"><span class="dot" style="background:var(--blue)"></span>MOCK TEST SCORE</div>
-				<span class="badge" style="background:var(--blue-dim);color:var(--blue);">Mock #3</span>
+				<div class="kicker"><span class="dot" style="background:var(--blue)"></span>LATEST MOCK</div>
+				<span class="badge" id="mockBadge" style="background:var(--blue-dim);color:var(--blue);">No attempts</span>
 			</div>
-			<div class="big">517 <small>/ 677 scale</small></div>
-			<div class="delta up">▲ +12 since Mock #2 (Oct 8)</div>
-			<svg class="sparkline" viewBox="0 0 240 38" preserveAspectRatio="none">
-				<polyline points="4,30 120,18 236,4" fill="none" stroke="var(--blue)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-				<circle cx="4" cy="30" r="3.2" fill="var(--blue)"/><circle cx="120" cy="18" r="3.2" fill="var(--blue)"/><circle cx="236" cy="4" r="3.2" fill="var(--blue)"/>
-			</svg>
-			<div class="goal-row"><span>310</span><span>33 pts to 550</span></div>
-			<div class="goal-bar"><div style="width:87%;background:var(--blue);"></div></div>
-			<div class="mini-rows">
-				<div class="mini-row"><span class="name">Listening</span><div class="track"><div style="width:49%;background:var(--blue)"></div></div><span class="val">49</span></div>
-				<div class="mini-row"><span class="name">Structure &amp; Writing</span><div class="track"><div style="width:42%;background:var(--blue)"></div></div><span class="val">42</span></div>
-				<div class="mini-row"><span class="name">Reading</span><div class="track"><div style="width:42%;background:var(--blue)"></div></div><span class="val">42</span></div>
+			<div class="big" id="latestMockScore">— <small>/ 677</small></div>
+			<div class="delta flat" id="mockSummary">Composite from a complete mock attempt</div>
+			<div class="mini-rows" id="mockSections">
+				<div class="empty-state"><strong>No complete mock yet</strong>Complete Listening, Structure &amp; Writing, and Reading from the same mock.</div>
 			</div>
-			<div class="card-foot-note">Subscale scores from your most recent completed mock, on Quick Check's 0–100 section scale.</div>
+			<div class="card-foot-note">Section scores come from saved test results. No scores are estimated from missing sections.</div>
 			</div>
 
 			<div class="card score-card">
 			<div class="card-top">
-				<div class="kicker"><span class="dot" style="background:var(--teal)"></span>PRACTICE ACCURACY</div>
-				<span class="badge" style="background:var(--teal-dim);color:var(--teal);">2 of 4 drilled</span>
+				<div class="kicker"><span class="dot" style="background:var(--teal)"></span>SECTION ACCURACY</div>
+				<span class="badge" id="attemptCountBadge" style="background:var(--teal-dim);color:var(--teal);">0 attempts</span>
 			</div>
-			<div class="big">65<small>%</small></div>
-			<div class="delta flat">Average across components you've drilled</div>
-			<svg class="sparkline" viewBox="0 0 240 38" preserveAspectRatio="none">
-				<polyline points="4,22 80,26 160,16 236,12" fill="none" stroke="var(--teal)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-				<circle cx="236" cy="12" r="3.2" fill="var(--teal)"/>
-			</svg>
-			<div class="goal-row"><span>Drilled components</span><span>65% avg accuracy</span></div>
-			<div class="goal-bar"><div style="width:65%;background:var(--teal);"></div></div>
-			<div class="mini-rows">
-				<div class="mini-row"><span class="name">Listening</span><div class="track"><div style="width:49%;background:var(--teal)"></div></div><span class="val">49</span></div>
-				<div class="mini-row na"><span class="name">Structure</span><div class="track"><div style="width:0%;background:var(--ink-mute)"></div></div><span class="val">—</span></div>
-				<div class="mini-row na"><span class="name">Writing</span><div class="track"><div style="width:0%;background:var(--ink-mute)"></div></div><span class="val">—</span></div>
-				<div class="mini-row"><span class="name">Reading</span><div class="track"><div style="width:42%;background:var(--teal)"></div></div><span class="val">42</span></div>
+			<div class="big" id="overallAccuracy">—<small>%</small></div>
+			<div class="delta flat" id="accuracySummary">Weighted accuracy across recorded questions</div>
+			<div class="goal-row"><span>Correct answers</span><span id="accuracyBasis">No questions recorded</span></div>
+			<div class="goal-bar"><div id="accuracyBar" style="width:0%;background:var(--teal);"></div></div>
+			<div class="mini-rows" id="sectionAccuracyRows">
+				<div class="empty-state"><strong>Your section breakdown</strong>Complete a practice attempt to see accuracy by section.</div>
 			</div>
-			<div class="card-foot-note">Structure and Writing haven't been drilled in practice yet — that's why they show as gaps here even though your mock accuracy for both is solid.</div>
+			<div class="card-foot-note">Accuracy is calculated from raw correct answers and question counts saved with each attempt.</div>
 			</div>
 		</section>
 
@@ -617,8 +869,8 @@
 		<section class="block card timeline-card tabpanel" data-panel="activity" hidden>
 			<div class="block-head">
 			<div class="block-head-left">
-				<h2>Activity timeline</h2>
-				<div class="desc">When you actually studied — spot gaps before they turn into risk.</div>
+				<h2>Your practice activity</h2>
+				<div class="desc">Completed section attempts, based on your saved test history.</div>
 			</div>
 			<div class="tabs" id="activityTabs" role="tablist" aria-label="Activity timeframe">
 				<button role="tab" aria-pressed="true" data-range="day">Day</button>
@@ -631,15 +883,13 @@
 			<div class="chart-row" id="activityChart"></div>
 
 			<div class="legend-row">
-			<div class="item"><span class="sw" style="background:var(--blue);"></span>Minutes studied</div>
-			<div class="item"><span class="sw" style="background:var(--red);"></span>No activity — risk day</div>
+			<div class="item"><span class="sw" style="background:var(--blue);"></span>Section attempts</div>
 			</div>
 
-			<div class="streak-strip">
-			<div class="stat"><b>3 days</b><span>current streak</span></div>
-			<div class="stat risk"><b>2 days</b><span>no-activity this week</span></div>
-			<div class="stat"><b>34 min</b><span>daily average</span></div>
-			<div class="stat"><b>Thu &amp; Fri</b><span>your usual quiet days</span></div>
+			<div class="streak-strip" id="activityStats">
+			<div class="stat"><b id="weekAttempts">0</b><span>attempts this week</span></div>
+			<div class="stat"><b id="activeDays">0</b><span>active days this week</span></div>
+			<div class="stat"><b id="activityStreak">0</b><span>day streak</span></div>
 			</div>
 		</section>
 
@@ -648,13 +898,13 @@
 			<div class="block-head">
 			<div class="block-head-left">
 				<h2>Score trajectory</h2>
-				<div class="desc">How your score is moving toward goal, across mocks and drills.</div>
+				<div class="desc">Scores recorded from your actual attempts. Incomplete mock sets are not combined.</div>
 			</div>
 			<div style="display:flex;gap:10px;flex-wrap:wrap;">
 				<div class="tabs" id="trajRangeTabs" role="tablist" aria-label="Trajectory timeframe">
 				<button role="tab" aria-pressed="false" data-range="week">Week</button>
 				<button role="tab" aria-pressed="false" data-range="month">Month</button>
-				<button role="tab" aria-pressed="true" data-range="year">All mocks</button>
+				<button role="tab" aria-pressed="true" data-range="year">All time</button>
 				</div>
 				<div class="tabs" id="trajViewTabs" role="tablist" aria-label="Composite or by section">
 				<button role="tab" aria-pressed="true" data-view="composite">Composite</button>
@@ -670,179 +920,53 @@
 
 			<table class="traj-table">
 			<thead><tr><th>Type</th><th>Attempt</th><th>Date</th><th style="text-align:right;">Score</th></tr></thead>
-			<tbody>
-				<tr><td><span class="tag mock">MOCK</span></td><td>Mock #3</td><td>Oct 15</td><td class="score">517</td></tr>
-				<tr><td><span class="tag mock">MOCK</span></td><td>Mock #2</td><td>Oct 8</td><td class="score">505</td></tr>
-				<tr><td><span class="tag practice">PRACTICE</span></td><td>Drill session</td><td>Oct 4</td><td class="score">—</td></tr>
-				<tr><td><span class="tag practice">PRACTICE</span></td><td>Drill session</td><td>Oct 3</td><td class="score">—</td></tr>
-				<tr><td><span class="tag practice">PRACTICE</span></td><td>Drill session</td><td>Oct 2</td><td class="score">—</td></tr>
-				<tr><td><span class="tag mock">MOCK</span></td><td>Mock #1</td><td>Oct 1</td><td class="score">493</td></tr>
-			</tbody>
+			<tbody id="trajectoryHistory"></tbody>
 			</table>
 		</section>
 
-		<!-- skill breakdown -->
+		<!-- Section accuracy is calculated from recorded raw scores and question totals. -->
 		<section class="block card tabpanel" data-panel="overview">
 			<div class="block-head">
 			<div class="block-head-left">
-				<h2>Where you stand, by component</h2>
-				<div class="desc">Accuracy, weakness score and level placement — calculated the same way your practice plan is.</div>
+			<h2>Section performance</h2>
+			<div class="desc">A weighted view across your recorded Listening, Structure &amp; Writing, and Reading attempts.</div>
 			</div>
 			</div>
-
-			<div class="breakdown-grid">
-			<div class="radar-wrap">
-				<svg viewBox="0 0 260 260">
-				<!-- grid rings -->
-				<polygon points="130,40 220,130 130,220 40,130" fill="none" stroke="var(--border)" stroke-width="1"/>
-				<polygon points="130,62 197.5,130 130,197.5 62.5,130" fill="none" stroke="var(--border)" stroke-width="1"/>
-				<polygon points="130,84 175,130 130,175 85,130" fill="none" stroke="var(--border)" stroke-width="1"/>
-				<polygon points="130,106 152.5,130 130,152.5 107.5,130" fill="none" stroke="var(--border)" stroke-width="1"/>
-				<line x1="130" y1="20" x2="130" y2="240" stroke="var(--border)"/>
-				<line x1="20" y1="130" x2="240" y2="130" stroke="var(--border)"/>
-				<!-- goal (85% target, dashed) -->
-				<polygon points="130,47 213,130 130,213 47,130" fill="none" stroke="var(--ink-mute)" stroke-width="1.5" stroke-dasharray="4 4"/>
-				<!-- current -->
-				<polygon points="130,113.4 178,130 137.4,183 82,148.8" fill="var(--blue)" fill-opacity="0.16" stroke="var(--blue)" stroke-width="2.5"/>
-				<circle cx="130" cy="113.4" r="3.5" fill="var(--blue)"/>
-				<circle cx="178" cy="130" r="3.5" fill="var(--blue)"/>
-				<circle cx="137.4" cy="183" r="3.5" fill="var(--blue)"/>
-				<circle cx="82" cy="148.8" r="3.5" fill="var(--blue)"/>
-				<text x="130" y="14" text-anchor="middle" font-size="12" fill="var(--red)" font-weight="700">Listening 62%</text>
-				<text x="250" y="134" text-anchor="end" font-size="12" fill="var(--ink-soft)" font-weight="700">Structure 80%</text>
-				<text x="130" y="253" text-anchor="middle" font-size="12" fill="var(--ink-soft)" font-weight="700">Writing 75%</text>
-				<text x="10" y="134" text-anchor="start" font-size="12" fill="var(--amber)" font-weight="700">Reading 68%</text>
-				</svg>
-				<div class="radar-key">
-				<div class="item"><span class="ln" style="border-color:var(--blue);"></span>Current</div>
-				<div class="item"><span class="ln dash" style="border-color:var(--ink-mute);"></span>Target (85%)</div>
-				</div>
-			</div>
-
-			<div class="comp-list">
-				<div class="comp-row cat-priority">
-				<div><div class="name">Listening — Part B</div><div class="evidence">10 / 20 correct · full coverage</div></div>
-				<div class="acc">50%</div>
-				<div class="cat">PRIORITY</div>
-				</div>
-				<div class="comp-row cat-needs">
-				<div><div class="name">Listening — Part C</div><div class="evidence">12 / 20 correct · full coverage</div></div>
-				<div class="acc">60%</div>
-				<div class="cat">NEEDS PRACTICE</div>
-				</div>
-				<div class="comp-row cat-needs">
-				<div><div class="name">Reading</div><div class="evidence">17 / 25 correct · placed at Beginner</div></div>
-				<div class="acc">68%</div>
-				<div class="cat">NEEDS PRACTICE</div>
-				<div class="foundation-note">7 points from Intermediate (needs 75%) <div class="fbar"><div style="width:91%;"></div></div></div>
-				</div>
-				<div class="comp-row cat-developing">
-				<div><div class="name">Listening — Part A</div><div class="evidence">15 / 20 correct · full coverage</div></div>
-				<div class="acc">75%</div>
-				<div class="cat">DEVELOPING</div>
-				</div>
-				<div class="comp-row cat-developing">
-				<div><div class="name">Written Expression</div><div class="evidence">15 / 20 correct · placed at Intermediate</div></div>
-				<div class="acc">75%</div>
-				<div class="cat">DEVELOPING</div>
-				<div class="foundation-note">At the 75% mark — Advanced unlocks next attempt <div class="fbar"><div style="width:100%;background:var(--green);"></div></div></div>
-				</div>
-				<div class="comp-row cat-developing">
-				<div><div class="name">Structure</div><div class="evidence">20 / 25 correct · placed at Advanced</div></div>
-				<div class="acc">80%</div>
-				<div class="cat">DEVELOPING</div>
-				<div class="foundation-note">Advanced already unlocked ✓ — light maintenance only <div class="fbar"><div style="width:100%;background:var(--green);"></div></div></div>
-				</div>
-			</div>
-			</div>
+			<div class="breakdown-grid" id="sectionPerformance"></div>
 		</section>
 
 		<!-- recommendations -->
 		<section class="block card tabpanel" data-panel="overview">
 			<div class="block-head">
 			<div class="block-head-left">
-				<h2>Your next 3 practices</h2>
-				<div class="desc">Ranked by priority score — weakness first, then how much evidence backs it up.</div>
+				<h2>A useful next step</h2>
+				<div class="desc">Suggested from your lowest recorded section accuracy.</div>
 			</div>
 			</div>
-
-			<div class="rec-list">
-			<div class="rec-card">
-				<div class="rec-rank">1</div>
-				<div>
-				<div class="rec-title">Listening Part B <span class="priority-score">Priority 50</span></div>
-				<div class="rec-why">Your weakest result overall — 50% accuracy on a full 20-question sample, the clearest signal in your data.</div>
-				<div class="rec-time">⏱ 15 minutes · No level, drills as-is</div>
-				</div>
-				<button class="rec-cta">Start now</button>
+			<div class="rec-list" id="recommendationList">
+				<div class="empty-state"><strong>Build your first progress signal</strong>Complete a section to get a recommendation based on your results.</div>
 			</div>
-			<div class="rec-card">
-				<div class="rec-rank">2</div>
-				<div>
-				<div class="rec-title">Listening Part C <span class="priority-score">Priority 40</span></div>
-				<div class="rec-why">Second-weakest listening skill at 60% — still just inside "Needs practice."</div>
-				<div class="rec-time">⏱ 15 minutes · No level, drills as-is</div>
-				</div>
-				<button class="rec-cta">Start now</button>
-			</div>
-			<div class="rec-card">
-				<div class="rec-rank">3</div>
-				<div>
-				<div class="rec-title">Reading — Beginner <span class="priority-score">Priority 32</span></div>
-				<div class="rec-why">68% is below the 70% placement line for Intermediate, so Beginner drills come next.</div>
-				<div class="rec-time">⏱ 20 minutes · Beginner level</div>
-				</div>
-				<button class="rec-cta">Start now</button>
-			</div>
-			</div>
-
-			<div class="secondary-title">Also worth a look</div>
-			<div class="sec-row">
-			<div><div class="name">Written Expression — Intermediate</div><div class="why">75% — one strong session away from unlocking Advanced.</div></div>
-			<div class="acc" style="font-weight:700;">Priority 25</div>
-			</div>
-			<div class="sec-row">
-			<div><div class="name">Structure — Advanced</div><div class="why">80% — already past the mastery line; maintenance keeps it sharp.</div></div>
-			<div class="acc" style="font-weight:700;">Priority 20</div>
-			</div>
-
-			<details class="method">
-			<summary>How this ranking is calculated</summary>
-			<p style="font-size:12.5px;color:var(--ink-soft);margin:10px 0 0;">Every component gets a weakness score (100 − accuracy), multiplied by a coverage factor based on how many questions back it up (5+ questions = full confidence). Level placements follow fixed accuracy bands, and a foundation rule stops the system from jumping a level before you're ready — even when raw priority would suggest otherwise.</p>
-			<table class="method-table">
-				<thead><tr><th>Component</th><th>Accuracy</th><th>Weakness</th><th>Coverage</th><th>Priority score</th></tr></thead>
-				<tbody>
-				<tr><td>Listening Part B</td><td>50%</td><td>50</td><td>1.00 (20 q)</td><td><strong>50</strong></td></tr>
-				<tr><td>Listening Part C</td><td>60%</td><td>40</td><td>1.00 (20 q)</td><td><strong>40</strong></td></tr>
-				<tr><td>Reading</td><td>68%</td><td>32</td><td>1.00 (25 q)</td><td><strong>32</strong></td></tr>
-				<tr><td>Listening Part A</td><td>75%</td><td>25</td><td>1.00 (20 q)</td><td><strong>25</strong></td></tr>
-				<tr><td>Written Expression</td><td>75%</td><td>25</td><td>1.00 (20 q)</td><td><strong>25</strong></td></tr>
-				<tr><td>Structure</td><td>80%</td><td>20</td><td>1.00 (25 q)</td><td><strong>20</strong></td></tr>
-				</tbody>
-			</table>
-			</details>
 		</section>
 
-		<!-- modules -->
+		<!-- Attempts are listed from the current user's saved test-history key. -->
 		<section class="block card tabpanel" data-panel="modules" hidden>
 			<div class="block-head">
 			<div class="block-head-left">
-				<h2>Skill accuracy by module</h2>
-				<div class="desc">A closer look inside each section's building blocks.</div>
+				<h2>Your attempt history</h2>
+				<div class="desc">Every saved section attempt, newest first. This browser only shows the signed-in user’s history.</div>
 			</div>
 			</div>
 			<div class="module-tabs" id="moduleTabs">
-			<button aria-pressed="true" data-cat="listening">👂 Listening</button>
-			<button aria-pressed="false" data-cat="structure">🧩 Structure &amp; Writing</button>
-			<button aria-pressed="false" data-cat="reading">📖 Reading</button>
+			<button aria-pressed="true" data-cat="all">All attempts</button>
+			<button aria-pressed="false" data-cat="mocktest">Mock tests</button>
+			<button aria-pressed="false" data-cat="practicetest">Practice tests</button>
 			</div>
 			<div class="module-grid" id="moduleGrid"></div>
-			<button class="view-all">View all modules →</button>
 		</section>
 
 		</div>
 
-		<script>
+		<script type="text/plain" data-legacy-prototype>
 		(function(){
 		"use strict";
 
@@ -1072,10 +1196,12 @@
 		var mainTabs = document.getElementById("mainTabs");
 		var panels = document.querySelectorAll(".tabpanel");
 		var trajDrawnOnce = false;
+		var revealObserver = null;
 
 		function showPanel(name){
 			panels.forEach(function(p){
 			p.hidden = (p.dataset.panel !== name);
+			if(!p.hidden) p.classList.add("is-visible");
 			});
 			if(name === "trajectory" && !trajDrawnOnce){
 			// redraw once visible so the SVG has real layout dimensions
@@ -1094,8 +1220,580 @@
 			showPanel(btn.dataset.panel);
 		});
 
+		if("IntersectionObserver" in window && !window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+			var revealTargets = document.querySelectorAll(".topbar,.insight,.main-tabs,.tabpanel");
+			document.body.classList.add("reveal-ready");
+			document.querySelectorAll(".hero-grid>.card").forEach(function(card,index){
+				card.style.setProperty("--reveal-delay",(index*90)+"ms");
+			});
+			revealObserver = new IntersectionObserver(function(entries){
+				entries.forEach(function(entry){
+					if(entry.isIntersecting){
+						entry.target.classList.add("is-visible");
+						revealObserver.unobserve(entry.target);
+					}
+				});
+			},{threshold:.08});
+			revealTargets.forEach(function(target){revealObserver.observe(target);});
+		}
+
 		})();
 </script>
+	<script>
+	(function () {
+		"use strict";
+
+		const SECTION_INFO = {
+			listening: { label: "Listening", color: "#1d72bf", href: "section 1.html" },
+			structure: { label: "Structure & Writing", color: "#078c9d", href: "section 2.html" },
+			reading: { label: "Reading", color: "#7567b4", href: "section 3.html" }
+		};
+		const SECTION_ORDER = ["listening", "structure", "reading"];
+		const state = { attempts: [], activityRange: "day", trajectoryRange: "year", trajectoryView: "composite", historyFilter: "all" };
+		const $ = (selector, root = document) => root.querySelector(selector);
+		const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+		const setText = (id, value) => {
+			const node = document.getElementById(id);
+			if (node) node.textContent = String(value);
+		};
+		const dateKey = (value) => {
+			if (!value) return "";
+			const direct = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+			if (direct) return direct[1];
+			const date = new Date(value);
+			return Number.isNaN(date.getTime()) ? "" : localDateKey(date);
+		};
+		const localDateKey = (date) => {
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, "0");
+			const day = String(date.getDate()).padStart(2, "0");
+			return `${year}-${month}-${day}`;
+		};
+		const dateFromKey = (key) => {
+			const [year, month, day] = key.split("-").map(Number);
+			return new Date(year, month - 1, day);
+		};
+		const dateLabel = (key, options = { month: "short", day: "numeric" }) => {
+			const date = dateFromKey(key);
+			return Number.isNaN(date.getTime()) ? "Date unavailable" : date.toLocaleDateString(undefined, options);
+		};
+		const attemptTimestamp = (attempt) => Date.parse(attempt.recordedAt || attempt.submittedAt || 0) || 0;
+		const getAttempts = () => {
+			if (!window.toeflTestHistory || typeof window.toeflTestHistory.readAttempts !== "function") return [];
+			return window.toeflTestHistory.readAttempts()
+				.filter((item) => item && SECTION_INFO[item.sectionKey] && Number.isFinite(Number(item.totalQuestions)) && Number(item.totalQuestions) > 0)
+				.map((item) => ({
+					...item,
+					sectionKey: String(item.sectionKey).toLowerCase(),
+					rawScore: Number(item.rawScore),
+					scaledScore: Number(item.scaledScore),
+					totalQuestions: Number(item.totalQuestions),
+					date: dateKey(item.submittedAt || item.recordedAt),
+					testType: String(item.testType || "mocktest").toLowerCase(),
+					runMode: String(item.runMode || "full").toLowerCase()
+				}))
+				.filter((item) => item.date && Number.isFinite(item.rawScore) && item.rawScore >= 0);
+		};
+		const orderedAttempts = () => state.attempts.slice().sort((a, b) => attemptTimestamp(b) - attemptTimestamp(a));
+		const sectionStats = (section) => {
+			const attempts = state.attempts.filter((item) => item.sectionKey === section);
+			const valid = attempts.filter((item) => item.totalQuestions > 0 && item.rawScore >= 0);
+			const totalQuestions = valid.reduce((sum, item) => sum + item.totalQuestions, 0);
+			const correct = valid.reduce((sum, item) => sum + Math.min(item.rawScore, item.totalQuestions), 0);
+			const latest = attempts.slice().sort((a, b) => attemptTimestamp(b) - attemptTimestamp(a))[0] || null;
+			return {
+				attempts,
+				totalQuestions,
+				correct,
+				accuracy: totalQuestions ? Math.round((correct / totalQuestions) * 100) : null,
+				latest
+			};
+		};
+		const completeMockAttempts = () => {
+			const grouped = new Map();
+			state.attempts.filter((item) => item.testType === "mocktest" && item.runMode !== "focused" && item.setId).forEach((item) => {
+				const key = `${item.setId}|${item.date}`;
+				if (!grouped.has(key)) grouped.set(key, {});
+				const group = grouped.get(key);
+				if (!group[item.sectionKey] || attemptTimestamp(item) > attemptTimestamp(group[item.sectionKey])) group[item.sectionKey] = item;
+			});
+			return Array.from(grouped.values())
+				.filter((group) => SECTION_ORDER.every((section) => group[section] && Number.isFinite(group[section].scaledScore) && group[section].scaledScore > 0))
+				.map((group) => {
+					const sections = Object.fromEntries(SECTION_ORDER.map((section) => [section, group[section]]));
+					const scores = SECTION_ORDER.map((section) => sections[section].scaledScore);
+					return {
+						date: SECTION_ORDER.map((section) => sections[section].date).sort().pop(),
+						setId: sections.listening.setId,
+						sections,
+						score: Math.round((scores.reduce((sum, value) => sum + value, 0) / scores.length) * 10),
+						timestamp: Math.max(...SECTION_ORDER.map((section) => attemptTimestamp(sections[section])))
+					};
+				})
+				.sort((a, b) => b.timestamp - a.timestamp);
+		};
+		const create = (tag, className, text) => {
+			const node = document.createElement(tag);
+			if (className) node.className = className;
+			if (text !== undefined) node.textContent = text;
+			return node;
+		};
+
+		function renderHero() {
+			const allAttempts = orderedAttempts();
+			const mocks = completeMockAttempts();
+			const latestMock = mocks[0];
+			const previousMock = mocks[1];
+			const ring = $("#overallRing");
+			const circumference = 2 * Math.PI * 68;
+			if (ring) {
+				ring.setAttribute("stroke-dasharray", String(circumference));
+				const ratio = latestMock ? Math.max(0, Math.min(1, (latestMock.score - 310) / (677 - 310))) : 0;
+				ring.setAttribute("stroke-dashoffset", String(circumference * (1 - ratio)));
+			}
+			if (latestMock) {
+				setText("overallScore", latestMock.score);
+				setText("overallLabel", "TOEFL ITP composite");
+				setText("overallCaption", "Score from a complete mock");
+				setText("overallNote", `${latestMock.setId} · ${dateLabel(latestMock.date, { month: "long", day: "numeric", year: "numeric" })}`);
+				setText("latestMockScore", `${latestMock.score} / 677`);
+				setText("mockBadge", dateLabel(latestMock.date));
+				const delta = previousMock ? latestMock.score - previousMock.score : null;
+				setText("mockSummary", delta === null ? "First complete mock in your history" : `${delta >= 0 ? "+" : ""}${delta} points since the previous complete mock`);
+				const rows = $("#mockSections");
+				rows.replaceChildren();
+				SECTION_ORDER.forEach((section) => {
+					const info = SECTION_INFO[section];
+					const score = latestMock.sections[section].scaledScore;
+					const row = create("div", "mini-row");
+					row.append(create("span", "name", info.label));
+					const track = create("div", "track");
+					const fill = create("div");
+					fill.style.width = `${Math.max(0, Math.min(100, (score / 68) * 100))}%`;
+					fill.style.background = info.color;
+					track.append(fill);
+					row.append(track, create("span", "val", score));
+					rows.append(row);
+				});
+			} else {
+				setText("overallScore", "—");
+				setText("overallLabel", "Complete a full mock");
+				setText("overallCaption", allAttempts.length ? `${allAttempts.length} section attempt${allAttempts.length === 1 ? "" : "s"} recorded` : "Your TOEFL ITP composite");
+				setText("overallNote", "A composite appears when all three sections from the same full mock are complete.");
+				setText("latestMockScore", "— / 677");
+				setText("mockBadge", "No complete mock");
+				setText("mockSummary", "Section results are not combined until all sections are complete");
+				const rows = $("#mockSections");
+				rows.replaceChildren();
+				const empty = create("div", "empty-state");
+				empty.append(create("strong", "", "No complete mock yet"), document.createTextNode("Complete Listening, Structure & Writing, and Reading from the same mock."));
+				rows.append(empty);
+			}
+
+			const questionTotal = state.attempts.reduce((sum, item) => sum + item.totalQuestions, 0);
+			const correctTotal = state.attempts.reduce((sum, item) => sum + Math.min(item.rawScore, item.totalQuestions), 0);
+			const overallAccuracy = questionTotal ? Math.round((correctTotal / questionTotal) * 100) : null;
+			setText("overallAccuracy", overallAccuracy === null ? "—%" : `${overallAccuracy}%`);
+			setText("accuracyBasis", questionTotal ? `${correctTotal} / ${questionTotal}` : "No questions recorded");
+			setText("attemptCountBadge", `${allAttempts.length} attempt${allAttempts.length === 1 ? "" : "s"}`);
+			const accuracyBar = $("#accuracyBar");
+			if (accuracyBar) accuracyBar.style.width = `${overallAccuracy || 0}%`;
+			const rows = $("#sectionAccuracyRows");
+			rows.replaceChildren();
+			if (!questionTotal) {
+				rows.append(create("div", "empty-state", "Complete a practice attempt to see accuracy by section."));
+			} else {
+				SECTION_ORDER.forEach((section) => {
+					const info = SECTION_INFO[section];
+					const stats = sectionStats(section);
+					const row = create("div", "mini-row");
+					row.append(create("span", "name", info.label));
+					const track = create("div", "track");
+					const fill = create("div");
+					fill.style.width = `${stats.accuracy || 0}%`;
+					fill.style.background = info.color;
+					track.append(fill);
+					row.append(track, create("span", "val", stats.accuracy === null ? "—" : `${stats.accuracy}%`));
+					rows.append(row);
+				});
+			}
+			renderFocus();
+		}
+
+		function renderFocus() {
+			const priority = SECTION_ORDER
+				.map((section) => ({ section, ...sectionStats(section) }))
+				.filter((item) => item.accuracy !== null)
+				.sort((a, b) => a.accuracy - b.accuracy)[0];
+			const copy = $("#focusCopy");
+			const action = $("#focusAction");
+			if (!priority) {
+				setText("focusEyebrow", "YOUR PROGRESS");
+				if (copy) copy.textContent = "Complete a section of TOEFL practice to build a progress picture based on your own results.";
+				if (action) {
+					action.textContent = "Start a practice";
+					action.href = "study-plan.html";
+				}
+				return;
+			}
+			const info = SECTION_INFO[priority.section];
+			setText("focusEyebrow", "A PLACE TO FOCUS");
+			if (copy) {
+				copy.replaceChildren();
+				const strong = create("strong", "", `${info.label} is currently your lowest section.`);
+				copy.append(strong, document.createTextNode(` Your weighted accuracy is ${priority.accuracy}% across ${priority.totalQuestions} questions. Use this as a guide, then keep building evidence with more attempts.`));
+			}
+			if (action) {
+				action.textContent = `Practice ${info.label}`;
+				action.href = "study-plan.html";
+			}
+		}
+
+		function renderSectionPerformance() {
+			const grid = $("#sectionPerformance");
+			grid.replaceChildren();
+			SECTION_ORDER.forEach((section) => {
+				const info = SECTION_INFO[section];
+				const stats = sectionStats(section);
+				const card = create("article", "performance-card");
+				const head = create("div", "performance-head");
+				head.append(create("span", "history-label", info.label));
+				const latestScore = stats.latest && stats.latest.scaledScore > 0 ? `Latest scale score ${stats.latest.scaledScore}` : "No scaled score";
+				head.append(create("span", "performance-latest", latestScore));
+				card.append(head);
+				if (stats.accuracy === null) {
+					card.append(create("div", "empty-state", "No recorded attempts for this section yet."));
+				} else {
+					const value = create("div", "performance-value", `${stats.accuracy}%`);
+					card.append(value, create("p", "performance-evidence", `${stats.correct} correct answers across ${stats.totalQuestions} questions`));
+					const track = create("div", "metric-progress");
+					const bar = create("div", "track");
+					const fill = create("span");
+					fill.style.width = `${stats.accuracy}%`;
+					fill.style.background = info.color;
+					bar.append(fill);
+					track.append(bar);
+					card.append(track);
+					card.append(create("p", "performance-evidence", `${stats.attempts.length} attempt${stats.attempts.length === 1 ? "" : "s"} · Latest ${dateLabel(stats.latest.date)}`));
+				}
+				grid.append(card);
+			});
+
+			const list = $("#recommendationList");
+			list.replaceChildren();
+			const weakest = SECTION_ORDER.map((section) => ({ section, ...sectionStats(section) }))
+				.filter((item) => item.accuracy !== null)
+				.sort((a, b) => a.accuracy - b.accuracy)[0];
+			if (!weakest) {
+				list.append(create("div", "empty-state", "Complete a section to get a recommendation grounded in your results."));
+				return;
+			}
+			const info = SECTION_INFO[weakest.section];
+			const card = create("div", "rec-card");
+			card.append(create("div", "rec-rank", "↗"));
+			const content = create("div");
+			content.append(create("div", "rec-title", `Next up: ${info.label}`));
+			content.append(create("div", "rec-why", `This section has your lowest weighted accuracy at ${weakest.accuracy}% (${weakest.correct} of ${weakest.totalQuestions} questions correct).`));
+			content.append(create("div", "rec-time", "Suggested from your saved attempt history."));
+			const link = create("a", "rec-cta", "Open study plan");
+			link.href = "study-plan.html";
+			card.append(content, link);
+			list.append(card);
+		}
+
+		function weekStart(date) {
+			const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+			start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+			return start;
+		}
+
+		function activityBuckets(range) {
+			const now = new Date();
+			const buckets = [];
+			if (range === "day") {
+				for (let offset = 6; offset >= 0; offset -= 1) {
+					const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset);
+					buckets.push({ key: localDateKey(date), label: date.toLocaleDateString(undefined, { weekday: "short" }) });
+				}
+			} else if (range === "week") {
+				const current = weekStart(now);
+				for (let offset = 7; offset >= 0; offset -= 1) {
+					const date = new Date(current);
+					date.setDate(date.getDate() - offset * 7);
+					buckets.push({ key: localDateKey(date), end: localDateKey(new Date(date.getFullYear(), date.getMonth(), date.getDate() + 7)), label: `W${8 - offset}` });
+				}
+			} else if (range === "month") {
+				for (let offset = 11; offset >= 0; offset -= 1) {
+					const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+					buckets.push({ key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`, label: date.toLocaleDateString(undefined, { month: "short" }) });
+				}
+			} else {
+				for (let offset = 4; offset >= 0; offset -= 1) {
+					const year = now.getFullYear() - offset;
+					buckets.push({ key: String(year), label: String(year) });
+				}
+			}
+			const counts = new Map(buckets.map((bucket) => [bucket.key, 0]));
+			state.attempts.forEach((item) => {
+				let key = item.date;
+				if (range === "month") key = item.date.slice(0, 7);
+				if (range === "year") key = item.date.slice(0, 4);
+				if (range === "week") {
+					const monday = localDateKey(weekStart(dateFromKey(item.date)));
+					key = buckets.some((bucket) => bucket.key === monday) ? monday : "";
+				}
+				if (counts.has(key)) counts.set(key, counts.get(key) + 1);
+			});
+			return buckets.map((bucket) => ({ ...bucket, value: counts.get(bucket.key) || 0 }));
+		}
+
+		function renderActivity(range = state.activityRange) {
+			state.activityRange = range;
+			const chart = $("#activityChart");
+			chart.replaceChildren();
+			const buckets = activityBuckets(range);
+			const max = Math.max(1, ...buckets.map((item) => item.value));
+			buckets.forEach((item) => {
+				const col = create("div", "bar-col");
+				const track = create("div", "bar-track");
+				const fill = create("div", "bar-fill");
+				const height = item.value ? Math.max(12, (item.value / max) * 100) : 4;
+				fill.style.height = `${height}%`;
+				fill.setAttribute("aria-label", `${item.value} attempts`);
+				track.append(fill);
+				col.append(track, create("div", "bar-label", item.label));
+				col.title = `${item.value} section attempt${item.value === 1 ? "" : "s"}`;
+				chart.append(col);
+			});
+			const today = new Date();
+			const monday = weekStart(today);
+			const weekKey = localDateKey(monday);
+			const sundayExclusive = localDateKey(new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7));
+			const weekAttempts = state.attempts.filter((item) => item.date >= weekKey && item.date < sundayExclusive).length;
+			const activeDays = new Set(state.attempts.filter((item) => item.date >= weekKey && item.date < sundayExclusive).map((item) => item.date)).size;
+			const active = new Set(state.attempts.map((item) => item.date));
+			const todayKey = localDateKey(today);
+			const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+			let cursor = active.has(todayKey) ? today : (active.has(localDateKey(yesterday)) ? yesterday : null);
+			let streak = 0;
+			while (cursor && active.has(localDateKey(cursor))) {
+				streak += 1;
+				cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() - 1);
+			}
+			setText("weekAttempts", weekAttempts);
+			setText("activeDays", activeDays);
+			setText("activityStreak", streak);
+			setText("streakValue", `${streak} day${streak === 1 ? "" : "s"}`);
+		}
+
+		function trajectoryPoints() {
+			const now = new Date();
+			const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+			if (state.trajectoryRange === "week") cutoff.setDate(cutoff.getDate() - 7);
+			else if (state.trajectoryRange === "month") cutoff.setMonth(cutoff.getMonth() - 3);
+			else if (state.trajectoryRange === "year") cutoff.setFullYear(cutoff.getFullYear() - 10);
+			const minDate = localDateKey(cutoff);
+			if (state.trajectoryView === "composite") {
+				return completeMockAttempts().filter((item) => item.date >= minDate).map((item) => ({
+					label: dateLabel(item.date),
+					value: item.score,
+					date: item.date,
+					name: item.setId
+				})).sort((a, b) => a.date.localeCompare(b.date));
+			}
+			return SECTION_ORDER.flatMap((section) => {
+				const attempts = state.attempts
+					.filter((item) => item.sectionKey === section && item.date >= minDate && item.scaledScore > 0)
+					.sort((a, b) => attemptTimestamp(a) - attemptTimestamp(b));
+				return attempts.map((item) => ({
+					label: dateLabel(item.date),
+					value: item.scaledScore,
+					date: item.date,
+					name: SECTION_INFO[section].label,
+					section
+				}));
+			}).sort((a, b) => a.date.localeCompare(b.date));
+		}
+
+		function renderTrajectory() {
+			const svg = $("#trajSvg");
+			const legend = $("#trajLegend");
+			const body = $("#trajectoryHistory");
+			const chartWrap = $(".traj-wrap");
+			const previousEmpty = $("#trajEmpty");
+			if (previousEmpty) previousEmpty.remove();
+			svg.hidden = false;
+			svg.replaceChildren();
+			legend.replaceChildren();
+			body.replaceChildren();
+			const points = trajectoryPoints();
+			const composite = state.trajectoryView === "composite";
+			const series = composite
+				? [{ name: "Complete mock composite", color: "#1d72bf", points }]
+				: SECTION_ORDER.map((section) => ({
+					name: SECTION_INFO[section].label,
+					color: SECTION_INFO[section].color,
+					points: points.filter((point) => point.section === section)
+				})).filter((item) => item.points.length);
+			const ns = "http://www.w3.org/2000/svg";
+			const W = 720, H = 220, left = 42, right = 16, top = 18, bottom = 32;
+			if (points.length) {
+				const values = points.map((point) => point.value);
+				const min = Math.min(...values) - 5;
+				const max = Math.max(...values) + 5;
+				const minTime = dateFromKey(points[0].date).getTime();
+				const maxTime = dateFromKey(points[points.length - 1].date).getTime();
+				const xForDate = (key) => left + ((dateFromKey(key).getTime() - minTime) / Math.max(maxTime - minTime, 1)) * (W - left - right);
+				for (let index = 0; index <= 3; index += 1) {
+					const y = top + (index / 3) * (H - top - bottom);
+					const line = document.createElementNS(ns, "line");
+					line.setAttribute("x1", left); line.setAttribute("x2", W - right);
+					line.setAttribute("y1", y); line.setAttribute("y2", y);
+					line.setAttribute("stroke", "var(--border)");
+					svg.append(line);
+				}
+				series.forEach((item) => {
+					const valuesForSeries = item.points;
+					if (!valuesForSeries.length) return;
+					const coordinates = valuesForSeries.map((point) => {
+						const x = composite
+							? left + ((dateFromKey(point.date).getTime() - minTime) / Math.max(maxTime - minTime, 1)) * (W - left - right)
+							: xForDate(point.date);
+						const y = H - bottom - ((point.value - min) / Math.max(max - min, 1)) * (H - top - bottom);
+						return { x, y, point };
+					});
+					if (coordinates.length > 1) {
+						const line = document.createElementNS(ns, "polyline");
+						line.setAttribute("points", coordinates.map(({ x, y }) => `${x},${y}`).join(" "));
+						line.setAttribute("fill", "none");
+						line.setAttribute("stroke", item.color);
+						line.setAttribute("stroke-width", composite ? "3.5" : "2.5");
+						line.setAttribute("stroke-linecap", "round");
+						line.setAttribute("stroke-linejoin", "round");
+						svg.append(line);
+					}
+					coordinates.forEach(({ x, y, point }) => {
+						const circle = document.createElementNS(ns, "circle");
+						circle.setAttribute("cx", x); circle.setAttribute("cy", y);
+						circle.setAttribute("r", composite ? "4.5" : "3.5");
+						circle.setAttribute("fill", item.color);
+						circle.setAttribute("aria-label", `${point.name}: ${point.value}, ${point.label}`);
+						svg.append(circle);
+					});
+					const label = create("div", "item");
+					const swatch = create("span", "ln");
+					swatch.style.background = item.color;
+					label.append(swatch, document.createTextNode(item.name));
+					legend.append(label);
+				});
+				const labelsByDate = Array.from(new Map(points.map((point) => [point.date, point])).values());
+				const labelPoints = labelsByDate.filter((_, index) => index === 0 || index === labelsByDate.length - 1 || index % Math.max(1, Math.ceil(labelsByDate.length / 5)) === 0);
+				labelPoints.forEach((point) => {
+					const text = document.createElementNS(ns, "text");
+					const x = xForDate(point.date);
+					text.setAttribute("x", x); text.setAttribute("y", H - 7);
+					text.setAttribute("text-anchor", "middle");
+					text.setAttribute("font-size", "11");
+					text.setAttribute("fill", "var(--ink-mute)");
+					text.textContent = point.label;
+					svg.append(text);
+				});
+			} else {
+				const empty = create("div", "empty-state");
+				const strong = create("strong", "", composite ? "No complete mock scores yet" : "No scaled section scores yet");
+				empty.append(strong, document.createTextNode(composite
+					? "Finish all three sections in one mock to see a composite trend."
+					: "Complete a test section with a scaled score to start your trend."));
+				svg.hidden = true;
+				chartWrap.append(empty);
+				empty.id = "trajEmpty";
+			}
+			orderedAttempts().slice(0, 8).forEach((attempt) => {
+				const row = document.createElement("tr");
+				const typeCell = document.createElement("td");
+				typeCell.append(create("span", `tag ${attempt.testType === "mocktest" ? "mock" : "practice"}`, attempt.testType === "mocktest" ? "MOCK" : "PRACTICE"));
+				const attemptCell = create("td", "", `${SECTION_INFO[attempt.sectionKey].label} · ${attempt.setId || "Test"}`);
+				const dateCell = create("td", "", dateLabel(attempt.date));
+				const scoreCell = create("td", "score", attempt.scaledScore > 0 ? attempt.scaledScore : "—");
+				scoreCell.style.textAlign = "right";
+				row.append(typeCell, attemptCell, dateCell, scoreCell);
+				body.append(row);
+			});
+			if (!state.attempts.length) {
+				const row = document.createElement("tr");
+				const cell = create("td", "", "No attempts are saved in your history yet.");
+				cell.colSpan = 4;
+				row.append(cell);
+				body.append(row);
+			}
+		}
+
+		function renderAttemptHistory(filter = state.historyFilter) {
+			state.historyFilter = filter;
+			const grid = $("#moduleGrid");
+			grid.replaceChildren();
+			const attempts = orderedAttempts().filter((item) => filter === "all" || item.testType === filter);
+			if (!attempts.length) {
+				const empty = create("div", "empty-state");
+				empty.style.gridColumn = "1 / -1";
+				empty.append(create("strong", "", "No matching attempts"), document.createTextNode("Completed test results will appear here."));
+				grid.append(empty);
+				return;
+			}
+			attempts.forEach((item) => {
+				const card = create("article", "module-card");
+				const title = create("div", "m-name", SECTION_INFO[item.sectionKey].label);
+				const meta = create("div", "m-meta");
+				meta.append(create("span", "", `${item.testType === "mocktest" ? "Mock" : "Practice"} · ${dateLabel(item.date, { month: "short", day: "numeric", year: "numeric" })}`));
+				meta.append(create("span", "", item.scaledScore > 0 ? `Score ${item.scaledScore}` : "Score unavailable"));
+				const evidence = create("div", "m-meta");
+				evidence.append(create("span", "", `${Math.min(item.rawScore, item.totalQuestions)} of ${item.totalQuestions} correct`));
+				evidence.append(create("span", "", item.setId || ""));
+				card.append(title, meta, evidence);
+				grid.append(card);
+			});
+		}
+
+		function renderAll() {
+			state.attempts = getAttempts();
+			renderHero();
+			renderSectionPerformance();
+			renderActivity();
+			renderTrajectory();
+			renderAttemptHistory();
+		}
+
+		function wireTabGroup(id, callback, key) {
+			const group = document.getElementById(id);
+			if (!group) return;
+			group.addEventListener("click", (event) => {
+				const button = event.target.closest("button");
+				if (!button || !group.contains(button)) return;
+				$$("button", group).forEach((item) => item.setAttribute("aria-pressed", item === button ? "true" : "false"));
+				callback(button.dataset[key]);
+			});
+		}
+		const mainTabs = $("#mainTabs");
+		const panels = $$(".tabpanel");
+		mainTabs.addEventListener("click", (event) => {
+			const button = event.target.closest("button[data-panel]");
+			if (!button) return;
+			panels.forEach((panel) => { panel.hidden = panel.dataset.panel !== button.dataset.panel; });
+			$$("button", mainTabs).forEach((tab) => tab.setAttribute("aria-pressed", tab === button ? "true" : "false"));
+			if (button.dataset.panel === "trajectory") renderTrajectory();
+		});
+		wireTabGroup("activityTabs", renderActivity, "range");
+		wireTabGroup("trajRangeTabs", (range) => { state.trajectoryRange = range; renderTrajectory(); }, "range");
+		wireTabGroup("trajViewTabs", (view) => { state.trajectoryView = view; renderTrajectory(); }, "view");
+		wireTabGroup("moduleTabs", renderAttemptHistory, "cat");
+		const back = $(".back-btn");
+		if (back) back.addEventListener("click", () => { window.location.href = "study-plan.html"; });
+		renderAll();
+		if (window.toeflTestHistory && typeof window.toeflTestHistory.subscribe === "function") {
+			window.toeflTestHistory.subscribe(renderAll);
+		}
+	})();
+	</script>
 </body>
 </html>
 
