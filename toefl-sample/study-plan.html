@@ -1290,53 +1290,93 @@
             .timer-btn{font-size:12px}
             .custom-time-panel{grid-template-columns:22px minmax(0,1fr) 50px;gap:10px}
         }
-        @media (prefers-reduced-motion:reduce){.mode-card,.timer-btn{transition:none}.custom-time-panel.revealing{animation:none}}
+        @media (prefers-reduced-motion:reduce){.mode-card,.timer-btn,.recommendation-start,.practice-option{transition:none}.custom-time-panel.revealing{animation:none}}
 
         .mock-panel.practice-day .simulation-banner { display: none; }
         .simulation-start[hidden] { display: none; }
         .mock-panel.practice-day .practice-recommendations { display: block; }
-        .practice-recommendations { display: none; margin: 0 0 24px; padding: 18px; border: 1px solid #93d8ff; border-radius: 20px; background: #fff; }
-        .recommendation-head { display: flex; align-items: center; gap: 10px; color: #0878c9; font-size: 15px; font-weight: 800; }
-        .recommendation-mark { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: #e5f5ff; }
+        .practice-recommendations { display: none; margin: 0 0 24px; padding: 16px; border: 1px solid #c8e4ff; border-radius: 20px; background: linear-gradient(145deg, #f1f8ff, #eaf5ff 68%, #f2fbff); }
+        .recommendation-head { display: flex; align-items: center; gap: 10px; color: #5595e7; font-size: 14px; font-weight: 800; text-transform: uppercase; }
+        .recommendation-mark { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: linear-gradient(135deg, #50a8f8, #7458dc); }
+        .recommendation-mark svg { width: 18px; height: 18px; }
+        .recommendation-personalized { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 7px 10px; border-radius: 999px; color: #0878c9; background: #e2f2ff; font-size: 9px; font-weight: 700; white-space: nowrap; }
+        .recommendation-personalized[hidden] { display: none; }
+        .recommendation-personalized svg { width: 13px; height: 13px; }
         .recommendation-copy { margin: 8px 0 14px; color: #748395; font-size: 11px; line-height: 1.5; }
-        .recommendation-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-        .recommendation-card { min-width: 0; padding: 12px; border: 1px solid #d7e5f4; border-radius: 15px; background: #f6f9ff; }
-        .recommendation-card:first-child { border-color: #62cfb4; background: #effcf8; }
-        .recommendation-priority { display: inline-flex; padding: 4px 10px; border-radius: 999px; background: #0969ad; color: #fff; font-size: 9px; font-weight: 800; }
-        .recommendation-card:first-child .recommendation-priority { background: #0aa58f; }
+        .recommendation-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 48px; }
+        .recommendation-card { position: relative; isolation: isolate; display: flex; flex-direction: column; min-width: 0; min-height: 205px; padding: 12px; border: 1px solid #cfe4f7; border-radius: 16px; background: #eef7ff; }
+        .recommendation-card > * { position: relative; z-index: 1; }
+        .recommendation-card:not(:last-child)::after { content: "›"; position: absolute; z-index: 2; top: 50%; right: -36px; display: grid; width: 26px; height: 26px; place-items: center; border-radius: 50%; color: #3479df; background: #fff; font-size: 22px; line-height: 1; transform: translateY(-50%); pointer-events: none; }
+        .recommendation-card.theme-listening { border-color: #bceadd; background: linear-gradient(145deg,#effcf8,#e6f8f2); }
+        .recommendation-card.theme-structure { border-color: #c9e2f8; background: linear-gradient(145deg,#f1f8ff,#e9f5ff); }
+        .recommendation-card.theme-reading { border-color: #e1d7fb; background: linear-gradient(145deg,#f6f2ff,#f0ebff); }
+        .recommendation-card:first-child { border-color: #bceadd; }
+        .recommendation-priority { display: inline-flex; align-self: flex-start; padding: 4px 10px; border-radius: 999px; background: #0969ad; color: #fff; font-size: 9px; font-weight: 800; }
+        .recommendation-card.theme-listening .recommendation-priority { background: #0aa58f; }
         .recommendation-section { display: block; margin-top: 12px; color: #7890a5; font-size: 10px; font-weight: 700; }
-        .recommendation-card h3 { margin: 3px 0 8px; color: #31485b; font-size: 14px; line-height: 1.25; }
-        .recommendation-level { margin: 0 0 8px; color: #d28b00; font-size: 13px; font-weight: 800; }
-        .recommendation-stats { display: flex; gap: 8px; margin-bottom: 8px; color: #475e73; font-size: 10px; font-weight: 700; }
-        .recommendation-why { min-height: 32px; margin: 0 0 10px; color: #68798b; font-size: 9px; line-height: 1.45; }
-        .recommendation-start { width: 100%; min-height: 34px; border: 0; border-radius: 999px; background: #0969ad; color: #fff; font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
-        .recommendation-card:first-child .recommendation-start { background: #0b9d89; }
-        .recommendation-start:hover { filter: brightness(1.08); }
+        .recommendation-card h3 { margin: 3px 0 4px; color: #31485b; font-size: 14px; line-height: 1.25; }
+        .recommendation-level { display: inline-flex; align-self: flex-start; margin: 0 0 4px; padding: 3px 9px; border-radius: 999px; color: #735500; background: #fff1bb; font-size: 10px; font-weight: 800; }
+        .recommendation-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 5px; color: #547086; font-size: 9px; font-weight: 700; }
+        .recommendation-stats .accuracy i { margin-right: 4px; color: #38978b; font-size: 11px; }
+        .recommendation-stats .weakness-high { color: #bd4a4a; }
+        .recommendation-stats .weakness-medium { color: #c38726; }
+        .recommendation-stats .weakness-low { color: #4e9a70; }
+        .recommendation-why { min-height: 28px; margin: 0 0 6px; color: #68798b; font-size: 9px; line-height: 1.45; }
+        .recommendation-start { width: 100%; min-height: 32px; margin-top: auto; border: 0; border-radius: 999px; background: #0969ad; color: #fff; font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; transition: transform .2s ease,filter .2s ease,box-shadow .2s ease; }
+        .recommendation-card.theme-listening .recommendation-start { background: #438d79; }
+        .recommendation-card.theme-structure .recommendation-start { background: #4074ce; }
+        .recommendation-card.theme-reading .recommendation-start { background: #604ab6; }
+        .recommendation-start:hover { filter: brightness(1.08); transform: translateY(-1px); }
+        .recommendation-start:active,.practice-option:active { transform: scale(.98); }
         .recommendation-start:focus-visible { outline: 3px solid #138bd1; outline-offset: 2px; }
         .recommendation-empty { grid-column: 1 / -1; margin: 0; padding: 18px; border: 1px dashed #bed8eb; border-radius: 14px; color: #526a80; background: #f7fbff; font-size: 12px; line-height: 1.5; }
         .section-grid.mock-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        .section-grid.practice-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
-        .practice-grid .section-card-v2 { min-width: 0; min-height: 320px; padding: 22px 18px 18px; }
-        .practice-grid .card-image-wrap { height: 120px; margin-bottom: 14px; }
-        .practice-grid .card-content-wrap { gap: 8px; }
-        .practice-grid .card-title { font-size: 18px; }
-        .practice-grid .card-desc { min-height: 42px; font-size: 12px; }
-        .practice-options { display: grid; gap: 7px; margin-top: 6px; }
-        .practice-option { min-height: 34px; width: 100%; border: 0; border-radius: 999px; padding: 6px 10px; color: #fff; font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .section-grid.practice-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+        .practice-grid .section-card-v2 { min-width: 0; min-height: 250px; padding: 12px 15px 10px; }
+        .practice-grid .card-image-wrap { height: 70px; justify-content: flex-start; margin-bottom: 2px; padding-left: 3px; }
+        .practice-grid .card-image-wrap img { max-width: 104px; max-height: 68px; }
+        .practice-grid .card-content-wrap { gap: 5px; }
+        .practice-grid .card-title { font-size: 17px; font-weight: 700; }
+        .practice-grid .card-desc { min-height: 38px; font-size: 10px; line-height: 1.4; }
+        .practice-grid .section-card-v2 { position: relative; isolation: isolate; overflow: hidden; border-radius: 18px; border-width: 1px; box-shadow: 0 8px 20px rgba(13, 70, 110, .045); }
+        .practice-grid .section-card-v2 > *:not(.section-card-waves) { position: relative; z-index: 1; }
+        .practice-grid .section-card-waves { position: absolute; z-index: 0; inset: 0 0 auto; height: 128px; overflow: hidden; pointer-events: none; }
+        .practice-grid .section-card-waves svg { display: block; width: 100%; height: 100%; }
+        .practice-grid .section-card-v2.theme-listening { --wave-one-start: #bdefe2; --wave-one-end: #a4e9d8; --wave-two-start: #dcf7ee; --wave-two-end: #a4e9d8; border-color: #b5e8db; background: #eff9f5; }
+        .practice-grid .section-card-v2.theme-structure { --wave-one-start: #bfe5ff; --wave-one-end: #a9ddfa; --wave-two-start: #ddf0ff; --wave-two-end: #a9ddfa; border-color: #c1dff5; background: #eff7ff; }
+        .practice-grid .section-card-v2.theme-reading { --wave-one-start: #e2d6ff; --wave-one-end: #d9cbfc; --wave-two-start: #eee7ff; --wave-two-end: #d9cbfc; border-color: #ddd1fa; background: #f7f2ff; }
+        .practice-grid .section-card-v2 .card-image-wrap { position: relative; z-index: 1; }
+        .choose-section-title { gap: 5px; }
+        .choose-section { display: flex; align-items: center; gap: 11px; color: #10243a; font-size: 20px; font-weight: 800; letter-spacing: -.035em; }
+        .choose-section-text { position: relative; }
+        .choose-section-text::after { position: absolute; right: 0; bottom: -6px; left: 0; height: 3px; background: #6e9df7; content: ""; }
+        .choose-section-mark { width: 34px; height: 34px; display: inline-grid; place-items: center; border-radius: 50%; color: #1463ad; background: #e4f2ff; }
+        .choose-section-mark svg { width: 18px; height: 18px; stroke-width: 1.8; }
+        .practice-option { display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: transform .2s ease,filter .2s ease,box-shadow .2s ease,outline-color .2s ease; }
+        .practice-option .priority-star { width: 14px; height: 14px; flex: 0 0 14px; stroke-width: 2.2; }
+        .practice-option.is-highest-priority { outline: 2px solid #5597ff; outline-offset: 1px; box-shadow: 0 0 0 3px rgba(255,255,255,.8); }
+        .practice-option.part.is-highest-priority { color: #318a76; background: #effcf7; }
+        .practice-option.part.is-highest-priority .priority-star { color: #6656d9; }
+        .practice-option.beginner.is-highest-priority { outline-color: #876d00; }
+        .practice-option.intermediate.is-highest-priority { outline-color: #996800; }
+        .practice-option.advanced.is-highest-priority { outline-color: #b5163e; }
+        .practice-options { display: grid; gap: 5px; margin-top: 4px; }
+        .practice-option { min-height: 24px; width: 100%; border: 1px solid transparent; border-radius: 999px; padding: 3px 10px; color: #fff; font: inherit; font-size: 9px; font-weight: 700; cursor: pointer; }
         .practice-option:disabled { opacity: .45; cursor: not-allowed; }
         .practice-option:hover { filter: brightness(1.06); transform: translateY(-1px); }
         .practice-option:focus-visible { outline: 3px solid #1267a5; outline-offset: 2px; }
-        .practice-option.part { background: #119c8a; }
-        .practice-option.beginner { background: #ffd600; color: #3e3500; }
-        .practice-option.intermediate { background: #f5ad00; color: #3d2a00; }
-        .practice-option.advanced { background: #d92d27; }
+        .practice-option.part { border-color: #c2e9dd; background: #e7f7f1; color: #408f7c; }
+        .practice-option.beginner { background: linear-gradient(100deg, #f8df63, #f4d653); color: #fff; }
+        .practice-option.intermediate { background: linear-gradient(100deg, #f4b65f, #efa949); color: #fff; }
+        .practice-option.advanced { background: linear-gradient(100deg, #dc4d70, #d83e65); color: #fff; }
         @media (max-width: 1100px) {
             .section-grid.practice-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
         }
         @media (max-width: 860px) {
             .section-grid.mock-grid,
             .section-grid.practice-grid { grid-template-columns: 1fr; }
-            .recommendation-grid { grid-template-columns: 1fr; }
+            .recommendation-grid { grid-template-columns: 1fr; gap: 12px; }
+            .recommendation-card:not(:last-child)::after { display: none; }
         }
 
         @media (max-width: 900px) {
@@ -1495,13 +1535,14 @@
                             <div class="recommendation-head">
                                 <span class="recommendation-mark" aria-hidden="true"><i data-lucide="sparkles"></i></span>
                                 <span id="recommendationTitle">AI Recommendation</span>
+                                <span class="recommendation-personalized" id="recommendationPersonalized" hidden><i data-lucide="sparkles"></i> Personalized for you</span>
                             </div>
                             <p class="recommendation-copy" id="recommendationCopy"></p>
                             <div class="recommendation-grid" id="recommendationGrid"></div>
                         </section>
 
                         <div class="choose-section-title" style="margin-bottom: 24px;">
-                            <h2 class="choose-section" id="chooseSection">Choose Your Section</h2>
+                            <h2 class="choose-section" id="chooseSection"><span class="choose-section-mark" aria-hidden="true"><i data-lucide="layers-2"></i></span><span class="choose-section-text">Choose Your Section</span></h2>
                             <p class="choose-section-description" id="chooseSectionDescription">Practice each section individually or take the full test at once.</p>
                         </div>
 
@@ -1709,11 +1750,11 @@
                         groups.get(id).push(question);
                     });
 
-                    groups.forEach((questions, id, groupIndex) => {
+                    groups.forEach((questions, id) => {
                         const correctCount = questions.filter((question) => question.isCorrect === true).length;
                         const accuracy = Math.round((correctCount / questions.length) * 100);
                         const sectionName = source.sectionId === "structure" ? "Structure & Writing" : source.sectionId[0].toUpperCase() + source.sectionId.slice(1);
-                        const fallbackLabel = source.sectionId === "reading" ? `Passage ${groupIndex + 1}` : `Part ${id}`;
+                        const fallbackLabel = source.sectionId === "reading" ? `Passage ${id}` : `Part ${id}`;
                         const practiceFocus = source.sectionId === "listening"
                             ? `part${["a", "b", "c"][Number(id) - 1] || "a"}`
                             : source.sectionId === "structure"
@@ -2034,29 +2075,33 @@
             function renderRecommendations() {
                 const recommendationCopy = document.getElementById("recommendationCopy");
                 const recommendationGrid = document.getElementById("recommendationGrid");
-                if (!recommendationCopy || !recommendationGrid) return;
+                const personalizedBadge = document.getElementById("recommendationPersonalized");
+                if (!recommendationCopy || !recommendationGrid) return [];
 
                 const recommendations = getPracticeRecommendations();
+                if (personalizedBadge) personalizedBadge.hidden = recommendations.length === 0;
                 recommendationCopy.textContent = recommendations.length
                     ? "Based on your saved test results, these are the areas to practice next."
                     : "Complete a mock test to get recommendations based on your results.";
 
                 if (!recommendations.length) {
                     recommendationGrid.innerHTML = '<p class="recommendation-empty">Your personalized recommendations will appear here after you complete a mock test.</p>';
-                    return;
+                    return [];
                 }
 
                 recommendationGrid.innerHTML = recommendations.map((recommendation, index) => {
                     const level = recommendation.accuracy < 50 ? "Beginner" : recommendation.accuracy < 75 ? "Intermediate" : "Advanced";
+                    const weaknessLevel = recommendation.accuracy < 50 ? "High" : recommendation.accuracy < 75 ? "Medium" : "Low";
+                    const theme = recommendation.sectionId === "listening" ? "theme-listening" : recommendation.sectionId === "reading" ? "theme-reading" : "theme-structure";
                     return `
-                        <article class="recommendation-card">
+                        <article class="recommendation-card ${theme}">
                             <span class="recommendation-priority">Priority ${index + 1}</span>
                             <span class="recommendation-section">${escapeHtml(recommendation.sectionName)}</span>
                             <h3>${escapeHtml(recommendation.focus)}</h3>
                             <p class="recommendation-level">${level}</p>
                             <div class="recommendation-stats">
-                                <span>${recommendation.accuracy}% accuracy</span>
-                                <span>${100 - recommendation.accuracy} weakness</span>
+                                <span class="accuracy"><i class="ti ti-chart-dots" aria-hidden="true"></i>${recommendation.accuracy}% Accuracy</span>
+                                <span class="weakness-${weaknessLevel.toLowerCase()}">${weaknessLevel} Weakness</span>
                             </div>
                             <p class="recommendation-why">This area had your lowest accuracy in the saved results.</p>
                             <button class="recommendation-start" type="button" data-recommend-section="${recommendation.sectionId}" data-recommend-focus="${escapeHtml(recommendation.practiceFocus)}" data-recommend-label="${escapeHtml(recommendation.focus)}">Start Practice <span aria-hidden="true">→</span></button>
@@ -2072,6 +2117,26 @@
                         });
                     });
                 });
+                if (typeof lucide !== "undefined") lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
+                return recommendations;
+            }
+
+            function getHighestPriorityOption(recommendation) {
+                if (!recommendation) return null;
+                const target = {
+                    sectionId: recommendation.sectionId,
+                    focus: recommendation.practiceFocus || "",
+                    difficulty: ""
+                };
+                if (target.sectionId === "structure" && target.focus === "partb") {
+                    target.sectionId = "writing";
+                }
+                if (target.sectionId === "reading") {
+                    target.difficulty = recommendation.accuracy < 50
+                        ? "beginner"
+                        : recommendation.accuracy < 75 ? "intermediate" : "advanced";
+                }
+                return target;
             }
 
             function renderMockPanel() {
@@ -2183,7 +2248,8 @@
                 sectionGrid.classList.toggle("trial-locked", lifecycle.locked);
                 sectionGrid.classList.toggle("mock-grid", isMockTest);
                 sectionGrid.classList.toggle("practice-grid", !isMockTest);
-                renderRecommendations();
+                const recommendations = renderRecommendations();
+                const highestPriorityOption = isMockTest ? null : getHighestPriorityOption(recommendations[0]);
 
                 targetSectionIds.forEach((sectionId) => {
                     const contentMap = {
@@ -2256,12 +2322,19 @@
                         const lookupKey = sectionId === "writing" ? "structure" : sectionId;
                         const matchingSet = practicePackage && getAvailablePracticeSet(setDate, lookupKey, option, practicePackage.packageNumber);
                         const optionUnavailable = !matchingSet || Boolean(practicePackageContextError);
+                        const isHighestPriority = !optionUnavailable
+                            && highestPriorityOption?.sectionId === sectionId
+                            && (highestPriorityOption.focus
+                                ? highestPriorityOption.focus === option.focus
+                                : highestPriorityOption.difficulty === option.difficulty);
                         const unavailableTitle = practicePackageContextError
                             ? "Package progress could not be loaded"
                             : "This option is not saved in the assigned package";
                         return `
-                            <button class="practice-option ${option.style}" type="button" data-open-section="${sectionId}" data-practice-label="${option.label}" ${option.focus ? `data-practice-focus="${option.focus}"` : ""} ${option.difficulty ? `data-practice-difficulty="${option.difficulty}"` : ""} ${practicePackage ? `data-practice-package="${practicePackage.packageNumber}"` : ""} ${optionUnavailable ? "disabled" : ""} ${optionUnavailable ? `title="${unavailableTitle}"` : ""}>
-                                ${option.label} <span aria-hidden="true">→</span>
+                            <button class="practice-option ${option.style}${isHighestPriority ? " is-highest-priority" : ""}" type="button" data-open-section="${sectionId}" data-practice-label="${option.label}" ${option.focus ? `data-practice-focus="${option.focus}"` : ""} ${option.difficulty ? `data-practice-difficulty="${option.difficulty}"` : ""} ${practicePackage ? `data-practice-package="${practicePackage.packageNumber}"` : ""} ${optionUnavailable ? "disabled" : ""} ${optionUnavailable ? `title="${unavailableTitle}"` : ""} ${isHighestPriority ? `aria-label="${escapeHtml(option.label)}, highest priority based on your saved results"` : ""}>
+                                ${option.label}
+                                ${isHighestPriority ? '<i class="priority-star" data-lucide="star" aria-hidden="true"></i>' : ""}
+                                <span aria-hidden="true">→</span>
                             </button>
                         `;
                     }).join("");
@@ -2283,8 +2356,27 @@
                                 ${practiceOptionsMarkup}
                             </div>
                         `;
+                    const waveMarkup = isMockTest ? "" : `
+                        <div class="section-card-waves" aria-hidden="true">
+                            <svg viewBox="0 0 360 128" preserveAspectRatio="none" focusable="false">
+                                <defs>
+                                    <linearGradient id="${sectionId}-wave-one" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0%" style="stop-color: var(--wave-one-start)"></stop>
+                                        <stop offset="100%" style="stop-color: var(--wave-one-end)"></stop>
+                                    </linearGradient>
+                                    <linearGradient id="${sectionId}-wave-two" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0%" style="stop-color: var(--wave-two-start)"></stop>
+                                        <stop offset="100%" style="stop-color: var(--wave-two-end)"></stop>
+                                    </linearGradient>
+                                </defs>
+                                <path d="M0 0H360V64C330 70 304 45 272 44C225 43 201 79 154 78C104 77 72 44 27 55C16 57 8 61 0 64Z" fill="url(#${sectionId}-wave-one)" opacity=".65"></path>
+                                <path d="M0 0H360V84C320 78 298 66 264 69C218 73 197 101 149 102C91 103 53 72 0 85Z" fill="url(#${sectionId}-wave-two)" opacity=".5"></path>
+                            </svg>
+                        </div>
+                    `;
 
                     card.innerHTML = `
+                        ${waveMarkup}
                         <div class="card-image-wrap">
                             <img src="${data.image}" alt="${data.title}">
                         </div>
@@ -2344,6 +2436,7 @@
                             }
                         });
                     });
+                    if (typeof lucide !== "undefined") lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
 
                     if (fullTestButton) {
                         fullTestButton.onclick = () => {
