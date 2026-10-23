@@ -891,12 +891,64 @@
         .subnav { display: none; }
         .shell { width: min(1150px, 100%); max-width: none; margin: 0 auto; padding: 18px 28px 54px; }
 
+        .page-header-container {
+            display: grid;
+            justify-items: start;
+            gap: 5px;
+            margin: 0 0 12px;
+        }
+        .page-header-container .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 24px;
+            color: #657d9b;
+            font-size: 13px;
+            line-height: 1.4;
+        }
         .main-page-title {
             margin: 0;
-            font-size: 24px;
+            color: #111a35;
+            font-size: 32px;
             font-family: "Plus Jakarta Sans", sans-serif;
+            font-weight: 800;
+            line-height: 1.16;
+            letter-spacing: -.045em;
+        }
+        .page-header-container .breadcrumb-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: #657d9b;
+            font-size: inherit;
+            line-height: inherit;
+            text-decoration: none;
+        }
+        .page-header-container .breadcrumb-link i {
+            display: grid;
+            width: 28px;
+            height: 28px;
+            place-items: center;
+            border-radius: 50%;
+            color: #54749d;
+            background: #eaf3fc;
+        }
+        .page-header-container .breadcrumb-link:hover { color: #1463ad; }
+        .page-header-container .breadcrumb-separator { color: #7186a2; }
+        .page-header-container .breadcrumb-current { color: #526d92; }
+        .page-date-badge {
+            display: inline-flex;
+            align-items: center;
+            min-height: 22px;
+            padding: 2px 14px;
+            border-radius: 999px;
+            color: #58769e;
+            background: #e3effb;
+            font-size: 11px;
             font-weight: 600;
-            color: #000000;
+            line-height: 1.4;
+            text-transform: uppercase;
+            letter-spacing: .015em;
         }
 
         .schedule-toolbar { grid-template-columns: 40px auto 40px; justify-content: start; gap: 8px; }
@@ -1332,9 +1384,9 @@
         .recommendation-empty { grid-column: 1 / -1; margin: 0; padding: 18px; border: 1px dashed #bed8eb; border-radius: 14px; color: #526a80; background: #f7fbff; font-size: 12px; line-height: 1.5; }
         .section-grid.mock-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .section-grid.practice-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-        .practice-grid .section-card-v2 { min-width: 0; min-height: 250px; padding: 12px 15px 10px; }
-        .practice-grid .card-image-wrap { height: 70px; justify-content: flex-start; margin-bottom: 2px; padding-left: 3px; }
-        .practice-grid .card-image-wrap img { max-width: 104px; max-height: 68px; }
+        .practice-grid .section-card-v2 { min-width: 0; min-height: 264px; padding: 12px 15px 10px; }
+        .practice-grid .card-image-wrap { height: 76px; justify-content: flex-start; margin-bottom: 10px; padding-left: 3px; }
+        .practice-grid .card-image-wrap img { max-width: 104px; max-height: 72px; }
         .practice-grid .card-content-wrap { gap: 5px; }
         .practice-grid .card-title { font-size: 17px; font-weight: 700; }
         .practice-grid .card-desc { min-height: 38px; font-size: 10px; line-height: 1.4; }
@@ -1470,6 +1522,12 @@
             .mock-title {
                 font-size: 22px;
             }
+            .page-header-container { gap: 4px; margin-bottom: 10px; }
+            .page-header-container .breadcrumb { gap: 8px; min-height: 22px; font-size: 12px; }
+            .page-header-container .breadcrumb-link { gap: 7px; }
+            .page-header-container .breadcrumb-link i { width: 24px; height: 24px; }
+            .main-page-title { font-size: 27px; letter-spacing: -.04em; }
+            .page-date-badge { min-height: 21px; padding: 2px 11px; font-size: 10px; }
 
             .card-footer {
                 flex-direction: column;
@@ -1487,14 +1545,15 @@
                 <div class="content-wrap">
                     
                     <div class="page-header-container">
-                        <nav class="breadcrumb" style="display: flex; align-items: center; gap: 6px;">
-                            <a href="index.html" class="breadcrumb-link" style="display: inline-flex; align-items: center; gap: 4px;">
+                        <nav class="breadcrumb" aria-label="Breadcrumb">
+                            <a href="index.html" class="breadcrumb-link">
                                 <i data-lucide="chevron-left" style="width: 16px; height: 16px; stroke-width: 1.5;"></i> Dashboard
                             </a>
                             <span class="breadcrumb-separator">/</span>
                             <span class="breadcrumb-current" id="breadcrumbDate">Schedule</span>
                         </nav>
                         <h1 class="main-page-title" id="pageTitleDate">Schedule</h1>
+                        <span class="page-date-badge" id="pageDateBadge"></span>
                     </div>
                 
                     <section class="mock-panel" aria-labelledby="mockTitle">
@@ -2186,9 +2245,13 @@
 
                 const breadcrumbEl = document.getElementById("breadcrumbDate");
                 const pageTitleEl = document.getElementById("pageTitleDate");
+                const dateBadgeEl = document.getElementById("pageDateBadge");
                 
                 if (breadcrumbEl) breadcrumbEl.textContent = formattedDate;
                 if (pageTitleEl) pageTitleEl.textContent = formattedDate;
+                if (dateBadgeEl) {
+                    dateBadgeEl.textContent = `${weekdayNames[selectedDate.getDay()]}, ${formattedDate}`.toUpperCase();
+                }
 
                 const mockKickerEl = document.getElementById("mockKicker");
                 if (mockKickerEl) {
@@ -2369,8 +2432,8 @@
                                         <stop offset="100%" style="stop-color: var(--wave-two-end)"></stop>
                                     </linearGradient>
                                 </defs>
-                                <path d="M0 0H360V64C330 70 304 45 272 44C225 43 201 79 154 78C104 77 72 44 27 55C16 57 8 61 0 64Z" fill="url(#${sectionId}-wave-one)" opacity=".65"></path>
-                                <path d="M0 0H360V84C320 78 298 66 264 69C218 73 197 101 149 102C91 103 53 72 0 85Z" fill="url(#${sectionId}-wave-two)" opacity=".5"></path>
+                                <path d="M0 0H360V54C330 60 304 36 272 36C225 36 201 68 154 68C104 68 72 42 27 48C16 50 8 53 0 56Z" fill="url(#${sectionId}-wave-one)" opacity=".65"></path>
+                                <path d="M0 0H360V76C320 68 298 53 264 58C218 63 197 84 149 85C91 86 53 65 0 78Z" fill="url(#${sectionId}-wave-two)" opacity=".5"></path>
                             </svg>
                         </div>
                     `;
