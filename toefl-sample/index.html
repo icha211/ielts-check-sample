@@ -2335,8 +2335,6 @@ body {
 
         .agenda-generated-summary {
             padding: 0;
-            grid-column: 2 / -1;
-            margin-top: -8px;
         }
 
         .agenda-zero-badge[hidden],
@@ -2412,7 +2410,7 @@ body {
             place-items: center;
             align-self: start;
             border-radius: 50%;
-            background: var(--agenda-accent);
+            background: var(--agenda-strong);
             color: #ffffff;
             font: 700 10px/1 "Outfit", sans-serif;
         }
@@ -2490,7 +2488,7 @@ body {
 
         .agenda-recommendation-card.is-priority-one .agenda-recommendation-start {
             border-color: var(--agenda-accent);
-            background: linear-gradient(100deg, var(--agenda-accent), var(--agenda-strong));
+            background: var(--agenda-strong);
             color: #ffffff;
         }
 
@@ -4223,9 +4221,9 @@ body {
                         </aside>
                         <div class="daily-calendar-block" aria-label="Daily calendar">
                             <div class="calendar-head">
-                                <button type="button" id="prevDashboardMonth" aria-label="Previous month"><i class="ti ti-chevron-left" aria-hidden="true"></i><span id="previousMonthLabel">JULI 2026</span></button>
+                                <button type="button" id="prevDashboardMonth" aria-label="Previous month"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
                                 <h2 class="calendar-period-current" id="dashboardMonthTitle"><i class="ti ti-calendar month-title-icon" aria-hidden="true"></i><span id="dashboardMonthLabel">AGUSTUS 2026</span></h2>
-                                <button type="button" id="nextDashboardMonth" aria-label="Next month"><span id="nextMonthLabel">SEPTEMBER 2026</span><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+                                <button type="button" id="nextDashboardMonth" aria-label="Next month"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
                             </div>
                             <div class="calendar-weekdays"><span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span></div>
                             <div class="dashboard-calendar-grid" id="dashboardCalendarGrid"></div>
@@ -4301,8 +4299,6 @@ body {
         const dashboardMonthLabel = document.getElementById("dashboardMonthLabel");
         const monthPlannerHeading = document.getElementById("monthPlannerHeading");
         const dashboardMonthRange = document.getElementById("dashboardMonthRange");
-        const previousMonthLabel = document.getElementById("previousMonthLabel");
-        const nextMonthLabel = document.getElementById("nextMonthLabel");
         const dashboardBadgeMonth = document.getElementById("dashboardBadgeMonth");
         const dashboardBadgeDay = document.getElementById("dashboardBadgeDay");
         const calendarDateBadge = document.getElementById("calendarDateBadge");
@@ -4791,8 +4787,7 @@ body {
             const progress = document.getElementById("agendaMockProgress");
             const zeroBadge = document.getElementById("agendaZeroBadge");
             const generatedSummary = document.getElementById("agendaGeneratedSummary");
-            const header = panel?.querySelector(".agenda-zero-header");
-            if (!panel || !zeroState || !agendaList || !errorMessage || !progress || !zeroBadge || !generatedSummary || !header) return;
+            if (!panel || !zeroState || !agendaList || !errorMessage || !progress || !zeroBadge || !generatedSummary) return;
 
             const showHistoryError = (error) => {
                 console.error("[Dashboard] Could not load mock test history for the recommended plan:", error);
@@ -4936,7 +4931,6 @@ body {
             errorMessage.hidden = true;
             panel.classList.toggle("is-zero-state", !hasRecommendations);
             panel.classList.toggle("is-generated", hasRecommendations);
-            header.classList.toggle("is-generated", hasRecommendations);
         }
 
         function createDefaultDayData(day) {
@@ -5141,8 +5135,6 @@ body {
             if (dashboardMonthRange) {
                 dashboardMonthRange.textContent = `1 ${MONTH_LABELS[dashboardMonth]} ${dashboardYear} - ${daysInMonth} ${MONTH_LABELS[dashboardMonth]} ${dashboardYear}`;
             }
-            previousMonthLabel.textContent = `${formatMonthLabel(previousMonth.getMonth())} ${previousMonth.getFullYear()}`;
-            nextMonthLabel.textContent = `${formatMonthLabel(nextMonth.getMonth())} ${nextMonth.getFullYear()}`;
             if (dashboardBadgeMonth) dashboardBadgeMonth.textContent = MONTH_LABELS_SHORT[dashboardMonth];
             if (dashboardBadgeDay) dashboardBadgeDay.textContent = String(selectedDashboardDay);
             dashboardGrid.innerHTML = "";
