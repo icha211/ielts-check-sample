@@ -57,4 +57,36 @@
   const year = footer.querySelector("[data-qc-footer-year]");
   year.textContent = String(new Date().getFullYear());
   document.body.appendChild(footer);
+
+  const sidebar = document.getElementById("qcnavSidebar");
+  if (!sidebar) return;
+
+  const setSidebarFlowMode = () => {
+    if (window.innerWidth <= 780) {
+      sidebar.style.removeProperty("position");
+      sidebar.style.removeProperty("top");
+      sidebar.style.removeProperty("bottom");
+      sidebar.style.removeProperty("height");
+      return;
+    }
+
+    const footerReached = footer.getBoundingClientRect().top <= window.innerHeight;
+    if (footerReached && sidebar.style.position !== "absolute") {
+      sidebar.style.position = "absolute";
+      sidebar.style.top = `${window.scrollY + 64}px`;
+      sidebar.style.bottom = "auto";
+      sidebar.style.height = "calc(100vh - 64px)";
+    } else if (!footerReached && sidebar.style.position === "absolute") {
+      sidebar.style.removeProperty("position");
+      sidebar.style.removeProperty("top");
+      sidebar.style.removeProperty("bottom");
+      sidebar.style.removeProperty("height");
+    }
+  };
+
+  window.addEventListener("scroll", setSidebarFlowMode, { passive: true });
+  window.addEventListener("resize", setSidebarFlowMode);
+  stylesheet.addEventListener("load", setSidebarFlowMode, { once: true });
+  window.addEventListener("load", setSidebarFlowMode, { once: true });
+  setSidebarFlowMode();
 })();
