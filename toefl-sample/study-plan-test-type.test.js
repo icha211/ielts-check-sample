@@ -5,6 +5,7 @@ const vm = require("node:vm");
 const { test } = require("node:test");
 
 const studyPlan = fs.readFileSync(path.join(__dirname, "study-plan.html"), "utf8");
+const practiceRecommendations = fs.readFileSync(path.join(__dirname, "toefl-practice-recommendations.js"), "utf8");
 const dailyPractice = fs.readFileSync(path.join(__dirname, "daily-practice.html"), "utf8");
 const listeningTest = fs.readFileSync(path.join(__dirname, "section 1.html"), "utf8");
 const structureTest = fs.readFileSync(path.join(__dirname, "section 2.html"), "utf8");
@@ -17,7 +18,7 @@ function loadDynamicTestType() {
     return vm.runInNewContext(`${match[0]}; getDynamicTestType`);
 }
 
-function loadScheduledTestType(records, packages = []) {
+function loadScheduledTestType(records, packages = [], requestedRecommendation = null) {
     const dynamicType = studyPlan.match(/function getDynamicTestType\(selectedDate\) \{[\s\S]*?\n\s+\}/);
     const packageOverride = studyPlan.match(/function getPracticePackageOverrideForDate\(dateValue, packages\) \{[\s\S]*?\n            \}/);
     const scheduledType = studyPlan.match(/function getScheduledTestType\(dateValue\) \{[\s\S]*?\n            \}/);
@@ -25,6 +26,7 @@ function loadScheduledTestType(records, packages = []) {
     const context = vm.createContext({
         Date,
         cachedPracticePackages: packages,
+        requestedRecommendation,
         getRecordsSource: () => records,
         getSetTestType: (record) => record.testType
     });
@@ -38,9 +40,10 @@ function loadPracticeRecommendations(results) {
     assert.ok(start >= 0 && end > start, "Missing getPracticeRecommendations");
     const context = vm.createContext({
         localStorage: { getItem: (key) => JSON.stringify(results[key] || null) },
-        console: { warn() {} }
+        console: { warn() {} },
+        window: {}
     });
-    vm.runInContext(`${studyPlan.slice(start, end)}; result = getPracticeRecommendations()`, context);
+    vm.runInContext(`${practiceRecommendations}; ${studyPlan.slice(start, end)}; result = getPracticeRecommendations()`, context);
     return JSON.parse(JSON.stringify(context.result));
 }
 
@@ -152,6 +155,8 @@ test("saved developer practice schedules override the mock-day cadence", () => {
         { packageNumber: 1, scheduledDate: "2026-11-05" }
     ]);
     assert.equal(scheduledWithPackageOverride("2026-11-05"), "practicetest");
+    const linkedRecommendation = loadScheduledTestType([], [], { sectionId: "listening" });
+    assert.equal(linkedRecommendation("2026-11-01"), "practicetest");
 });
 
 test("per-user package assignment repeats until a package is started, then advances even for earlier dates", () => {

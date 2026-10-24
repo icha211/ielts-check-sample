@@ -1693,6 +1693,7 @@
     <script src="toefl-storage-sync.js?v=20261021a"></script>
     <script src="../study-plan-firestore-sync.js?v=20260508"></script>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="toefl-practice-recommendations.js?v=20261024a"></script>
     <script src="toefl-developer-auth.js?v=20260918b"></script>
     <script>
         lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
@@ -1748,6 +1749,7 @@
             }
 
             function getScheduledTestType(dateValue) {
+                if (requestedRecommendation) return "practicetest";
                 if (getPracticePackageOverrideForDate(dateValue, cachedPracticePackages)) return "practicetest";
                 const scheduledRecords = getRecordsSource().filter((item) => String(item?.setDate || "").trim().slice(0, 10) === dateValue);
                 if (scheduledRecords.some((item) => getSetTestType(item) === "practicetest")) return "practicetest";
@@ -1767,6 +1769,19 @@
 
             const params = new URLSearchParams(window.location.search);
             const dateParam = String(params.get("date") || "").trim();
+            const requestedSectionParam = String(params.get("recommendSection") || "").toLowerCase();
+            const requestedRecommendation = ["listening", "structure", "reading"].includes(requestedSectionParam)
+                ? {
+                    sectionId: requestedSectionParam,
+                    focus: ["parta", "partb", "partc"].includes(String(params.get("recommendFocus") || "").toLowerCase())
+                        ? String(params.get("recommendFocus")).toLowerCase()
+                        : "",
+                    difficulty: ["beginner", "intermediate", "advanced"].includes(String(params.get("recommendDifficulty") || "").toLowerCase())
+                        ? String(params.get("recommendDifficulty")).toLowerCase()
+                        : "",
+                    label: String(params.get("recommendLabel") || "").slice(0, 100)
+                }
+                : null;
             const yearParam = params.get("year");
             const monthParam = params.get("month");
             const dayParam = params.get("day");
@@ -1847,56 +1862,11 @@
             }
 
             function getPracticeRecommendations() {
-                const sources = [
-                    { sectionId: "listening", storageKey: "toefl_section1_result", groupKey: "partId", groupNames: { 1: "Part A: Short Conversation", 2: "Part B: Long Conversation", 3: "Part C: Short Talks" } },
-                    { sectionId: "structure", storageKey: "toefl_section2_result", groupKey: "partId", groupNames: { 1: "Structure", 2: "Written Expression" } },
-                    { sectionId: "reading", storageKey: "toefl_section3_result", groupKey: "passageId", groupNames: {} }
-                ];
-                const recommendations = [];
-
-                sources.forEach((source) => {
-                    let result;
-                    try {
-                        result = JSON.parse(localStorage.getItem(source.storageKey) || "null");
-                    } catch (error) {
-                        console.warn(`[Study Plan] Could not read ${source.storageKey}:`, error);
-                        return;
-                    }
-                    if (!result || !Array.isArray(result.questions) || !result.questions.length) return;
-
-                    const groups = new Map();
-                    const sectionRecommendations = [];
-                    result.questions.forEach((question) => {
-                        if (!question || typeof question !== "object") return;
-                        const id = question[source.groupKey] ?? question.partId ?? 1;
-                        if (!groups.has(id)) groups.set(id, []);
-                        groups.get(id).push(question);
-                    });
-
-                    groups.forEach((questions, id) => {
-                        const correctCount = questions.filter((question) => question.isCorrect === true).length;
-                        const accuracy = Math.round((correctCount / questions.length) * 100);
-                        const sectionName = source.sectionId === "structure" ? "Structure & Writing" : source.sectionId[0].toUpperCase() + source.sectionId.slice(1);
-                        const fallbackLabel = source.sectionId === "reading" ? `Passage ${id}` : `Part ${id}`;
-                        const practiceFocus = source.sectionId === "listening"
-                            ? `part${["a", "b", "c"][Number(id) - 1] || "a"}`
-                            : source.sectionId === "structure"
-                                ? `part${Number(id) === 2 ? "b" : "a"}`
-                                : "";
-                        sectionRecommendations.push({
-                            sectionId: source.sectionId,
-                            sectionName,
-                            focus: source.groupNames[id] || questions[0]?.partName || fallbackLabel,
-                            practiceFocus,
-                            accuracy
-                        });
-                    });
-
-                    sectionRecommendations.sort((first, second) => first.accuracy - second.accuracy);
-                    if (sectionRecommendations.length) recommendations.push(sectionRecommendations[0]);
-                });
-
-                return recommendations.sort((first, second) => first.accuracy - second.accuracy).slice(0, 3);
+                if (!window.toeflPracticeRecommendations) {
+                    console.error("[Study Plan] Practice recommendations are unavailable.");
+                    return [];
+                }
+                return window.toeflPracticeRecommendations.getRecommendations();
             }
 
             function getLocalSetRecords() {
@@ -2651,6 +2621,17 @@
                 modal.setAttribute('aria-hidden', 'false');
             }
 
+            function openRequestedRecommendationPractice() {
+                if (!requestedRecommendation || requestedPracticeOpened) return;
+                requestedPracticeOpened = true;
+                openPracticeModal(requestedRecommendation.sectionId, {
+                    focus: requestedRecommendation.focus,
+                    difficulty: requestedRecommendation.difficulty,
+                    label: requestedRecommendation.label,
+                    packageNumber: Number(currentPracticePackage?.packageNumber || 0)
+                });
+            }
+
             function closePracticeModal() {
                 const modal = document.getElementById('practiceModal');
                 modal.classList.remove('open');
@@ -2790,8 +2771,10 @@
                     cloudSync.start();
                 }
 
+                let requestedPracticeOpened = false;
                 Promise.all([refreshSetRecordCache(), practicePackageContextPromise]).finally(() => {
                     renderMockPanel();
+                    openRequestedRecommendationPractice();
             });
                 window.addEventListener("pageshow", (event) => {
                     if (!event.persisted || !practicePackageProgressApi) return;
