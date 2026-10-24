@@ -106,14 +106,12 @@
 
   ensureIcons();
 
-  const storeKey = "qcnavCollapsed";
   const setCollapsed = (value) => {
     body.classList.toggle("qcnav-collapsed", value);
     const btn = doc.getElementById("qcnavCollapse");
     btn.innerHTML = `<i data-lucide="${value ? "panel-left-open" : "panel-left-close"}"></i>`;
     btn.setAttribute("aria-label", value ? "Expand sidebar" : "Collapse sidebar");
     btn.title = value ? "Expand sidebar" : "Collapse sidebar";
-    try { localStorage.setItem(storeKey, value ? "1" : "0"); } catch (_) {}
     renderIcons();
   };
 
@@ -171,7 +169,4 @@
   });
   doc.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
 
-  let saved = false;
-  try { saved = localStorage.getItem(storeKey) === "1"; } catch (_) {}
-  if (saved) setCollapsed(true);
 })();

@@ -315,7 +315,6 @@
         }
 
         .card{box-shadow:0 0 0 4px rgba(255,255,255,.68),inset 0 1px 0 rgba(255,255,255,.9),0 18px 40px rgba(10,53,96,.065);}
-
         .date-helper {
             font-size: 12px;
             color: var(--muted);
@@ -1403,10 +1402,9 @@
         .recommendation-card { position: relative; isolation: isolate; display: flex; flex-direction: column; width: 100%; min-width: 0; min-height: 240px; padding: 16px; border: 1px solid #cfe4f7; border-radius: 16px; background: #eef7ff; }
         .recommendation-card > * { position: relative; z-index: 1; }
         .recommendation-card:not(:last-child)::after { content: "›"; position: absolute; z-index: 2; top: 50%; right: -26px; display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; color: #3479df; background: #fff; font-size: 18px; line-height: 1; transform: translateY(-50%); pointer-events: none; }
-        .recommendation-card.theme-listening { border-color: #bceadd; background: linear-gradient(145deg,#effcf8,#e6f8f2); }
-        .recommendation-card.theme-structure { border-color: #c9e2f8; background: linear-gradient(145deg,#f1f8ff,#e9f5ff); }
-        .recommendation-card.theme-reading { border-color: #e1d7fb; background: linear-gradient(145deg,#f6f2ff,#f0ebff); }
-        .recommendation-card:first-child { border-color: #bceadd; }
+        .recommendation-card.theme-listening { background: linear-gradient(145deg,#effcf8,#e6f8f2); }
+        .recommendation-card.theme-structure { background: linear-gradient(145deg,#f1f8ff,#e9f5ff); }
+        .recommendation-card.theme-reading { background: linear-gradient(145deg,#f6f2ff,#f0ebff); }
         .recommendation-priority { display: inline-flex; align-self: flex-start; padding: 4px 10px; border-radius: 999px; background: #0969ad; color: #fff; font-size: 10px; font-weight: 800; }
         .recommendation-card.theme-listening .recommendation-priority { background: #0aa58f; }
         .recommendation-section { display: block; margin-top: 12px; color: #536b83; font-size: 12px; font-weight: 700; }
@@ -1472,6 +1470,9 @@
             border-radius: 22px;
             box-shadow: 0 0 0 4px rgba(255,255,255,.64), inset 0 1px 0 rgba(255,255,255,.88), 0 18px 42px rgba(40,103,130,.075);
         }
+        .mock-panel .recommendation-card.is-priority-one.theme-listening { border: 2px solid #0aa58f; }
+        .mock-panel .recommendation-card.is-priority-one.theme-structure { border: 2px solid #4074ce; }
+        .mock-panel .recommendation-card.is-priority-one.theme-reading { border: 2px solid #604ab6; }
         .mock-panel .section-grid .card-title { font-size: 20px; line-height: 1.3; letter-spacing: -.025em; }
         .mock-panel .section-grid .card-desc { min-height: 0; color: #536b83; font-size: 13px; line-height: 1.5; }
         @media (max-width: 1100px) {
@@ -2198,7 +2199,7 @@
                     const weaknessLevel = recommendation.accuracy < 50 ? "High" : recommendation.accuracy < 75 ? "Medium" : "Low";
                     const theme = recommendation.sectionId === "listening" ? "theme-listening" : recommendation.sectionId === "reading" ? "theme-reading" : "theme-structure";
                     return `
-                        <article class="recommendation-card ${theme}">
+                        <article class="recommendation-card ${theme}${index === 0 ? " is-priority-one" : ""}">
                             <span class="recommendation-priority">Priority ${index + 1}</span>
                             <span class="recommendation-section">${escapeHtml(recommendation.sectionName)}</span>
                             <h3>${escapeHtml(recommendation.focus)}</h3>
