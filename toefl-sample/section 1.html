@@ -8,6 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="css/editor.css">
     <link rel="stylesheet" href="css/mocknav-question.css">
+    <link rel="stylesheet" href="css/mockheader-question.css">
+    <script src="mockheader-question.js" defer></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
@@ -1229,13 +1231,16 @@
             const examShell = document.querySelector("#user-view .exam-shell");
             if (examShell) {
                 const safeFrameFitScale = Math.max(frameFitScale, 0.01);
-                const combinedScale = zoomLevel * safeFrameFitScale;
-                const verticalBoost = combinedScale < 1 ? 0.75 : 0;
+                const viewportFitScale = Math.min(
+                    (window.innerWidth || 1438) / 1438,
+                    (window.innerHeight || 900) / 900
+                );
+                const combinedScale = Math.min(zoomLevel * safeFrameFitScale, viewportFitScale);
                 examShell.style.transformOrigin = "top left";
                 examShell.style.transform = `scale(${combinedScale})`;
                 examShell.style.width = `${100 / combinedScale}%`;
-                examShell.style.height = `${100 / combinedScale + verticalBoost}%`;
-                examShell.style.minHeight = `${100 / combinedScale + verticalBoost}%`;
+                examShell.style.height = `${100 / combinedScale}%`;
+                examShell.style.minHeight = `${100 / combinedScale}%`;
             }
             if (persist) {
                 localStorage.setItem(ZOOM_KEY, String(zoomLevel));

@@ -148,8 +148,7 @@
         };
         instances.set(root, instance);
         render();
-        if (typeof global.matchMedia === "function" && global.matchMedia("(max-width: 760px)").matches
-            && !panel.classList.contains("is-collapsed")
+        if (!panel.classList.contains("is-collapsed")
             && typeof config.onToggle === "function") {
             config.onToggle({ stopPropagation() {} });
             const toggle = root.querySelector(".mocknav-question__toggle");
