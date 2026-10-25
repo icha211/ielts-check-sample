@@ -6,6 +6,7 @@
     <title>TOEFL ITP Simulator - Section 3: Reading Comprehension</title>
     <script src="app-config.js"></script>
     <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="css/mocknav-question.css">
     <style>
         .figma-header--listening {
             gap: 20px;
@@ -1333,6 +1334,9 @@
         </div>
 
         <div id="user-passages-container" style="display: flex; flex: 1; flex-direction: column; align-self: stretch; overflow: hidden;"></div>
+        <aside class="navigator-panel mock-question-navigator section3-question-navigator" id="navigator-panel" aria-label="Question navigator">
+            <div id="mock-question-navigator-root"></div>
+        </aside>
 
     </div>
 
@@ -1374,6 +1378,7 @@
     <script src="toefl-storage-sync.js?v=20261010b"></script>
     <script src="toefl-test-history.js?v=20261003a"></script>
     <script src="js/reading-explanations.js?v=20261006b"></script>
+    <script src="mocknav-question.js"></script>
     <script>
         const TOTAL_PASSAGES = 5; 
         const PRACTICE_READING_TOTAL_PASSAGES = 1;
@@ -2975,6 +2980,7 @@
             }
 
             header.innerHTML = html;
+            renderSection3NavigatorDrawer();
         }
 
         function scrollToUserQuestion(uid) {
@@ -3018,11 +3024,18 @@
         }
 
         function setSection3DrawerOpen(open) {
-            return;
+            const panel = document.getElementById("navigator-panel");
+            if (!panel) return;
+            const collapsed = !open;
+            panel.classList.toggle("is-collapsed", collapsed);
+            const layout = document.querySelector(".section3-layout");
+            if (layout) layout.classList.toggle("is-question-nav-collapsed", collapsed);
         }
 
         function toggleSection3Drawer(event) {
             if (event) event.stopPropagation();
+            const panel = document.getElementById("navigator-panel");
+            if (panel) setSection3DrawerOpen(panel.classList.contains("is-collapsed"));
         }
 
         function buildDrawerQuestionButton(uid, label) {
@@ -3032,7 +3045,48 @@
         }
 
         function renderSection3NavigatorDrawer() {
-            return;
+            const root = document.getElementById("mock-question-navigator-root");
+            if (!root) return;
+
+            const getSections = () => {
+                const passageCount = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
+                return Array.from({ length: passageCount }, (_, index) => {
+                    const passageNumber = index + 1;
+                    const items = getPassageQuestionUIDs(passageNumber).map((uid) => ({
+                        uid,
+                        number: uid.split("_")[1],
+                        answered: Boolean(document.querySelector(`input[name="q_${uid}"]:checked`))
+                    }));
+                    return {
+                        id: String(passageNumber),
+                        label: `Part ${passageNumber} - Reading`,
+                        shortLabel: passageNumber === 1 ? "I" : String(passageNumber),
+                        items
+                    };
+                });
+            };
+
+            const onQuestionSelect = (uid) => scrollToUserQuestion(uid);
+            const onSectionSelect = (section) => {
+                const passageNumber = Number(section.id);
+                openUserPassage(passageNumber);
+                const firstUnanswered = section.items.find((item) => !item.answered);
+                const target = firstUnanswered || section.items[0];
+                if (target) scrollToUserQuestion(target.uid);
+            };
+
+            if (window.mockQuestionNavigator) {
+                window.mockQuestionNavigator.refresh();
+                return;
+            }
+
+            window.mockQuestionNavigator = window.MockQuestionNavigator.create({
+                root,
+                getSections,
+                onQuestionSelect,
+                onSectionSelect,
+                onToggle: toggleSection3Drawer
+            });
         }
 
         function focusNextQuestionInPassage() {

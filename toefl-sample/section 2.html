@@ -6,6 +6,7 @@
     <title>TOEFL ITP Simulator - Section 2: Structure & Written Expression</title>
     <script src="app-config.js"></script>
     <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="css/mocknav-question.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600;700&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
@@ -795,26 +796,8 @@
             <div id="user-passages-container" style="flex: 1; overflow-y: auto; position: relative;">
                 <div id="instant-question-host" style="display:none;"></div>
             </div>
-            <aside class="question-navigator" id="question-navigator">
-                <div class="question-navigator__panel">
-                    <div class="question-navigator__head">
-                        <button class="navigator-toggle" type="button" aria-label="Toggle question navigator" onclick="toggleSection2Navigator(event)">
-                            <i class="ph ph-squares-four nav-state-icon icon-squares-four" aria-hidden="true"></i>
-                            <i class="ph ph-caret-right nav-state-icon icon-caret-right" aria-hidden="true"></i>
-                        </button>
-                        <span class="question-navigator__title">Question Navigator</span>
-                    </div>
-                    <h4 class="question-navigator__section-title">Part A - Structure</h4>
-                    <div class="question-grid" id="question-grid-part-a"></div>
-                    <hr class="question-navigator__divider">
-                    <h4 class="question-navigator__section-title">Part B - Written Expression</h4>
-                    <div class="question-grid" id="question-grid-part-b"></div>
-                    <hr class="question-navigator__divider">
-                    <div class="navigator-legend">
-                        <div class="legend-item"><span class="legend-dot answered"></span><span>Answered</span></div>
-                        <div class="legend-item"><span class="legend-dot unanswered"></span><span>Unanswered</span></div>
-                    </div>
-                </div>
+            <aside class="question-navigator navigator-panel mock-question-navigator" id="question-navigator" aria-label="Question navigator">
+                <div id="mock-question-navigator-root"></div>
                 <div class="navigator-actions">
                     <button class="navigator-action-btn next-question" id="navigator-next-question" type="button">Next Question</button>
                     <button class="navigator-action-btn next-section" id="navigator-next-section" type="button">Next Section</button>
@@ -924,6 +907,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="toefl-storage-sync.js?v=20261010b"></script>
     <script src="toefl-test-history.js?v=20261003a"></script>
+    <script src="mocknav-question.js"></script>
     <script>
         const PARTS = [
             { id: 1, name: "Part A: Structure", range: "Questions 1-15", instr: "<strong>Directions</strong>: These questions are incomplete sentences. Beneath each sentence you will see four words or phrases, marked (A), (B), (C), and (D). Choose the one word or phrase that best completes the sentence." },
@@ -3398,46 +3382,41 @@
         }
 
         function buildQuestionNavigator() {
-            const partAGrid = document.getElementById("question-grid-part-a");
-            const partBGrid = document.getElementById("question-grid-part-b");
-            if (!partAGrid || !partBGrid) return;
-
-            partAGrid.innerHTML = "";
-            partBGrid.innerHTML = "";
-
-            getPartQuestionNumbers(1).forEach((entry, index) => {
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "question-nav-btn";
-                btn.dataset.uid = entry.uid;
-                btn.textContent = String(index + 1);
-                btn.addEventListener("click", () => scrollToQuestion(entry.uid));
-                partAGrid.appendChild(btn);
-            });
-
-            getPartQuestionNumbers(2).forEach((entry) => {
-                const btn = document.createElement("button");
-                btn.type = "button";
-                btn.className = "question-nav-btn";
-                btn.dataset.uid = entry.uid;
-                btn.textContent = String(entry.number);
-                btn.addEventListener("click", () => scrollToQuestion(entry.uid));
-                partBGrid.appendChild(btn);
-            });
+            const root = document.getElementById("mock-question-navigator-root");
+            if (!root) return;
 
             const firstA = getPartQuestionNumbers(1)[0];
             if (!currentQuestionUid && firstA) currentQuestionUid = firstA.uid;
-            updateQuestionNavigatorState();
+
+            window.mockQuestionNavigator = window.MockQuestionNavigator.create({
+                root,
+                getSections: () => [1, 2].map((partId) => {
+                    const entries = getPartQuestionNumbers(partId);
+                    const part = PARTS[partId - 1];
+                    return {
+                        id: String(partId),
+                        label: part.name.replace(/^Part ([A-Z]):\s*/, "Part $1 - "),
+                        shortLabel: part.name.match(/^Part ([A-Z])/)[1],
+                        items: entries.map((entry, index) => ({
+                            uid: entry.uid,
+                            number: partId === 1 ? index + 1 : entry.number,
+                            answered: Boolean(document.querySelector(`input[name="q_${entry.uid}"]:checked`)),
+                            current: entry.uid === currentQuestionUid
+                        }))
+                    };
+                }),
+                onQuestionSelect: scrollToQuestion,
+                onSectionSelect: (section) => {
+                    const firstUnanswered = section.items.find((item) => !item.answered);
+                    const target = firstUnanswered || section.items[0];
+                    if (target) scrollToQuestion(target.uid);
+                },
+                onToggle: toggleSection2Navigator
+            });
         }
 
         function updateQuestionNavigatorState() {
-            document.querySelectorAll(".question-nav-btn").forEach((btn) => {
-                const uid = btn.dataset.uid;
-                if (!uid) return;
-                const checked = document.querySelector(`input[name="q_${uid}"]:checked`);
-                btn.classList.toggle("is-answered", Boolean(checked));
-                btn.classList.toggle("is-current", uid === currentQuestionUid);
-            });
+            if (window.mockQuestionNavigator) window.mockQuestionNavigator.refresh();
         }
 
         function toggleSection2Navigator(event) {

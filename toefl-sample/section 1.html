@@ -7,6 +7,7 @@
     <script src="app-config.js?v=20260802a"></script>
     <script src="https://cdn.jsdelivr.net/npm/@twemoji/api@latest/dist/twemoji.min.js" crossorigin="anonymous"></script>
     <link rel="stylesheet" href="css/editor.css">
+    <link rel="stylesheet" href="css/mocknav-question.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
@@ -971,25 +972,12 @@
                     </div>
                 </main>
 
-                <aside class="navigator-panel" id="navigator-panel">
-                    <div class="navigator-card">
-                        <div class="navigator-header" onclick="toggleNavigatorPanel()">
-                            <button class="navigator-toggle" type="button" aria-label="Toggle question navigator" onclick="handleNavigatorToggle(event)">
-                                <i class="ph ph-squares-four nav-state-icon icon-squares-four" aria-hidden="true"></i>
-                                <i class="ph ph-caret-right nav-state-icon icon-caret-right" aria-hidden="true"></i>
-                            </button>
-                            <h3 class="navigator-title">Question Navigator</h3>
-                        </div>
-                        <div id="user-sub-nav-container"></div>
-                        <div class="navigator-legend">
-                            <div class="legend-item"><span class="legend-swatch answered"></span> Answered</div>
-                            <div class="legend-item"><span class="legend-swatch unanswered"></span> Unanswered</div>
-                        </div>
-                    </div>
-                    <button class="btn-next-question" type="button" onclick="scrollToNextQuestion()">Next Question <i class="ph ph-caret-right next-question-icon icon-regular" aria-hidden="true"></i><i class="ph-fill ph-caret-right next-question-icon icon-filled" aria-hidden="true"></i></button>
-                </aside>
             </div>
         </div>
+        <aside class="navigator-panel mock-question-navigator" id="navigator-panel" aria-label="Question navigator">
+            <div id="user-sub-nav-container"></div>
+            <button class="btn-next-question" type="button" onclick="scrollToNextQuestion()">Next Question <i class="ph ph-caret-right next-question-icon icon-regular" aria-hidden="true"></i><i class="ph-fill ph-caret-right next-question-icon icon-filled" aria-hidden="true"></i></button>
+        </aside>
     </div>
 
     <div id="dev-view" class="tab-content">
@@ -1032,6 +1020,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="toefl-storage-sync.js?v=20261010b"></script>
     <script src="toefl-test-history.js?v=20261003a"></script>
+    <script src="mocknav-question.js"></script>
     <script>
         const PARTS = [
             { id: 1, name: "Part A: Short Dialogues", range: "Questions 1-30", start: 1, end: 30, instr: "<strong>Directions:</strong> In Part A, you will hear short conversations between two people. After each conversation, you will hear a question about the conversation. The conversations and questions will not be repeated. After you hear a question, choose the best answer." },
@@ -5011,6 +5000,7 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
             });
 
             updateNextSectionButtonState();
+            if (window.mockQuestionNavigator) window.mockQuestionNavigator.refresh();
             renderInstantProgressDots();
         }
 
@@ -5667,18 +5657,30 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
                 </div>
             </div>`;
 
-            userNavContainer.innerHTML = PARTS.map((part) => {
-                const buttons = [];
-                for (let questionNumber = part.start; questionNumber <= part.end; questionNumber += 1) {
-                    const uid = `${part.id}_${questionNumber}`;
-                    buttons.push(`<button type="button" class="navigator-btn" data-uid="${uid}" onclick="scrollToQuestion('${uid}')">${questionNumber}</button>`);
-                }
-                return `
-                <div id="navigator-group-${part.id}" class="navigator-group">
-                    <div class="navigator-group__title">${part.name.replace(/:.+$/, "")}</div>
-                    <div class="navigator-grid">${buttons.join("")}</div>
-                </div>`;
-            }).join("");
+            window.mockQuestionNavigator = window.MockQuestionNavigator.create({
+                root: userNavContainer,
+                getSections: () => PARTS.map((part) => ({
+                    id: String(part.id),
+                    label: part.name.replace(": ", " - "),
+                    shortLabel: part.name.split(":")[0].replace(/^Part\s+/i, ""),
+                    items: Array.from({ length: part.end - part.start + 1 }, (_, index) => {
+                        const number = part.start + index;
+                        const uid = `${part.id}_${number}`;
+                        return {
+                            uid,
+                            number,
+                            answered: Boolean(document.querySelector(`input[name="q_${uid}"]:checked`))
+                        };
+                    })
+                })),
+                onQuestionSelect: scrollToQuestion,
+                onSectionSelect: async (part) => {
+                    const partId = Number(part.id);
+                    if (activePartId !== partId) setActivePart(partId, { resetScroll: false });
+                    await toggleAudioFromUserGesture();
+                },
+                onToggle: handleNavigatorToggle
+            });
 
             sectionContainer.innerHTML = PARTS.map((part) => {
                 return `
