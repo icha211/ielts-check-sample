@@ -15,7 +15,7 @@
         <a class="qcsite-footer__logo" href="index.html" aria-label="Quick Check home">
           <img src="../asset/icon/logo.png" alt="Quick Check">
         </a>
-        <p>Prepare for TOEFL with focused practice and progress tools.</p>
+        <p>PT CEKCEPAT GUNANSA EDUKASI</p>
         <a class="qcsite-footer__contact" href="mailto:support@quickcheck.id">support@quickcheck.id</a>
       </section>
 
