@@ -1,5 +1,6 @@
 (function () {
-  if (document.querySelector(".qcsite-footer")) return;
+  const pageName = window.location.pathname.split("/").pop().toLowerCase();
+  if (pageName !== "index.html" || document.querySelector(".qcsite-footer")) return;
 
   const stylesheet = document.createElement("link");
   stylesheet.rel = "stylesheet";
@@ -56,73 +57,10 @@
 
   const year = footer.querySelector("[data-qc-footer-year]");
   year.textContent = String(new Date().getFullYear());
-  document.body.appendChild(footer);
-
-  const sidebar = document.getElementById("qcnavSidebar");
-  if (!sidebar) return;
-
-  const shell = document.querySelector(".shell");
-  if (shell && shell.querySelector(".foot")) {
-    footer.classList.add("qcsite-footer--dashboard");
+  const mount = document.getElementById("qcsite-footer-mount");
+  if (!mount) {
+    throw new Error("Footer mount point is missing from the dashboard page.");
   }
-  const sidebarTopOffset = 64;
-  const footerClearance = 1;
-  let sidebarStoppedAtShell = false;
-  let sidebarDocumentTop = 0;
-  const resetSidebarPosition = () => {
-    sidebar.style.removeProperty("position");
-    sidebar.style.removeProperty("top");
-    sidebar.style.removeProperty("bottom");
-    sidebar.style.removeProperty("height");
-  };
-
-  const setSidebarFlowMode = () => {
-    if (window.innerWidth <= 780) {
-      sidebarStoppedAtShell = false;
-      resetSidebarPosition();
-      return;
-    }
-
-    if (shell) {
-      const targetBottom = footer.getBoundingClientRect().top + window.scrollY - footerClearance;
-      if (sidebarStoppedAtShell && targetBottom - window.scrollY > window.innerHeight) {
-        sidebarStoppedAtShell = false;
-        resetSidebarPosition();
-      }
-
-      if (!sidebarStoppedAtShell && targetBottom - window.scrollY <= window.innerHeight) {
-        sidebarDocumentTop = window.scrollY + sidebarTopOffset;
-        sidebarStoppedAtShell = true;
-      }
-
-      if (sidebarStoppedAtShell) {
-        sidebar.style.position = "absolute";
-        sidebar.style.top = `${sidebarDocumentTop}px`;
-        sidebar.style.bottom = "auto";
-        sidebar.style.height = `${Math.max(0, targetBottom - sidebarDocumentTop)}px`;
-      } else if (sidebar.style.position === "absolute") {
-        resetSidebarPosition();
-      }
-      return;
-    }
-
-    const footerReached = footer.getBoundingClientRect().top <= window.innerHeight;
-    if (footerReached && sidebar.style.position !== "absolute") {
-      sidebar.style.position = "absolute";
-      sidebar.style.top = `${window.scrollY + sidebarTopOffset}px`;
-      sidebar.style.bottom = "auto";
-      sidebar.style.height = `calc(100vh - ${sidebarTopOffset}px)`;
-    } else if (!footerReached && sidebar.style.position === "absolute") {
-      resetSidebarPosition();
-    }
-  };
-
-  window.addEventListener("scroll", setSidebarFlowMode, { passive: true });
-  window.addEventListener("resize", setSidebarFlowMode);
-  stylesheet.addEventListener("load", setSidebarFlowMode, { once: true });
-  window.addEventListener("load", setSidebarFlowMode, { once: true });
-  if (shell && "ResizeObserver" in window) {
-    new ResizeObserver(setSidebarFlowMode).observe(shell);
-  }
-  setSidebarFlowMode();
+  footer.classList.add("qcsite-footer--dashboard");
+  mount.appendChild(footer);
 })();
