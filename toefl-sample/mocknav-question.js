@@ -2,6 +2,29 @@
     "use strict";
 
     const instances = new WeakMap();
+    let lucideLoadPromise;
+
+    function renderLucideIcons() {
+        if (global.lucide?.createIcons) {
+            global.lucide.createIcons();
+            return;
+        }
+        if (lucideLoadPromise) return;
+
+        const script = document.createElement("script");
+        script.src = "https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js";
+        lucideLoadPromise = new Promise((resolve, reject) => {
+            script.addEventListener("load", resolve, { once: true });
+            script.addEventListener("error", () => reject(new Error("Lucide could not be loaded.")), { once: true });
+            document.head.appendChild(script);
+        }).then(() => {
+            if (!global.lucide?.createIcons) throw new Error("Lucide loaded without its icon renderer.");
+            global.lucide.createIcons();
+        }).catch((error) => {
+            lucideLoadPromise = null;
+            console.error("[Question navigator] Unable to render Lucide icons:", error);
+        });
+    }
 
     function escapeHTML(value) {
         return String(value).replace(/[&<>"']/g, (character) => ({
@@ -31,21 +54,33 @@
         let config = options;
         root.classList.add("mocknav-question");
 
+        function getToggleIconName(collapsed) {
+            const isCompact = global.matchMedia("(max-width: 900px)").matches;
+            if (isCompact) return collapsed ? "circle-chevron-up" : "circle-chevron-down";
+            return collapsed ? "circle-chevron-right" : "circle-chevron-left";
+        }
+
+        function renderToggleIcon(toggle, collapsed) {
+            toggle.innerHTML = `<i data-lucide="${getToggleIconName(collapsed)}" aria-hidden="true"></i>`;
+            renderLucideIcons();
+        }
+
         function render() {
             const sections = config.getSections();
             const items = sections.flatMap((section) => section.items);
             const answeredCount = items.filter((item) => item.answered).length;
             const remainingCount = items.length - answeredCount;
             const progress = items.length ? Math.round((answeredCount / items.length) * 100) : 0;
+            const activeSectionId = sections.find((section) => section.active
+                || section.items.some((item) => item.current))?.id || sections[0]?.id;
+            const collapsed = panel.classList.contains("is-collapsed");
 
             root.innerHTML = `
                 <div class="mocknav-question__toolbar">
                     <button class="mocknav-question__toggle" type="button"
-                        aria-label="Collapse question navigator" aria-expanded="true">
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <circle cx="12" cy="12" r="9.25"></circle>
-                            <path d="m13.5 8-4 4 4 4"></path>
-                        </svg>
+                        aria-label="${collapsed ? "Expand" : "Collapse"} question navigator"
+                        aria-expanded="${collapsed ? "false" : "true"}">
+                        <i data-lucide="${getToggleIconName(collapsed)}" aria-hidden="true"></i>
                     </button>
                     <h1 class="mocknav-question__title">Question Navigator</h1>
                     <div class="mocknav-question__remaining" aria-label="${remainingCount} questions left">
@@ -62,13 +97,14 @@
                         const sectionProgress = total ? Math.round((answered / total) * 100) : 0;
                         const firstQuestion = section.items.length ? section.items[0].number : 0;
                         const lastQuestion = section.items.length ? section.items[section.items.length - 1].number : 0;
+                        const sectionClass = section.id === activeSectionId ? " is-current" : "";
                         const label = escapeHTML(section.label);
                         const shortLabel = escapeHTML(section.shortLabel || section.label);
                         const sectionId = escapeHTML(section.id);
                         const questionRange = `${escapeHTML(firstQuestion)}/${escapeHTML(lastQuestion)}`;
 
                         return `
-                            <section class="mocknav-question__section" aria-labelledby="mocknav-title-${sectionId}">
+                            <section class="mocknav-question__section${sectionClass}" aria-labelledby="mocknav-title-${sectionId}">
                                 <button class="mocknav-question__compact" type="button" data-mocknav-section="${sectionId}"
                                     aria-label="${label}, questions ${escapeHTML(firstQuestion)} to ${escapeHTML(lastQuestion)}">
                                     <span class="mocknav-question__compact-name">${shortLabel}</span>
@@ -107,9 +143,7 @@
                 </div>`;
 
             const toggle = root.querySelector(".mocknav-question__toggle");
-            const collapsed = panel.classList.contains("is-collapsed");
-            toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
-            toggle.setAttribute("aria-label", collapsed ? "Expand question navigator" : "Collapse question navigator");
+            renderLucideIcons();
         }
 
         function remainingCountForSection(items) {
@@ -123,6 +157,7 @@
                 const collapsed = panel.classList.contains("is-collapsed");
                 toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
                 toggle.setAttribute("aria-label", collapsed ? "Expand question navigator" : "Collapse question navigator");
+                renderToggleIcon(toggle, collapsed);
                 return;
             }
 
@@ -148,12 +183,17 @@
         };
         instances.set(root, instance);
         render();
+        global.matchMedia("(max-width: 900px)").addEventListener("change", () => {
+            const toggle = root.querySelector(".mocknav-question__toggle");
+            if (toggle) renderToggleIcon(toggle, panel.classList.contains("is-collapsed"));
+        });
         if (!panel.classList.contains("is-collapsed")
             && typeof config.onToggle === "function") {
             config.onToggle({ stopPropagation() {} });
             const toggle = root.querySelector(".mocknav-question__toggle");
             toggle.setAttribute("aria-expanded", "false");
             toggle.setAttribute("aria-label", "Expand question navigator");
+            renderToggleIcon(toggle, true);
         }
         return { refresh: render };
     }

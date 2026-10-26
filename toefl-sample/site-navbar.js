@@ -37,7 +37,7 @@
     ] },
     social: { label: "Social", items: [
       { label: "Messages", icon: "message-circle", href: "message.html" },
-      { label: "Community", icon: "users", href: "social.html#community" }
+      { label: "Friends", icon: "users", href: "social.html#community" }
     ] }
   };
   const R = 120;
