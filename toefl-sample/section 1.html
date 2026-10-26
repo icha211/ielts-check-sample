@@ -12,7 +12,7 @@
     <script src="mockheader-question.js" defer></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
     <style>
     /* Helper active/hidden classes */
     .hidden {
@@ -185,6 +185,621 @@
         }
     }
 
+    #onboarding-overlay.instruction-popup--listening {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100dvh;
+        min-height: 100dvh;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: clamp(22px, 4vw, 54px);
+        background: #f3f8f8;
+        color: #182747;
+        font-family: "Plus Jakarta Sans", Arial, sans-serif;
+        z-index: 1200;
+    }
+
+    #onboarding-overlay.instruction-popup--listening.is-visible {
+        display: block !important;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__backdrop {
+        position: fixed;
+        background: #f3f8f8;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__header {
+        width: min(100%, 1268px);
+        margin: 0 auto 20px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__title {
+        position: relative;
+        inset: auto;
+        width: auto;
+        margin: 0;
+        color: #172342;
+        font: 700 clamp(30px, 3.2vw, 42px)/1.15 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: -.035em;
+        text-wrap: balance;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__content {
+        position: relative;
+        inset: auto;
+        display: grid;
+        grid-template-columns: minmax(0, 1.65fr) minmax(280px, .95fr);
+        gap: 26px;
+        width: min(100%, 1268px);
+        margin: 0 auto;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        width: fit-content;
+        margin-bottom: 12px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: #e2f3ee;
+        color: #23896f;
+        font: 700 13px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: .01em;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__eyebrow svg {
+        width: 16px;
+        height: 16px;
+        stroke-width: 2.2;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__intro {
+        max-width: 64ch;
+        margin: 8px 0 0;
+        color: #718093;
+        font: 400 16px/1.6 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-list {
+        display: grid;
+        gap: 10px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item {
+        display: grid;
+        grid-template-columns: 40px 68px minmax(0, 1fr);
+        align-items: center;
+        gap: 14px;
+        min-height: 90px;
+        padding: 13px 18px;
+        border: 1px solid rgba(255, 255, 255, .9);
+        border-radius: 15px;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(31, 62, 80, .035);
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item__number {
+        display: grid;
+        width: 38px;
+        height: 38px;
+        place-items: center;
+        border-radius: 50%;
+        background: #8bd5b9;
+        color: #fff;
+        font: 700 17px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        font-variant-numeric: tabular-nums;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item__icon-wrap {
+        display: grid;
+        width: 60px;
+        height: 60px;
+        place-items: center;
+        border: 0;
+        border-radius: 50%;
+        background: #e8f7f1;
+        box-shadow: none;
+        color: #159b7b;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item__icon-wrap svg {
+        width: 23px;
+        height: 23px;
+        stroke-width: 2;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item--single .instruction-item__number,
+    #onboarding-overlay.instruction-popup--listening .instruction-item--time .instruction-item__number {
+        background: #83bde9;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item--single .instruction-item__icon-wrap,
+    #onboarding-overlay.instruction-popup--listening .instruction-item--time .instruction-item__icon-wrap {
+        background: #e8f4fb;
+        color: #429bd6;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item--navigator .instruction-item__number,
+    #onboarding-overlay.instruction-popup--listening .instruction-item--focus .instruction-item__number {
+        background: #a78be5;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item--navigator .instruction-item__icon-wrap,
+    #onboarding-overlay.instruction-popup--listening .instruction-item--focus .instruction-item__icon-wrap {
+        background: #f1edfb;
+        color: #9172d7;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item__content {
+        gap: 3px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item__heading {
+        margin: 0;
+        color: #1a2747;
+        font: 700 18px/1.35 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: -.02em;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item__text {
+        width: auto;
+        margin: 0;
+        color: #435168;
+        font: 400 14px/1.5 "Plus Jakarta Sans", Arial, sans-serif;
+        text-align: left;
+        text-justify: auto;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__aside {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        min-width: 0;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__illustration {
+        display: block;
+        width: 100%;
+        height: clamp(150px, 18vw, 210px);
+        object-fit: contain;
+        object-position: center bottom;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-card,
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-card {
+        padding: 20px;
+        border-radius: 15px;
+        background: #e5f2ef;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-heading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0;
+        color: #1b2948;
+        font: 700 21px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: -.025em;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-heading svg,
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-icon svg {
+        width: 22px;
+        height: 22px;
+        stroke-width: 2;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-icon,
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-icon {
+        display: grid;
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        place-items: center;
+        border-radius: 50%;
+        background: #c9ece1;
+        color: #229d7e;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-subtitle {
+        margin: 5px 0 14px 56px;
+        color: #718093;
+        font: 400 14px/1.45 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-list {
+        display: grid;
+        gap: 11px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-list li {
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr);
+        align-items: start;
+        gap: 10px;
+        color: #3f4e63;
+        font: 400 14px/1.5 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-list svg {
+        width: 20px;
+        height: 20px;
+        padding: 3px;
+        border-radius: 50%;
+        background: #239e80;
+        color: #fff;
+        stroke-width: 2.5;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-card {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 17px 20px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-icon {
+        width: 54px;
+        height: 54px;
+        flex-basis: 54px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-title {
+        margin: 0;
+        color: #23896f;
+        font: 700 17px/1.35 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-copy {
+        margin: 2px 0 0;
+        color: #435168;
+        font: 400 13px/1.45 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__cta {
+        display: flex;
+        justify-content: flex-end;
+        align-items: flex-end;
+        flex-direction: row;
+        width: 100%;
+        margin-top: 7px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__play-button {
+        min-height: 48px;
+        padding: 0 22px;
+        gap: 10px;
+        border: 0;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #39b995, #159b7b);
+        color: #fff;
+        box-shadow: 0 5px 14px rgba(25, 145, 116, .18);
+        transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__play-button:hover {
+        filter: brightness(1.04);
+        box-shadow: 0 7px 18px rgba(25, 145, 116, .24);
+        transform: translateY(-1px);
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__play-button:active {
+        transform: translateY(1px) scale(.99);
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__play-icon {
+        width: 20px;
+        height: 20px;
+        background: transparent;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__play-icon svg {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
+        stroke-width: 1.5;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__play-label {
+        color: #fff;
+        font: 600 16px/1 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__play-button:hover .instruction-popup__play-icon {
+        background: transparent;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__play-button:focus-visible {
+        outline: 3px solid #187e68;
+        outline-offset: 3px;
+    }
+
+    @media (max-width: 900px) {
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__content {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 18px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__aside {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__illustration {
+            height: 180px;
+        }
+    }
+
+    @media (max-width: 560px) {
+        #onboarding-overlay.instruction-popup--listening {
+            padding: 22px 16px max(22px, env(safe-area-inset-bottom));
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__title {
+            font-size: 30px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__header {
+            margin-bottom: 18px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__intro {
+            font-size: 14px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-item {
+            grid-template-columns: 30px 46px minmax(0, 1fr);
+            gap: 10px;
+            min-height: 82px;
+            padding: 12px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-item__number {
+            width: 30px;
+            height: 30px;
+            font-size: 14px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-item__icon-wrap {
+            width: 44px;
+            height: 44px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-item__icon-wrap svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-item__heading {
+            font-size: 15px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-item__text,
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-list li {
+            font-size: 12px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-card,
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-card {
+            padding: 16px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__illustration {
+            height: 140px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__cta {
+            justify-content: stretch;
+            align-items: stretch;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__play-button {
+            width: 100%;
+        }
+    }
+
+    #onboarding-overlay.instruction-popup--listening {
+        top: var(--listening-header-offset, 64px);
+        right: 0;
+        bottom: 0;
+        left: 0;
+        height: calc(100dvh - var(--listening-header-offset, 64px));
+        min-height: 0;
+        padding: 22px clamp(18px, 3vw, 36px) 24px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__backdrop {
+        position: absolute;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__header {
+        margin-bottom: 12px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__title {
+        font-size: clamp(25px, 2.5vw, 34px);
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__eyebrow {
+        margin-bottom: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__intro {
+        margin-top: 6px;
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__content {
+        gap: 14px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-list {
+        gap: 8px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item {
+        grid-template-columns: 34px 52px minmax(0, 1fr);
+        gap: 12px;
+        min-height: 72px;
+        padding: 10px 14px;
+        border-radius: 13px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item__number {
+        width: 32px;
+        height: 32px;
+        font-size: 15px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item__icon-wrap {
+        width: 48px;
+        height: 48px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item__icon-wrap svg {
+        width: 21px;
+        height: 21px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item__heading {
+        font-size: 16px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-item__text {
+        font-size: 12.5px;
+        line-height: 1.45;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__aside {
+        gap: 10px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__illustration {
+        height: clamp(108px, 13vw, 148px);
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-card {
+        padding: 14px 15px;
+        border-radius: 13px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-heading {
+        gap: 9px;
+        font-size: 17px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-icon {
+        width: 36px;
+        height: 36px;
+        flex-basis: 36px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-subtitle {
+        margin: 3px 0 8px 45px;
+        font-size: 11.5px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-list {
+        gap: 7px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-list li {
+        grid-template-columns: 18px minmax(0, 1fr);
+        gap: 8px;
+        font-size: 11.5px;
+        line-height: 1.4;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-list svg {
+        width: 17px;
+        height: 17px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-card {
+        gap: 9px;
+        padding: 10px 14px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-icon {
+        width: 40px;
+        height: 40px;
+        flex-basis: 40px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-title {
+        font-size: 14px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__ready-copy {
+        font-size: 11px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__cta {
+        margin-top: 5px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__play-button {
+        min-height: 42px;
+        padding: 0 18px;
+    }
+
+    #onboarding-overlay.instruction-popup--listening .instruction-popup__play-label {
+        font-size: 14px;
+    }
+
+    @media (max-width: 560px) {
+        #onboarding-overlay.instruction-popup--listening {
+            padding: 16px 14px max(18px, env(safe-area-inset-bottom));
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__header {
+            margin-bottom: 14px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__title {
+            font-size: 25px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-item {
+            grid-template-columns: 28px 40px minmax(0, 1fr);
+            gap: 9px;
+            min-height: 68px;
+            padding: 9px 10px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-item__number {
+            width: 28px;
+            height: 28px;
+            font-size: 13px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-item__icon-wrap {
+            width: 40px;
+            height: 40px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-item__heading {
+            font-size: 14px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-item__text,
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__tip-list li {
+            font-size: 11px;
+        }
+
+        #onboarding-overlay.instruction-popup--listening .instruction-popup__illustration {
+            height: 112px;
+        }
+    }
+
     .mock-listening-directions[hidden] {
         display: none;
     }
@@ -354,20 +969,6 @@
 
     .mock-listening-directions__transcript p + p {
         margin-top: .8em;
-    }
-
-    .mock-listening-directions__sentence {
-        border-radius: 3px;
-        transition: background-color .16s ease, color .16s ease;
-    }
-
-    .mock-listening-directions__sentence.is-current {
-        background: #fff1c2;
-        color: #182c43;
-    }
-
-    .mock-listening-directions__sentence.is-upcoming {
-        color: #64748b;
     }
 
     .mock-listening-directions__option-list {
@@ -687,7 +1288,6 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-        .mock-listening-directions__sentence,
         .mock-listening-directions__option-list,
         .mock-listening-directions__option,
         .mock-listening-directions__font-button,
@@ -1755,6 +2355,7 @@
         <div id="dev-panels-container"></div>
     </div>
 
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="toefl-storage-sync.js?v=20261010b"></script>
     <script src="toefl-test-history.js?v=20261003a"></script>
@@ -1853,6 +2454,7 @@
         let audioSourceNode = null;
         let audioDataArray = null;
         let audioVisualFrame = null;
+        let listeningIntroResizeHandler = null;
         let audioIsLocked = false;
         let audioToggleInFlight = false;
         let audioToggleLockUntil = 0;
@@ -2283,73 +2885,154 @@
                 ? "Read each question and its four answer choices carefully. You must progress through the session as the audio dictates. You cannot jump ahead or return to previous questions."
                 : "Select your answer choice and click Next to reveal explanations or proceed to the next question.";
 
-            const modalHTML = `
-                <div class="instruction-popup" id="onboarding-overlay" aria-hidden="false">
-                    <div class="instruction-popup__backdrop"></div>
+            const modalContent = isMock
+                ? `
+                    <header class="instruction-popup__header">
+                        <span class="instruction-popup__eyebrow"><i data-lucide="headphones" aria-hidden="true"></i>Before you start</span>
+                        <h1 class="instruction-popup__title" id="listening-intro-title">Here’s how the Listening test works</h1>
+                        <p class="instruction-popup__intro">This section checks how well you understand spoken English. Read the instructions below so you can get ready and focus.</p>
+                    </header>
+                    <div class="instruction-popup__content">
+                        <div class="instruction-popup__main">
+                            <div class="instruction-list">
+                                <article class="instruction-item instruction-item--play">
+                                    <span class="instruction-item__number" aria-hidden="true">1</span>
+                                    <span class="instruction-item__icon-wrap" aria-hidden="true"><i data-lucide="play"></i></span>
+                                    <div class="instruction-item__content">
+                                        <h2 class="instruction-item__heading">Start the listening</h2>
+                                        <p class="instruction-item__text">Click Start to begin. The directions play first; you can skip them if you prefer, then continue with the section audio.</p>
+                                    </div>
+                                </article>
+                                <article class="instruction-item instruction-item--single">
+                                    <span class="instruction-item__number" aria-hidden="true">2</span>
+                                    <span class="instruction-item__icon-wrap" aria-hidden="true"><i data-lucide="volume-2"></i></span>
+                                    <div class="instruction-item__content">
+                                        <h2 class="instruction-item__heading">Single play only</h2>
+                                        <p class="instruction-item__text">The section audio plays once. You cannot replay, rewind, or pause it.</p>
+                                    </div>
+                                </article>
+                                <article class="instruction-item instruction-item--navigator">
+                                    <span class="instruction-item__number" aria-hidden="true">3</span>
+                                    <span class="instruction-item__icon-wrap" aria-hidden="true"><i data-lucide="layout-grid"></i></span>
+                                    <div class="instruction-item__content">
+                                        <h2 class="instruction-item__heading">Question navigator</h2>
+                                        <p class="instruction-item__text">Read each question and its four choices carefully. Move through the test in order; you can’t return to an earlier part.</p>
+                                    </div>
+                                </article>
+                                <article class="instruction-item instruction-item--time">
+                                    <span class="instruction-item__number" aria-hidden="true">4</span>
+                                    <span class="instruction-item__icon-wrap" aria-hidden="true"><i data-lucide="clock-3"></i></span>
+                                    <div class="instruction-item__content">
+                                        <h2 class="instruction-item__heading">Manage your time</h2>
+                                        <p class="instruction-item__text">Watch the countdown in the top bar. The test moves on when the audio ends or the time limit is reached.</p>
+                                    </div>
+                                </article>
+                                <article class="instruction-item instruction-item--focus">
+                                    <span class="instruction-item__number" aria-hidden="true">5</span>
+                                    <span class="instruction-item__icon-wrap" aria-hidden="true"><i data-lucide="check"></i></span>
+                                    <div class="instruction-item__content">
+                                        <h2 class="instruction-item__heading">Stay focused</h2>
+                                        <p class="instruction-item__text">Keep your attention on the audio and questions. Make sure you’re ready before you start.</p>
+                                    </div>
+                                </article>
+                            </div>
+                            <div class="instruction-popup__cta">
+                                <button class="instruction-popup__play-button" type="button" id="start-onboarding-btn" data-ready-label="Start the Listening" ${examInitializationComplete ? "" : "disabled aria-busy=\"true\""}>
+                                    <span class="instruction-popup__play-icon" aria-hidden="true"><i data-lucide="play"></i></span>
+                                    <span class="instruction-popup__play-label">${examInitializationComplete ? "Start the Listening" : "Preparing…"}</span>
+                                </button>
+                            </div>
+                        </div>
+                        <aside class="instruction-popup__aside" aria-label="Listening test tips">
+                            <img class="instruction-popup__illustration" src="../asset/icon/introlistening.png" alt="Student wearing headphones and listening at a laptop">
+                            <section class="instruction-popup__tip-card" aria-labelledby="listening-quick-tips">
+                                <h2 class="instruction-popup__tip-heading" id="listening-quick-tips"><span class="instruction-popup__tip-icon" aria-hidden="true"><i data-lucide="lightbulb"></i></span>Quick tips</h2>
+                                <p class="instruction-popup__tip-subtitle">For the best experience:</p>
+                                <ul class="instruction-popup__tip-list">
+                                    <li><i data-lucide="check" aria-hidden="true"></i><span>Use headphones or find a quiet environment.</span></li>
+                                    <li><i data-lucide="check" aria-hidden="true"></i><span>Make sure your internet connection is stable.</span></li>
+                                    <li><i data-lucide="check" aria-hidden="true"></i><span>Read each question and its choices carefully.</span></li>
+                                    <li><i data-lucide="check" aria-hidden="true"></i><span>Manage your time and don’t rush.</span></li>
+                                </ul>
+                            </section>
+                            <section class="instruction-popup__ready-card" aria-label="You’re ready">
+                                <span class="instruction-popup__ready-icon" aria-hidden="true"><i data-lucide="target"></i></span>
+                                <div><h2 class="instruction-popup__ready-title">You’re ready</h2><p class="instruction-popup__ready-copy">Take a breath, then start the listening test.</p></div>
+                            </section>
+                        </aside>
+                    </div>
+                `
+                : `
                     <div class="instruction-popup__title">Instruction</div>
-
                     <div class="instruction-popup__content">
                         <div class="instruction-list">
                             <article class="instruction-item instruction-item--play">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true">
-                                    <i class="ph ph-play instruction-item__icon"></i>
-                                </div>
+                                <div class="instruction-item__icon-wrap" aria-hidden="true"><i class="ph ph-play instruction-item__icon"></i></div>
                                 <div class="instruction-item__content">
-                                    <h3 class="instruction-item__heading">${isMock ? 'Start with the directions' : 'Start The Practice'}</h3>
-                                    <p class="instruction-item__text">${isMock ? 'The original test audio plays through its directions intro. The cutoff is 2:19 for Part A, 0:36 for Part B, and 2:48 for Part C.' : 'Click the Start button to review each question and test your knowledge.'}</p>
+                                    <h3 class="instruction-item__heading">Start The Practice</h3>
+                                    <p class="instruction-item__text">Click the Start button to review each question and test your knowledge.</p>
                                 </div>
                             </article>
-
                             <article class="instruction-item instruction-item--single">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true">
-                                    <i class="ph ph-speaker-high instruction-item__icon"></i>
-                                </div>
+                                <div class="instruction-item__icon-wrap" aria-hidden="true"><i class="ph ph-speaker-high instruction-item__icon"></i></div>
                                 <div class="instruction-item__content">
-                                    <h3 class="instruction-item__heading">${isMock ? 'Single Play ONLY' : 'Audio Controls'}</h3>
+                                    <h3 class="instruction-item__heading">Audio Controls</h3>
                                     <p class="instruction-item__text">${singlePlayText}</p>
                                 </div>
                             </article>
-
                             <article class="instruction-item instruction-item--navigator">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true">
-                                    <i class="ph ph-squares-four instruction-item__icon"></i>
-                                </div>
+                                <div class="instruction-item__icon-wrap" aria-hidden="true"><i class="ph ph-squares-four instruction-item__icon"></i></div>
                                 <div class="instruction-item__content">
                                     <h3 class="instruction-item__heading">Question Navigation</h3>
                                     <p class="instruction-item__text">${navText}</p>
                                 </div>
                             </article>
-
                             <article class="instruction-item instruction-item--time">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true">
-                                    <i class="ph ph-clock instruction-item__icon"></i>
-                                </div>
+                                <div class="instruction-item__icon-wrap" aria-hidden="true"><i class="ph ph-clock instruction-item__icon"></i></div>
                                 <div class="instruction-item__content">
                                     <h3 class="instruction-item__heading">Time Management</h3>
-                                    <p class="instruction-item__text">Monitor the countdown timer in the top bar. ${isMock ? 'The test will automatically transition once time expires.' : 'Pace yourself according to your goals.'}</p>
+                                    <p class="instruction-item__text">Monitor the countdown timer in the top bar. Pace yourself according to your goals.</p>
                                 </div>
                             </article>
                         </div>
-
                         <div class="instruction-popup__cta">
                             <div class="instruction-popup__cta-text">
                                 <div class="instruction-popup__ready">Are you ready?</div>
-                                <div class="instruction-popup__click">${isMock ? 'Click to hear directions' : 'Click to Play'}</div>
+                                <div class="instruction-popup__click">Click to Play</div>
                             </div>
-                            <button class="instruction-popup__play-button" type="button" id="start-onboarding-btn" data-ready-label="${isMock ? 'Start' : 'Play'}" ${examInitializationComplete ? "" : "disabled aria-busy=\"true\""}>
+                            <button class="instruction-popup__play-button" type="button" id="start-onboarding-btn" data-ready-label="Play" ${examInitializationComplete ? "" : "disabled aria-busy=\"true\""}>
                                 <span class="instruction-popup__play-icon" aria-hidden="true">
                                     <i class="ph ph-play instruction-popup__play-icon-glyph icon-regular"></i>
                                     <i class="ph-fill ph-play instruction-popup__play-icon-glyph icon-filled"></i>
                                 </span>
-                                <span class="instruction-popup__play-label">${examInitializationComplete ? (isMock ? 'Start' : 'Play') : 'Preparing…'}</span>
+                                <span class="instruction-popup__play-label">${examInitializationComplete ? "Play" : "Preparing…"}</span>
                             </button>
                         </div>
                     </div>
+                `;
+
+            const modalHTML = `
+                <div class="instruction-popup ${isMock ? "instruction-popup--listening" : ""}" id="onboarding-overlay" role="dialog" aria-modal="true" aria-label="${isMock ? "Listening test instructions" : "Test instructions"}" aria-hidden="false">
+                    <div class="instruction-popup__backdrop"></div>
+                    ${modalContent}
                 </div>
             `;
 
             // Append to body
             document.body.insertAdjacentHTML('beforeend', modalHTML);
+            if (isMock) {
+                const overlay = document.getElementById('onboarding-overlay');
+                listeningIntroResizeHandler = () => {
+                    const header = document.querySelector('.mock-test-header');
+                    const headerBottom = header?.getBoundingClientRect().bottom || 0;
+                    overlay?.style.setProperty('--listening-header-offset', `${Math.max(0, headerBottom)}px`);
+                };
+                listeningIntroResizeHandler();
+                window.addEventListener('resize', listeningIntroResizeHandler);
+            }
+            if (isMock && window.lucide?.createIcons) {
+                window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
+            }
 
             // Attach click handler to start button
             document.getElementById('start-onboarding-btn').addEventListener('click', () => {
@@ -2362,6 +3045,10 @@
 
         function closeInstructionModal() {
             const overlay = document.getElementById('onboarding-overlay');
+            if (listeningIntroResizeHandler) {
+                window.removeEventListener('resize', listeningIntroResizeHandler);
+                listeningIntroResizeHandler = null;
+            }
             if (overlay) {
                 overlay.setAttribute('aria-hidden', 'true');
                 overlay.style.display = 'none'; // Ensure it hides or is removed
@@ -7716,7 +8403,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     return `<p>${sentences.map((sentence) => {
                         const tokenIndex = state.transcriptTokens.length;
                         state.transcriptTokens.push({ type: "sentence", length: sentence.length });
-                        return `<span class="mock-listening-directions__sentence" data-transcript-token="${tokenIndex}">${escapeHtml(sentence)}</span>`;
+                        return `<span data-transcript-token="${tokenIndex}">${escapeHtml(sentence)}</span>`;
                     }).join(" ")}</p>`;
                 }).join("");
             }
@@ -7837,8 +8524,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             transcriptNodes.forEach((node) => {
                 const index = Number(node.dataset.transcriptToken);
                 const isUpcoming = index > activeIndex && !isComplete;
-                node.classList.toggle("is-current", index === activeIndex && !isComplete
-                    && state.transcriptTokens[index].type === "sentence");
+                if (state.transcriptTokens[index].type !== "options") return;
                 node.classList.toggle("is-upcoming", isUpcoming);
                 node.querySelectorAll(".mock-listening-directions__option").forEach((option) => {
                     option.classList.toggle("is-correct", !isUpcoming && option.dataset.correctAnswer === "true");
@@ -8813,6 +9499,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 sectionKey: "listening",
                 setId: currentSetId || "",
                 setDate: selectedDate,
+                testType: currentTestType,
                 transcriptsByPart: transcriptTextsByPart,
                 totalQuestions: total,
                 rawScore: score,
@@ -8834,6 +9521,12 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 }
                 
                 window.location.href = `section 2.html?${urlParams.toString()}`;
+            } else if (!isPracticeTestType()) {
+                if (currentSetId && !urlParams.has("setId")) urlParams.set("setId", currentSetId);
+                if (selectedDate && !urlParams.has("setDate")) urlParams.set("setDate", selectedDate);
+                urlParams.set("testType", "mocktest");
+                urlParams.set("section", "listening");
+                window.location.href = `full-test-summary.html?${urlParams.toString()}`;
             } else {
                 if (currentSetId && !urlParams.has("setId")) urlParams.set("setId", currentSetId);
                 if (selectedDate && !urlParams.has("setDate")) urlParams.set("setDate", selectedDate);

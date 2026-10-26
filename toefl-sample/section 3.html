@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/mocknav-question.css">
     <link rel="stylesheet" href="css/mockheader-question.css">
     <script src="mockheader-question.js" defer></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
     <style>
         .figma-header--listening {
             gap: 20px;
@@ -200,6 +201,18 @@
             background: #7a8fa6;
             border-color: #d1dce8;
             color: #fff;
+        }
+
+        .reading-intro__sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
 
         .reading-q-circle:hover {
@@ -1242,6 +1255,411 @@
                 min-height: 420px;
             }
         }
+
+        #user-view #reading-onboarding-overlay {
+            --intro-ink: #12324a;
+            --intro-muted: #506779;
+            --intro-accent: #07866f;
+            --intro-border: #dce9e8;
+            position: fixed;
+            inset: var(--reading-intro-top, 109px) 0 0;
+            z-index: 40;
+            display: none;
+            overflow-x: hidden;
+            overflow-y: auto;
+            padding: 22px clamp(14px, 2vw, 28px) 0;
+            box-sizing: border-box;
+            background:
+                radial-gradient(ellipse at 12% 4%, rgba(198, 235, 226, .32), transparent 42%),
+                #f3f8f8;
+            color: #172747;
+            font-family: "Plus Jakarta Sans", Arial, sans-serif;
+            text-align: left;
+            scrollbar-gutter: stable;
+        }
+
+        #user-view #reading-onboarding-overlay.is-visible { display: block; }
+        #user-view.reading-intro-open #navigator-panel { display: none !important; }
+
+        .reading-intro__shell {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            width: min(100%, 1280px);
+            min-height: 100%;
+            margin: 0 auto;
+            padding-bottom: 18px;
+            box-sizing: border-box;
+            justify-content: flex-start;
+        }
+
+        .reading-intro__header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(150px, 220px);
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .reading-intro__heading { min-width: 0; }
+
+        .reading-intro__eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 8px;
+            padding: 6px 11px;
+            border-radius: 999px;
+            background: #dff3ed;
+            color: #16896e;
+            font: 700 12px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .reading-intro__eyebrow svg { width: 15px; height: 15px; stroke-width: 2; }
+
+        .reading-intro__title-row { display: flex; align-items: center; gap: 11px; }
+
+        .reading-intro__title-icon {
+            display: grid;
+            width: 54px;
+            height: 54px;
+            flex: 0 0 54px;
+            place-items: center;
+            border-radius: 18px;
+            background: #eee9fc;
+            color: #8b6fe0;
+        }
+
+        .reading-intro__title-icon svg { width: 30px; height: 30px; stroke-width: 1.9; }
+
+        .reading-intro__title {
+            margin: 0;
+            color: #172747;
+            font: 700 clamp(26px, 3vw, 38px)/1.12 "Plus Jakarta Sans", Arial, sans-serif;
+            letter-spacing: -.04em;
+            text-wrap: balance;
+        }
+
+        .reading-intro__description {
+            max-width: 82ch;
+            margin: 8px 0 0 67px;
+            color: #63758e;
+            font: 400 14px/1.55 "Plus Jakarta Sans", Arial, sans-serif;
+            text-wrap: pretty;
+        }
+
+        .reading-intro__illustration {
+            display: block;
+            width: 100%;
+            height: 112px;
+            object-fit: contain;
+            object-position: center bottom;
+        }
+
+        .reading-intro__details {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr);
+            gap: clamp(14px, 1.8vw, 20px);
+            margin-top: 0;
+        }
+
+        .reading-intro__summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 9px;
+            margin: 0 0 16px 67px;
+            color: #536985;
+            font: 500 12px/1.4 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .reading-intro__summary span {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 30px;
+            padding: 0 10px;
+            border: 1px solid rgba(255, 255, 255, .95);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, .82);
+            box-shadow: 0 2px 8px rgba(31, 62, 80, .035);
+        }
+
+        .reading-intro__summary svg { width: 16px; height: 16px; color: var(--intro-accent); }
+        .reading-intro__summary strong { font-weight: 600; }
+
+        .reading-intro__detail-card {
+            min-width: 0;
+            padding: 18px;
+            border: 1px solid #e0ecea;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, .84);
+            box-shadow: 0 4px 16px rgba(40, 78, 94, .045);
+        }
+
+        .reading-intro__detail-card--directions {
+            background: rgba(255, 255, 255, .84);
+        }
+
+        .reading-intro__detail-card--passage {
+            background: #fff;
+        }
+
+        .reading-intro__detail-card--sample {
+            padding-bottom: 18px;
+            background: rgba(255, 255, 255, .84);
+        }
+
+        .reading-intro__detail-title {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            margin: 0 0 14px;
+            color: var(--intro-ink);
+            font: 700 18px/1.35 "Plus Jakarta Sans", Arial, sans-serif;
+            letter-spacing: -.02em;
+        }
+
+        .reading-intro__detail-title svg { width: 20px; height: 20px; color: #16896e; }
+        .reading-intro__detail-card--directions .reading-intro__detail-title { align-items: flex-start; }
+        .reading-intro__detail-card--directions .reading-intro__detail-title svg { margin-top: 2px; }
+        .reading-intro__directions-text {
+            margin: 0;
+            color: #536985;
+            font: 400 14px/1.6 "Plus Jakarta Sans", Arial, sans-serif;
+            max-width: 62ch;
+            text-wrap: pretty;
+        }
+
+        .reading-intro__passage {
+            display: grid;
+            grid-template-columns: 40px minmax(0, 1fr);
+            gap: 14px;
+            color: #344b5b;
+            font: 400 16px/1.8 Georgia, "Times New Roman", serif;
+        }
+
+        .reading-intro__passage-line {
+            padding-top: 3px;
+            border-right: 1px solid #e3ecea;
+            color: #738792;
+            font: 500 12px/1.8 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .reading-intro__passage p { margin: 0; }
+
+        .reading-intro__example {
+            margin-top: clamp(14px, 2vw, 22px);
+            padding: clamp(20px, 2.5vw, 30px);
+            border: 1px solid var(--intro-border);
+            border-left: 3px solid #d6a84f;
+            border-radius: 18px;
+            background: linear-gradient(145deg, #fff 0%, #fcfbf7 100%);
+            box-shadow: 0 10px 28px rgba(24, 61, 70, .045);
+        }
+
+        .reading-intro__example--embedded {
+            margin-top: 18px;
+            padding: 18px 0 0;
+            border: 0;
+            border-top: 1px solid #dce9e6;
+            border-left: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+        }
+
+        .reading-intro__example-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 15px;
+        }
+
+        .reading-intro__example-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0;
+            color: var(--intro-ink);
+            font: 700 17px/1.35 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .reading-intro__example-label svg { width: 19px; height: 19px; color: #8b6fe0; }
+
+        .reading-intro__sample-answer {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            flex: 0 0 auto;
+            padding: 7px 10px;
+            border-radius: 8px;
+            background: #e4f3ed;
+            color: #176a57;
+            font: 600 12px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .reading-intro__sample-answer strong {
+            display: grid;
+            width: 22px;
+            height: 22px;
+            place-items: center;
+            border-radius: 6px;
+            background: #17a783;
+            color: #fff;
+            font-size: 13px;
+        }
+
+        .reading-intro__example-question {
+            margin: 0 0 13px;
+            color: var(--intro-ink);
+            font: 700 clamp(16px, 1.7vw, 20px)/1.45 "Plus Jakarta Sans", Arial, sans-serif;
+            letter-spacing: -.015em;
+            text-wrap: pretty;
+        }
+
+        .reading-intro__choices {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 9px 12px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .reading-intro__choice {
+            display: grid;
+            grid-template-columns: 30px minmax(0, 1fr);
+            align-items: start;
+            gap: 10px;
+            min-width: 0;
+            padding: 11px 13px;
+            border: 1px solid #e2eae8;
+            border-radius: 11px;
+            background: rgba(255, 255, 255, .88);
+            color: #425b6b;
+            font: 400 14px/1.5 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .reading-intro__choice-letter {
+            display: grid;
+            width: 28px;
+            height: 28px;
+            place-items: center;
+            border: 1px solid #d5e1df;
+            border-radius: 7px;
+            color: #506779;
+            font: 700 12px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .reading-intro__choice--correct {
+            border-color: #87c8b2;
+            background: #eef8f4;
+            color: #164f43;
+        }
+
+        .reading-intro__choice--correct .reading-intro__choice-letter {
+            border-color: #087f6b;
+            background: #17a783;
+            color: #fff;
+        }
+
+        .reading-intro__explanation {
+            display: grid;
+            grid-template-columns: 22px minmax(0, 1fr);
+            align-items: start;
+            gap: 10px;
+            margin-top: 14px;
+            padding-top: 13px;
+            border-top: 1px solid #e5ece9;
+            color: #506779;
+            font: 400 13px/1.6 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .reading-intro__explanation svg {
+            width: 19px;
+            height: 19px;
+            margin-top: 1px;
+            color: #087f6b;
+        }
+
+        .reading-intro__explanation p { margin: 0; }
+        .reading-intro__explanation strong { color: #164f43; font-weight: 700; }
+
+        .reading-intro__footer {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 16px;
+            width: min(100%, 1500px);
+            margin: 12px auto 0;
+            padding: 16px 0 max(14px, env(safe-area-inset-bottom));
+        }
+
+        .reading-intro__footer-note {
+            color: var(--intro-muted);
+            font: 500 13px/1.4 "Plus Jakarta Sans", Arial, sans-serif;
+        }
+
+        .reading-intro__start {
+            display: inline-flex;
+            min-width: 210px;
+            min-height: 46px;
+            align-items: center;
+            justify-content: center;
+            gap: 11px;
+            padding: 0 25px;
+            border: 0;
+            border-radius: 999px;
+            background: #17a783;
+            box-shadow: 0 6px 16px rgba(23, 167, 131, .18);
+            color: #fff;
+            cursor: pointer;
+            font: 700 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
+            transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        }
+
+        .reading-intro__start svg { width: 18px; height: 18px; fill: currentColor; stroke-width: 1.5; }
+        .reading-intro__start:hover { background: #128c70; box-shadow: 0 8px 20px rgba(23, 167, 131, .24); transform: translateY(-1px); }
+        .reading-intro__start:active { transform: translateY(1px) scale(.99); }
+        .reading-intro__start:focus-visible { outline: 3px solid #172747; outline-offset: 3px; }
+
+        @media (max-width: 900px) {
+            #user-view #reading-onboarding-overlay { padding: 18px 16px 0; }
+            .reading-intro__header { grid-template-columns: minmax(0, 1fr) minmax(140px, 190px); gap: 12px; }
+            .reading-intro__shell { justify-content: flex-start; }
+        }
+
+        @media (max-width: 680px) {
+            #user-view #reading-onboarding-overlay { padding: 18px 14px max(20px, env(safe-area-inset-bottom)); }
+            .reading-intro__header { grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 14px; }
+            .reading-intro__title-icon { width: 46px; height: 46px; flex-basis: 46px; border-radius: 15px; }
+            .reading-intro__title-icon svg { width: 25px; height: 25px; }
+            .reading-intro__title { font-size: clamp(25px, 7vw, 32px); }
+            .reading-intro__description { margin: 8px 0 0; font-size: 13px; }
+            .reading-intro__illustration { height: 150px; }
+            .reading-intro__details { gap: 10px; }
+            .reading-intro__summary { gap: 6px; margin: 0 0 12px; font-size: 11px; }
+            .reading-intro__summary span { min-height: 31px; padding: 0 9px; }
+            .reading-intro__detail-card { padding: 17px 15px; border-radius: 14px; }
+            .reading-intro__detail-title { margin-bottom: 10px; font-size: 16px; }
+            .reading-intro__directions-text { font-size: 13px; line-height: 1.65; }
+            .reading-intro__passage { grid-template-columns: 36px minmax(0, 1fr); gap: 10px; font-size: 15px; line-height: 1.7; }
+            .reading-intro__example { padding: 16px 14px; border-radius: 14px; }
+            .reading-intro__example--embedded { margin-top: 18px; padding: 18px 0 0; border-radius: 0; }
+            .reading-intro__example-header { align-items: flex-start; }
+            .reading-intro__example-label { font-size: 15px; }
+            .reading-intro__sample-answer { gap: 5px; padding: 6px 7px; font-size: 11px; }
+            .reading-intro__choices { grid-template-columns: minmax(0, 1fr); gap: 7px; }
+            .reading-intro__choice { padding: 9px 10px; font-size: 13px; }
+            .reading-intro__footer { justify-content: space-between; gap: 10px; }
+            .reading-intro__footer-note { max-width: 120px; font-size: 11px; }
+            .reading-intro__start { width: 100%; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .reading-intro__start { transition: none; }
+        }
     </style>
 </head>
 <body>
@@ -1336,6 +1754,75 @@
         </div>
 
         <div id="user-passages-container" style="display: flex; flex: 1; flex-direction: column; align-self: stretch; overflow: hidden;"></div>
+        <section id="reading-onboarding-overlay" role="dialog" aria-modal="true" aria-labelledby="reading-intro-title" aria-hidden="true">
+            <div class="reading-intro__shell">
+                <header class="reading-intro__header">
+                    <div class="reading-intro__heading">
+                        <span class="reading-intro__eyebrow"><i data-lucide="book-open" aria-hidden="true"></i>TOEFL ITP · SECTION 3</span>
+                        <div class="reading-intro__title-row">
+                            <span class="reading-intro__title-icon" aria-hidden="true"><i data-lucide="book-open-text"></i></span>
+                            <h1 class="reading-intro__title" id="reading-intro-title">Reading</h1>
+                        </div>
+                        <p class="reading-intro__description" id="reading-intro-description">Read each passage carefully and answer the questions using information stated or implied in the text.</p>
+                    </div>
+                    <img class="reading-intro__illustration" src="../asset/icon/introreading.png" alt="Student reading a book at a laptop">
+                </header>
+                <div class="reading-intro__summary" aria-label="Reading section details">
+                    <span><i data-lucide="clock-3" aria-hidden="true"></i><strong id="reading-intro-duration">55 minutes</strong></span>
+                    <span><i data-lucide="book-text" aria-hidden="true"></i><strong id="reading-intro-passage-count">5 passages</strong></span>
+                    <span><i data-lucide="list-checks" aria-hidden="true"></i><strong id="reading-intro-question-count">50 questions</strong></span>
+                </div>
+                <section class="reading-intro__details" aria-label="Reading directions and sample">
+                    <article class="reading-intro__detail-card reading-intro__detail-card--directions">
+                        <h2 class="reading-intro__detail-title"><i data-lucide="clipboard-list" aria-hidden="true"></i>Directions</h2>
+                        <p class="reading-intro__directions-text" id="reading-intro-directions-copy">In this section, you will read several passages. Each passage is followed by several questions. For questions 1–50, choose the one best answer, (A), (B), (C), or (D), for each question. Then find the question number and select the letter of the answer you have chosen. Answer all questions based on what is stated or implied in the passage.</p>
+                    </article>
+                    <article class="reading-intro__detail-card reading-intro__detail-card--passage reading-intro__detail-card--sample" aria-labelledby="reading-intro-sample-title">
+                        <h2 class="reading-intro__detail-title" id="reading-intro-sample-title"><i data-lucide="book-open-check" aria-hidden="true"></i>Read the sample passage</h2>
+                        <div class="reading-intro__passage">
+                            <span class="reading-intro__passage-line" aria-hidden="true">Line<br>5</span>
+                            <p>The railroad was not the first institution to impose regularity on society, or to draw attention to the importance of precise timekeeping. For as long as merchants have set out their wares at daybreak and communal festivities have been celebrated, people have been in rough agreement with their neighbors as to the time of day. The value of this tradition is today more apparent than ever. Were it not for public acceptance of a single yardstick of time, social life would be unbearably chaotic: the massive daily transfers of goods, services, and information would proceed in fits and starts; the very fabric of modern society would begin to unravel.</p>
+                        </div>
+                        <section class="reading-intro__example reading-intro__example--embedded" aria-labelledby="reading-intro-example-title">
+                            <div class="reading-intro__example-header">
+                                <h3 class="reading-intro__example-label" id="reading-intro-example-title"><i data-lucide="list-checks" aria-hidden="true"></i>Example I</h3>
+                                <span class="reading-intro__sample-answer"><span>Sample answer</span><strong aria-label="C">C</strong></span>
+                            </div>
+                            <p class="reading-intro__example-question">What is the main idea of the passage?</p>
+                            <ul class="reading-intro__choices" aria-label="Example answer choices">
+                                <li class="reading-intro__choice">
+                                    <span class="reading-intro__choice-letter" aria-hidden="true">A</span>
+                                    <span>In modern society we must make more time for our neighbors.</span>
+                                </li>
+                                <li class="reading-intro__choice">
+                                    <span class="reading-intro__choice-letter" aria-hidden="true">B</span>
+                                    <span>The traditions of society are timeless.</span>
+                                </li>
+                                <li class="reading-intro__choice reading-intro__choice--correct">
+                                    <span class="reading-intro__choice-letter" aria-hidden="true">C</span>
+                                    <span><span class="reading-intro__sr-only">Correct answer. </span>An accepted way of measuring time is essential for the smooth functioning of society.</span>
+                                </li>
+                                <li class="reading-intro__choice">
+                                    <span class="reading-intro__choice-letter" aria-hidden="true">D</span>
+                                    <span>Society judges people by the times at which they conduct certain activities.</span>
+                                </li>
+                            </ul>
+                            <div class="reading-intro__explanation">
+                                <i data-lucide="circle-check" aria-hidden="true"></i>
+                                <p>The main idea of the passage is that societies need to agree about how time is to be measured in order to function smoothly. Therefore, you should choose <strong>(C)</strong>.</p>
+                            </div>
+                        </section>
+                    </article>
+                </section>
+            </div>
+            <footer class="reading-intro__footer">
+                <span class="reading-intro__footer-note">Your timer starts when you begin.</span>
+                <button class="reading-intro__start" type="button" onclick="dismissReadingOnboarding()">
+                    <i data-lucide="play" aria-hidden="true"></i>
+                    <span>Start the Section</span>
+                </button>
+            </footer>
+        </section>
         <aside class="navigator-panel mock-question-navigator section3-question-navigator" id="navigator-panel" aria-label="Question navigator">
             <div id="mock-question-navigator-root"></div>
         </aside>
@@ -1377,6 +1864,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="toefl-storage-sync.js?v=20261010b"></script>
     <script src="toefl-test-history.js?v=20261003a"></script>
     <script src="js/reading-explanations.js?v=20261006b"></script>
@@ -1389,6 +1877,7 @@
         const MODULE_ID = "reading";
         const MODULE_LABEL = "Reading";
         const DRAFT_KEY = "toefl_section3_dev_draft_v1";
+        const READING_ONBOARDING_KEY_BASE = "toefl_section3_onboarding_seen_v1";
         let currentSetId = "";
         let currentTestType = "mocktest";
         let lastValidSetDate = "";
@@ -1396,6 +1885,7 @@
         let activeSectionDraft = {};
         let sectionReady = false;
         let sectionSaveQueue = Promise.resolve();
+        let readingIntroResizeObserver = null;
 
         function getReadingPracticePartsCount() {
             const params = new URLSearchParams(window.location.search);
@@ -3613,6 +4103,89 @@
             return window.location.hash === "#dev-view" || params.get("mode") === "dev";
         }
 
+        function getReadingOnboardingKey() {
+            const params = new URLSearchParams(window.location.search);
+            const setDate = params.get("setDate") || document.getElementById("set-date")?.value || "";
+            const scope = setDate || currentSetId || "default";
+            return `${READING_ONBOARDING_KEY_BASE}:${scope}`;
+        }
+
+        function shouldShowReadingOnboarding() {
+            return !isDeveloperMode() && localStorage.getItem(getReadingOnboardingKey()) !== "1";
+        }
+
+        function updateReadingIntroPassageCount() {
+            const params = new URLSearchParams(window.location.search);
+            const testType = String(params.get("testType") || currentTestType).toLowerCase();
+            const isPractice = testType === "practicetest";
+            const visiblePassages = Math.max(1, Math.min(TOTAL_PASSAGES, forcedReadingPartsCount || TOTAL_PASSAGES));
+            const passageLabel = visiblePassages === 1 ? "passage" : "passages";
+            const passageCount = document.getElementById("reading-intro-passage-count");
+            const questionCount = document.getElementById("reading-intro-question-count");
+            const durationLabel = document.getElementById("reading-intro-duration");
+            const directionsCopy = document.getElementById("reading-intro-directions-copy");
+            const description = document.getElementById("reading-intro-description");
+            const requestedTime = String(params.get("time") || params.get("timer") || "55").trim().toLowerCase();
+            const practiceIsUnlimited = isPractice && ["unlimited", "none", "0"].includes(requestedTime);
+            const practiceMinutes = Number.parseInt(requestedTime, 10);
+            const duration = isPractice && Number.isFinite(practiceMinutes) && practiceMinutes > 0
+                ? practiceMinutes
+                : 55;
+
+            if (passageCount) {
+                passageCount.textContent = `${visiblePassages} ${passageLabel}`;
+            }
+            if (questionCount) questionCount.textContent = isPractice ? "Questions vary" : "50 questions";
+            if (durationLabel) {
+                durationLabel.textContent = practiceIsUnlimited
+                    ? "Unlimited time"
+                    : `${duration} ${duration === 1 ? "minute" : "minutes"}`;
+            }
+            if (description) description.textContent = isPractice
+                ? "Read the passage carefully and answer each question using information stated or implied in the text."
+                : "Read each passage carefully and answer the questions using information stated or implied in the text.";
+            if (directionsCopy) {
+                directionsCopy.textContent = isPractice
+                    ? "Read each passage, then answer the questions by choosing the one best answer, (A), (B), (C), or (D). Base your answers on what is stated or implied in the passage."
+                    : "In this section, you will read several passages. Each passage is followed by several questions. For questions 1–50, choose the one best answer, (A), (B), (C), or (D), for each question. Then find the question number and select the letter of the answer you have chosen. Answer all questions based on what is stated or implied in the passage.";
+            }
+        }
+
+        function updateReadingIntroHeaderOffset() {
+            const overlay = document.getElementById("reading-onboarding-overlay");
+            if (!overlay) return;
+            const header = document.querySelector("#user-view .mock-test-header") || document.querySelector("#user-view .cbt-header");
+            const headerBottom = header?.getBoundingClientRect().bottom || 0;
+            overlay.style.setProperty("--reading-intro-top", `${Math.max(0, headerBottom)}px`);
+        }
+
+        function updateReadingOnboardingVisibility() {
+            const overlay = document.getElementById("reading-onboarding-overlay");
+            const userView = document.getElementById("user-view");
+            if (!overlay || !userView) return;
+            const shouldShow = shouldShowReadingOnboarding();
+            overlay.classList.toggle("is-visible", shouldShow);
+            overlay.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+            userView.classList.toggle("reading-intro-open", shouldShow);
+            if (shouldShow) {
+                updateReadingIntroHeaderOffset();
+                if (window.lucide?.createIcons) {
+                    window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
+                }
+            }
+        }
+
+        function dismissReadingOnboarding() {
+            const overlay = document.getElementById("reading-onboarding-overlay");
+            const userView = document.getElementById("user-view");
+            if (!overlay || !userView) return;
+            overlay.classList.remove("is-visible");
+            overlay.setAttribute("aria-hidden", "true");
+            userView.classList.remove("reading-intro-open");
+            localStorage.setItem(getReadingOnboardingKey(), "1");
+            startTimer();
+        }
+
         function isExplicitNewPackageRequest() {
             const params = new URLSearchParams(window.location.search);
             return params.get("new") === "1";
@@ -3951,6 +4524,11 @@
             if (isFullTest) {
                 // If it's a full test, forward to your final summary/report page with the parameters intact
                 window.location.href = `full-test-summary.html?${urlParams.toString()}`; // Adjust filename if your final summary page has a different name
+            } else if (currentTestType !== "practicetest") {
+                if (currentSetId) urlParams.set("setId", currentSetId);
+                urlParams.set("testType", "mocktest");
+                urlParams.set("section", "reading");
+                window.location.href = `full-test-summary.html?${urlParams.toString()}`;
             } else {
                 // Normal single-section flow
                 const reviewParams = new URLSearchParams({ testType: currentTestType });
@@ -3987,6 +4565,7 @@
                 const startSeconds = t % 60;
                 timeEl.innerText = `${startMinutes < 10 ? '0' + startMinutes : startMinutes}:${startSeconds < 10 ? '0' + startSeconds : startSeconds}`;
             }
+            if (shouldShowReadingOnboarding()) return;
             timerInterval = setInterval(() => {
                 let m = Math.floor(t/60), s = t%60;
                 document.getElementById('time').innerText = `${m<10?'0'+m:m}:${s<10?'0'+s:s}`;
@@ -4133,6 +4712,7 @@
             initStructure();
             applyViewMode();
             activateInitialTab();
+            updateReadingIntroPassageCount();
             bindUserToolbarActions();
             updateFullScreenButton();
             document.addEventListener("fullscreenchange", handleFullScreenStateChange);
@@ -4145,6 +4725,14 @@
                 initAutoSave();
             } catch (error) {
                 console.warn("[Init] Failed to fully restore section data:", error);
+            }
+            updateReadingIntroPassageCount();
+            updateReadingOnboardingVisibility();
+            window.addEventListener("resize", updateReadingIntroHeaderOffset);
+            const readingHeader = document.querySelector("#user-view .mock-test-header") || document.querySelector("#user-view .cbt-header");
+            if (readingHeader && window.ResizeObserver) {
+                readingIntroResizeObserver = new ResizeObserver(updateReadingIntroHeaderOffset);
+                readingIntroResizeObserver.observe(readingHeader);
             }
             const featuresOverlay = document.getElementById("features-overlay");
             if (featuresOverlay) {

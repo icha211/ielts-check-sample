@@ -82,7 +82,7 @@ DIR.X = {
 
 - **Written sections:** array of HTML strings (supports `<b>`, `<u>`, `<sub>`).
 - **Listening:** array of items, each either
-  - a **string** → rendered as a paragraph, split into sentences for highlighting, or
+  - a **string** → rendered as a paragraph and split into sentences for transcript auto-scroll, without spoken-sentence highlighting, or
   - an **option block** `{ o: [4 options], a?: index }` → rendered as four option cards; if `a` is present, that card is the **sample answer** (green).
 
 Placeholders resolved at render time:
@@ -180,7 +180,7 @@ Each part starts its original recording at 0:00 and gates questions until its pa
 │  Directions │ Part A: …    ● Playing  Hide directions ˄
 │  [A−][A+]                                      │
 │  transcript (serif, scrollable, ≤38vh)         │
-│     highlighted current sentence               │
+│     plain transcript text                      │
 │     option cards (dimmed until reached)        │
 │                         [↓ Follow along]       │
 └───────────────────────────────────────────────┘
@@ -203,14 +203,14 @@ Three pills on the audio card show the phase:
 | **Listen & answer** | narration finished and question audio not finished | question audio finished |
 | **Continue** | question audio finished | — |
 
-### 5.5 Karaoke-style transcript
+### 5.5 Transcript and sample-answer reveal
 
-- Text is split into sentences (on `. ? ! ”` followed by whitespace).
-- The active sentence is chosen by **elapsed fraction × total characters**. It gets a tinted background; sentences not yet reached are greyed.
+- Transcript text remains visually plain while the original recording plays; spoken sentences are not highlighted or dimmed.
+- Follow-along may scroll the transcript to the approximate sentence position based on elapsed audio time.
 - Option blocks that come **after** the current sentence are dimmed to 35% opacity. As narration reaches them they fade in, and the **green sample answer appears when the narrator says it**.
-- After narration ends, everything is fully visible (no dimming) if the student reopens the panel.
+- After narration ends, all option blocks and sample answers are fully visible if the student reopens the panel.
 
-**[INTEGRATE]** The prototype estimates position by character count. In production, use per-sentence cue timestamps from the recording (or the audio element's `timeupdate`) to avoid drift.
+**[INTEGRATE]** Follow-along estimates position by character count. In production, use per-sentence cue timestamps from the recording (or the audio element's `timeupdate`) to avoid drift.
 
 ### 5.6 Interaction details
 
@@ -400,7 +400,7 @@ Shows `Question n of N` for the current section, `N/M answered · locked` for fi
 
 ### Listening
 - [ ] Entering a part starts narration automatically (after a user gesture; see §13).
-- [ ] The transcript highlights the sentence being spoken and scrolls to follow it.
+- [ ] Transcript text stays unhighlighted; follow-along scrolls to the approximate sentence position.
 - [ ] Option blocks ahead of the narration are dimmed. The green answer appears when reached.
 - [ ] Manual scroll pauses follow; **Follow along** resumes it.
 - [ ] Hide/Show works during and after narration without affecting audio.
@@ -478,7 +478,7 @@ Shows `Question n of N` for the current section, `N/M answered · locked` for fi
 | `fill(t, x)` | Resolves `{r}` / `{s}` |
 | `dirHTML(x)` | Renders **written** directions (open/closed bar) for Structure, WE, Reading |
 | `renderListening(x, …)` | Renders the Listening unit: audio card, directions panel, locked placeholder, question cards, footer |
-| `updDir(x)` | Per-second update: progress bar, time left, sentence highlight, option-block dimming, auto-scroll |
+| `updDir(x)` | Per-second update: progress bar, time left, option-block dimming, auto-scroll |
 | `bindDir(x)` | Wires Start questions, Show/Hide, text size, Follow along |
 | `hold(el, ms, cb)` | Press-and-hold confirmation |
 | `announce(text)` | Screen-reader live announcement |

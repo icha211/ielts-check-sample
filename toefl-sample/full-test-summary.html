@@ -735,6 +735,9 @@
                 { key: "reading", num: 3, name: "Reading Comprehension", storage: "toefl_section3_result", max: 67, icon: "mock-reading.png", test: "section 3.html", review: "section 3-answered.html", group: "passageId", groupNames: {} }
             ];
             const content = document.getElementById("summaryContent");
+            const params = new URLSearchParams(window.location.search);
+            const requestedSection = params.get("section");
+            const focusedSection = SECTIONS.find((section) => section.key === requestedSection) || null;
             const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
             const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
 
@@ -810,11 +813,13 @@
             //     </section>`;
             // }
 
-            function renderScores(sections) {
-    const complete = sections.every(Boolean);
-    const total = complete ? Math.round(sections.reduce((s, x) => s + x.scaled, 0) * 10 / 3) : null;
-    
-    const cards = SECTIONS.map((cfg, i) => {
+            function renderScores(sections, focusedResult = null) {
+    const complete = !focusedSection && sections.every(Boolean);
+    const total = focusedResult
+        ? focusedResult.scaled
+        : complete ? Math.round(sections.reduce((s, x) => x ? s + x.scaled : s, 0) * 10 / 3) : null;
+
+    const cards = focusedSection ? "" : SECTIONS.map((cfg, i) => {
         const s = sections[i];
         
         if (!s) {
@@ -851,9 +856,9 @@
             <div class="rectangle-div"></div>
             <div class="background-circle"><img src="../asset/figma/total-card-circle-back.svg" alt=""></div>
             <div class="total-content">
-                <div class="total-head"><img src="../asset/figma/test-history-trophy.png" alt="">Total Score</div>
-                <div class="total-score">${total ?? "—"} <small>/ 677</small></div>
-                <p class="total-note">${complete ? esc(totalNote(total)) : "Complete all three sections to see your total score."}</p>
+                <div class="total-head"><img src="../asset/figma/test-history-trophy.png" alt="">${focusedSection ? `Section ${focusedSection.num} Score` : "Total Score"}</div>
+                <div class="total-score">${total ?? "—"} <small>/ ${focusedSection ? focusedSection.max : 677}</small></div>
+                <p class="total-note">${focusedResult ? `${focusedResult.correct} of ${focusedResult.total} questions correct.` : complete ? esc(totalNote(total)) : "Complete all three sections to see your total score."}</p>
             </div>
         </article>${cards}
     </section>`;
@@ -915,7 +920,9 @@
                         </div>
 
                         <p class="why">
-                            <strong>Why:</strong> Your accuracy here is the lowest among your completed results, making it the top priority for your next session.
+                            <strong>Why:</strong> ${focusedSection
+                                ? `This was your lowest-accuracy area in ${esc(s.cfg.name)}.`
+                                : "Your accuracy here is the lowest among your completed results, making it the top priority for your next session."}
                         </p>
 
                         <a class="start-link" href="${encodeURI(s.cfg.test)}?testType=practicetest">
@@ -934,7 +941,9 @@
                         </div>
                         <span>AI RECOMMENDATION</span>
                     </div>
-                    <p class="ai-copy">Based on everything you've completed so far, here is where to focus next — ordered by your weakest areas.</p>
+                    <p class="ai-copy">${focusedSection
+                        ? `Review your answers in ${esc(focusedSection.name)} and focus on this section's least accurate area.`
+                        : "Based on everything you've completed so far, here is where to focus next — ordered by your weakest areas."}</p>
                     <div class="priority-row">${cards}</div>
                 </section>`;
             }
@@ -1013,20 +1022,39 @@
                 setUserName();
                 const sections = SECTIONS.map(buildSection);
                 const validSections = sections.filter(Boolean);
+                const focusedResult = focusedSection
+                    ? sections.find((section) => section?.cfg.key === focusedSection.key) || null
+                    : null;
+                const displayedSections = focusedSection ? (focusedResult ? [focusedResult] : []) : validSections;
 
-                if (!validSections.length) {
-                    content.innerHTML = `<div class="empty-state"><h2>No results yet</h2><p>Finish a mock test to see your results here.</p><a class="retake-btn" href="section%201.html?fullTest=true&testType=mocktest">Start Mock Test</a></div>`;
+                if (!displayedSections.length) {
+                    const startHref = focusedSection
+                        ? `${encodeURI(focusedSection.test)}?testType=mocktest`
+                        : "section%201.html?fullTest=true&testType=mocktest";
+                    content.innerHTML = focusedSection
+                        ? `<div class="empty-state"><h2>No section result found</h2><p>Complete Section ${focusedSection.num}: ${esc(focusedSection.name)} to view your score and explanation.</p><a class="retake-btn" href="${startHref}">Start this section</a></div>`
+                        : `<div class="empty-state"><h2>No results yet</h2><p>Finish a mock test to see your results here.</p><a class="retake-btn" href="${startHref}">Start Mock Test</a></div>`;
+                    if (focusedSection) {
+                        document.getElementById("pageTitle").textContent = "Section Results";
+                        document.getElementById("heroCopy").textContent = `Section ${focusedSection.num}: ${focusedSection.name}`;
+                    }
                     lucide.createIcons({ attrs: { "stroke-width": 1.7 } });
                     return;
                 }
 
-                const latest = validSections.map((s) => s.result.submittedAt).filter(Boolean).sort().pop();
+                const latest = displayedSections.map((s) => s.result.submittedAt).filter(Boolean).sort().pop();
                 if (latest) {
                     const d = new Date(latest);
                     if (!Number.isNaN(d.getTime())) document.getElementById("heroCopy").textContent = `Completed on ${d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}`;
                 }
+                if (focusedSection) {
+                    document.getElementById("pageTitle").textContent = "Section Results";
+                    document.getElementById("heroCopy").textContent = `Section ${focusedSection.num}: ${focusedSection.name}${latest ? ` · Completed ${new Date(latest).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}` : ""}`;
+                    const breadcrumbs = document.querySelector(".breadcrumbs");
+                    if (breadcrumbs) breadcrumbs.innerHTML = `<a href="history.html">Test History</a><span>/</span><strong>Section ${focusedSection.num} Results</strong>`;
+                }
 
-                const filterTabsHTML = `
+                const filterTabsHTML = focusedSection ? "" : `
                     <h2 class="detail-title">Detailed Result</h2>
                     <div class="section-filter-nav" role="tablist">
                         <button class="section-filter-btn is-active" type="button" data-section-filter="all">All Sections</button>
@@ -1038,11 +1066,15 @@
                     </div>
                 `;
 
-                content.innerHTML = renderScores(sections)
-                    + renderPriorities(sections)
+                const sectionDetails = focusedSection ? [focusedResult] : validSections;
+                const retakeBar = focusedSection
+                    ? `<section class="retake-bar"><p><strong>Want another attempt?</strong>Retake ${esc(focusedSection.name)} to track your progress.</p><a class="retake-btn" href="${encodeURI(focusedSection.test)}?testType=mocktest"><i data-lucide="rotate-ccw"></i>Retake Section</a></section>`
+                    : `<section class="retake-bar"><p><strong>Ready for another attempt?</strong>Retake the full mock test to track your improvement.</p><a class="retake-btn" href="section%201.html?fullTest=true&testType=mocktest"><i data-lucide="rotate-ccw"></i>Retake Mock Test</a></section>`;
+                content.innerHTML = renderScores(sections, focusedResult)
+                    + renderPriorities(sectionDetails)
                     + filterTabsHTML
-                    + validSections.map(renderDetail).join("")
-                    + `<section class="retake-bar"><p><strong>Ready for another attempt?</strong>Retake the full mock test to track your improvement.</p><a class="retake-btn" href="section%201.html?fullTest=true&testType=mocktest"><i data-lucide="rotate-ccw"></i>Retake Mock Test</a></section>`;
+                    + sectionDetails.map(renderDetail).join("")
+                    + retakeBar;
 
                 content.querySelectorAll(".section-filter-btn").forEach((btn) => {
                     btn.addEventListener("click", () => {
@@ -1061,7 +1093,7 @@
                 });
 
                 content.querySelectorAll(".detail-card").forEach((card) => {
-                    const s = sections.find((x) => x && x.cfg.key === card.dataset.section);
+                    const s = sectionDetails.find((x) => x && x.cfg.key === card.dataset.section);
                     card.querySelectorAll(".part-tab").forEach((tab) => tab.addEventListener("click", () => {
                         card.querySelectorAll(".part-tab").forEach((t) => t.classList.toggle("is-active", t === tab));
                         card.querySelector(".chip-grid").innerHTML = renderChips(s.groups[Number(tab.dataset.group)]);

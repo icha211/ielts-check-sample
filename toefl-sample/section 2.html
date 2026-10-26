@@ -11,7 +11,7 @@
     <script src="mockheader-question.js" defer></script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600;700&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
     <style>
         #instant-question-host .section2-materi-lesson { width: 100%; min-width: 0; }
         #instant-question-host .section2-materi-lesson .lesson-trail { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
@@ -676,6 +676,642 @@
         .qc-core__item { grid-template-columns: 1fr; }
         .qc-core__row { grid-template-columns: 1fr; }
     }
+
+    #user-view #onboarding-overlay.structure-intro {
+        position: absolute;
+        inset: 0;
+        z-index: 4;
+        display: none;
+        width: 100%;
+        height: 100%;
+        overflow-x: hidden;
+        overflow-y: auto;
+        padding: clamp(16px, 2.5vw, 34px);
+        box-sizing: border-box;
+        background:
+            radial-gradient(ellipse at 12% 4%, rgba(198, 235, 226, .32), transparent 42%),
+            #f3f8f8;
+        color: #172747;
+        font-family: "Plus Jakarta Sans", Arial, sans-serif;
+        text-align: left;
+        scrollbar-gutter: stable;
+    }
+
+    #user-view #onboarding-overlay.structure-intro.is-visible {
+        display: block;
+    }
+
+    #user-view .section2-layout > .mock-question-navigator.is-hidden {
+        display: none !important;
+    }
+
+    #user-view .section2-layout.is-nav-hidden #user-passages-container {
+        padding-right: 0 !important;
+    }
+
+    .structure-intro__shell {
+        width: min(100%, 1280px);
+        min-height: 100%;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .structure-intro__header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 16px;
+        margin: 0 0 18px;
+    }
+
+    .structure-intro__heading { min-width: 0; }
+
+    .structure-intro__eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 8px;
+        padding: 6px 11px;
+        border-radius: 999px;
+        background: #dff3ed;
+        color: #16896e;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .structure-intro__eyebrow svg { width: 15px; height: 15px; stroke-width: 2; }
+
+    .structure-intro__title-row {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+    }
+
+    .structure-intro__title-icon {
+        display: grid;
+        width: 54px;
+        height: 54px;
+        flex: 0 0 54px;
+        place-items: center;
+        border-radius: 18px;
+        background: #eee9fc;
+        color: #8b6fe0;
+    }
+
+    .structure-intro__title-icon svg { width: 30px; height: 30px; stroke-width: 1.9; }
+
+    .structure-intro__title {
+        margin: 0;
+        color: #172747;
+        font: 700 clamp(26px, 3vw, 38px)/1.12 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: -.04em;
+        text-wrap: balance;
+    }
+
+    .structure-intro__description {
+        max-width: 68ch;
+        margin: 8px 0 0 67px;
+        color: #63758e;
+        font: 400 14px/1.55 "Plus Jakarta Sans", Arial, sans-serif;
+        text-wrap: pretty;
+    }
+
+    .structure-intro__content {
+        display: grid;
+        grid-template-columns: minmax(0, 1.62fr) minmax(280px, .95fr);
+        align-items: start;
+        gap: clamp(18px, 3vw, 40px);
+    }
+
+    .structure-intro__main,
+    .structure-intro__aside { min-width: 0; }
+
+    .structure-intro__list {
+        display: grid;
+        gap: 9px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .structure-intro__item {
+        display: grid;
+        grid-template-columns: 40px 62px minmax(0, 1fr);
+        align-items: center;
+        gap: 12px;
+        min-height: 76px;
+        padding: 10px 14px;
+        border: 1px solid rgba(255, 255, 255, .95);
+        border-radius: 15px;
+        background: rgba(255, 255, 255, .94);
+        box-shadow: 0 3px 12px rgba(40, 78, 94, .035);
+    }
+
+    .structure-intro__number {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        border-radius: 50%;
+        background: #66cda2;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .structure-intro__icon {
+        display: grid;
+        width: 56px;
+        height: 56px;
+        place-items: center;
+        border-radius: 50%;
+        background: #e9f7f2;
+        color: #159b7b;
+    }
+
+    .structure-intro__icon svg { width: 24px; height: 24px; stroke-width: 2; }
+
+    .structure-intro__item:nth-child(2) .structure-intro__number,
+    .structure-intro__item:nth-child(4) .structure-intro__number { background: #78b8e8; }
+    .structure-intro__item:nth-child(2) .structure-intro__icon,
+    .structure-intro__item:nth-child(4) .structure-intro__icon { background: #e9f4fc; color: #429bd6; }
+    .structure-intro__item:nth-child(3) .structure-intro__number,
+    .structure-intro__item:nth-child(5) .structure-intro__number { background: #a88be8; }
+    .structure-intro__item:nth-child(3) .structure-intro__icon,
+    .structure-intro__item:nth-child(5) .structure-intro__icon { background: #f1edfb; color: #9172d7; }
+
+    .structure-intro__item-copy { min-width: 0; }
+
+    .structure-intro__item-title {
+        margin: 0 0 3px;
+        color: #1b2b4d;
+        font: 700 15px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: -.015em;
+    }
+
+    .structure-intro__item-text {
+        margin: 0;
+        color: #536985;
+        font: 400 12px/1.45 "Plus Jakarta Sans", Arial, sans-serif;
+        text-wrap: pretty;
+    }
+
+    .structure-intro__cta-row {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 10px;
+    }
+
+    .structure-intro__start {
+        display: inline-flex;
+        min-height: 46px;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 0 22px;
+        border: 0;
+        border-radius: 999px;
+        background: #17a783;
+        box-shadow: 0 6px 16px rgba(23, 167, 131, .18);
+        color: #fff;
+        cursor: pointer;
+        font: 700 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        transition: background-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+
+    .structure-intro__start svg { width: 18px; height: 18px; fill: currentColor; stroke-width: 1.5; }
+    .structure-intro__start:hover { background: #128c70; box-shadow: 0 8px 20px rgba(23, 167, 131, .24); transform: translateY(-1px); }
+    .structure-intro__start:active { transform: translateY(1px) scale(.99); }
+    .structure-intro__start:focus-visible { outline: 3px solid #172747; outline-offset: 3px; }
+
+    .structure-intro__aside {
+        display: grid;
+        gap: 12px;
+    }
+
+    .structure-intro__illustration {
+        display: block;
+        width: 100%;
+        height: clamp(140px, 17vw, 192px);
+        object-fit: contain;
+        object-position: center bottom;
+    }
+
+    .structure-intro__tips,
+    .structure-intro__ready {
+        padding: 16px 18px;
+        border-radius: 16px;
+        background: #e5f2ef;
+    }
+
+    .structure-intro__section-heading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+        color: #1b2b4d;
+        font: 700 19px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: -.025em;
+    }
+
+    .structure-intro__heading-icon,
+    .structure-intro__ready-icon {
+        display: grid;
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+        place-items: center;
+        border-radius: 50%;
+        background: #c9ebe0;
+        color: #169b7a;
+    }
+
+    .structure-intro__heading-icon svg,
+    .structure-intro__ready-icon svg { width: 22px; height: 22px; stroke-width: 2; }
+
+    .structure-intro__tips-subtitle {
+        margin: 4px 0 10px 50px;
+        color: #61758e;
+        font: 400 13px/1.45 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .structure-intro__tips-list {
+        display: grid;
+        gap: 9px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .structure-intro__tips-list li {
+        display: grid;
+        grid-template-columns: 20px minmax(0, 1fr);
+        align-items: start;
+        gap: 9px;
+        color: #536985;
+        font: 500 12px/1.45 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .structure-intro__tips-list svg {
+        width: 18px;
+        height: 18px;
+        padding: 3px;
+        border-radius: 50%;
+        background: #21a786;
+        color: white;
+        stroke-width: 3;
+    }
+
+    .structure-intro__ready {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .structure-intro__ready-icon { width: 48px; height: 48px; flex-basis: 48px; }
+    .structure-intro__ready-icon svg { width: 27px; height: 27px; }
+    .structure-intro__ready .structure-intro__section-heading { color: #16896e; }
+    .structure-intro__ready-copy {
+        margin: 4px 0 0;
+        color: #61758e;
+        font: 400 12px/1.45 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    @media (min-width: 1100px) and (min-height: 760px) {
+        .structure-intro__shell { padding-block: 4px; }
+        .structure-intro__item { min-height: 78px; }
+    }
+
+    @media (max-width: 900px) {
+        .structure-intro__content { grid-template-columns: minmax(0, 1.3fr) minmax(235px, .9fr); gap: 16px; }
+        .structure-intro__item { grid-template-columns: 34px 48px minmax(0, 1fr); gap: 9px; padding: 9px 10px; }
+        .structure-intro__number { width: 32px; height: 32px; font-size: 14px; }
+        .structure-intro__icon { width: 46px; height: 46px; }
+        .structure-intro__item-title { font-size: 14px; }
+        .structure-intro__item-text { font-size: 11px; }
+    }
+
+    @media (max-width: 680px) {
+        #user-view #onboarding-overlay.structure-intro { padding: 18px 14px max(20px, env(safe-area-inset-bottom)); }
+        .structure-intro__shell { justify-content: flex-start; }
+        .structure-intro__header { grid-template-columns: minmax(0, 1fr); margin-bottom: 14px; }
+        .structure-intro__title-icon { width: 46px; height: 46px; flex-basis: 46px; border-radius: 15px; }
+        .structure-intro__title-icon svg { width: 25px; height: 25px; }
+        .structure-intro__title { font-size: clamp(25px, 7vw, 32px); }
+        .structure-intro__description { margin: 8px 0 0; font-size: 13px; }
+        .structure-intro__content { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+        .structure-intro__item { min-height: 72px; }
+        .structure-intro__item-title { font-size: 14px; }
+        .structure-intro__item-text { font-size: 11px; }
+        .structure-intro__aside { grid-template-columns: minmax(0, 1fr); }
+        .structure-intro__illustration { height: 150px; }
+        .structure-intro__tips, .structure-intro__ready { padding: 14px; }
+        .structure-intro__cta-row { justify-content: stretch; }
+        .structure-intro__start { width: 100%; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .structure-intro__start { transition: none; }
+    }
+
+    #user-view #onboarding-overlay.structure-intro {
+        padding: 22px clamp(14px, 2vw, 28px) 0;
+    }
+
+    .structure-intro__shell {
+        justify-content: flex-start;
+        min-height: auto;
+        padding-bottom: 18px;
+    }
+
+    .structure-intro__header {
+        grid-template-columns: minmax(0, 1fr) minmax(150px, 220px);
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .structure-intro__description {
+        max-width: 82ch;
+        margin-left: 67px;
+    }
+
+    .structure-intro__illustration {
+        height: 112px;
+    }
+
+    .structure-intro__content {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 16px;
+    }
+
+    .structure-intro__panel {
+        min-width: 0;
+        padding: 18px;
+        border: 1px solid #e0ecea;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, .84);
+        box-shadow: 0 4px 16px rgba(40, 78, 94, .045);
+    }
+
+    .structure-intro__panel-heading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 12px;
+        color: #1b2b4d;
+        font: 700 20px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: -.025em;
+    }
+
+    .structure-intro__panel-heading svg {
+        width: 22px;
+        height: 22px;
+        color: #168f75;
+        stroke-width: 2;
+    }
+
+    .structure-intro__part-count {
+        margin-left: auto;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: #e4f4ee;
+        color: #16896e;
+        font: 700 10px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        white-space: nowrap;
+    }
+
+    .structure-intro__panel--writing .structure-intro__panel-heading svg {
+        color: #8970d4;
+    }
+
+    .structure-intro__panel--writing .structure-intro__part-count {
+        background: #f1edfb;
+        color: #8068c5;
+    }
+
+    .structure-intro__directions {
+        margin: 0 0 14px;
+        color: #536985;
+        font: 400 13px/1.6 "Plus Jakarta Sans", Arial, sans-serif;
+        text-wrap: pretty;
+    }
+
+    .structure-intro__directions strong { color: #1b2b4d; font-weight: 700; }
+
+    .structure-intro__examples {
+        display: grid;
+        gap: 10px;
+    }
+
+    .structure-intro__example {
+        min-width: 0;
+        padding: 13px 14px;
+        border: 1px solid #e1e8f0;
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .structure-intro__example-title {
+        margin: 0 0 8px;
+        color: #52647e;
+        font: 700 12px/1.4 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .structure-intro__example-title strong {
+        color: #168f75;
+        font-weight: 700;
+    }
+
+    .structure-intro__sentence {
+        margin: 0 0 8px;
+        color: #60718a;
+        font: 400 13px/1.55 "Plus Jakarta Sans", Arial, sans-serif;
+        text-wrap: pretty;
+    }
+
+    .structure-intro__blank {
+        display: inline-block;
+        min-width: 42px;
+        border-bottom: 1px solid #9aa8b9;
+        vertical-align: baseline;
+    }
+
+    .structure-intro__sentence u {
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+    }
+
+    .structure-intro__sentence sup {
+        margin-left: 1px;
+        color: #536985;
+        font: 600 9px/1 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .structure-intro__marked-part {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0 2px;
+        vertical-align: top;
+        white-space: nowrap;
+    }
+
+    .structure-intro__marked-text {
+        color: inherit;
+        text-decoration: underline;
+        text-decoration-thickness: 1.5px;
+        text-underline-offset: 3px;
+    }
+
+    .structure-intro__marked-letter {
+        display: grid;
+        min-width: 30px;
+        height: 32px;
+        margin-top: 7px;
+        padding: 0 6px;
+        place-items: center;
+        border: 1.5px solid #d5deea;
+        border-radius: 10px;
+        box-sizing: border-box;
+        color: #172747;
+        font: 400 16px/1 "Times New Roman", Times, serif;
+    }
+
+    .structure-intro__options {
+        display: grid;
+        gap: 2px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .structure-intro__option {
+        display: grid;
+        grid-template-columns: 30px minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        min-height: 42px;
+        color: #718099;
+        font: 400 15px/1.4 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .structure-intro__option-letter {
+        display: grid;
+        width: 29px;
+        height: 29px;
+        place-items: center;
+        border: 1.5px solid #d8e0e9;
+        border-radius: 50%;
+        color: #718099;
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1;
+        box-sizing: border-box;
+        transition: border-color .18s ease, color .18s ease, background-color .18s ease;
+    }
+
+    .structure-intro__option.is-correct {
+        color: #55957f;
+        font-weight: 700;
+    }
+
+    .structure-intro__option.is-correct .structure-intro__option-letter {
+        border-color: #71b79a;
+        color: #55957f;
+    }
+
+    .structure-intro__correct-mark {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #55957f;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .structure-intro__correct-mark svg {
+        width: 16px;
+        height: 16px;
+        stroke-width: 2.5;
+    }
+
+    .structure-intro__explanation {
+        margin: 8px 0 0;
+        color: #60718a;
+        font: 400 11px/1.55 "Plus Jakarta Sans", Arial, sans-serif;
+        text-wrap: pretty;
+    }
+
+    .structure-intro__support {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: stretch;
+        gap: 12px;
+        margin-top: 14px;
+    }
+
+    .structure-intro__tips {
+        padding: 13px 16px;
+    }
+
+    .structure-intro__tips .structure-intro__tips-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 18px;
+        row-gap: 6px;
+    }
+
+    .structure-intro__ready {
+        min-width: 220px;
+        padding: 12px 16px;
+    }
+
+    .structure-intro__footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        display: flex;
+        justify-content: flex-end;
+        padding: 10px 0 max(12px, env(safe-area-inset-bottom));
+        background: linear-gradient(180deg, rgba(243, 248, 248, 0), rgba(243, 248, 248, .96) 30%);
+    }
+
+    .structure-intro__footer .structure-intro__start { min-width: 210px; }
+
+    @media (max-width: 760px) {
+        #user-view #onboarding-overlay.structure-intro { padding: 16px 14px 0; }
+        .structure-intro__shell { padding-bottom: 12px; }
+        .structure-intro__header {
+            grid-template-columns: minmax(0, 1fr) 96px;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .structure-intro__title-icon { width: 42px; height: 42px; flex-basis: 42px; }
+        .structure-intro__title-icon svg { width: 23px; height: 23px; }
+        .structure-intro__title { font-size: clamp(22px, 6vw, 30px); }
+        .structure-intro__description { margin: 7px 0 0; font-size: 12px; }
+        .structure-intro__illustration { height: 82px; }
+        .structure-intro__content { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+        .structure-intro__panel { padding: 15px; }
+        .structure-intro__panel-heading { font-size: 18px; }
+        .structure-intro__support { grid-template-columns: minmax(0, 1fr); }
+        .structure-intro__tips .structure-intro__tips-list { grid-template-columns: minmax(0, 1fr); }
+        .structure-intro__ready { min-width: 0; }
+        .structure-intro__footer { justify-content: stretch; }
+        .structure-intro__footer .structure-intro__start { width: 100%; }
+    }
+
+    @media (max-width: 380px) {
+        .structure-intro__header { grid-template-columns: minmax(0, 1fr) 72px; }
+        .structure-intro__illustration { height: 68px; }
+        .structure-intro__panel { padding: 12px; }
+        .structure-intro__example { padding: 11px; }
+    }
     </style>
 </head>
 <body>
@@ -797,6 +1433,92 @@
         <div class="section2-layout">
             <div id="user-passages-container" style="flex: 1; overflow-y: auto; position: relative;">
                 <div id="instant-question-host" style="display:none;"></div>
+                <section class="instruction-popup structure-intro" id="onboarding-overlay" role="dialog" aria-modal="true" aria-labelledby="structure-intro-title" aria-hidden="true">
+                    <div class="structure-intro__shell">
+                        <header class="structure-intro__header">
+                            <div class="structure-intro__heading">
+                                <span class="structure-intro__eyebrow"><i data-lucide="file-text" aria-hidden="true"></i>TOEFL ITP</span>
+                                <div class="structure-intro__title-row">
+                                    <span class="structure-intro__title-icon" aria-hidden="true"><i data-lucide="file-pen-line"></i></span>
+                                    <h1 class="structure-intro__title" id="structure-intro-title">Structure &amp; Written Expression</h1>
+                                </div>
+                                <p class="structure-intro__description"><strong>Time: 25 minutes.</strong> This section measures your ability to recognize language appropriate for standard written English. It has two question types, each with its own directions.</p>
+                            </div>
+                            <img class="structure-intro__illustration" src="../asset/icon/introstructure.png" alt="Student studying grammar and writing at a laptop">
+                        </header>
+                        <div class="structure-intro__content">
+                            <section class="structure-intro__panel structure-intro__panel--structure" aria-labelledby="structure-intro-structure-title">
+                                <h2 class="structure-intro__panel-heading" id="structure-intro-structure-title"><i data-lucide="text-cursor-input" aria-hidden="true"></i>Structure <span class="structure-intro__part-count">15 questions</span></h2>
+                                <p class="structure-intro__directions"><strong>Directions:</strong> Questions 1–15 are incomplete sentences. Beneath each sentence are four words or phrases, marked (A), (B), (C), and (D). Choose the <strong>one</strong> word or phrase that best completes the sentence. Then find the question number and select the letter of your answer.</p>
+                                <div class="structure-intro__examples" aria-label="Structure examples">
+                                    <article class="structure-intro__example">
+                                        <h3 class="structure-intro__example-title">Example I · sample answer <strong>B</strong></h3>
+                                        <p class="structure-intro__sentence">Geysers have often been compared to volcanoes <span class="structure-intro__blank" aria-label="blank"></span> they both emit hot liquids from below the Earth’s surface.</p>
+                                        <ul class="structure-intro__options" aria-label="Answer choices">
+                                            <li class="structure-intro__option"><span class="structure-intro__option-letter">A</span><span>due to</span></li>
+                                            <li class="structure-intro__option is-correct"><span class="structure-intro__option-letter">B</span><span>because</span><span class="structure-intro__correct-mark"><i data-lucide="check" aria-hidden="true"></i>Correct</span></li>
+                                            <li class="structure-intro__option"><span class="structure-intro__option-letter">C</span><span>in spite of</span></li>
+                                            <li class="structure-intro__option"><span class="structure-intro__option-letter">D</span><span>regardless of</span></li>
+                                        </ul>
+                                        <p class="structure-intro__explanation">The sentence should read, “Geysers have often been compared to volcanoes because they both emit hot liquids from below the Earth’s surface.” Therefore, choose (B).</p>
+                                    </article>
+                                    <article class="structure-intro__example">
+                                        <h3 class="structure-intro__example-title">Example II · sample answer <strong>D</strong></h3>
+                                        <p class="structure-intro__sentence">During the early period of ocean navigation, <span class="structure-intro__blank" aria-label="blank"></span> any need for sophisticated instruments and techniques.</p>
+                                        <ul class="structure-intro__options" aria-label="Answer choices">
+                                            <li class="structure-intro__option"><span class="structure-intro__option-letter">A</span><span>so that hardly</span></li>
+                                            <li class="structure-intro__option"><span class="structure-intro__option-letter">B</span><span>when there hardly was</span></li>
+                                            <li class="structure-intro__option"><span class="structure-intro__option-letter">C</span><span>hardly was</span></li>
+                                            <li class="structure-intro__option is-correct"><span class="structure-intro__option-letter">D</span><span>there was hardly</span><span class="structure-intro__correct-mark"><i data-lucide="check" aria-hidden="true"></i>Correct</span></li>
+                                        </ul>
+                                        <p class="structure-intro__explanation">The sentence should read, “During the early period of ocean navigation, there was hardly any need for sophisticated instruments and techniques.” Therefore, choose (D).</p>
+                                    </article>
+                                </div>
+                            </section>
+                            <section class="structure-intro__panel structure-intro__panel--writing" aria-labelledby="structure-intro-writing-title">
+                                <h2 class="structure-intro__panel-heading" id="structure-intro-writing-title"><i data-lucide="spell-check" aria-hidden="true"></i>Written Expression <span class="structure-intro__part-count">25 questions</span></h2>
+                                <p class="structure-intro__directions"><strong>Directions:</strong> In questions 16–40, each sentence has four underlined words or phrases, marked (A), (B), (C), and (D). Identify the <strong>one</strong> underlined word or phrase that must be changed for the sentence to be correct.</p>
+                                <div class="structure-intro__examples" aria-label="Written Expression examples">
+                                    <article class="structure-intro__example">
+                                        <h3 class="structure-intro__example-title">Example I · sample answer <strong>A</strong></h3>
+                                        <p class="structure-intro__sentence">Guppies are sometimes <span class="structure-intro__marked-part"><span class="structure-intro__marked-text">call</span><span class="structure-intro__marked-letter">A</span></span> rainbow fish <span class="structure-intro__marked-part"><span class="structure-intro__marked-text">due to</span><span class="structure-intro__marked-letter">B</span></span> the <span class="structure-intro__marked-part"><span class="structure-intro__marked-text">bright</span><span class="structure-intro__marked-letter">C</span></span> colors of <span class="structure-intro__marked-part"><span class="structure-intro__marked-text">the males</span><span class="structure-intro__marked-letter">D</span></span>.</p>
+                                        <p class="structure-intro__explanation">The sentence should read, “Guppies are sometimes called rainbow fish due to the bright colors of the males.” Therefore, choose (A).</p>
+                                    </article>
+                                    <article class="structure-intro__example">
+                                        <h3 class="structure-intro__example-title">Example II · sample answer <strong>B</strong></h3>
+                                        <p class="structure-intro__sentence"><span class="structure-intro__marked-part"><span class="structure-intro__marked-text">Serving</span><span class="structure-intro__marked-letter">A</span></span> several <span class="structure-intro__marked-part"><span class="structure-intro__marked-text">term</span><span class="structure-intro__marked-letter">B</span></span> in the United States Congress, Shirley Chisholm <span class="structure-intro__marked-part"><span class="structure-intro__marked-text">became</span><span class="structure-intro__marked-letter">C</span></span> a <span class="structure-intro__marked-part"><span class="structure-intro__marked-text">respected</span><span class="structure-intro__marked-letter">D</span></span> political figure.</p>
+                                        <p class="structure-intro__explanation">The sentence should read, “Serving several terms in the United States Congress, Shirley Chisholm became a respected political figure.” Therefore, choose (B).</p>
+                                    </article>
+                                </div>
+                            </section>
+                        </div>
+                        <div class="structure-intro__support">
+                                <section class="structure-intro__tips" aria-labelledby="structure-intro-tips-title">
+                                    <h2 class="structure-intro__section-heading" id="structure-intro-tips-title"><span class="structure-intro__heading-icon" aria-hidden="true"><i data-lucide="lightbulb"></i></span>Quick tips</h2>
+                                    <p class="structure-intro__tips-subtitle">For the best experience:</p>
+                                    <ul class="structure-intro__tips-list">
+                                        <li><i data-lucide="check" aria-hidden="true"></i><span>Read the complete sentence before choosing.</span></li>
+                                        <li><i data-lucide="check" aria-hidden="true"></i><span>For Structure, check how the answer completes the sentence.</span></li>
+                                        <li><i data-lucide="check" aria-hidden="true"></i><span>For Written Expression, compare each underlined part.</span></li>
+                                        <li><i data-lucide="check" aria-hidden="true"></i><span>Manage the 25-minute timer across both question types.</span></li>
+                                    </ul>
+                                </section>
+                                <section class="structure-intro__ready" aria-label="You’re ready">
+                                    <span class="structure-intro__ready-icon" aria-hidden="true"><i data-lucide="target"></i></span>
+                                    <div>
+                                        <h2 class="structure-intro__section-heading">You’re ready</h2>
+                                        <p class="structure-intro__ready-copy">Take a breath, then start the section.</p>
+                                    </div>
+                                </section>
+                        </div>
+                    </div>
+                    <footer class="structure-intro__footer">
+                        <button class="structure-intro__start" type="button" onclick="dismissOnboarding()">
+                            <i data-lucide="play" aria-hidden="true"></i>
+                            <span>Start the Section</span>
+                        </button>
+                    </footer>
+                </section>
             </div>
             <aside class="question-navigator navigator-panel mock-question-navigator" id="question-navigator" aria-label="Question navigator">
                 <div id="mock-question-navigator-root"></div>
@@ -805,67 +1527,6 @@
                     <button class="navigator-action-btn next-section" id="navigator-next-section" type="button">Next Section</button>
                 </div>
 
-                <!-- <div class="instruction-popup" id="onboarding-overlay" aria-hidden="true">
-                    <div class="instruction-popup__backdrop"></div>
-                    <div class="instruction-popup__title">Instruction</div>
-
-                    <div class="instruction-popup__content">
-                        <div class="instruction-list">
-                            <article class="instruction-item instruction-item--play">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true">
-                                    <i class="ph ph-play instruction-item__icon" aria-hidden="true"></i>
-                                </div>
-                                <div class="instruction-item__content">
-                                    <h3 class="instruction-item__heading">Start The Listening</h3>
-                                    <p class="instruction-item__text">Click the Start button to begin. Note that the test environment is locked once active, if you exit or stop the session, your test will be terminated immediately and cannot be resumed.</p>
-                                </div>
-                            </article>
-
-                            <article class="instruction-item instruction-item--single">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true">
-                                    <i class="ph ph-speaker-high instruction-item__icon" aria-hidden="true"></i>
-                                </div>
-                                <div class="instruction-item__content">
-                                    <h3 class="instruction-item__heading">Single Play ONLY</h3>
-                                    <p class="instruction-item__text">The audio for the entire section will play once only. There are no replay, rewind, or pause functions available. This matches authentic TOEFL ITP conditions.</p>
-                                </div>
-                            </article>
-
-                            <article class="instruction-item instruction-item--navigator">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true">
-                                    <i class="ph ph-squares-four instruction-item__icon" aria-hidden="true"></i>
-                                </div>
-                                <div class="instruction-item__content">
-                                    <h3 class="instruction-item__heading">Question Navigator</h3>
-                                    <p class="instruction-item__text">Read each question and its four answer choices carefully. You must progress through the session as the audio dictates. You cannot jump ahead or return to previous questions.</p>
-                                </div>
-                            </article>
-
-                            <article class="instruction-item instruction-item--time">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true">
-                                    <i class="ph ph-clock instruction-item__icon" aria-hidden="true"></i>
-                                </div>
-                                <div class="instruction-item__content">
-                                    <h3 class="instruction-item__heading">Time Management</h3>
-                                    <p class="instruction-item__text">Monitor the countdown timer in the top bar. The test will automatically transition to the next phase once the audio concludes or the time limit is reached.</p>
-                                </div>
-                            </article>
-                        </div>
-
-                        <div class="instruction-popup__cta">
-                            <div class="instruction-popup__cta-text">
-                                <div class="instruction-popup__ready">Are you ready?</div>
-                                <div class="instruction-popup__click">Click to Play</div>
-                            </div>
-                            <button class="instruction-popup__play-button" type="button" onclick="startFromOnboarding()">
-                                <span class="instruction-popup__play-icon" aria-hidden="true">
-                                    <i class="ph ph-play instruction-popup__play-icon-glyph icon-regular" aria-hidden="true"></i>
-                                    <i class="ph-fill ph-play instruction-popup__play-icon-glyph icon-filled" aria-hidden="true"></i>
-                                </span>
-                                <span class="instruction-popup__play-label">Play</span>
-                            </button>
-                        </div>
-                    </div> -->
             </aside>
         </div>
         <div class="user-sub-nav" id="user-sub-nav-container"></div>
@@ -907,6 +1568,7 @@
     </div>
 
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="toefl-storage-sync.js?v=20261010b"></script>
     <script src="toefl-test-history.js?v=20261003a"></script>
     <script src="mocknav-question.js"></script>
@@ -2931,7 +3593,9 @@
             overlay.classList.remove("is-visible");
             overlay.setAttribute("aria-hidden", "true");
             setOnboardingScrollLock(false);
+            setNavigatorPanelHidden(false);
             localStorage.setItem(getOnboardingKey(), "1");
+            startTimer();
         }
 
         function updateOnboardingVisibility() {
@@ -2948,6 +3612,7 @@
             overlay.classList.remove("is-visible");
             overlay.setAttribute("aria-hidden", "true");
             setOnboardingScrollLock(false);
+            setNavigatorPanelHidden(false);
         }
 
         function isDeveloperMode() {
@@ -3816,6 +4481,12 @@
                 }
                 
                 window.location.href = `section 3.html?${urlParams.toString()}`;
+            } else if (currentTestType !== "practicetest") {
+                if (currentSetId) urlParams.set("setId", currentSetId);
+                if (setDate) urlParams.set("setDate", setDate);
+                urlParams.set("testType", "mocktest");
+                urlParams.set("section", "structure");
+                window.location.href = `full-test-summary.html?${urlParams.toString()}`;
             } else {
                 if (currentSetId) urlParams.set("setId", currentSetId);
                 if (setDate) urlParams.set("setDate", setDate);
@@ -3824,6 +4495,11 @@
         }
 
         function startTimer() {
+            if (shouldShowOnboarding()) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                return;
+            }
             const params = new URLSearchParams(window.location.search);
             const isPractice = isPracticeTestType();
             const requestedTime = String(params.get("time") || params.get("timer") || "25").trim().toLowerCase();
@@ -4037,6 +4713,9 @@
             }
             positionListeningHeaderTimer();
             setTimeout(positionListeningHeaderTimer, 60);
+            if (window.lucide?.createIcons) {
+                window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
+            }
             updateOnboardingVisibility();
             updateOnboardingScale();
             window.addEventListener("resize", () => {
