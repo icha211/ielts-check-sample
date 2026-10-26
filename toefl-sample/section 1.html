@@ -274,6 +274,11 @@
         color: #b83a2c;
     }
 
+    .mock-listening-directions.is-skipped .mock-listening-directions__status {
+        background: #fff8e8;
+        color: #93651c;
+    }
+
     .mock-listening-directions.is-complete .mock-listening-directions__status::before {
         width: auto;
         height: auto;
@@ -493,6 +498,93 @@
         font: 400 13px/1.5 "Plus Jakarta Sans", Arial, sans-serif;
     }
 
+    .mock-listening-directions__skip-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .mock-listening-directions__skip-actions[hidden] {
+        display: none;
+    }
+
+    .mock-listening-directions__skip-button,
+    .mock-listening-directions__skip-confirm button {
+        min-height: 38px;
+        padding: 0 12px;
+        border: 1px solid #b8c8d8;
+        border-radius: 8px;
+        background: #fff;
+        color: #31516d;
+        font: 600 13px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+        cursor: pointer;
+        transition: background-color .16s ease, border-color .16s ease, transform .16s ease;
+    }
+
+    .mock-listening-directions__skip-button:hover,
+    .mock-listening-directions__skip-confirm button:hover {
+        border-color: #8ca8c1;
+        background: #f0f6fa;
+    }
+
+    .mock-listening-directions__skip-button:active,
+    .mock-listening-directions__skip-confirm button:active {
+        transform: translateY(1px);
+    }
+
+    .mock-listening-directions__skip-hint {
+        color: #718196;
+        font: 400 12px/1.45 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .mock-listening-directions__skip-confirm {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+        border: 1px solid #e4c98e;
+        border-radius: 10px;
+        background: #fffaf0;
+    }
+
+    .mock-listening-directions__skip-confirm[hidden] {
+        display: none;
+    }
+
+    .mock-listening-directions__skip-confirm-title,
+    .mock-listening-directions__skip-confirm-copy {
+        margin: 0;
+        font: 400 13px/1.5 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .mock-listening-directions__skip-confirm-title {
+        color: #5d4517;
+        font-weight: 700;
+    }
+
+    .mock-listening-directions__skip-confirm-copy {
+        color: #6e5a34;
+    }
+
+    .mock-listening-directions__skip-confirm-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 2px;
+    }
+
+    .mock-listening-directions__skip-confirm button.is-primary {
+        border-color: #07558b;
+        background: #07558b;
+        color: #fff;
+    }
+
+    .mock-listening-directions__skip-confirm button.is-primary:hover {
+        border-color: #064574;
+        background: #064574;
+    }
+
     .mock-listening-directions__skeleton {
         height: 12px;
         overflow: hidden;
@@ -540,7 +632,9 @@
     .mock-listening-directions__font-button:focus-visible,
     .mock-listening-directions__follow:focus-visible,
     .mock-listening-directions__retry:focus-visible,
-    .mock-listening-directions__transcript:focus-visible {
+    .mock-listening-directions__transcript:focus-visible,
+    .mock-listening-directions__skip-button:focus-visible,
+    .mock-listening-directions__skip-confirm button:focus-visible {
         outline: 3px solid rgba(0, 95, 170, .35);
         outline-offset: 2px;
     }
@@ -597,7 +691,9 @@
         .mock-listening-directions__option-list,
         .mock-listening-directions__option,
         .mock-listening-directions__font-button,
-        .mock-listening-directions__follow {
+        .mock-listening-directions__follow,
+        .mock-listening-directions__skip-button,
+        .mock-listening-directions__skip-confirm button {
             transition: none;
         }
 
@@ -1578,12 +1674,24 @@
                                 <button class="mock-listening-directions__follow" id="mock-listening-directions-follow" type="button" aria-pressed="true" hidden>↓ Follow along</button>
                             </div>
                         </div>
-                        <div class="mock-listening-directions__lock-card" id="mock-listening-directions-lock-card" role="status">
+                        <div class="mock-listening-directions__lock-card" id="mock-listening-directions-lock-card" role="group" aria-labelledby="mock-listening-directions-lock-title" aria-describedby="mock-listening-directions-note">
                             <div class="mock-listening-directions__lock-heading">
                                 <i class="ph ph-lock-key mock-listening-directions__lock-icon" aria-hidden="true"></i>
                                 <span id="mock-listening-directions-lock-title"></span>
                             </div>
                             <p class="mock-listening-directions__lock-note" id="mock-listening-directions-note"></p>
+                            <div class="mock-listening-directions__skip-actions" id="mock-listening-directions-skip-actions">
+                                <button class="mock-listening-directions__skip-button" id="mock-listening-directions-skip" type="button" aria-controls="mock-listening-directions-skip-confirm" aria-expanded="false" aria-describedby="mock-listening-directions-skip-hint">Skip directions</button>
+                                <span class="mock-listening-directions__skip-hint" id="mock-listening-directions-skip-hint"></span>
+                            </div>
+                            <div class="mock-listening-directions__skip-confirm" id="mock-listening-directions-skip-confirm" role="group" aria-labelledby="mock-listening-directions-skip-confirm-title" aria-describedby="mock-listening-directions-skip-confirm-copy" hidden>
+                                <p class="mock-listening-directions__skip-confirm-title" id="mock-listening-directions-skip-confirm-title">Skip the spoken directions?</p>
+                                <p class="mock-listening-directions__skip-confirm-copy" id="mock-listening-directions-skip-confirm-copy"></p>
+                                <div class="mock-listening-directions__skip-confirm-actions">
+                                    <button id="mock-listening-directions-skip-cancel" type="button">Keep listening</button>
+                                    <button class="is-primary" id="mock-listening-directions-skip-confirm-button" type="button">Skip and unlock questions</button>
+                                </div>
+                            </div>
                             <span class="mock-listening-directions__skeleton mock-listening-directions__skeleton--wide" aria-hidden="true"></span>
                             <span class="mock-listening-directions__skeleton mock-listening-directions__skeleton--short" aria-hidden="true"></span>
                         </div>
@@ -1755,7 +1863,20 @@
         let audioAnalyzerReady = false;
         const mockListeningDirectionsByPart = {};
         let mockDirectionsUtteranceToken = 0;
-        const MOCK_LISTENING_DIRECTIONS_DURATION = 141;
+        const MOCK_LISTENING_DIRECTIONS_DURATIONS = Object.freeze({
+            1: 139,
+            2: 36,
+            3: 168
+        });
+
+        function getMockListeningDirectionsDuration(partId = activePartId) {
+            return MOCK_LISTENING_DIRECTIONS_DURATIONS[Number(partId)] ?? MOCK_LISTENING_DIRECTIONS_DURATIONS[1];
+        }
+
+        function formatMockListeningDirectionsTime(partId = activePartId) {
+            const seconds = getMockListeningDirectionsDuration(partId);
+            return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+        }
 
         // --- PRACTICE TEST STATE (DECLARE ONCE HERE) ---
         let packageId = new URLSearchParams(window.location.search).get('packageId') || new URLSearchParams(window.location.search).get('setId') || null; 
@@ -2155,7 +2276,7 @@
             const isMock = testType.toLowerCase().includes('mock');
 
             const singlePlayText = isMock
-                ? "The original audio plays once from the beginning. Questions unlock after its directions finish at about 2:21, then the same audio continues."
+                ? "The original audio plays once from the beginning. Questions unlock after the directions finish—at about 2:19 for Part A, 0:36 for Part B, and 2:48 for Part C—then the same audio continues."
                 : "You can control playback during practice, but pay close attention to audio cues as you answer each question.";
 
             const navText = isMock
@@ -2175,7 +2296,7 @@
                                 </div>
                                 <div class="instruction-item__content">
                                     <h3 class="instruction-item__heading">${isMock ? 'Start with the directions' : 'Start The Practice'}</h3>
-                                    <p class="instruction-item__text">${isMock ? 'The original test audio plays from 0:00 through the directions intro (about 2:21). Questions unlock when it ends.' : 'Click the Start button to review each question and test your knowledge.'}</p>
+                                    <p class="instruction-item__text">${isMock ? 'The original test audio plays through its directions intro. The cutoff is 2:19 for Part A, 0:36 for Part B, and 2:48 for Part C.' : 'Click the Start button to review each question and test your knowledge.'}</p>
                                 </div>
                             </article>
 
@@ -4674,9 +4795,7 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
                         if (targetPart !== activePartId || !isMockListeningDirectionsComplete(targetPart) || !audio) return;
                         const seekPastDirections = () => {
                             if (targetPart !== activePartId || !isMockListeningDirectionsComplete(targetPart)) return;
-                            if (audio.duration > MOCK_LISTENING_DIRECTIONS_DURATION) {
-                                audio.currentTime = MOCK_LISTENING_DIRECTIONS_DURATION;
-                            }
+                            seekMockListeningAudioPastDirections(audio, targetPart, true);
                         };
                         if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
                             seekPastDirections();
@@ -4890,8 +5009,21 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
                 return;
             }
 
+            const directions = getMockListeningDirections(activePartId);
+            if (directions?.status === "skipped" && audio.paused
+                && !audio.ended && audio.currentTime <= getMockListeningDirectionsDuration(activePartId)) {
+                statusElement.innerText = "Directions skipped. Press play to start the section audio.";
+                updatePlayControlState();
+                return;
+            }
+
             const hasAudioSource = Boolean(audio.src);
             if (!hasAudioSource || (audio.paused && audio.currentTime === 0)) {
+                if (directions?.status === "skipped") {
+                    statusElement.innerText = "Directions skipped. Press play to start the section audio.";
+                    updatePlayControlState();
+                    return;
+                }
                 statusElement.innerText = "Click To Play....";
                 updatePlayControlState();
                 return;
@@ -5299,6 +5431,7 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
                     if (audio.volume <= 0) {
                         audio.volume = 1;
                     }
+                    seekMockListeningAudioPastDirections(audio, activePartId);
                     if (audio.ended || (isFinite(audio.duration) && audio.duration > 0 && audio.currentTime >= (audio.duration - 0.05))) {
                         audio.currentTime = 0;
                     }
@@ -7462,7 +7595,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
         }
 
         function isMockListeningDirectionsComplete(partId = activePartId) {
-            return getMockListeningDirections(partId)?.status === "complete";
+            const status = getMockListeningDirections(partId)?.status;
+            return status === "complete" || status === "skipped";
         }
 
         function isMockListeningDirectionsLocked(partId = activePartId) {
@@ -7504,6 +7638,13 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const toggle = document.getElementById("mock-listening-directions-toggle");
             const toggleLabel = document.getElementById("mock-listening-directions-toggle-label");
             const note = document.getElementById("mock-listening-directions-note");
+            const skipActions = document.getElementById("mock-listening-directions-skip-actions");
+            const skipButton = document.getElementById("mock-listening-directions-skip");
+            const skipHint = document.getElementById("mock-listening-directions-skip-hint");
+            const skipConfirmation = document.getElementById("mock-listening-directions-skip-confirm");
+            const skipConfirmationCopy = document.getElementById("mock-listening-directions-skip-confirm-copy");
+            const skipCancelButton = document.getElementById("mock-listening-directions-skip-cancel");
+            const skipConfirmButton = document.getElementById("mock-listening-directions-skip-confirm-button");
             const transcript = document.getElementById("mock-listening-directions-transcript");
             const errorMessage = document.getElementById("mock-listening-directions-error");
             const continueButton = document.getElementById("mock-listening-directions-continue");
@@ -7513,25 +7654,28 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const fontDown = document.getElementById("mock-listening-directions-font-down");
             const fontUp = document.getElementById("mock-listening-directions-font-up");
             if (!title || !partTitle || !status || !content || !toggle || !toggleLabel
-                || !note || !transcript || !errorMessage || !continueButton || !lockCard
+                || !note || !skipActions || !skipButton || !skipHint || !skipConfirmation || !skipConfirmationCopy
+                || !skipCancelButton || !skipConfirmButton
+                || !transcript || !errorMessage || !continueButton || !lockCard
                 || !lockTitle || !followButton || !fontDown || !fontUp) {
                 throw new Error("Listening directions interface is missing required elements.");
             }
+            if (typeof state.skipConfirmation !== "boolean") state.skipConfirmation = false;
 
             title.textContent = "Directions";
             partTitle.textContent = part.name;
-            status.textContent = state.status === "speaking"
-                ? "Playing"
-                : state.status === "complete"
-                    ? "Heard"
-                    : state.status === "error"
-                        ? "Audio issue"
-                        : "Ready";
+            status.textContent = ({
+                speaking: "Playing",
+                skipped: "Skipped",
+                complete: "Heard",
+                error: "Audio issue"
+            })[state.status] || "Ready";
             panel.classList.toggle("is-error", state.status === "error");
             panel.classList.toggle("is-speaking", state.status === "speaking");
+            panel.classList.toggle("is-skipped", state.status === "skipped");
 
-            const isComplete = state.status === "complete";
-            panel.classList.toggle("is-complete", isComplete);
+            const isComplete = isMockListeningDirectionsComplete(partId);
+            panel.classList.toggle("is-complete", state.status === "complete");
             const rangeIndices = questionOrder.reduce((indices, uid, index) => {
                 if (getPartIdFromUid(uid) === partId) indices.push(index + 1);
                 return indices;
@@ -7540,10 +7684,16 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 ? `Questions ${rangeIndices[0]}${rangeIndices.length > 1 ? `–${rangeIndices[rangeIndices.length - 1]}` : ""}`
                 : part.range;
             lockCard.hidden = isComplete;
-            lockTitle.textContent = `${questionRange} unlock when the directions end`;
+            skipActions.hidden = isComplete || state.skipConfirmation;
+            skipConfirmation.hidden = isComplete || !state.skipConfirmation;
+            skipButton.setAttribute("aria-expanded", state.skipConfirmation ? "true" : "false");
+            const directionsTime = formatMockListeningDirectionsTime(partId);
+            skipHint.textContent = `Skipping unlocks questions and moves the recording to ${directionsTime}.`;
+            skipConfirmationCopy.textContent = `You’ll miss these instructions. The original recording will move to ${directionsTime} and the questions will unlock.`;
+            lockTitle.textContent = `${questionRange} stay locked until directions finish or you skip them`;
             note.textContent = state.status === "error"
-                ? "Questions stay locked until the original audio reaches 2:21. Retry the recording to continue."
-                : "Read along above while you wait. Questions unlock when the recording reaches 2:21.";
+                ? "Retry the directions or skip them to unlock questions."
+                : `Listen to the original recording; questions unlock when it reaches ${directionsTime}.`;
 
             if (state.renderedPartId !== partId) {
                 const transcriptBlocks = MOCK_LISTENING_DIRECTIONS_TRANSCRIPTS[partId] || [];
@@ -7584,6 +7734,24 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             followButton.setAttribute("aria-pressed", state.followAlong ? "true" : "false");
             followButton.textContent = "↓ Follow along";
             followButton.hidden = state.followAlong || state.status !== "speaking";
+            skipButton.onclick = () => {
+                state.skipConfirmation = true;
+                renderMockListeningDirections(partId);
+                skipCancelButton.focus();
+            };
+            skipCancelButton.onclick = () => {
+                state.skipConfirmation = false;
+                renderMockListeningDirections(partId);
+                skipButton.focus();
+            };
+            skipConfirmButton.onclick = () => skipMockListeningDirections(partId);
+            skipConfirmation.onkeydown = (event) => {
+                if (event.key !== "Escape") return;
+                event.preventDefault();
+                state.skipConfirmation = false;
+                renderMockListeningDirections(partId);
+                skipButton.focus();
+            };
             errorMessage.textContent = state.errorMessage || "";
             errorMessage.hidden = state.status !== "error";
             continueButton.hidden = state.status !== "error";
@@ -7651,9 +7819,10 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             if (!transcript || !state?.transcriptTokens?.length) return;
 
             const totalCharacters = state.transcriptTokens.reduce((total, token) => total + token.length, 0);
-            const targetCharacter = state.status === "complete"
+            const isComplete = state.status === "complete" || state.status === "skipped";
+            const targetCharacter = isComplete
                 ? totalCharacters
-                : totalCharacters * Math.min(1, Math.max(0, state.elapsedSeconds / MOCK_LISTENING_DIRECTIONS_DURATION));
+                : totalCharacters * Math.min(1, Math.max(0, state.elapsedSeconds / getMockListeningDirectionsDuration()));
             let elapsedCharacters = 0;
             let activeIndex = state.transcriptTokens.length - 1;
             for (let index = 0; index < state.transcriptTokens.length; index += 1) {
@@ -7667,8 +7836,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const transcriptNodes = transcript.querySelectorAll("[data-transcript-token]");
             transcriptNodes.forEach((node) => {
                 const index = Number(node.dataset.transcriptToken);
-                const isUpcoming = index > activeIndex && state.status !== "complete";
-                node.classList.toggle("is-current", index === activeIndex && state.status !== "complete"
+                const isUpcoming = index > activeIndex && !isComplete;
+                node.classList.toggle("is-current", index === activeIndex && !isComplete
                     && state.transcriptTokens[index].type === "sentence");
                 node.classList.toggle("is-upcoming", isUpcoming);
                 node.querySelectorAll(".mock-listening-directions__option").forEach((option) => {
@@ -7728,12 +7897,60 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             if (!state) return;
             state.status = "complete";
             state.progress = 100;
-            state.elapsedSeconds = MOCK_LISTENING_DIRECTIONS_DURATION;
+            state.elapsedSeconds = getMockListeningDirectionsDuration(partId);
             state.transcriptExpanded = false;
             renderMockListeningDirections(partId);
             if (partId === activePartId) {
                 updateAudioShellStatus();
                 refreshExamState();
+            }
+        }
+
+        function skipMockListeningDirections(partId) {
+            const state = getMockListeningDirections(partId);
+            if (!state || isMockListeningDirectionsComplete(partId)) return;
+
+            state.status = "skipped";
+            state.progress = 100;
+            state.elapsedSeconds = getMockListeningDirectionsDuration(partId);
+            state.transcriptExpanded = false;
+            state.skipConfirmation = false;
+            state.errorMessage = "";
+            mockDirectionsUtteranceToken += 1;
+
+            const audio = document.getElementById("cbt-audio-player");
+            if (audio) {
+                audio.pause();
+                seekMockListeningAudioPastDirections(audio, partId, true);
+            }
+
+            renderMockListeningDirections(partId);
+            if (partId === activePartId) {
+                updateAudioShellStatus();
+                refreshExamState();
+                requestAnimationFrame(() => {
+                    const sectionAudioControl = document.getElementById("audio-play-control");
+                    if (!sectionAudioControl?.disabled) sectionAudioControl.focus();
+                });
+            }
+        }
+
+        function seekMockListeningAudioPastDirections(audio, partId, force = false) {
+            if (!audio?.src || !isMockListeningDirectionsComplete(partId)) return;
+            const directionsDuration = getMockListeningDirectionsDuration(partId);
+
+            const seek = () => {
+                if (partId !== activePartId || !isMockListeningDirectionsComplete(partId)) return;
+                if (audio.duration > directionsDuration
+                    && (force || audio.currentTime < directionsDuration)) {
+                    audio.currentTime = directionsDuration;
+                }
+            };
+
+            if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
+                seek();
+            } else {
+                audio.addEventListener("loadedmetadata", seek, { once: true });
             }
         }
 
@@ -7745,7 +7962,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 status: "ready",
                 progress: 0,
                 elapsedSeconds: 0,
-                estimatedSeconds: MOCK_LISTENING_DIRECTIONS_DURATION,
+                estimatedSeconds: getMockListeningDirectionsDuration(partId),
                 transcriptExpanded: true,
                 followAlong: true,
                 fontSize: Math.min(24, Math.max(14,
@@ -7753,7 +7970,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 activeSentenceIndex: -1,
                 renderedPartId: null,
                 transcriptTokens: [],
-                errorMessage: ""
+                errorMessage: "",
+                skipConfirmation: false
             };
             mockListeningDirectionsByPart[partId] = state;
 
@@ -7802,15 +8020,16 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const audio = document.getElementById("cbt-audio-player");
             if (!state || state.status !== "speaking" || !audio) return;
 
-            state.elapsedSeconds = Math.min(MOCK_LISTENING_DIRECTIONS_DURATION, Math.max(0, audio.currentTime || 0));
-            if (state.elapsedSeconds >= MOCK_LISTENING_DIRECTIONS_DURATION) {
+            const directionsDuration = getMockListeningDirectionsDuration(activePartId);
+            state.elapsedSeconds = Math.min(directionsDuration, Math.max(0, audio.currentTime || 0));
+            if (state.elapsedSeconds >= directionsDuration) {
                 audio.pause();
-                audio.currentTime = MOCK_LISTENING_DIRECTIONS_DURATION;
+                audio.currentTime = directionsDuration;
                 finishMockListeningDirections(activePartId);
                 return;
             }
 
-            state.progress = (state.elapsedSeconds / MOCK_LISTENING_DIRECTIONS_DURATION) * 100;
+            state.progress = (state.elapsedSeconds / directionsDuration) * 100;
             renderMockListeningDirections(activePartId);
         }
 

@@ -2,7 +2,7 @@
 
 Detailed specification of how **directions** work across the three sections (Listening, Structure & Written Expression, Reading): features, logic, flow, UI/UX/HCI rationale, and expected behavior.
 
-> **Status:** prototype (single HTML file, in-memory state). Audio is simulated with a 1-second ticker. Items marked **[INTEGRATE]** need real audio/back-end wiring. Items marked **[DECISION]** are assumptions that product should confirm.
+> **Implementation note:** Listening directions in the live Section 1 page use the original recording, with per-part cutoffs: 2:19 for Part A, 0:36 for Part B, and 2:48 for Part C. The prototype snippets below describe the design model; current skip behavior is documented in §5.1. Items marked **[DECISION]** are assumptions that product should confirm.
 
 ---
 
@@ -29,7 +29,7 @@ Out of scope: scoring, results screens, authentication, and the question bank.
 | 1 | **Sections and parts are one-way.** | Once a section or Listening part is left, it is locked. Only answered counts remain visible. |
 | 2 | **Directions come first, questions are gated.** | Questions for a part stay hidden until its directions are done. |
 | 3 | **Never leave the student guessing.** | Every wait has an explanation (locked placeholder, step tracker, status chip, time left). |
-| 4 | **The student stays in control of reading, not of audio.** | Narration cannot be paused, skipped or replayed. Text can always be re-read, resized and scrolled. |
+| 4 | **The student stays in control of reading, not of audio.** | Narration is not paused or replayed; students can deliberately skip it after a clear confirmation. Text can always be re-read, resized and scrolled. |
 | 5 | **Irreversible actions need deliberate input.** | Continue/Finish use press-and-hold (≈1.1 s). |
 | 6 | **Directions get out of the way.** | They auto-collapse to one row when done and can be reopened inline, never as a blocking modal. |
 | 7 | **Same visual language everywhere.** | Option cards in directions look exactly like option cards in questions. |
@@ -42,7 +42,7 @@ Out of scope: scoring, results screens, authentication, and the question bank.
 flowchart TD
   A[Intro screen: rules for the section] -->|Begin| B[Section running: timer starts]
   B --> C{Section type}
-  C -->|Listening| L[Per part: narrated directions → Start audio → answer → hold to continue]
+  C -->|Listening| L[Per part: narrated directions or confirmed skip → Start audio → answer → hold to continue]
   C -->|Structure & WE| S[Per part: written directions → Start questions → answer freely → hold to finish]
   C -->|Reading| R[Per part: written directions + sample passage → Start questions → answer freely → hold to finish]
   L --> D[Section locked → next intro]
@@ -113,7 +113,7 @@ dr[key] = { st, pos, show, hid, free, fresh }
 
 | Field | Meaning |
 |---|---|
-| `st` | `"playing"` (narration running), `"open"` (written, waiting for Start), `"closed"` (finished) |
+| `st` | `"playing"` (narration running), `"open"` (written, waiting for Start), `"closed"` (heard/read to completion), `"skipped"` (student confirmed the Listening skip) |
 | `pos` | seconds of narration elapsed (Listening) |
 | `show` | user expanded the collapsed panel |
 | `hid` | user hid the panel while narration is playing |
@@ -121,7 +121,7 @@ dr[key] = { st, pos, show, hid, free, fresh }
 | `fresh` | directions just finished, so play the unlock animation once |
 
 Initial state: `st = "playing"` if the part has `d.dur`, otherwise `"open"`.
-**Gate rule:** `directions active = (st !== "closed")`. While active, the part's questions are not rendered and answering by keyboard is blocked.
+**Gate rule:** `directions active = (st !== "closed" && st !== "skipped")`. While active, the part's questions are not rendered and answering by keyboard is blocked.
 
 ### 4.5 State machine
 
@@ -130,11 +130,15 @@ stateDiagram-v2
   [*] --> playing: Listening part entered
   [*] --> open: Structure / WE / Reading part entered
   playing --> closed: narration ends (pos ≥ dur)
+  playing --> skipped: student confirms Skip directions
+  ready --> skipped: student confirms Skip directions before audio starts
+  error --> skipped: student confirms Skip directions after audio error
   open --> closed: student presses "Start questions"
   closed --> closed: Show / Hide toggle (view only)
+  skipped --> skipped: Show / Hide toggle (view only)
 ```
 
-There is no transition back to `playing` or `open`. Reopening a closed panel only reveals text; it never re-gates the questions and never restarts audio.
+There is no transition back to `playing` or `open`. Reopening a closed or skipped panel only reveals text; it never re-gates the questions or restarts directions audio.
 
 ---
 
@@ -142,21 +146,22 @@ There is no transition back to `playing` or `open`. Reopening a closed panel onl
 
 ### 5.1 Rules
 
-1. Narrated directions start automatically when a part begins and **cannot be paused, skipped, scrubbed or replayed**.
-2. Questions of the part stay locked until the narration ends.
-3. After directions, the conversation/talk audio is started by the student with **Start audio**. It also plays once with no pause or replay.
-4. All questions of the part are shown together. Answers can be changed until the student continues to the next part.
-5. Continuing to the next part locks the current part permanently.
+1. Narrated directions start automatically when a part begins. They cannot be paused, scrubbed or replayed. A **Skip directions** control opens an inline confirmation that explains the consequence; the student must confirm again to proceed.
+2. Confirming the skip pauses the original recording, seeks to that part's cutoff (2:19 / 139 seconds for Part A; 0:36 / 36 seconds for Part B; 2:48 / 168 seconds for Part C), collapses the directions and unlocks the current part. The status reads **Skipped**, not **Heard**. Cancel or Escape leaves the directions unskipped and the questions locked; playback continues if it was active.
+3. Questions of the part stay locked until the narration ends or the student confirms the skip.
+4. After directions, the conversation/talk audio is started by the student with **Start audio**. It also plays once with no pause or replay.
+5. All questions of the part are shown together. Answers can be changed until the student continues to the next part.
+6. Continuing to the next part locks the current part permanently.
 
 ### 5.2 Per-part content
 
 | Part | Narration includes | Sample question(s) in directions | Original audio gate |
 |---|---|---|---|
-| **A** | Section 1 introduction **plus** Part A directions | 1 (painting) with green sample answer | 0:00–2:21 (141 s) |
-| **B** | Part B directions only | none | 0:00–2:21 (141 s) |
-| **C** | Part C directions + example talk | 2 (TV programme) with green sample answers | 0:00–2:21 (141 s) |
+| **A** | Section 1 introduction **plus** Part A directions | 1 (painting) with green sample answer | 0:00–2:19 (139 s) |
+| **B** | Part B directions only | none | 0:00–0:36 (36 s) |
+| **C** | Part C directions + example talk | 2 (TV programme) with green sample answers | 0:00–2:48 (168 s) |
 
-Each part starts its original recording at 0:00 and gates questions until 2:21; the transcript shown remains specific to the active part. Part A deliberately merges the section introduction and Part A directions because the source recording is one continuous track.
+Each part starts its original recording at 0:00 and gates questions until its part-specific cutoff unless the student confirms the skip. Skipping moves the same original recording to that cutoff before section audio can start; the transcript shown remains specific to the active part. Part A deliberately merges the section introduction and Part A directions because the source recording is one continuous track.
 
 ### 5.3 Screen anatomy (top to bottom)
 
@@ -180,8 +185,9 @@ Each part starts its original recording at 0:00 and gates questions until 2:21; 
 │                         [↓ Follow along]       │
 └───────────────────────────────────────────────┘
  LOCKED PLACEHOLDER  (while directions play)
-   "🔒 Questions 1–2 unlock when the directions end" + shimmer lines
- — or, after directions —
+   "🔒 Questions 1–2 are locked while the directions play" + skip action + shimmer lines
+   [Skip directions] → inline warning → [Keep listening] / [Skip and unlock questions]
+ — or, after directions / confirmed skip —
  QUESTION CARDS (all questions of the part) + sticky footer
 ```
 
@@ -223,6 +229,8 @@ Three pills on the audio card show the phase:
 3. The panel collapses to its header row (**Show directions ˅**).
 4. The page scrolls to the top so **Start audio** is visible.
 5. The question cards and footer rise in (staggered, once only).
+
+If the student confirms **Skip directions**, `st` becomes `skipped` instead: the original audio pauses at that part's cutoff (2:19 for Part A; 0:36 for Part B; 2:48 for Part C), the directions collapse, questions unlock, and the status remains visibly distinct from **Heard**. Focus moves to the section audio control so keyboard users can continue.
 
 ### 5.8 Question audio and answering
 
@@ -313,7 +321,7 @@ The split collapses to a single column (passage above, question below).
 |---|---|---|---|
 | Delivery | Narrated + live transcript | Written | Written |
 | Starts | Automatically | Student presses **Start questions** | Student presses **Start questions** |
-| Can student skip? | No | Yes (by Start) | Yes (by Start) |
+| Can student skip? | Yes, after inline confirmation | Yes (by Start) | Yes (by Start) |
 | Can student replay audio? | No | n/a | n/a |
 | Collapse trigger | Narration ends | Start pressed | Start pressed |
 | Reopen later | Yes (inline) | Yes (inline) | Yes (inline) |
@@ -396,8 +404,12 @@ Shows `Question n of N` for the current section, `N/M answered · locked` for fi
 - [ ] Option blocks ahead of the narration are dimmed. The green answer appears when reached.
 - [ ] Manual scroll pauses follow; **Follow along** resumes it.
 - [ ] Hide/Show works during and after narration without affecting audio.
-- [ ] Questions do not render until narration ends. A locked placeholder is shown meanwhile.
+- [ ] Questions do not render until narration ends or the student confirms the inline skip. A locked placeholder is shown meanwhile.
 - [ ] On end: panel collapses, page scrolls to top, cards rise in, screen reader announces.
+- [ ] Skip requires a second confirmation that names the consequence; cancel and Escape return to listening without unlocking questions.
+- [ ] Confirmed skip pauses/seeks the original recording to the active part's cutoff (2:19 for A; 0:36 for B; 2:48 for C), collapses directions, unlocks questions, and announces **Skipped** rather than **Heard**.
+- [ ] After confirmation, keyboard focus moves to the section audio control; the skip buttons do not lose focus while the directions continue during confirmation.
+- [ ] Skipping while audio is still loading still seeks to the active part's cutoff when metadata becomes available; starting section audio does not replay the directions.
 - [ ] Options stay disabled until **Start audio** is pressed.
 - [ ] Question audio cannot be paused or replayed. Footer button enables only when it ends.
 - [ ] Holding the footer button ≈1.1 s moves to the next part. Earlier parts become non-clickable.
@@ -437,10 +449,10 @@ Shows `Question n of N` for the current section, `N/M answered · locked` for fi
 
 ## 13. Integration notes **[INTEGRATE]**
 
-1. **Real audio.** Replace the 1-second ticker with `HTMLAudioElement` events: directions track `timeupdate` → `pos`; `ended` → `st = "closed"`. Question audio likewise.
+1. **Original audio (implemented).** Listening directions and question playback use the original `HTMLAudioElement`; `timeupdate` tracks the active part's cutoff (139 seconds for Part A; 36 seconds for Part B; 168 seconds for Part C).
 2. **Autoplay policy.** Browsers require a user gesture before audio. Directions for Part A start after the **Begin** click (a gesture). Directions for Parts B/C start after a **hold-to-continue** release, which is *not guaranteed* to count as a gesture. Provide a fallback: if `play()` rejects, show a **Tap to start directions** button in the audio card and keep the same state machine.
 3. **Sentence timing.** Provide cue timestamps per sentence instead of the character-count estimate.
-4. **Durations.** Replace the simulated 50/22/55 s (directions) and 60/45/45 s (question audio) with true lengths.
+4. **Durations.** The Listening directions gate uses per-part cutoffs (139 seconds for Part A; 36 seconds for Part B; 168 seconds for Part C); question playback continues from that point using the source track's actual duration.
 5. **Persistence.** State is in memory. Production needs server-side progress (current section/part, directions state, elapsed time) so a refresh or crash can resume without granting a replay.
 6. **Narration wording.** The recordings say "test book" and "answer sheet". The transcript is faithful to the audio, which may confuse on-screen test takers. Either re-record or add a short note.
 7. **Data source.** Directions text was transcribed from the provided PDFs (Part A/B/C narrations; Structure, Written Expression and Reading directions). Keep a single source of truth in `DIR` and fill `{r}`/`{s}` from the real question counts.
@@ -476,4 +488,4 @@ Shows `Question n of N` for the current section, `N/M answered · locked` for fi
 
 ## 16. One-paragraph summary
 
-Every part opens with directions that match its medium. Listening plays narrated directions with a live, resizable transcript attached under the audio card, reveals sample answers in sync with the speech, explains the wait with a locked-questions placeholder, then collapses and unlocks the questions. Structure, Written Expression and Reading show written directions and worked examples that the student reads at their own pace and dismisses with **Start questions**. In all three, directions collapse to a single reopenable row rather than disappearing, gating is per part and one-way, and every irreversible step needs a deliberate press-and-hold.
+Every part opens with directions that match its medium. Listening plays narrated directions with a live, resizable transcript attached under the audio card, reveals sample answers in sync with the speech, and explains the wait with a locked-questions placeholder. Students may skip the spoken directions after an inline confirmation; the original recording moves to that part's cutoff (2:19 for Part A, 0:36 for Part B, 2:48 for Part C), questions unlock, and the UI records **Skipped** rather than **Heard**. Structure, Written Expression and Reading show written directions and worked examples that the student reads at their own pace and dismisses with **Start questions**. Directions collapse to a single reopenable row rather than disappearing, and gating is per part.
