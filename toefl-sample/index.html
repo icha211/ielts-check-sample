@@ -3826,8 +3826,7 @@ body {
             animation-delay: var(--partner-delay);
         }
         .partner-carousel:hover .partner-track .partner-avatar,
-        .partner-carousel:focus-within .partner-track .partner-avatar,
-        .partner-track.is-paused .partner-avatar { animation-play-state: paused; }
+        .partner-carousel:focus-within .partner-track .partner-avatar { animation-play-state: paused; }
         .partner-card .partner-track .partner-avatar:focus-visible {
             animation: none; transform: translateY(-6px); opacity: 1; z-index: 6;
         }
@@ -4177,7 +4176,6 @@ body {
                                             <button class="partner-arrow" id="previousPartner" type="button" aria-label="Previous suggested partners"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
                                             <span class="partner-pagination" id="partnerPagination" aria-hidden="true"></span>
                                             <button class="partner-arrow" id="nextPartner" type="button" aria-label="Next suggested partners"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
-                                            <button class="partner-arrow" id="togglePartnerMotion" type="button" aria-label="Pause partner carousel" aria-pressed="false"><i class="ti ti-player-pause" aria-hidden="true"></i></button>
                                         </div>
                                         <div class="partner-selected" id="partnerSelected" aria-live="polite">
                                             <span class="partner-selected-icon" aria-hidden="true">✦</span>
@@ -4399,8 +4397,6 @@ body {
         const partnerMatchButton = document.getElementById("partnerMatchButton");
         const previousPartnerButton = document.getElementById("previousPartner");
         const nextPartnerButton = document.getElementById("nextPartner");
-        const togglePartnerMotionButton = document.getElementById("togglePartnerMotion");
-        let partnerMotionPaused = false;
 
         let partnerProfiles = [];
         let partnerOffset = 0;
@@ -4661,9 +4657,8 @@ body {
             if (partnerControls) partnerControls.hidden = false;
             previousPartnerButton.disabled = partnerProfiles.length < 2;
             nextPartnerButton.disabled = partnerProfiles.length < 2;
-            togglePartnerMotionButton.disabled = partnerProfiles.length < 2;
             const track = document.createElement("div");
-            track.className = `partner-track${partnerProfiles.length > 1 ? " is-moving" : ""}${partnerMotionPaused ? " is-paused" : ""}`;
+            track.className = `partner-track${partnerProfiles.length > 1 ? " is-moving" : ""}`;
             const cycleSlots = Math.max(5, partnerProfiles.length);
             track.style.setProperty("--partner-loop-duration", `${cycleSlots * 4}s`);
             const motionStyle = document.createElement("style");
@@ -4853,13 +4848,6 @@ body {
         }
 
         partnerSearch.addEventListener("input", () => renderPartnerSearch(partnerSearch.value));
-        togglePartnerMotionButton.addEventListener("click", () => {
-            partnerMotionPaused = !partnerMotionPaused;
-            togglePartnerMotionButton.setAttribute("aria-pressed", String(partnerMotionPaused));
-            togglePartnerMotionButton.setAttribute("aria-label", partnerMotionPaused ? "Resume partner carousel" : "Pause partner carousel");
-            togglePartnerMotionButton.firstElementChild.className = partnerMotionPaused ? "ti ti-player-play" : "ti ti-player-pause";
-            partnerOrbit.querySelector(".partner-track")?.classList.toggle("is-paused", partnerMotionPaused);
-        });
         previousPartnerButton.addEventListener("click", () => {
             if (partnerProfiles.length < 2) return;
             partnerOffset = (partnerOffset - 1 + partnerProfiles.length) % partnerProfiles.length;
