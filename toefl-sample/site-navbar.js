@@ -6,6 +6,9 @@
       detail: { message: "Live partner updates could not start. Please reload this page." }
     }));
   });
+  import("./js/message-notifications.js").catch((error) => {
+    console.error("[MessageNotifications] Could not start unread message updates:", error);
+  });
   const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
   const pageKey = {
     "index.html": "dashboard",
@@ -75,7 +78,7 @@
   <a class="qcnav-item${cls("history")}" href="history.html"${cur("history")}><span class="qcnav-ico"><i data-lucide="history"></i></span><span class="qcnav-text">Test History</span></a>
   <div class="qcnav-divider"></div>
   <div class="qcnav-label">Social</div>
-  <a class="qcnav-item${cls("message")}" href="message.html"${cur("message")}><span class="qcnav-ico"><i data-lucide="message-circle"></i></span><span class="qcnav-text">Message</span></a>
+  <a class="qcnav-item${cls("message")}" href="message.html" data-message-link="Message"${cur("message")}><span class="qcnav-ico"><i data-lucide="message-circle"></i><span class="qcnav-badge" data-message-badge aria-hidden="true" hidden></span></span><span class="qcnav-text">Message</span></a>
   <a class="qcnav-item" href="social.html#community"><span class="qcnav-ico"><i data-lucide="users"></i></span><span class="qcnav-text">Community</span></a>
   <div class="qcnav-divider"></div>
   <div class="qcnav-label">Admin</div>
@@ -93,14 +96,15 @@
 <div class="qcnav-quick" id="qcnavQuick">
   ${Object.entries(quickGroups).map(([g, grp]) => `<div class="qcnav-fan" data-group="${g}" role="menu" aria-label="${grp.label}">${grp.items.map((q, i) => {
     const a = (125 - 70 * i / (grp.items.length - 1)) * Math.PI / 180;
-    return `<a role="menuitem" href="${q.href}" tabindex="-1" style="--i:${i};--x:${Math.round(R * Math.cos(a))}px;--y:${-Math.round(R * Math.sin(a))}px"><i data-lucide="${q.icon}"></i><span>${q.label}</span></a>`;
+    const isMessages = q.href === "message.html";
+    return `<a role="menuitem" href="${q.href}" tabindex="-1"${isMessages ? ` data-message-link="${q.label}"` : ""} style="--i:${i};--x:${Math.round(R * Math.cos(a))}px;--y:${-Math.round(R * Math.sin(a))}px"><i data-lucide="${q.icon}"></i><span>${q.label}</span>${isMessages ? '<b class="qcnav-badge" data-message-badge aria-hidden="true" hidden></b>' : ""}</a>`;
   }).join("")}</div>`).join("")}
 </div>
 <nav class="qcnav-dock" aria-label="Primary">
   <a class="${cls("dashboard").trim()}" href="index.html" aria-label="Dashboard"><i data-lucide="house"></i><em>Home</em></a>
   <button type="button" class="${cls("progress").trim() || (pageKey === "history" ? "active" : "")}" data-tab="progress" aria-haspopup="menu" aria-expanded="false" aria-label="Progress menu"><i data-lucide="chart-line"></i><em>Progress</em></button>
   <a class="qcnav-today${cls("today")}" href="study-plan.html" aria-label="Today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M16 3v4M8 3v4M4 11h16"/><text x="12" y="18.2" text-anchor="middle" stroke="none" fill="currentColor">${now.getDate()}</text></svg><em>Today</em></a>
-  <button type="button" class="${cls("social").trim() || (pageKey === "message" ? "active" : "")}" data-tab="social" aria-haspopup="menu" aria-expanded="false" aria-label="Social menu"><i data-lucide="messages-square"></i><em>Social</em></button>
+  <button type="button" class="${cls("social").trim() || (pageKey === "message" ? "active" : "")}" data-tab="social" aria-haspopup="menu" aria-expanded="false" aria-label="Social menu" data-message-link="Social menu"><span class="qcnav-dock-ico"><i data-lucide="messages-square"></i><span class="qcnav-badge" data-message-badge aria-hidden="true" hidden></span></span><em>Social</em></button>
   <button type="button" id="qcnavProfileBtn" aria-label="Profile"><i data-lucide="user"></i><em>Profile</em></button>
 </nav></div>`;
 
