@@ -7,7 +7,7 @@ const { test } = require("node:test");
 const source = fs.readFileSync(path.join(__dirname, "section 3.html"), "utf8");
 
 function functionSource(name, nextName) {
-    const start = source.indexOf(`        function ${name}(`);
+    const start = source.search(new RegExp(`        (?:async )?function ${name}\\(`));
     const end = source.indexOf(`\n        function ${nextName}(`, start);
     assert.ok(start >= 0 && end > start, `Missing ${name}`);
     return source.slice(start, end);
@@ -103,6 +103,78 @@ test("full-test mode keeps passage navigation visible while instant practice use
     assert.equal(instant.elements.get("display-questions-1").style.display, "none");
     assert.equal(instant.elements.get("instant-question-host-1").hidden, false);
     assert.equal(instant.elements.get("user-view").classList.contains("is-reading-instant-practice"), true);
+});
+
+test("saved reading review uses loaded question text when a result has only a generic label", () => {
+    const resolveQuestionText = functionSource("getSavedReviewQuestionText", "restoreSavedReadingReview");
+    const context = vm.createContext({
+        coerceText: (value) => String(value || "").replace(/\s+/g, " ").trim()
+    });
+    vm.runInContext(resolveQuestionText, context);
+
+    assert.equal(
+        context.getSavedReviewQuestionText(
+            { questionText: "Question 4" },
+            { "1_4": { rawQuestionText: "What does the pronoun refer to?" } },
+            "1_4",
+            4
+        ),
+        "What does the pronoun refer to?"
+    );
+    assert.equal(
+        context.getSavedReviewQuestionText(
+            { questionText: "Which detail is stated?" },
+            { "1_4": { rawQuestionText: "A different source prompt" } },
+            "1_4",
+            4
+        ),
+        "Which detail is stated?"
+    );
+});
+
+test("submitting a reading practice test opens its focused summary and preserves the selected set", async () => {
+    let savedResult;
+    const search = "?testType=practicetest&runMode=instant&setId=practicetest_reading_beginner_1&setDate=2026-10-28";
+    const context = vm.createContext({
+        URLSearchParams,
+        window: {
+            location: { search, href: "" },
+            toeflTestHistory: { record() {} }
+        },
+        document: {
+            querySelector: () => null,
+            getElementById: (id) => id === "set-date" ? { value: "2026-10-28" } : null
+        },
+        localStorage: {
+            setItem: (key, value) => {
+                if (key === "toefl_section3_result") savedResult = JSON.parse(value);
+            }
+        },
+        globalAnswerKey: { "1_1": "a" },
+        globalQuestions: { "1_1": { questionText: "Question", options: { A: "Answer" } } },
+        globalExplanations: {},
+        globalEnglishExplanations: {},
+        globalPassages: { 1: "Passage" },
+        currentSetId: "practicetest_reading_beginner_1",
+        currentTestType: "practicetest",
+        timerInterval: null,
+        confirm: () => true,
+        clearInterval() {},
+        getPracticeRunMode: () => "instant"
+    });
+
+    vm.runInContext(functionSource("submitAnswers", "startTimer"), context);
+    await context.submitAnswers();
+
+    const summaryUrl = new URL(context.window.location.href, "https://example.test/toefl-sample/");
+    assert.equal(summaryUrl.pathname, "/toefl-sample/full-test-summary.html");
+    assert.equal(summaryUrl.searchParams.get("testType"), "practicetest");
+    assert.equal(summaryUrl.searchParams.get("section"), "reading");
+    assert.equal(summaryUrl.searchParams.get("setId"), "practicetest_reading_beginner_1");
+    assert.equal(summaryUrl.searchParams.get("setDate"), "2026-10-28");
+    assert.equal(summaryUrl.searchParams.get("runMode"), "instant");
+    assert.equal(savedResult.setDate, "2026-10-28");
+    assert.equal(savedResult.runMode, "instant");
 });
 
 test("Section 3 inline scripts remain valid JavaScript", () => {

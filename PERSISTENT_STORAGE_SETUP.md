@@ -194,6 +194,10 @@ The directory and connection status are stored in `partnerDirectory/{uid}` and `
 firebase deploy --only database
 ```
 
+## TOEFL test history
+
+Completed listening, structure, and reading attempts are stored under `user_test_history/{uid}` in Realtime Database. The Firebase Authentication UID owns the records, and the database rules allow only that signed-in account to read or write them. Attempt records include the score, test mode, selected set, answers, question text, and available explanations. Passwords are handled only by Firebase Authentication and are never included in these records. Signed-out attempts remain local to the browser; pending local attempts are synced after sign-in. Deploy `database.rules.json` with `firebase deploy --only database` to enable account history writes.
+
 ---
 
 ## 🐛 Troubleshooting

@@ -54,6 +54,34 @@ test("non-practice result tabs keep all result parts", () => {
     assert.match(html, /Part B/);
 });
 
+test("recommended practice opens the study plan with the selected section and focus", () => {
+    const context = vm.createContext({ URLSearchParams });
+    vm.runInContext(functionSource("practiceUrl", "renderPriorities"), context);
+
+    const listeningUrl = new URL(
+        context.practiceUrl(
+            { cfg: { key: "listening" } },
+            { id: "2", label: "Part B: Long Conversations" }
+        ),
+        "https://example.test/toefl-sample/"
+    );
+    assert.equal(listeningUrl.pathname, "/toefl-sample/study-plan.html");
+    assert.equal(listeningUrl.searchParams.get("recommendSection"), "listening");
+    assert.equal(listeningUrl.searchParams.get("recommendFocus"), "partb");
+    assert.equal(listeningUrl.searchParams.get("recommendLabel"), "Part B: Long Conversations");
+
+    const readingUrl = new URL(
+        context.practiceUrl(
+            { cfg: { key: "reading" } },
+            { id: "1", label: "Passage 1" }
+        ),
+        "https://example.test/toefl-sample/"
+    );
+    assert.equal(readingUrl.pathname, "/toefl-sample/study-plan.html");
+    assert.equal(readingUrl.searchParams.get("recommendSection"), "reading");
+    assert.equal(readingUrl.searchParams.get("recommendFocus"), null);
+});
+
 test("full-test summary inline JavaScript remains valid", () => {
     for (const match of source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)) {
         new vm.Script(match[1]);

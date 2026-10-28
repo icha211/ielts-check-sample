@@ -1741,11 +1741,13 @@
                     }
                 });
 
-                return [...packageMap.values()]
+                const availablePackages = [...packageMap.values()]
                     .filter((item) => packagesWithSets.has(Number(item.packageNumber))
                         || Number(item.setCount || Object.keys(item.sets || {}).length) > 0)
-                    .sort((left, right) => Number(left.packageNumber) - Number(right.packageNumber))
-                    .find((item) => !consumed.has(Number(item.packageNumber))) || null;
+                    .sort((left, right) => Number(left.packageNumber) - Number(right.packageNumber));
+                return availablePackages.find((item) => !consumed.has(Number(item.packageNumber)))
+                    || availablePackages[0]
+                    || null;
             }
 
             function getScheduledTestType(dateValue) {
@@ -2158,6 +2160,9 @@
 
                 if (setId) params.set("setId", setId);
                 if (testType) params.set("testType", testType);
+                if (testType === "practicetest" && activeModalState.practicePackageNumber) {
+                    params.set("package", String(activeModalState.practicePackageNumber));
+                }
                 if (targetRecord?.focus) params.set("focus", String(targetRecord.focus));
                 if (activeModalState.practiceOption.focus) params.set("focus", activeModalState.practiceOption.focus);
                 if (activeModalState.practiceOption.difficulty) params.set("difficulty", activeModalState.practiceOption.difficulty);

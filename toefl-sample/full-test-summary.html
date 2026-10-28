@@ -770,6 +770,9 @@
                     if (normalizeAttemptDate(savedSetDate) !== normalizeAttemptDate(requestedSetDate)) return false;
                 }
 
+                const requestedRunMode = String(params.get("runMode") || "").toLowerCase();
+                if (requestedRunMode && String(section.result.runMode || "full").toLowerCase() !== requestedRunMode) return false;
+
                 return true;
             }
 
@@ -895,6 +898,21 @@
     </section>`;
 }
 
+            function practiceUrl(section, weakest) {
+                const practiceParams = new URLSearchParams({
+                    recommendSection: section.cfg.key,
+                    recommendLabel: weakest.label
+                });
+                const groupNumber = Number(weakest.id);
+                const focusLetter = section.cfg.key === "listening"
+                    ? ["a", "b", "c"][groupNumber - 1]
+                    : section.cfg.key === "structure"
+                        ? (groupNumber === 2 ? "b" : "a")
+                        : "";
+                if (focusLetter) practiceParams.set("recommendFocus", `part${focusLetter}`);
+                return `study-plan.html?${practiceParams.toString()}`;
+            }
+
             function renderPriorities(sections) {
                 const ranked = sections.filter(Boolean).map((s) => {
                     const weakest = [...s.groups].sort((a, b) => a.accuracy - b.accuracy)[0];
@@ -956,7 +974,7 @@
                                 : "Your accuracy here is the lowest among your completed results, making it the top priority for your next session."}
                         </p>
 
-                        <a class="start-link" href="${encodeURI(s.cfg.test)}?testType=practicetest">
+                        <a class="start-link" href="${practiceUrl(s, weakest)}">
                             Start Practice <i data-lucide="arrow-right"></i>
                         </a>
                     </article>`;
@@ -1025,11 +1043,16 @@
                 if (s.result.setDate) p.set("setDate", s.result.setDate);
                 p.set("testType", s.result.testType || "mocktest");
                 p.set("runMode", s.result.runMode || "full");
+                if (s.cfg.key === "reading" && String(s.result.testType || "").toLowerCase() === "practicetest") {
+                    p.set("reviewResult", "true");
+                    p.set("attemptDate", s.result.setDate || s.result.submittedAt || "");
+                    return `section%203.html?${p.toString()}`;
+                }
                 return `${encodeURI(s.cfg.review)}?${p.toString()}`;
             }
 
             function groupsForDetail(s) {
-                if (!isPracticeSectionResult) return s.groups;
+                if (!isPracticeSectionResult || s.cfg.key === "reading") return s.groups;
                 return s.groups.filter((group) =>
                     group.questions.some((q) => String(q.userAnswer || "").trim())
                 );

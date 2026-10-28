@@ -47,6 +47,68 @@ test("Listening editor and review inline JavaScript parses", () => {
     }
 });
 
+test("Practice full-mode review navigator follows the focused listening part", () => {
+    const nav = { innerHTML: "" };
+    const context = vm.createContext({
+        URLSearchParams,
+        practiceReviewMode: true,
+        practiceReviewFullMode: true,
+        window: { location: { search: "?testType=practicetest&runMode=full&setId=practicetest_listening_part2_123" } },
+        document: { querySelector: () => nav },
+        getReviewTestType: () => "practicetest",
+        questionStatus: (question) => {
+            if (!question.userAnswer) return "unanswered";
+            return question.userAnswer === question.correctAnswer ? "correct" : "wrong";
+        },
+        selectReviewQuestion: () => {}
+    });
+    load(context, review, "inferPartIdFromQuestion");
+    load(context, review, "renderHeaderNavigator");
+    context.renderHeaderNavigator({
+        questions: [
+            { number: 1, userAnswer: "A", correctAnswer: "A" },
+            { number: 2, userAnswer: "B", correctAnswer: "C" },
+            { number: 1, partId: 1, userAnswer: "C", correctAnswer: "C" }
+        ]
+    }, 2);
+
+    assert.match(nav.innerHTML, /PART B/);
+    assert.doesNotMatch(nav.innerHTML, /PART A|PART C/);
+    assert.equal((nav.innerHTML.match(/class="progress-q-circle/g) || []).length, 2);
+    assert.match(nav.innerHTML, /aria-label="Question 1">1/);
+    assert.match(nav.innerHTML, /aria-label="Question 2">2/);
+    assert.match(nav.innerHTML, /progress-q-circle is-correct/);
+    assert.match(nav.innerHTML, /progress-q-circle is-current is-incorrect/);
+});
+
+test("Practice instant review keeps its practice navigator in one active-part row", () => {
+    const nav = { innerHTML: "" };
+    const context = vm.createContext({
+        URLSearchParams,
+        practiceReviewMode: true,
+        practiceReviewFullMode: false,
+        window: { location: { search: "?testType=practicetest&runMode=instant" } },
+        document: { querySelector: () => nav },
+        getReviewTestType: () => "practicetest",
+        questionStatus: () => "unanswered",
+        selectReviewQuestion: () => {}
+    });
+    load(context, review, "inferPartIdFromQuestion");
+    load(context, review, "renderHeaderNavigator");
+    context.renderHeaderNavigator({
+        questions: [
+            { number: 1, partId: 1 },
+            { number: 31, partId: 2 },
+            { number: 39, partId: 3 }
+        ]
+    }, 39);
+
+    assert.match(nav.innerHTML, /PART C/);
+    assert.equal((nav.innerHTML.match(/class="header-part-title"/g) || []).length, 1);
+    assert.equal((nav.innerHTML.match(/class="progress-q-circle/g) || []).length, 3);
+    assert.equal((nav.innerHTML.match(/aria-label="Question 1">1/g) || []).length, 3);
+});
+
 test("practice route focus resolves local questions without part metadata", async () => {
     for (const partId of [2, 3]) {
         const context = fixture("practicetest", {

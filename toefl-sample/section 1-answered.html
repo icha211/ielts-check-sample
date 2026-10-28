@@ -69,26 +69,22 @@
             justify-self: end;
         }
 
-        .review-practice-full-mode .header-score-ring {
-            display: none;
-        }
-
-        .review-practice-full-mode .header-question-nav {
+        .review-practice-mode .header-question-nav {
             max-width: min(52vw, 620px);
             overflow-x: auto;
             scrollbar-width: none;
         }
 
-        .review-practice-full-mode .header-question-nav::-webkit-scrollbar {
+        .review-practice-mode .header-question-nav::-webkit-scrollbar {
             display: none;
         }
 
-        .review-practice-full-mode .header-part-block {
+        .review-practice-mode .header-part-block {
             align-items: center;
             flex: 0 0 auto;
         }
 
-        .review-practice-full-mode .reading-part-circles {
+        .review-practice-mode .reading-part-circles {
             display: flex;
             flex-wrap: nowrap;
             justify-content: center;
@@ -96,7 +92,7 @@
             padding-top: 4px;
         }
 
-        .review-practice-full-mode .progress-q-circle {
+        .review-practice-mode .progress-q-circle {
             width: 20px;
             height: 20px;
             flex: 0 0 20px;
@@ -114,25 +110,25 @@
             transition: all 0.2s ease;
         }
 
-        .review-practice-full-mode .progress-q-circle.is-current {
+        .review-practice-mode .progress-q-circle.is-current {
             background: #005faa;
             border-color: #fff;
             box-shadow: 0 0 0 2px #005faa;
         }
 
-        .review-practice-full-mode .progress-q-circle.is-correct {
+        .review-practice-mode .progress-q-circle.is-correct {
             background: #0d9488;
             border-color: #fff;
             box-shadow: 0 0 2px #0d9488;
         }
 
-        .review-practice-full-mode .progress-q-circle.is-incorrect {
+        .review-practice-mode .progress-q-circle.is-incorrect {
             background: #dc2626;
             border-color: #fff;
             box-shadow: 0 0 2px #dc2626;
         }
 
-        .review-practice-full-mode .progress-q-circle:hover {
+        .review-practice-mode .progress-q-circle:hover {
             border-color: #fff;
         }
     </style>
@@ -567,7 +563,8 @@
 
         var reviewExplainationTab = 'explaination';
 
-        var praticTestFullTestMode = false;
+        var practiceReviewMode = false;
+        var practiceReviewFullMode = false;
         var reviewEntryMode = 'review';
 
         function getReviewResultStorageKey(setId) {
@@ -1766,9 +1763,13 @@
             var explicitPart = Number((question && question.partId) || 0);
             if (explicitPart >= 1 && explicitPart <= 3) return explicitPart;
             if (/practice/i.test(getReviewTestType())) {
-                var focus = new URLSearchParams(window.location.search || '').get('focus');
-                if (focus === 'part2') return 2;
-                if (focus === 'part3') return 3;
+                var params = new URLSearchParams(window.location.search || '');
+                var focus = String(params.get('focus') || '').toLowerCase();
+                var focusMatch = focus.match(/^part([123abc])$/);
+                var focusedPart = focusMatch && ({ '1': 1, 'a': 1, '2': 2, 'b': 2, '3': 3, 'c': 3 })[focusMatch[1]];
+                if (focusedPart) return focusedPart;
+                var setPartMatch = String(params.get('setId') || '').match(/listening[_-]part([123])(?:[_-]|$)/i);
+                if (setPartMatch) return Number(setPartMatch[1]);
             }
 
             var qNum = Number((question && question.number) || 0);
@@ -3018,26 +3019,37 @@
 
         function renderHeaderNavigator(result, activeQuestionNumber) {
             var nav = document.querySelector('.header-question-nav');
-            if (praticTestFullTestMode && nav) {
+            if (practiceReviewMode && nav) {
                 var questions = (result && result.questions) || [];
                 var activeQuestion = questions.find(function(question) {
                     return Number(question && question.number) === Number(activeQuestionNumber);
                 }) || questions[0] || {};
                 var activePartId = inferPartIdFromQuestion(activeQuestion);
                 var partTitle = activePartId === 1 ? 'PART A' : (activePartId === 2 ? 'PART B' : 'PART C');
-                var circles = questions.filter(function(question) {
-                    return inferPartIdFromQuestion(question) === activePartId;
-                }).map(function(question) {
+                var partStarts = { 1: 1, 2: 31, 3: 39 };
+                var progressQuestions = practiceReviewFullMode
+                    ? questions.filter(function(question) {
+                        return inferPartIdFromQuestion(question) === activePartId;
+                    })
+                    : questions;
+                var circles = progressQuestions.map(function(question) {
                     var questionNumber = Number(question.number || 0);
+                    var questionPartId = inferPartIdFromQuestion(question);
+                    var displayNumber = questionPartId > 1 && questionNumber >= partStarts[questionPartId]
+                        ? questionNumber - partStarts[questionPartId] + 1
+                        : questionNumber;
                     var status = questionStatus(question);
                     var classes = ['progress-q-circle'];
                     if (questionNumber === Number(activeQuestionNumber)) classes.push('is-current');
                     if (status === 'correct') classes.push('is-correct');
                     if (status === 'wrong') classes.push('is-incorrect');
-                    return '<button type="button" class="' + classes.join(' ') + '" onclick="selectReviewQuestion(' + questionNumber + ')" aria-label="Question ' + questionNumber + '">' + questionNumber + '</button>';
+                    return '<button type="button" class="' + classes.join(' ') + '" onclick="selectReviewQuestion(' + questionNumber + ')" aria-label="Question ' + displayNumber + '">' + displayNumber + '</button>';
                 }).join('');
 
-                nav.innerHTML = '<div class="header-part-block"><div class="header-part-title">' + partTitle + '</div><div class="reading-part-circles">' + circles + '</div></div>';
+                nav.innerHTML = '<div class="header-part-block">'
+                    + '<div class="header-part-title">' + partTitle + '</div>'
+                    + '<div class="reading-part-circles">' + circles + '</div>'
+                    + '</div>';
                 return;
             }
 
@@ -5282,11 +5294,12 @@
             var entryParams = new URLSearchParams(window.location.search || '');
             var entryTestType = String(entryParams.get('testType') || '').toLowerCase();
             var entryRunMode = String(entryParams.get('runMode') || entryParams.get('practiceMode') || entryParams.get('mode') || '').toLowerCase().trim();
-            praticTestFullTestMode = entryTestType.includes('practice')
+            practiceReviewMode = entryTestType.includes('practice');
+            practiceReviewFullMode = practiceReviewMode
                 && entryRunMode !== 'instant'
                 && entryRunMode !== 'instantfeedback'
                 && entryRunMode !== 'instant feedback';
-            document.body.classList.toggle('review-practice-full-mode', praticTestFullTestMode);
+            document.body.classList.toggle('review-practice-mode', practiceReviewMode);
 
             var result = readReviewResultFromStorage();
             var answerKeyMode = entryParams.get('answerKey') === 'true';
@@ -5332,9 +5345,7 @@
             }
             await hydrateTranscriptFallbackMaps(result);
             refreshResultQuestionTranscriptSegments();
-            if (!praticTestFullTestMode) {
-                renderListeningScaledScore(reviewResultData);
-            }
+            renderListeningScaledScore(reviewResultData);
 
             var firstQuestion = result.questions[0];
             var firstIndex = 0;

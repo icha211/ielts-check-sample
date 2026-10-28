@@ -1432,6 +1432,11 @@
         box-shadow: 0 2px 8px rgba(31, 62, 80, .035);
     }
 
+    #user-view #onboarding-overlay.instruction-popup--structure.is-practice-structure .structure-intro__panel--writing,
+    #user-view #onboarding-overlay.instruction-popup--structure.is-practice-writing .structure-intro__panel--structure {
+        display: none;
+    }
+
     #user-view #onboarding-overlay.instruction-popup--structure .structure-intro__panel-heading {
         margin-bottom: 10px;
         font-size: 18px;
@@ -1790,7 +1795,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="toefl-storage-sync.js?v=20261010b"></script>
-    <script src="toefl-test-history.js?v=20261003a"></script>
+    <script src="toefl-test-history.js?v=20261024b"></script>
     <script src="mocknav-question.js"></script>
     <script>
         const PARTS = [
@@ -1799,6 +1804,8 @@
         ];
         const SETS_KEY = "toefl_developer_sets_v1";
         const SETS_KEY_V2 = "toefl_developer_sets_v2";
+        const MOCK_SETS_KEY = "toefl_developer_mocktest_sets_v2";
+        const PRACTICE_SETS_KEY = "toefl_developer_practicetest_sets_v2";
         const MODULE_ID = "structure";
         const MODULE_LABEL = "Structure";
         const EDITOR_APPLY_SYNC_KEY = "toefl_section2_editor_apply_sync";
@@ -1998,22 +2005,39 @@
             }
         }
 
-        function getStoredSetMap() {
-            const parsedV2 = safeParse(localStorage.getItem(SETS_KEY_V2), {});
-            const hasV2 = parsedV2 && typeof parsedV2 === "object" && Object.keys(parsedV2).length > 0;
-            const parsed = hasV2 ? parsedV2 : safeParse(localStorage.getItem(SETS_KEY), {});
-            if (Array.isArray(parsed)) {
-                return parsed.reduce((accumulator, item) => {
-                    const key = item?.setId || item?.module;
-                    if (item && key) accumulator[key] = item;
-                    return accumulator;
-                }, {});
-            }
-            return parsed && typeof parsed === "object" ? parsed : {};
+        function getStoredSetMap(testType = currentTestType) {
+            const localKey = testType === "practicetest" ? PRACTICE_SETS_KEY : MOCK_SETS_KEY;
+            const toMap = (raw) => {
+                const parsed = safeParse(raw, {});
+                if (Array.isArray(parsed)) {
+                    return parsed.reduce((accumulator, item) => {
+                        const key = item?.setId || item?.module;
+                        if (item && key) accumulator[key] = item;
+                        return accumulator;
+                    }, {});
+                }
+                return parsed && typeof parsed === "object" ? parsed : {};
+            };
+            const map = Object.assign(
+                {},
+                toMap(localStorage.getItem(SETS_KEY)),
+                toMap(localStorage.getItem(SETS_KEY_V2)),
+                toMap(localStorage.getItem(localKey))
+            );
+
+            return Object.fromEntries(Object.entries(map).filter(([setId, record]) => {
+                const recordType = String(record?.testType || "").toLowerCase();
+                if (recordType) return recordType === testType;
+                const id = String(record?.setId || setId).toLowerCase();
+                if (id.startsWith("practicetest_")) return testType === "practicetest";
+                if (id.startsWith("mocktest_")) return testType === "mocktest";
+                return testType !== "practicetest";
+            }));
         }
 
-        function persistStoredSetMap(map) {
-            localStorage.setItem(SETS_KEY_V2, JSON.stringify(map));
+        function persistStoredSetMap(map, testType = currentTestType) {
+            const localKey = testType === "practicetest" ? PRACTICE_SETS_KEY : MOCK_SETS_KEY;
+            localStorage.setItem(localKey, JSON.stringify(map));
         }
 
         function upsertLocalRecord(record) {
@@ -2058,11 +2082,15 @@
         async function resolveSetRecordByDate(setDate, filterTestType = null) {
             const testTypeToCheck = filterTestType || currentTestType;
             const variant = getPracticeVariant();
+            const requestedPackage = testTypeToCheck === "practicetest" ? getRequestedPracticePackage() : 0;
+            const matchesDateOrPackage = (item) => requestedPackage
+                ? (parseInt(item?.packageNumber, 10) || 1) === requestedPackage
+                : item?.setDate === setDate;
             try {
                 if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
                     const records = await toeflStorage.getSetRecordsByTestType(testTypeToCheck);
                     const match = (records || [])
-                        .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
+                        .filter((item) => item && item.module === MODULE_ID && matchesDateOrPackage(item))
                         .filter((item) => setRecordMatchesPracticeVariant(item, variant))
                         .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0];
                     if (match) return match;
@@ -2071,9 +2099,9 @@
                 console.warn("[ToeflSync] date-based lookup failed:", error);
             }
 
-            const local = getStoredSetMap();
+            const local = getStoredSetMap(testTypeToCheck);
             return Object.values(local)
-                .filter((item) => item && item.module === MODULE_ID && item.setDate === setDate)
+                .filter((item) => item && item.module === MODULE_ID && matchesDateOrPackage(item))
                 .filter((item) => setRecordMatchesPracticeVariant(item, variant))
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
         }
@@ -2094,8 +2122,8 @@
         async function resolveLatestSetRecord() {
             const variant = getPracticeVariant();
             try {
-                if (window.toeflStorage && typeof toeflStorage.getSetRecords === "function") {
-                    const records = await toeflStorage.getSetRecords();
+                if (window.toeflStorage && typeof toeflStorage.getSetRecordsByTestType === "function") {
+                    const records = await toeflStorage.getSetRecordsByTestType(currentTestType);
                     const latest = (records || [])
                         .filter((item) => item && item.module === MODULE_ID)
                         .filter((item) => setRecordMatchesPracticeVariant(item, variant))
@@ -2106,7 +2134,7 @@
                 console.warn("[ToeflSync] latest-set lookup failed:", error);
             }
 
-            const local = getStoredSetMap();
+            const local = getStoredSetMap(currentTestType);
             return Object.values(local)
                 .filter((item) => item && item.module === MODULE_ID)
                 .sort((left, right) => new Date(right.updatedAt || 0).getTime() - new Date(left.updatedAt || 0).getTime())[0] || null;
@@ -2965,14 +2993,7 @@
             });
 
             clearInterval(timerInterval);
-            persistPreviewSection2Result();
-
-            const params = new URLSearchParams(window.location.search);
-            const dateValue = (document.getElementById("set-date") || {}).value || currentPackageDate;
-            if (currentSetId) params.set("setId", currentSetId);
-            if (dateValue) params.set("setDate", dateValue);
-            const query = params.toString();
-            window.location.href = `section 2-answered.html${query ? `?${query}` : ""}`;
+            submitAnswers(true);
         }
 
         function renderInstantQuestion() {
@@ -3476,7 +3497,7 @@
                 <div id="user-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
                     <div class="user-main">
                         ${instructionsMarkup}
-                        <div class="section2-question-panel">
+                        <div${isPracticeTestType() ? "" : ' class="section2-question-panel"'}>
                             <div id="display-questions-${p}"></div>
                             ${p === 1 ? `
                             <div class="section2-part-actions" id="structure-part-a-actions" hidden>
@@ -3870,6 +3891,15 @@
         function updateOnboardingVisibility() {
             const overlay = document.getElementById("onboarding-overlay");
             if (!overlay) return;
+            const params = new URLSearchParams(window.location.search);
+            const practiceFocus = getPracticeVariant().focus;
+            const isPractice = isPracticeTestType();
+            const isWritingPractice = isPractice && (
+                String(params.get("sectionKey") || "").toLowerCase() === "writing" || practiceFocus === "partb"
+            );
+            overlay.classList.toggle("is-practice-writing", isWritingPractice);
+            overlay.classList.toggle("is-practice-structure", isPractice && !isWritingPractice && practiceFocus === "parta");
+
             if (shouldShowOnboarding()) {
                 overlay.classList.add("is-visible");
                 overlay.setAttribute("aria-hidden", "false");
@@ -4387,7 +4417,7 @@
             const nextSectionBtn = document.getElementById("navigator-next-section");
             const userContainer = document.getElementById("user-passages-container");
 
-            if (submitBtn) submitBtn.addEventListener("click", submitAnswers);
+            if (submitBtn) submitBtn.addEventListener("click", () => submitAnswers());
             if (nextQBtn) nextQBtn.addEventListener("click", goToNextQuestion);
             if (nextSectionBtn) nextSectionBtn.addEventListener("click", () => {
                 const btn = document.getElementById("btn-nav-2");
@@ -4689,8 +4719,8 @@
             }
 }
 
-        async function submitAnswers() {
-            if (isInstantFeedbackMode()) {
+        async function submitAnswers(instantResultsReady = false) {
+            if (isInstantFeedbackMode() && !instantResultsReady) {
                 finishInstantPractice();
                 return;
             }
@@ -4711,7 +4741,7 @@
                 ? "Finish Section 2, are you sure you want to continue to Section 3?" 
                 : "Yakin ingin mengakhiri Section 2 dan melihat skor?";
 
-            if (!confirm(confirmMessage)) return;
+            if (!isInstantFeedbackMode() && !confirm(confirmMessage)) return;
 
             clearInterval(timerInterval);
 
@@ -4740,7 +4770,7 @@
             
             // Save results to storage
             localStorage.setItem('toefl_section2_result', JSON.stringify(result));
-            if (window.toeflTestHistory) window.toeflTestHistory.record(result);
+            if (window.toeflTestHistory) await window.toeflTestHistory.record(result);
 
             if (isFullTest) {
                 // Dynamically find the corresponding Reading set ID for this date
@@ -4751,16 +4781,12 @@
                 }
                 
                 window.location.href = `section 3.html?${urlParams.toString()}`;
-            } else if (currentTestType !== "practicetest") {
-                if (currentSetId) urlParams.set("setId", currentSetId);
-                if (setDate) urlParams.set("setDate", setDate);
-                urlParams.set("testType", "mocktest");
-                urlParams.set("section", "structure");
-                window.location.href = `full-test-summary.html?${urlParams.toString()}`;
             } else {
                 if (currentSetId) urlParams.set("setId", currentSetId);
                 if (setDate) urlParams.set("setDate", setDate);
-                window.location.href = `section 2-answered.html?${urlParams.toString()}`;
+                urlParams.set("testType", currentTestType === "practicetest" ? "practicetest" : "mocktest");
+                urlParams.set("section", "structure");
+                window.location.href = `full-test-summary.html?${urlParams.toString()}`;
             }
         }
 

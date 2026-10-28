@@ -2441,7 +2441,7 @@
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="toefl-storage-sync.js?v=20261010b"></script>
-    <script src="toefl-test-history.js?v=20261003a"></script>
+    <script src="toefl-test-history.js?v=20261024b"></script>
     <script src="mocknav-question.js"></script>
     <script>
         const PARTS = [
@@ -5435,6 +5435,8 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
             if (currentSetId) params.set("setId", currentSetId);
             const dateValue = (document.getElementById("set-date") || {}).value || "";
             if (dateValue) params.set("setDate", dateValue);
+            params.set("testType", "practicetest");
+            params.set("runMode", "instant");
             const query = params.toString();
             window.location.href = `section 1-answered.html${query ? `?${query}` : ""}`;
         }
@@ -9614,13 +9616,14 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 totalQuestions: total,
                 rawScore: score,
                 scaledScore,
+                runMode: isPracticeTestType() ? getPracticeRunMode() : "full",
                 submittedAt: new Date().toISOString().slice(0, 10),
                 questions: answeredQs
             };
             
             // Save results to storage
             localStorage.setItem("toefl_section1_result", JSON.stringify(result));
-            if (window.toeflTestHistory) window.toeflTestHistory.record(result);
+            if (window.toeflTestHistory) await window.toeflTestHistory.record(result);
 
             if (isFullTest) {
                 // Dynamically find the corresponding Structure set ID for this date
@@ -9640,10 +9643,10 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             } else {
                 if (currentSetId && !urlParams.has("setId")) urlParams.set("setId", currentSetId);
                 if (selectedDate && !urlParams.has("setDate")) urlParams.set("setDate", selectedDate);
-                if (isPracticeTestType() && !urlParams.has("runMode") && !urlParams.has("practiceMode")) {
-                    urlParams.set("runMode", isInstantFeedbackMode() ? "instant" : "full");
-                }
-                window.location.href = `section 1-answered.html?${urlParams.toString()}`;
+                urlParams.set("testType", "practicetest");
+                urlParams.set("section", "listening");
+                urlParams.set("runMode", getPracticeRunMode());
+                window.location.href = `full-test-summary.html?${urlParams.toString()}`;
             }
         }
 

@@ -87,6 +87,29 @@
             color: #005faa;
         }
 
+        #user-view.is-review-result .timer {
+            display: none !important;
+        }
+
+        #user-view.is-review-result .test-package-frame {
+            width: auto;
+            height: auto;
+            align-items: flex-start;
+            gap: 0;
+        }
+
+        #user-view.is-review-result .package-01-jan {
+            margin-top: 0;
+            font-size: 12px;
+            line-height: 16px;
+        }
+
+        #user-view.is-review-result .review-score-summary {
+            color: #64748b;
+            font: 600 11px/16px "Outfit", Arial, sans-serif;
+            white-space: nowrap;
+        }
+
         .reading-part-header {
             display: flex;
             align-items: center;
@@ -935,6 +958,7 @@
     .btn-action.primary { background: #0d9488; color: #fff; }
     .btn-action.secondary { background: #94a3b8; color: #fff; }
     .btn-action:hover { filter: brightness(1.06); }
+    .btn-action:disabled { cursor: not-allowed; filter: none; opacity: 0.55; }
 
     .instant-explanation {
         border: 1px solid #e2e8f0;
@@ -1375,6 +1399,16 @@
             .section3-layout #user-passages-container .passage-shell {
                 height: auto;
                 min-height: 420px;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .figma-header--listening:not([data-mock-test-header="true"]) .timer {
+                position: static !important;
+                top: auto !important;
+                left: auto !important;
+                transform: none !important;
+                margin-right: 0;
             }
         }
 
@@ -2375,7 +2409,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="toefl-storage-sync.js?v=20261010b"></script>
-    <script src="toefl-test-history.js?v=20261003a"></script>
+    <script src="toefl-test-history.js?v=20261024b"></script>
     <script src="js/reading-explanations.js?v=20261006b"></script>
     <script src="mocknav-question.js"></script>
     <script>
@@ -2946,8 +2980,7 @@
         }
 
         // ===== Practice test: instant feedback engine =====
-        // Full Test Mode reuses the mock-test layout untouched; only instant mode
-        // swaps the stacked question list for a one-question-at-a-time card.
+        // Review mode uses the explanation card for either practice run mode.
         let instantOrder = [];
         let instantIndex = 0;
         let instantAnswers = {};
@@ -2970,7 +3003,8 @@
         }
 
         function isInstantFeedbackMode() {
-            return getPracticeRunMode() === "instant";
+            return new URLSearchParams(window.location.search).get("reviewResult") === "true"
+                || getPracticeRunMode() === "instant";
         }
 
         function getPartIdFromUid(uid) {
@@ -3830,6 +3864,7 @@
             const selected = normalizeLetter(instantAnswers[uid]);
             const correct = normalizeLetter(globalAnswerKey[uid]);
             const isCorrect = instantRevealed && selected === correct;
+            const isReviewMode = isSavedReadingReviewMode();
             const badgeState = instantRevealed ? (isCorrect ? " is-correct" : " is-incorrect") : (selected ? " is-selected" : "");
             const optionsHtml = ["A", "B", "C", "D"].map((letter) => {
                 const classes = [];
@@ -3847,7 +3882,10 @@
                 </label>`;
             }).join("");
             const stemHtml = escapeHtml(question.questionText || `Question ${questionNumber}`);
-            const actionsHtml = instantRevealed
+            const actionsHtml = isReviewMode
+                ? `<button class="btn-action secondary" type="button" onclick="moveReviewQuestion(-1)"${instantIndex === 0 ? " disabled" : ""}>Previous Question</button>
+                   <button class="btn-action primary" type="button" onclick="${instantIndex >= instantOrder.length - 1 ? "returnToReadingResults()" : "moveReviewQuestion(1)"}">${instantIndex >= instantOrder.length - 1 ? "Finish Review" : "Next Question"} <i class="ph ph-caret-right" aria-hidden="true"></i></button>`
+                : instantRevealed
                 ? `<button class="btn-action primary" type="button" onclick="nextInstantQuestion()">${instantIndex === instantOrder.length - 1 ? "Finish Practice" : "Next Question"} <i class="ph ph-caret-right" aria-hidden="true"></i></button>`
                 : `<button class="btn-action secondary" type="button" onclick="skipInstantQuestion()">Skip Question</button>
                    <button class="btn-action primary" type="button" onclick="checkInstantAnswer()">Check Answer <i class="ph ph-caret-right" aria-hidden="true"></i></button>`;
@@ -3858,7 +3896,7 @@
                         <div class="instant-question-head">
                             <div class="question-number-badge${badgeState}">${questionNumber}</div>
                             <p class="instant-question-title">${stemHtml}</p>
-                            ${instantRevealed ? `<span class="instant-verdict ${isCorrect ? "is-correct" : "is-incorrect"}">${isCorrect ? "CORRECT" : "INCORRECT"}</span>` : ""}
+                            ${instantRevealed ? `<span class="instant-verdict ${isCorrect ? "is-correct" : "is-incorrect"}">${!selected ? "UNANSWERED" : isCorrect ? "CORRECT" : "INCORRECT"}</span>` : ""}
                         </div>
                         <div class="instant-options">${optionsHtml}</div>
                     </article>
@@ -3867,6 +3905,157 @@
                 </div>
             </section>`;
             renderInstantProgressDots();
+        }
+
+        function moveReviewQuestion(offset) {
+            const nextIndex = instantIndex + Number(offset || 0);
+            if (!isSavedReadingReviewMode() || nextIndex < 0 || nextIndex >= instantOrder.length) return;
+            instantIndex = nextIndex;
+            instantRevealed = true;
+            renderInstantQuestion();
+        }
+
+        function showReadingReviewScore(result) {
+            const total = Number(result.totalQuestions) || result.questions.length;
+            const rawScore = Number.isFinite(Number(result.rawScore))
+                ? Number(result.rawScore)
+                : result.questions.filter((question) => question.isCorrect).length;
+            const scaledScore = Number(result.scaledScore);
+            const packageFrame = document.querySelector(".test-package-frame");
+            if (packageFrame) {
+                let scoreSummary = packageFrame.querySelector(".review-score-summary");
+                if (!scoreSummary) {
+                    scoreSummary = document.createElement("span");
+                    scoreSummary.className = "review-score-summary";
+                    packageFrame.appendChild(scoreSummary);
+                }
+                scoreSummary.textContent = `Score ${rawScore} / ${total}${Number.isFinite(scaledScore) ? ` · Scaled ${scaledScore}` : ""}`;
+            }
+
+            const submitButton = document.getElementById("submit-header-btn");
+            if (submitButton) {
+                submitButton.innerHTML = '<div class="submit">Back to Results</div>';
+                submitButton.setAttribute("aria-label", "Back to practice test results");
+                submitButton.onclick = returnToReadingResults;
+            }
+
+            const userView = document.getElementById("user-view");
+            if (userView) userView.classList.add("is-review-result");
+        }
+
+        function returnToReadingResults() {
+            const params = new URLSearchParams(window.location.search);
+            params.delete("reviewResult");
+            params.delete("attemptDate");
+            params.set("section", "reading");
+            params.set("testType", "practicetest");
+            window.location.href = `full-test-summary.html?${params.toString()}`;
+        }
+
+        function getSavedReviewQuestionText(question, sourceQuestions, uid, number) {
+            const savedText = coerceText(question?.questionText);
+            if (savedText && !/^question\s+\d+$/i.test(savedText)) return savedText;
+
+            const sourceQuestion = sourceQuestions?.[uid] || {};
+            return coerceText(
+                sourceQuestion.rawQuestionText
+                || sourceQuestion.questionText
+                || question?.rawQuestionText
+                || savedText
+            ) || `Question ${number}`;
+        }
+
+        function restoreSavedReadingReview() {
+            if (!isSavedReadingReviewMode()) return false;
+
+            const params = new URLSearchParams(window.location.search);
+            let result = null;
+            try {
+                const raw = localStorage.getItem("toefl_section3_result");
+                if (raw) result = JSON.parse(raw);
+            } catch (error) {
+                console.error("[Reading Review] Could not read the saved result:", error);
+            }
+
+            const normalizeDate = (value) => {
+                const text = String(value || "").trim();
+                const isoDate = text.match(/^\d{4}-\d{2}-\d{2}/);
+                if (isoDate) return isoDate[0];
+                const parsedDate = new Date(text);
+                return Number.isNaN(parsedDate.getTime()) ? text : parsedDate.toISOString().slice(0, 10);
+            };
+            const attemptDate = params.get("attemptDate") || params.get("setDate") || "";
+            const resultDate = result?.setDate || result?.submittedAt || "";
+            const mode = String(params.get("runMode") || "").toLowerCase();
+            const resultMode = String(result?.runMode || "full").toLowerCase();
+            if (Array.isArray(result?.questions)) result.questions = result.questions.filter((question) => question && typeof question === "object");
+            const attemptMatches = result
+                && String(result.testType || "").toLowerCase() === "practicetest"
+                && (!params.get("setId") || String(result.setId || "") === params.get("setId"))
+                && (!attemptDate || (normalizeDate(attemptDate) && normalizeDate(resultDate) === normalizeDate(attemptDate)))
+                && (!mode || mode === resultMode);
+
+            if (!attemptMatches || !Array.isArray(result.questions) || !result.questions.length) {
+                const host = document.getElementById("instant-question-host-1");
+                if (host) {
+                    host.innerHTML = '<section class="instant-card"><div class="instant-card__body"><p class="instant-empty-state">This saved reading attempt is no longer available on this device. Return to the results page to choose another attempt.</p></div></section>';
+                }
+                const submitButton = document.getElementById("submit-header-btn");
+                if (submitButton) {
+                    submitButton.innerHTML = '<div class="submit">Back to Results</div>';
+                    submitButton.onclick = returnToReadingResults;
+                }
+                document.getElementById("time").textContent = "Result unavailable";
+                clearInterval(timerInterval);
+                document.getElementById("user-view")?.classList.add("is-review-result");
+                return true;
+            }
+
+            result.questions.sort((left, right) => Number(left.number || 0) - Number(right.number || 0));
+            const sourceQuestions = globalQuestions;
+            globalAnswerKey = {};
+            globalExplanations = {};
+            globalEnglishExplanations = {};
+            globalQuestions = {};
+            globalPassages = result.passages || {};
+            instantAnswers = {};
+            instantChecked = {};
+
+            Object.entries(globalPassages).forEach(([passageId, passage]) => {
+                const passageElement = document.getElementById(`display-passage-${passageId}`);
+                const titleElement = document.getElementById(`display-title-${passageId}`);
+                if (passageElement) passageElement.innerHTML = typeof passage === "string" ? passage : (passage?.content || "");
+                if (titleElement && passage?.title) titleElement.textContent = passage.title;
+            });
+
+            result.questions.forEach((question) => {
+                const passageId = Number(question.passageId) || 1;
+                const number = Number(question.number) || Number(String(question.uid || "").split("_")[1]) || 1;
+                const uid = `${passageId}_${number}`;
+                globalQuestions[uid] = {
+                    questionText: getSavedReviewQuestionText(question, sourceQuestions, uid, number),
+                    options: question.options || {},
+                    passageId
+                };
+                globalAnswerKey[uid] = normalizeLetter(question.correctAnswer);
+                globalExplanations[uid] = question.explanation || "";
+                globalEnglishExplanations[uid] = question.explanationEnglish || "";
+                instantAnswers[uid] = normalizeLetter(question.userAnswer);
+                instantChecked[uid] = true;
+            });
+
+            buildInstantOrder();
+            const savedQuestionNumber = Number(result.lastQuestionNumber);
+            const savedIndex = instantOrder.findIndex((uid) => getQuestionNumberFromUid(uid) === savedQuestionNumber);
+            instantIndex = savedIndex >= 0
+                ? savedIndex
+                : Math.max(0, instantOrder.findIndex((uid) => instantAnswers[uid] !== globalAnswerKey[uid]));
+            instantRevealed = true;
+            updateHeaderPackageLabel(result.setDate || result.submittedAt || "");
+            showReadingReviewScore(result);
+            applyPracticeRunMode();
+            clearInterval(timerInterval);
+            return true;
         }
 
         function selectInstantChoice(letter, uid) {
@@ -4643,7 +4832,11 @@
         }
 
         function shouldShowReadingOnboarding() {
-            return !isDeveloperMode() && localStorage.getItem(getReadingOnboardingKey()) !== "1";
+            return !isSavedReadingReviewMode() && !isDeveloperMode() && localStorage.getItem(getReadingOnboardingKey()) !== "1";
+        }
+
+        function isSavedReadingReviewMode() {
+            return new URLSearchParams(window.location.search).get("reviewResult") === "true";
         }
 
         function updateReadingIntroPassageCount() {
@@ -5010,7 +5203,7 @@
             startTimer();
         }
 
-        function submitAnswers() {
+        async function submitAnswers() {
             let score = 0;
             let total = Object.keys(globalAnswerKey).length;
 
@@ -5043,15 +5236,22 @@
                 const userAnswer = radio ? radio.value.trim().toLowerCase() : '';
                 const correct = globalAnswerKey[uid];
                 const q = globalQuestions[uid] || {};
-                return { uid, number: qNum, passageId: pId, questionText: q.questionText || `Question ${qNum}`, options: q.options || {}, correctAnswer: correct, userAnswer, isCorrect: userAnswer === correct, explanation: globalExplanations[uid] || '', explanationEnglish: globalEnglishExplanations[uid] || '' };
+                return { uid, number: qNum, passageId: pId, questionText: q.questionText || `Question ${qNum}`, rawQuestionText: q.rawQuestionText || q.questionText || '', options: q.options || {}, correctAnswer: correct, userAnswer, isCorrect: userAnswer === correct, explanation: globalExplanations[uid] || '', explanationEnglish: globalEnglishExplanations[uid] || '' };
             }).sort((a, b) => a.number - b.number);
 
             const passages = {};
             for (let pid in globalPassages) passages[pid] = globalPassages[pid];
 
-            const result = { setId: currentSetId, testType: currentTestType, sectionTitle: "Section 3: Reading Comprehension", sectionKey: "reading", totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), questions: answeredQs, passages };
+            const setDate = urlParams.get("setDate") || document.getElementById("set-date")?.value || "";
+            const runMode = getPracticeRunMode();
+            const activeQuestion = document.querySelector(".question-item.is-focused");
+            const focusedQuestionNumber = Number(activeQuestion?.querySelector(".question-index-pill")?.textContent) || 0;
+            const lastQuestionNumber = runMode === "instant" && typeof instantOrder !== "undefined"
+                ? Number(String(instantOrder[instantIndex] || "").split("_")[1]) || 0
+                : focusedQuestionNumber;
+            const result = { setId: currentSetId, setDate, runMode, testType: currentTestType, sectionTitle: "Section 3: Reading Comprehension", sectionKey: "reading", totalQuestions: total, rawScore: score, scaledScore, submittedAt: new Date().toISOString().slice(0, 10), lastQuestionNumber, questions: answeredQs, passages };
             localStorage.setItem('toefl_section3_result', JSON.stringify(result));
-            if (window.toeflTestHistory) window.toeflTestHistory.record(result);
+            if (window.toeflTestHistory) await window.toeflTestHistory.record(result);
             if (isFullTest) {
                 // If it's a full test, forward to your final summary/report page with the parameters intact
                 window.location.href = `full-test-summary.html?${urlParams.toString()}`; // Adjust filename if your final summary page has a different name
@@ -5061,10 +5261,12 @@
                 urlParams.set("section", "reading");
                 window.location.href = `full-test-summary.html?${urlParams.toString()}`;
             } else {
-                // Normal single-section flow
-                const reviewParams = new URLSearchParams({ testType: currentTestType });
-                if (currentSetId) reviewParams.set("setId", currentSetId);
-                window.location.href = `section 3-answered.html?${reviewParams}`;
+                urlParams.set("testType", "practicetest");
+                urlParams.set("section", "reading");
+                if (currentSetId) urlParams.set("setId", currentSetId);
+                if (setDate) urlParams.set("setDate", setDate);
+                urlParams.set("runMode", runMode);
+                window.location.href = `full-test-summary.html?${urlParams.toString()}`;
             }
         }
 
@@ -5247,18 +5449,20 @@
             bindUserToolbarActions();
             updateFullScreenButton();
             document.addEventListener("fullscreenchange", handleFullScreenStateChange);
+            let isReviewResult = false;
             try {
                 await loadSectionMeta();
                 await loadSectionDraft();
                 updateUserView();
                 applyPracticeRunMode();
+                isReviewResult = restoreSavedReadingReview();
                 sectionReady = true;
                 initAutoSave();
             } catch (error) {
                 console.warn("[Init] Failed to fully restore section data:", error);
             }
             updateReadingIntroPassageCount();
-            updateReadingOnboardingVisibility();
+            if (!isReviewResult) updateReadingOnboardingVisibility();
             window.addEventListener("resize", updateReadingIntroHeaderOffset);
             const readingHeader = document.querySelector("#user-view .mock-test-header") || document.querySelector("#user-view .cbt-header");
             if (readingHeader && window.ResizeObserver) {

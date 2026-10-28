@@ -159,7 +159,7 @@ test("saved developer practice schedules override the mock-day cadence", () => {
     assert.equal(linkedRecommendation("2026-11-01"), "practicetest");
 });
 
-test("per-user package assignment repeats until a package is started, then advances even for earlier dates", () => {
+test("per-user package assignment advances after use and reuses a package when all have been used", () => {
     const packageOverride = studyPlan.match(/function getPracticePackageOverrideForDate\(dateValue, packages\) \{[\s\S]*?\n            \}/);
     const packageSelector = studyPlan.match(/function selectPracticePackageForDate\(dateValue, packages, records, consumedPackageNumbers\) \{[\s\S]*?\n            \}/);
     assert.ok(packageOverride && packageSelector, "Missing practice package assignment helpers");
@@ -183,7 +183,7 @@ test("per-user package assignment repeats until a package is started, then advan
     assert.equal(selectPackage("2026-10-23", packages, records, []).packageNumber, 1);
     assert.equal(selectPackage("2026-10-22", packages, records, [1]).packageNumber, 2);
     assert.equal(selectPackage("2026-10-24", packages, records, [1]).packageNumber, 3);
-    assert.equal(selectPackage("2026-10-22", packages, records, [1, 2, 3]), null);
+    assert.equal(selectPackage("2026-10-22", packages, records, [1, 2, 3]).packageNumber, 1);
 });
 
 test("practice package sets are selected by the assigned package and option, not their saved calendar date", () => {
@@ -318,6 +318,88 @@ test("daily reading launch carries the selected package test type", () => {
         assert.equal(params.get("setId"), setId);
         if (expectedType === "practicetest") assert.equal(params.get("runMode"), "full");
     }
+});
+
+test("Section 2 resolves a date-less practice test by its assigned package", async () => {
+    assert.match(
+        studyPlan,
+        /if \(testType === "practicetest" && activeModalState\.practicePackageNumber\) \{\s*params\.set\("package", String\(activeModalState\.practicePackageNumber\)\);/
+    );
+    const helpersStart = structureTest.indexOf("        function normalizePracticeFocus(value) {");
+    const helpersEnd = structureTest.indexOf("        // Mock tests follow the day cadence;", helpersStart);
+    const lookupStart = structureTest.indexOf("        async function resolveSetRecordByDate(");
+    const lookupEnd = structureTest.indexOf("\n        async function resolveSetRecordById(", lookupStart);
+    assert.ok(helpersStart >= 0 && helpersEnd > helpersStart, "Missing practice set helpers");
+    assert.ok(lookupStart >= 0 && lookupEnd > lookupStart, "Missing practice set lookup");
+
+    const records = [
+        { setId: "practicetest_structure_partb-intermediate_package1", module: "structure", packageNumber: 1, focus: "partb", difficulty: "intermediate", setDate: "" },
+        { setId: "practicetest_structure_parta-intermediate_package2", module: "structure", packageNumber: 2, focus: "parta", difficulty: "intermediate", setDate: "" },
+        { setId: "practicetest_structure_partb-intermediate_package2", module: "structure", packageNumber: 2, focus: "partb", difficulty: "intermediate", setDate: "" }
+    ];
+    const storage = { getSetRecordsByTestType: async () => records };
+    const context = vm.createContext({
+        URLSearchParams,
+        Date,
+        MODULE_ID: "structure",
+        currentTestType: "practicetest",
+        forcedPracticeFocusPart: 2,
+        document: { getElementById: () => ({ value: "intermediate" }) },
+        window: {
+            location: { search: "?testType=practicetest&focus=partb&difficulty=intermediate&package=2" },
+            toeflStorage: storage
+        },
+        toeflStorage: storage,
+        getStoredSetMap: () => ({}),
+        console: { warn() {} }
+    });
+
+    vm.runInContext(
+        `${structureTest.slice(helpersStart, helpersEnd)}; ${structureTest.slice(lookupStart, lookupEnd)}; result = resolveSetRecordByDate`,
+        context
+    );
+    const record = await context.result("2026-10-28");
+    assert.equal(record.setId, "practicetest_structure_partb-intermediate_package2");
+});
+
+test("Section 2 keeps practice and mock set fallbacks isolated", () => {
+    const start = structureTest.indexOf("        function getStoredSetMap(");
+    const end = structureTest.indexOf("\n        function updateEditorUrl(", start);
+    assert.ok(start >= 0 && end > start, "Missing local set map helpers");
+
+    const local = {
+        toefl_developer_sets_v1: JSON.stringify({
+            practicetest_structure_partb: { setId: "practicetest_structure_partb", module: "structure" },
+            mocktest_structure: { setId: "mocktest_structure", module: "structure" }
+        }),
+        toefl_developer_sets_v2: "{}",
+        toefl_developer_mocktest_sets_v2: "{}",
+        toefl_developer_practicetest_sets_v2: "{}"
+    };
+    const writes = {};
+    const context = vm.createContext({
+        currentTestType: "practicetest",
+        PRACTICE_SETS_KEY: "toefl_developer_practicetest_sets_v2",
+        MOCK_SETS_KEY: "toefl_developer_mocktest_sets_v2",
+        SETS_KEY: "toefl_developer_sets_v1",
+        SETS_KEY_V2: "toefl_developer_sets_v2",
+        safeParse(raw, fallback) {
+            try { return JSON.parse(raw) || fallback; } catch { return fallback; }
+        },
+        localStorage: {
+            getItem(key) { return local[key] || null; },
+            setItem(key, value) { writes[key] = value; }
+        }
+    });
+    vm.runInContext(
+        `${structureTest.slice(start, end)}; result = { map: getStoredSetMap(), persist: persistStoredSetMap }`,
+        context
+    );
+
+    assert.deepEqual(Object.keys(context.result.map), ["practicetest_structure_partb"]);
+    context.result.persist({ test: { setId: "practicetest_structure_partb" } });
+    assert.ok(writes.toefl_developer_practicetest_sets_v2);
+    assert.equal(writes.toefl_developer_sets_v2, undefined);
 });
 
 test("modified page scripts remain valid JavaScript", () => {
