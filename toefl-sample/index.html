@@ -4674,7 +4674,7 @@ body {
             }
             partnerSelected.append(selectedAvatar, profileCopy);
             partnerMatchButton.disabled = partnerRequestSent;
-            partnerMatchButton.textContent = partnerRequestSent ? "Request noted (demo)" : "Request friends";
+            partnerMatchButton.textContent = "Send message";
         }
 
         function selectPartner(profileId, centerProfile = false) {
@@ -4771,12 +4771,8 @@ body {
             renderPartnerOrbit();
         });
         partnerMatchButton.addEventListener("click", () => {
-            if (!selectedPartnerId || partnerRequestSent) return;
-            partnerRequestSent = true;
-            partnerMatchButton.disabled = true;
-            partnerMatchButton.textContent = "Request noted (demo)";
-            const message = partnerSelected.querySelector("small");
-            if (message) message.textContent = "Demo request noted · no message was sent";
+            if (!selectedPartnerId) return;
+            window.location.href = `message.html?${new URLSearchParams({ to: selectedPartnerId }).toString()}`;
         });
 
         renderPartnerOrbit();

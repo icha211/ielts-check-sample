@@ -202,6 +202,16 @@ Completed listening, structure, and reading attempts are stored under `user_test
 
 New full mock tests carry a `mockSessionId` through all three section URLs. Section records use a stable session-and-section ID to avoid duplicate submissions. History groups them into one mock test and marks it completed only when all three sections have results. Standalone mock sections and older records without a session ID remain section results, not full mock-test attempts; older records are not guessed into sessions or deleted. Practice attempts and the section-level data used by progress/recommendations remain separate. View Result restores only the selected entry's saved answers; older summary-only records show that details are unavailable rather than opening unrelated browser results.
 
+## Realtime TOEFL messages
+
+The Messages page uses Firebase Authentication and Realtime Database, not demo conversations or browser-local message storage. New message recipients come from the signed-in learner directory, and the dashboard's **Send message** button opens the selected learner. Photos and online status update with the directory; accounts without photos use initials.
+
+Each send atomically creates the same immutable message at `user_messages/{senderUid}/{recipientUid}/{messageId}` and `user_messages/{recipientUid}/{senderUid}/{messageId}` with a server timestamp. Rules permit only the authenticated sender to create messages with their own UID, and only each inbox owner can read that inbox. Messages are limited to 2,000 characters; recipient profiles must be listed to receive new messages. Favorites, archived/deleted-folder flags and read timestamps are stored separately at `message_preferences/{uid}/{peerUid}` and can be accessed only by that account. Recently deleted hides the conversation for that user; it does not erase the other participant's messages.
+
+The page subscribes to messages, directory profiles and private folder/read state. Account changes detach listeners and clear the previous account's UI. Sending is confirmed only after Firebase acknowledges the atomic write; failures preserve the composed text. Offline writes may remain pending until reconnection. There are no attachments, group chats, automated replies, rate limiting or blocking controls in this initial direct-messaging implementation.
+
+Deploy `database.rules.json` using `firebase deploy --only database --project quickcheck-25590` before using the updated website. Website assets must also be served from an updated deployment (or locally via the development site). Rules tests in `toefl-sample/messaging-rules.test.js` require the Realtime Database emulator and `FIREBASE_DATABASE_EMULATOR_HOST`; service tests run with `node --test toefl-sample/messaging.test.js`.
+
 ---
 
 ## 🐛 Troubleshooting
