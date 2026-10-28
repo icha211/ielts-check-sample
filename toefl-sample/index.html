@@ -2869,7 +2869,7 @@ body {
             min-width: 0;
             max-width: none;
             height: auto;
-            min-height: 82px;
+            min-height: 116px;
             max-height: none;
             padding: 8px;
             border-radius: 12px;
@@ -3814,17 +3814,26 @@ body {
             container-type: inline-size;
         }
 
-        .partner-track { display: flex; width: max-content; flex: 0 0 auto; }
-        .partner-track-group { display: flex; align-items: center; justify-content: space-around; min-width: 100cqw; padding: 12px 0; gap: 16px; }
-        .partner-card .partner-track .partner-avatar { width: 52px; height: 52px; flex: 0 0 52px; margin: 0 8px; }
-        .partner-track.is-moving { animation: partner-drift-right var(--partner-loop-duration, 24s) cubic-bezier(.37, .36, .63, .64) infinite; }
-        .partner-carousel:hover .partner-track,
-        .partner-carousel:focus-within .partner-track,
-        .partner-track.is-paused { animation-play-state: paused; }
-        @keyframes partner-drift-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+        .partner-track { position: relative; width: 100%; height: 116px; }
+        .partner-card .partner-track .partner-avatar {
+            position: absolute; left: calc(50% - 32px); top: 26px;
+            width: 64px; height: 64px; margin: 0;
+            transform: translateX(var(--partner-x)) translateY(var(--partner-y)) scale(var(--partner-scale));
+            z-index: var(--partner-depth);
+        }
+        .partner-track.is-moving .partner-avatar {
+            animation: partner-arc-right var(--partner-loop-duration) cubic-bezier(.37, .36, .63, .64) infinite;
+            animation-delay: var(--partner-delay);
+        }
+        .partner-carousel:hover .partner-track .partner-avatar,
+        .partner-carousel:focus-within .partner-track .partner-avatar,
+        .partner-track.is-paused .partner-avatar { animation-play-state: paused; }
+        .partner-card .partner-track .partner-avatar:focus-visible {
+            animation: none; transform: translateY(-6px); opacity: 1; z-index: 6;
+        }
         @media (prefers-reduced-motion: reduce) {
-            .partner-track.is-moving { animation: none; }
-            .partner-track-group[aria-hidden="true"] { display: none; }
+            .partner-track.is-moving .partner-avatar { animation: none; }
+            .partner-track .partner-avatar:nth-of-type(n+6) { display: none; }
         }
 
         .partner-card .partner-orbit::before {
@@ -4655,21 +4664,34 @@ body {
             togglePartnerMotionButton.disabled = partnerProfiles.length < 2;
             const track = document.createElement("div");
             track.className = `partner-track${partnerProfiles.length > 1 ? " is-moving" : ""}${partnerMotionPaused ? " is-paused" : ""}`;
-            track.style.setProperty("--partner-loop-duration", `${Math.max(24, partnerProfiles.length * 5)}s`);
+            const cycleSlots = Math.max(5, partnerProfiles.length);
+            track.style.setProperty("--partner-loop-duration", `${cycleSlots * 4}s`);
+            const motionStyle = document.createElement("style");
+            const stops = [
+                [0, -60, 22, .55, 0, 1],
+                [.5, -40, 18, .6, 1, 1],
+                [1.5, -20, 7, .8, 1, 2],
+                [2.5, 0, -6, 1, 1, 3],
+                [3.5, 20, 7, .8, 1, 2],
+                [4.5, 40, 18, .6, 1, 1],
+                [5, 60, 22, .55, 0, 1]
+            ];
+            motionStyle.textContent = `@keyframes partner-arc-right {${stops.map(([step, x, y, scale, opacity, depth]) =>
+                `${step / cycleSlots * 100}% { transform: translateX(${x}cqw) translateY(${y}px) scale(${scale}); opacity: ${opacity}; z-index: ${depth}; }`
+            ).join("")}${cycleSlots > 5 ? "100% { transform: translateX(60cqw) translateY(22px) scale(.55); opacity: 0; z-index: 1; }" : ""}}`;
+            track.append(motionStyle);
             const visibleProfiles = Array.from({ length: partnerProfiles.length }, (_, slot) => {
                 return partnerProfiles[(partnerOffset + slot) % partnerProfiles.length];
             });
-            const copies = partnerProfiles.length > 1 ? 2 : 1;
-            Array.from({ length: copies }, (_, copy) => {
-                const group = document.createElement("div");
-                group.className = "partner-track-group";
-                if (copy) group.setAttribute("aria-hidden", "true");
-                visibleProfiles.forEach((profile) => {
-                    const avatar = createPartnerAvatar(profile, 1);
-                    if (copy) avatar.tabIndex = -1;
-                    group.append(avatar);
-                });
-                track.append(group);
+            visibleProfiles.forEach((profile, index) => {
+                const slot = visibleProfiles.length === 1 ? 2 : index % 5;
+                const avatar = createPartnerAvatar(profile, slot);
+                avatar.style.setProperty("--partner-x", `${(slot - 2) * 20}cqw`);
+                avatar.style.setProperty("--partner-y", `${[18, 7, -6, 7, 18][slot]}px`);
+                avatar.style.setProperty("--partner-scale", String([.6, .8, 1, .8, .6][slot]));
+                avatar.style.setProperty("--partner-depth", String([1, 2, 3, 2, 1][slot]));
+                avatar.style.setProperty("--partner-delay", `${-(index + .5) * 4}s`);
+                track.append(avatar);
             });
             partnerOrbit.append(track);
 
