@@ -1,4 +1,4 @@
-import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConnection, acceptConnection, removeConnection } from "./js/messaging.js?v=20261030a";
+import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConnection, acceptConnection, removeConnection } from "./js/messaging.js?v=20261030b";
 
 (() => {
   let profiles = [];

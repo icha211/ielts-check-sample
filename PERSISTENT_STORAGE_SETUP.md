@@ -216,6 +216,12 @@ Learners must accept a message request before either side can send messages:
 
 Rules allow each learner to read only their own `message_contacts/{uid}`. They also reject one-sided writes, self-requests, accepts by the requester, status rollbacks, client timestamps and extra fields. Message creation requires the sender's own contact status to be `connected`.
 
+Both contact records also store `requesterId`, the UID of the learner who sent the request. Rules require it to match the requester when the request is created and keep it unchanged when it is accepted, so nobody can forge who asked first.
+
+### Accepted-request notifications
+
+The bell button in the shared top bar (`site-navbar.js`) shows a badge as soon as someone accepts a request you sent. It listens in realtime to `message_contacts/{uid}`, where an entry with `status: "connected"` and `requesterId` equal to your UID is an accepted request. Opening the bell lists the latest accepted requests and links each one to `message.html?to={peerUid}`. Opening it also writes `notification_state/{uid}/acceptedSeenAt` as a server timestamp, which clears the badge on every device. Only the owner can read or write `notification_state/{uid}`; the value must be a number no later than the server time, and no other fields are allowed. Contacts accepted before `requesterId` existed do not produce bell notifications.
+
 Each send atomically creates the same immutable message at `user_messages/{senderUid}/{recipientUid}/{messageId}` and `user_messages/{recipientUid}/{senderUid}/{messageId}` with a server timestamp. Rules permit only the authenticated sender to create messages with their own UID, and only each inbox owner can read that inbox. Messages are limited to 2,000 characters. Favorites, archived/deleted-folder flags and read timestamps are stored separately at `message_preferences/{uid}/{peerUid}` and can be accessed only by that account. Recently deleted hides the conversation for that user; it does not erase the other participant's messages.
 
 The page subscribes to messages, contacts, directory profiles and private folder/read state. The sidebar badge counts unread incoming messages plus pending incoming requests. Account changes detach listeners and clear the previous account's UI. Sending is confirmed only after Firebase acknowledges the atomic write; failures preserve the composed text. Offline writes may remain pending until reconnection. There are no attachments, group chats, automated replies, rate limiting or blocking controls in this direct-messaging implementation.

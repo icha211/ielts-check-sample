@@ -31,11 +31,22 @@
         ".read": "auth != null && auth.uid === $uid",
         "$peer": {
           ".write": "auth != null && $uid !== $peer && (auth.uid === $uid || auth.uid === $peer) && ((data.exists() && !newData.exists() && !newData.parent().parent().child($peer).child($uid).exists()) || (!data.exists() && !root.child('message_contacts').child($peer).child($uid).exists() && newData.child('status').val() === (auth.uid === $uid ? 'outgoing' : 'incoming') && newData.parent().parent().child($peer).child($uid).child('status').val() === (auth.uid === $uid ? 'incoming' : 'outgoing') && root.child('partnerDirectory').child(auth.uid === $uid ? $peer : $uid).exists()) || (data.child('status').val() === (auth.uid === $uid ? 'incoming' : 'outgoing') && newData.child('status').val() === 'connected' && newData.parent().parent().child($peer).child($uid).child('status').val() === 'connected'))",
-          ".validate": "newData.hasChildren(['status', 'updatedAt'])",
+          ".validate": "newData.hasChildren(['status', 'updatedAt', 'requesterId'])",
           "status": { ".validate": "newData.isString() && (newData.val() === 'outgoing' || newData.val() === 'incoming' || newData.val() === 'connected')" },
           "updatedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
+          "requesterId": { ".validate": "newData.isString() && newData.val() === (newData.parent().child('status').val() === 'outgoing' ? $uid : newData.parent().child('status').val() === 'incoming' ? $peer : data.parent().child('status').val() === 'outgoing' ? $uid : $peer)" },
           "$other": { ".validate": false }
         }
+      }
+    },
+
+    "notification_state": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['acceptedSeenAt'])",
+        "acceptedSeenAt": { ".validate": "newData.isNumber() && newData.val() <= now" },
+        "$other": { ".validate": false }
       }
     },
 

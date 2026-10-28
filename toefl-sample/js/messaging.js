@@ -90,16 +90,16 @@ function requirePeer(peerId) {
 export async function requestConnection(peerId) {
     const user = requirePeer(peerId);
     await update(ref(db), {
-        [`message_contacts/${user.uid}/${peerId}`]: { status: "outgoing", updatedAt: serverTimestamp() },
-        [`message_contacts/${peerId}/${user.uid}`]: { status: "incoming", updatedAt: serverTimestamp() }
+        [`message_contacts/${user.uid}/${peerId}`]: { status: "outgoing", requesterId: user.uid, updatedAt: serverTimestamp() },
+        [`message_contacts/${peerId}/${user.uid}`]: { status: "incoming", requesterId: user.uid, updatedAt: serverTimestamp() }
     });
 }
 
 export async function acceptConnection(peerId) {
     const user = requirePeer(peerId);
     await update(ref(db), {
-        [`message_contacts/${user.uid}/${peerId}`]: { status: "connected", updatedAt: serverTimestamp() },
-        [`message_contacts/${peerId}/${user.uid}`]: { status: "connected", updatedAt: serverTimestamp() }
+        [`message_contacts/${user.uid}/${peerId}`]: { status: "connected", requesterId: peerId, updatedAt: serverTimestamp() },
+        [`message_contacts/${peerId}/${user.uid}`]: { status: "connected", requesterId: peerId, updatedAt: serverTimestamp() }
     });
 }
 

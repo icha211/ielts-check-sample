@@ -6,7 +6,7 @@
       detail: { message: "Live partner updates could not start. Please reload this page." }
     }));
   });
-  import("./js/message-notifications.js").catch((error) => {
+  import("./js/message-notifications.js?v=20261030b").catch((error) => {
     console.error("[MessageNotifications] Could not start unread message updates:", error);
   });
   const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
@@ -61,7 +61,13 @@
   <div class="qcnav-actions">
     <a class="qcnav-upgrade" href="index.html#upgrade">Upgrade</a>
     <a class="qcnav-icon-btn" href="../index.html#settings" aria-label="Settings"><i data-lucide="settings"></i></a>
-    <a class="qcnav-icon-btn" href="../index.html#notifications" aria-label="Notifications"><i data-lucide="bell"></i></a>
+    <div class="qcnav-notify">
+      <button class="qcnav-icon-btn qcnav-notify-btn" id="qcnavNotifyBtn" type="button" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" aria-controls="qcnavNotifyPanel"><i data-lucide="bell"></i><span class="qcnav-badge" data-notify-badge aria-hidden="true" hidden></span></button>
+      <section class="qcnav-notify-panel" id="qcnavNotifyPanel" aria-label="Notifications" hidden>
+        <h2 class="qcnav-notify-title">Notifications</h2>
+        <div class="qcnav-notify-list" id="qcnavNotifyList" aria-live="polite"><p class="qcnav-notify-empty">Sign in to see notifications.</p></div>
+      </section>
+    </div>
     <div class="qcnav-avatar" aria-hidden="true">U</div>
   </div>
 </header>
@@ -178,5 +184,26 @@
     if (profile) profile.click(); else location.href = "signup.html";
   });
   doc.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
+
+  const notifyBtn = doc.getElementById("qcnavNotifyBtn");
+  const notifyPanel = doc.getElementById("qcnavNotifyPanel");
+  const setNotifyOpen = (open, restoreFocus = false) => {
+    if (notifyPanel.hidden === !open) return;
+    notifyPanel.hidden = !open;
+    notifyBtn.setAttribute("aria-expanded", String(open));
+    if (open) window.dispatchEvent(new CustomEvent("toefl-notifications-opened"));
+    if (!open && restoreFocus) notifyBtn.focus();
+  };
+  notifyBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeAll();
+    setNotifyOpen(notifyPanel.hidden);
+  });
+  doc.addEventListener("click", (e) => {
+    if (!notifyPanel.hidden && !e.target.closest(".qcnav-notify")) setNotifyOpen(false);
+  });
+  doc.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !notifyPanel.hidden) setNotifyOpen(false, true);
+  });
 
 })();

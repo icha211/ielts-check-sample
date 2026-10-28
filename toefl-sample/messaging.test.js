@@ -129,6 +129,10 @@ test("message requests, accepts and removals write both sides atomically", async
     assert.deepEqual(requested["message_contacts/me/peer"].updatedAt, { ".sv": "timestamp" });
     assert.equal(accepted["message_contacts/me/peer"].status, "connected");
     assert.equal(accepted["message_contacts/peer/me"].status, "connected");
+    assert.equal(requested["message_contacts/me/peer"].requesterId, "me");
+    assert.equal(requested["message_contacts/peer/me"].requesterId, "me");
+    assert.equal(accepted["message_contacts/me/peer"].requesterId, "peer", "accepting records the original requester");
+    assert.equal(accepted["message_contacts/peer/me"].requesterId, "peer");
     assert.deepEqual(removed, { "message_contacts/me/peer": null, "message_contacts/peer/me": null });
 });
 
