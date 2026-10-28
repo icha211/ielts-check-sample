@@ -175,11 +175,11 @@ test("a stale connection callback cannot publish after an account switch", async
     assert.equal(app.writes.length, 1);
 });
 
-test("dashboard prioritizes online partners, excludes the viewer and shows real counts", () => {
+test("dashboard prioritizes online partners, excludes the viewer and hides the directory count", () => {
     const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
     const start = html.indexOf("        window.updateToeflPartnerDirectory =");
     const end = html.indexOf("\n        window.setToeflPartnerDirectoryState", start);
-    const status = {};
+    const status = { parentElement: { hidden: false } };
     const context = vm.createContext({
         window: {}, partnerDirectoryAuthenticated: true,
         partnerCountryInfo: (code) => ({ name: code, flag: code === "ID" ? "ID" : "" }),
@@ -197,5 +197,52 @@ test("dashboard prioritizes online partners, excludes the viewer and shows real 
     assert.equal(context.partnerProfiles[0].id, "online");
     assert.equal(context.partnerProfiles[0].photo, "photo.png");
     assert.equal(context.partnerProfiles[0].flag, "ID");
-    assert.equal(status.textContent, "1 online / 2 learners");
+    assert.equal(status.parentElement.hidden, true);
+    assert.doesNotMatch(status.textContent, /online \/|learners$/);
+});
+
+test("network statistics and members include only accepted connections and refresh on contact changes", () => {
+    const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+    function element() {
+        return {
+            textContent: "", children: [], style: { setProperty() {} },
+            setAttribute() {}, append(...children) { this.children.push(...children); },
+            replaceChildren() { this.children = []; }
+        };
+    }
+    const nodes = {};
+    const node = (id) => nodes[id] || (nodes[id] = element());
+    const context = vm.createContext({
+        window: {}, partnerContacts: {}, partnerProfiles: [
+            { id: "accepted", name: "Dara", level: "B2", country: "Indonesia", flag: "ID" },
+            { id: "incoming", name: "Lina", level: "C1", country: "Australia" },
+            { id: "outgoing", name: "Sam", level: "A1", country: "Japan" },
+            { id: "unrelated", name: "Mira", level: "A2", country: "Spain" }
+        ],
+        partnerCountryInfo: (country) => ({ flag: country }),
+        renderPartnerAction() {},
+        document: { getElementById: node, createElement: element }
+    });
+    const renderStart = html.indexOf("        function renderPartnerNetwork()");
+    vm.runInContext(html.slice(renderStart, html.indexOf("        function resetSelectedPartner", renderStart)), context);
+    const contactsStart = html.indexOf("        window.setToeflPartnerContacts =");
+    vm.runInContext(html.slice(contactsStart, html.indexOf("        function selectPartner", contactsStart)), context);
+    context.window.setToeflPartnerContacts({
+        accepted: { status: "connected" }, incoming: { status: "incoming" }, outgoing: { status: "outgoing" }
+    });
+    assert.equal(node("partnerConnectionCount").textContent, "1");
+    assert.equal(node("partnerDirectoryMemberCount").textContent, "1 connection");
+    assert.equal(node("partnerLevelB2Count").textContent, "1");
+    assert.equal(node("partnerLevelC1Count").textContent, "0");
+    assert.equal(node("partnerTopCountries").children.length, 1);
+    assert.equal(node("partnerTopCountries").children[0].children[1].textContent, "Indonesia");
+    assert.equal(node("partnerConnectionGrid").children.length, 1);
+    assert.equal(node("partnerConnectionGrid").children[0].children[1].textContent, "Dara");
+    context.window.setToeflPartnerContacts({ incoming: { status: "connected" } });
+    assert.equal(node("partnerConnectionGrid").children[0].children[1].textContent, "Lina");
+    assert.equal(node("partnerLevelB2Count").textContent, "0");
+    assert.equal(node("partnerLevelC1Count").textContent, "1");
+    context.window.setToeflPartnerContacts({});
+    assert.equal(node("partnerConnectionCount").textContent, "0");
+    assert.match(node("partnerConnectionGrid").children[0].textContent, /No connections yet/);
 });

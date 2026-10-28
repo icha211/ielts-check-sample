@@ -1239,6 +1239,7 @@
         .partner-card h2 { position: relative; z-index: 1; margin: 12px 0 0; color: #1c1c1c; font: 700 20px "Plus Jakarta Sans", sans-serif; }
         .partner-status-row { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; }
         .partner-status { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; color: #0d9488; font: 600 10px "Outfit", sans-serif; }
+        .partner-status[hidden] { display: none; }
         .partner-status .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #0d9488; }
         .you-have-50-connection-parent { position: relative; width: auto; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 10px; border: 0; border-radius: 24px; box-sizing: border-box; background-color: #ccfbf1; color: #0d9488; text-align: center; font: 400 8px Inter, sans-serif; cursor: pointer; }
         .you-have-50-connection-parent:hover { background-color: #b5f5e8; }
@@ -4163,7 +4164,7 @@ body {
                             <section class="partner-card__face partner-card-back" id="partnerCardBack" aria-label="Your global network" aria-hidden="true" inert>
                                 <div class="network-card-heading">
                                     <h3 class="network-card-title">Your global network</h3>
-                                    <div class="network-card-total"><span class="network-card-total__count"><i class="ti ti-users" aria-hidden="true"></i><span id="partnerConnectionCount">0</span></span><strong>LEARNERS</strong></div>
+                                    <div class="network-card-total"><span class="network-card-total__count"><i class="ti ti-users" aria-hidden="true"></i><span id="partnerConnectionCount">0</span></span><strong>CONNECTIONS</strong></div>
                                 </div>
                                 <div class="network-card-body">
                                     <div class="network-insights">
@@ -4171,7 +4172,7 @@ body {
                                         <span class="network-divider" aria-hidden="true"></span>
                                         <section class="network-countries"><h4>Top countries</h4><div id="partnerTopCountries"><p class="partner-network-empty">No country data yet.</p></div></section>
                                     </div>
-                                    <section class="network-connections"><h4>Learners</h4><div class="network-connection-grid" id="partnerConnectionGrid"><p class="partner-network-empty">No other learners have joined yet.</p></div><span class="network-view-all" id="partnerDirectoryMemberCount">0 learners</span></section>
+                                    <section class="network-connections"><h4>Your connections</h4><div class="network-connection-grid" id="partnerConnectionGrid"><p class="partner-network-empty">No connections yet. Send a request in matchmaking to get started.</p></div><span class="network-view-all" id="partnerDirectoryMemberCount">0 connections</span></section>
                                 </div>
                                 <button class="network-back-button" id="hidePartnerNetwork" type="button"><span>Go Back to Matchmaking</span><i class="ti ti-arrow-right" aria-hidden="true"></i></button>
                             </section>
@@ -4414,7 +4415,8 @@ body {
             return { name: country || "Country not shared", flag };
         }
 
-        function renderPartnerNetwork(profiles) {
+        function renderPartnerNetwork() {
+            const profiles = partnerProfiles.filter((profile) => partnerContacts[profile.id]?.status === "connected");
             const levelCounts = new Map(["A1", "A2", "B1", "B2", "C1", "C2"].map((level) => [level, 0]));
             const countryCounts = new Map();
             profiles.forEach((profile) => {
@@ -4486,13 +4488,13 @@ body {
                 if (!profiles.length) {
                     const empty = document.createElement("p");
                     empty.className = "partner-network-empty";
-                    empty.textContent = "No learners have joined yet.";
+                    empty.textContent = "No connections yet. Send a request in matchmaking to get started.";
                     connectionGrid.append(empty);
                 }
             }
 
             const memberCount = document.getElementById("partnerDirectoryMemberCount");
-            if (memberCount) memberCount.textContent = `${profiles.length} learner${profiles.length === 1 ? "" : "s"}`;
+            if (memberCount) memberCount.textContent = `${profiles.length} connection${profiles.length === 1 ? "" : "s"}`;
         }
 
         function resetSelectedPartner() {
@@ -4521,7 +4523,7 @@ body {
             partnerProfiles = profiles.filter((profile) => profile.id !== currentUid)
                 .sort((left, right) => Number(right.isOnline) - Number(left.isOnline) || left.name.localeCompare(right.name));
             partnerOffset = Math.min(partnerOffset, Math.max(0, partnerProfiles.length - 1));
-            renderPartnerNetwork(profiles);
+            renderPartnerNetwork();
             renderPartnerOrbit();
 
             if (selectedPartnerId && partnerProfiles.some((profile) => profile.id === selectedPartnerId)) {
@@ -4531,13 +4533,14 @@ body {
             }
 
             const status = document.getElementById("partnerDirectoryStatus");
-            if (status) status.textContent = !partnerDirectoryAuthenticated
-                ? "Sign in to find study partners"
-                : partnerProfiles.length
-                    ? `${partnerProfiles.filter((profile) => profile.isOnline).length} online / ${partnerProfiles.length} learners`
+            if (status) {
+                status.parentElement.hidden = partnerDirectoryAuthenticated && partnerProfiles.length > 0;
+                status.textContent = !partnerDirectoryAuthenticated
+                    ? "Sign in to find study partners"
                     : currentProfile
                         ? "You are listed. Waiting for other learners."
                         : "No other learners yet.";
+            }
             if (partnerSearch.value.trim()) renderPartnerSearch(partnerSearch.value);
         };
 
@@ -4696,6 +4699,7 @@ body {
 
         window.setToeflPartnerContacts = (contacts) => {
             partnerContacts = contacts || {};
+            renderPartnerNetwork();
             renderPartnerAction();
         };
 
