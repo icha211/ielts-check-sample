@@ -196,7 +196,9 @@ firebase deploy --only database
 
 ## TOEFL test history
 
-Completed listening, structure, and reading attempts are stored under `user_test_history/{uid}` in Realtime Database. The Firebase Authentication UID owns the records, and the database rules allow only that signed-in account to read or write them. Attempt records include the score, test mode, selected set, answers, question text, and available explanations. Passwords are handled only by Firebase Authentication and are never included in these records. Signed-out attempts remain local to the browser; pending local attempts are synced after sign-in. Deploy `database.rules.json` with `firebase deploy --only database` to enable account history writes.
+Completed listening, structure, and reading attempts are stored under `user_test_history/{uid}` in Realtime Database. The Firebase Authentication UID owns the records, and the database rules allow only that signed-in account to read or write them. Attempt records include the score, test mode, selected set, answers, question text, and available explanations. Passwords are handled only by Firebase Authentication and are never included in these records. Signed-out attempts remain local to the browser and are not automatically imported into any account. Only pending attempts already scoped to the signed-in UID are retried. Deploy `database.rules.json` with `firebase deploy --only database` to enable account history writes.
+
+New full mock tests carry a `mockSessionId` through all three section URLs. Section records use a stable session-and-section ID to avoid duplicate submissions. History groups them into one mock test and marks it completed only when all three sections have results. Standalone mock sections and older records without a session ID remain section results, not full mock-test attempts; older records are not guessed into sessions or deleted. Practice attempts and the section-level data used by progress/recommendations remain separate. View Result restores only the selected entry's saved answers; older summary-only records show that details are unavailable rather than opening unrelated browser results.
 
 ---
 

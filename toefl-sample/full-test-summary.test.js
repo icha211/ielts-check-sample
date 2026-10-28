@@ -87,3 +87,21 @@ test("full-test summary inline JavaScript remains valid", () => {
         new vm.Script(match[1]);
     }
 });
+
+test("full mock summaries reject stale section results from another session", () => {
+    let saved = {
+        mockSessionId: "previous-session", totalQuestions: 50, rawScore: 1,
+        scaledScore: 31, questions: [{ number: 1, passageId: 1, isCorrect: true }]
+    };
+    const context = vm.createContext({
+        params: new URLSearchParams("mockSessionId=current-session"),
+        readResult: () => saved,
+        groupLabel: () => "Passage 1",
+        pct: (correct, total) => Math.round(correct / total * 100)
+    });
+    vm.runInContext(functionSource("buildSection", "totalNote"), context);
+    const config = { storage: "toefl_section3_result", group: "passageId" };
+    assert.equal(context.buildSection(config), null);
+    saved = { ...saved, mockSessionId: "current-session" };
+    assert.equal(context.buildSection(config).correct, 1);
+});

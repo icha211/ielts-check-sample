@@ -15,6 +15,10 @@
     let unsubscribeRemote = null;
     let firebasePromise = null;
     let firebaseModules = null;
+    let authGeneration = 0;
+    let authReady = false;
+    let pageAttemptId = null;
+    const pendingWrites = new Map();
     let syncStatus = { state: "loading", message: "Connecting to your test history..." };
 
     function getStorageKey(owner = currentUid || GUEST_OWNER) {
@@ -43,6 +47,7 @@
     }
 
     function getAttempts() {
+        if (!authReady) return [];
         return currentUid ? cloudAttempts : readLocalAttempts();
     }
 
@@ -58,13 +63,16 @@
     function publishAttempts(attempts, key = getStorageKey()) {
         const sorted = sortAttempts(attempts);
         try {
-            localStorage.setItem(key, JSON.stringify(sorted.slice(0, MAX_LOCAL_ATTEMPTS).map((attempt) => {
+            const cached = sorted.filter((attempt) => !attempt.syncedAt)
+                .concat(sorted.filter((attempt) => attempt.syncedAt).slice(0, MAX_LOCAL_ATTEMPTS));
+            localStorage.setItem(key, JSON.stringify(cached.map((attempt) => {
                 if (!attempt.syncedAt) return attempt;
                 const { result, ...summary } = attempt;
                 return summary;
             })));
         } catch (error) {
             console.warn("[TestHistory] Could not cache attempt history locally:", error);
+            setSyncStatus("error", "History could not be saved on this device. Keep this page open until cloud sync completes.");
         }
         dispatchHistoryUpdate();
     }
@@ -92,8 +100,17 @@
         const params = new URLSearchParams(window.location.search);
         const timestamp = new Date().toISOString();
         const testType = String(result.testType || params.get("testType") || "mocktest").toLowerCase();
+        const isFullMock = !testType.includes("practice") && params.get("fullTest") === "true";
+        const requestedSessionId = isFullMock ? params.get("mockSessionId") : null;
+        if (requestedSessionId && !/^[a-zA-Z0-9_-]{1,100}$/.test(requestedSessionId)) {
+            throw new Error("Invalid mock test session ID.");
+        }
+        if (!pageAttemptId) pageAttemptId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        const mockSessionId = isFullMock ? requestedSessionId || pageAttemptId : "";
         const attempt = {
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            id: `${mockSessionId || pageAttemptId}-${sectionKey}`,
+            schemaVersion: 2,
+            mockSessionId,
             sectionKey,
             sectionTitle: SECTION_TITLES[sectionKey] || result.sectionTitle || "TOEFL ITP",
             setId: String(result.setId || params.get("setId") || ""),
@@ -105,15 +122,95 @@
             totalQuestions: Number(result.totalQuestions) || (Array.isArray(result.questions) ? result.questions.length : 0),
             rawScore: Number(result.rawScore) || 0,
             scaledScore: Number(result.scaledScore) || 0,
-            result: sanitizeForFirebase(result)
+            result: sanitizeForFirebase(mockSessionId ? { ...result, mockSessionId } : result)
         };
         return attempt;
     }
 
     function getLegacyAttempts(uid) {
-        const attempts = readLocalAttempts(getStorageKey(uid));
-        if (uid !== GUEST_OWNER) attempts.push(...readLocalAttempts(getStorageKey(GUEST_OWNER)));
-        return sortAttempts(attempts);
+        return readLocalAttempts(getStorageKey(uid));
+    }
+
+    function getHistoryEntries() {
+        const entries = [];
+        const sessions = new Map();
+        getAttempts().forEach((attempt) => {
+            if (attempt.testType !== "mocktest" || !attempt.mockSessionId) {
+                entries.push({ ...attempt, entryKind: "section", status: "completed" });
+                return;
+            }
+            if (!sessions.has(attempt.mockSessionId)) sessions.set(attempt.mockSessionId, {});
+            const sections = sessions.get(attempt.mockSessionId);
+            const previous = sections[attempt.sectionKey];
+            if (!previous || Date.parse(attempt.recordedAt) > Date.parse(previous.recordedAt)) {
+                sections[attempt.sectionKey] = attempt;
+            }
+        });
+        sessions.forEach((sections, sessionId) => {
+            const sectionAttempts = sortAttempts(Object.values(sections));
+            const complete = Object.keys(SECTION_TITLES).every((key) => sections[key]);
+            entries.push({
+                ...sectionAttempts[0],
+                id: sessionId,
+                entryKind: "full-mock",
+                sectionTitle: "Listening, Structure & Reading",
+                sectionKey: "",
+                sectionAttempts,
+                status: complete ? "completed" : "in-progress",
+                totalQuestions: sectionAttempts.reduce((sum, attempt) => sum + attempt.totalQuestions, 0),
+                rawScore: sectionAttempts.reduce((sum, attempt) => sum + attempt.rawScore, 0),
+                scaledScore: complete
+                    ? Math.round(sectionAttempts.reduce((sum, attempt) => sum + attempt.scaledScore, 0) * 10 / 3)
+                    : null
+            });
+        });
+        return sortAttempts(entries);
+    }
+
+    function restoreResults(entryId) {
+        const entry = getHistoryEntries().find((item) => item.id === entryId);
+        const attempts = entry && (entry.sectionAttempts || [entry]);
+        if (!attempts || !attempts.every((attempt) => attempt.result && Array.isArray(attempt.result.questions))) {
+            throw new Error("Saved answer details are unavailable for this result.");
+        }
+        const storageKeys = { listening: "toefl_section1_result", structure: "toefl_section2_result", reading: "toefl_section3_result" };
+        Object.values(storageKeys).forEach((key) => localStorage.removeItem(key));
+        attempts.forEach((attempt) => {
+            localStorage.setItem(storageKeys[attempt.sectionKey], JSON.stringify(attempt.result));
+        });
+    }
+
+    function saveRemoteAttempt(uid, generation, attempt, modules) {
+        const writeKey = `${generation}:${uid}:${attempt.id}`;
+        if (pendingWrites.has(writeKey)) return pendingWrites.get(writeKey);
+        let saved = false;
+        const promise = Promise.resolve().then(() => {
+            if (generation !== authGeneration || currentUid !== uid) return;
+            return modules.set(modules.ref(modules.db, `user_test_history/${uid}/${attempt.id}`), attempt).then(() => {
+                saved = true;
+                const syncedAttempt = { ...attempt, syncedAt: new Date().toISOString() };
+                const key = getStorageKey(uid);
+                const localAttempts = readLocalAttempts(key).filter((item) => item.id !== attempt.id);
+                localAttempts.unshift(syncedAttempt);
+                if (generation === authGeneration && currentUid === uid) {
+                    cloudAttempts = sortAttempts([syncedAttempt, ...cloudAttempts.filter((item) => item.id !== attempt.id)]);
+                }
+                publishAttempts(localAttempts, key);
+            });
+        }).catch((error) => {
+            console.error("[TestHistory] Could not save attempt to Firebase:", error);
+            if (generation === authGeneration && currentUid === uid) {
+                setSyncStatus("error", "This attempt could not sync. Check your connection; locally saved attempts retry when you reopen history.");
+            }
+        }).finally(() => {
+            pendingWrites.delete(writeKey);
+            if (saved && generation === authGeneration && currentUid === uid &&
+                !readLocalAttempts(getStorageKey(uid)).some((item) => !item.syncedAt)) {
+                setSyncStatus("synced", "Test history is synced to your account.");
+            }
+        });
+        pendingWrites.set(writeKey, promise);
+        return promise;
     }
 
     function startRemoteSync(uid, modules) {
@@ -122,11 +219,13 @@
         cloudAttempts = getLegacyAttempts(uid);
         const historyRef = modules.ref(modules.db, `user_test_history/${uid}`);
         const localKey = getStorageKey(uid);
-        const guestKey = getStorageKey(GUEST_OWNER);
+        const generation = authGeneration;
+        let isFirstSnapshot = true;
 
         setSyncStatus("syncing", "Syncing test history to your account...");
+        dispatchHistoryUpdate();
         unsubscribeRemote = modules.onValue(historyRef, (snapshot) => {
-            if (currentUid !== uid) return;
+            if (currentUid !== uid || generation !== authGeneration) return;
             const remoteData = snapshot.val() || {};
             const syncedAt = new Date().toISOString();
             const remoteAttempts = Object.values(remoteData)
@@ -136,41 +235,25 @@
             const localAttempts = getLegacyAttempts(uid);
             localAttempts.forEach((attempt) => {
                 const remoteAttempt = merged.get(attempt.id);
-                if (!remoteAttempt || (attempt.result && !remoteAttempt.result)) {
+                const writing = pendingWrites.has(`${generation}:${uid}:${attempt.id}`);
+                if ((!remoteAttempt && !attempt.syncedAt) ||
+                    (!attempt.syncedAt && (writing || (attempt.result && !remoteAttempt?.result)))) {
                     merged.set(attempt.id, attempt);
                 }
             });
             cloudAttempts = sortAttempts(Array.from(merged.values()));
             publishAttempts(cloudAttempts, localKey);
 
-            const pendingWrites = localAttempts
-                .filter((attempt) => {
-                    const remoteAttempt = remoteAttempts.find((item) => item.id === attempt.id);
-                    return !remoteAttempt || (attempt.result && !remoteAttempt.result);
-                })
-                .map(async (attempt) => {
-                    await modules.set(modules.ref(modules.db, `user_test_history/${uid}/${attempt.id}`), attempt);
-                    attempt.syncedAt = new Date().toISOString();
-                });
-
-            Promise.all(pendingWrites).then(() => {
-                if (currentUid !== uid) return;
-                if (localAttempts.length && localStorage.getItem(guestKey)) {
-                    localStorage.removeItem(guestKey);
-                }
-                cloudAttempts = cloudAttempts.map((attempt) => ({
-                    ...attempt,
-                    syncedAt: attempt.syncedAt || new Date().toISOString()
-                }));
-                publishAttempts(cloudAttempts, localKey);
+            if (isFirstSnapshot) {
+                isFirstSnapshot = false;
+                cloudAttempts.filter((attempt) => !attempt.syncedAt)
+                    .forEach((attempt) => saveRemoteAttempt(uid, generation, attempt, modules));
+            }
+            if (!cloudAttempts.some((attempt) => !attempt.syncedAt)) {
                 setSyncStatus("synced", "Test history is synced to your account.");
-            }).catch((error) => {
-                if (currentUid !== uid) return;
-                console.error("[TestHistory] Could not sync saved attempts:", error);
-                setSyncStatus("error", "Test history could not sync. Your attempts are saved on this device.");
-            });
+            }
         }, (error) => {
-            if (currentUid !== uid) return;
+            if (currentUid !== uid || generation !== authGeneration) return;
             console.error("[TestHistory] Could not listen for history updates:", error);
             setSyncStatus("error", "Test history could not sync. Check your connection and account access.");
         });
@@ -190,6 +273,8 @@
                     set: databaseSdk.set
                 };
                 authSdk.onAuthStateChanged(config.auth, (user) => {
+                    authGeneration += 1;
+                    authReady = true;
                     if (user) {
                         startRemoteSync(user.uid, firebaseModules);
                     } else {
@@ -202,8 +287,15 @@
                     }
                     resolve();
                 }, (error) => {
+                    if (unsubscribeRemote) unsubscribeRemote();
+                    unsubscribeRemote = null;
+                    authGeneration += 1;
+                    authReady = false;
+                    currentUid = null;
+                    cloudAttempts = [];
                     console.error("[TestHistory] Firebase authentication state failed:", error);
                     setSyncStatus("error", "Could not connect to your account history.");
+                    dispatchHistoryUpdate();
                     resolve();
                 });
             })).catch((error) => {
@@ -215,36 +307,39 @@
     }
 
     async function record(result) {
-        if (!result || typeof result !== "object") return null;
+        if (!result || typeof result !== "object") throw new TypeError("A test result is required.");
         const sectionKey = String(result.sectionKey || "").toLowerCase();
-        if (!SECTION_TITLES[sectionKey]) return null;
+        if (!SECTION_TITLES[sectionKey]) throw new TypeError("Unknown test section.");
 
         const attempt = createAttempt(result, sectionKey);
-        const key = getStorageKey();
+        await initializeFirebase();
+        const uid = currentUid;
+        const generation = authGeneration;
+        const key = getStorageKey(uid || GUEST_OWNER);
         const attempts = readLocalAttempts(key);
+        const existing = attempts.find((item) => item.id === attempt.id);
+        if (existing) return existing;
         attempts.unshift(attempt);
-        if (currentUid) {
+        if (uid) {
             cloudAttempts = sortAttempts([attempt, ...cloudAttempts.filter((item) => item.id !== attempt.id)]);
         }
         publishAttempts(attempts, key);
 
-        await initializeFirebase();
-        if (!currentUid) return attempt;
-
-        try {
-            await firebaseModules.set(
-                firebaseModules.ref(firebaseModules.db, `user_test_history/${currentUid}/${attempt.id}`),
-                attempt
-            );
-            if (currentUid) {
-                attempt.syncedAt = new Date().toISOString();
-                cloudAttempts = sortAttempts([attempt, ...cloudAttempts.filter((item) => item.id !== attempt.id)]);
-                publishAttempts(cloudAttempts);
-                setSyncStatus("synced", "Test history is synced to your account.");
-            }
-        } catch (error) {
-            console.error("[TestHistory] Could not save attempt to Firebase:", error);
-            setSyncStatus("error", "This attempt is saved on this device but could not sync to your account.");
+        if (uid) {
+            setSyncStatus("syncing", "Saving your test result...");
+            let timeout;
+            await Promise.race([
+                saveRemoteAttempt(uid, generation, attempt, firebaseModules),
+                new Promise((resolve) => {
+                    timeout = setTimeout(() => {
+                        if (currentUid === uid && authGeneration === generation) {
+                            setSyncStatus("error", "Cloud sync is still pending. Locally saved results will retry when you reopen history.");
+                        }
+                        resolve();
+                    }, 5000);
+                })
+            ]);
+            clearTimeout(timeout);
         }
         return attempt;
     }
@@ -274,6 +369,8 @@
 
     window.toeflTestHistory = {
         readAttempts: getAttempts,
+        readHistoryEntries: getHistoryEntries,
+        restoreResults,
         record,
         subscribe,
         subscribeSync

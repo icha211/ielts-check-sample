@@ -20,14 +20,13 @@
     }
 
     function readSectionResults() {
-        return SECTION_RESULTS.flatMap(({ key, section, defaultTotal }) => {
-            let result;
-            try {
-                result = JSON.parse(localStorage.getItem(key) || "null");
-            } catch (error) {
-                console.warn(`[Dashboard] Could not read ${key}:`, error);
-                return [];
-            }
+        const history = window.toeflTestHistory;
+        if (!history) return [];
+        const completeMock = history.readHistoryEntries().find((entry) =>
+            entry.entryKind === "full-mock" && entry.status === "completed");
+        const attempts = completeMock ? completeMock.sectionAttempts : history.readAttempts();
+        return SECTION_RESULTS.flatMap(({ section, defaultTotal }) => {
+            const result = attempts.find((attempt) => attempt.sectionKey === section);
             if (!result || typeof result !== "object") return [];
 
             const storedScore = Number(result.scaledScore);
@@ -129,7 +128,7 @@
 
         let attempts;
         try {
-            attempts = window.toeflTestHistory.readAttempts();
+            attempts = window.toeflTestHistory.readHistoryEntries();
         } catch (error) {
             console.error("[Dashboard] Could not load test history:", error);
             setStat("mock-count", "—");
@@ -138,7 +137,8 @@
             return;
         }
 
-        const mockCount = attempts.filter((attempt) => attempt.testType === "mocktest").length;
+        const mockCount = attempts.filter((attempt) =>
+            attempt.entryKind === "full-mock" && attempt.status === "completed").length;
         const practiceCount = attempts.filter((attempt) => attempt.testType === "practicetest").length;
         setStat("mock-count", mockCount);
         setStat("practice-count", practiceCount);
@@ -151,7 +151,7 @@
     }
 
     render();
-    if (window.toeflTestHistory) window.toeflTestHistory.subscribe(renderActivity);
+    if (window.toeflTestHistory) window.toeflTestHistory.subscribe(render);
     window.addEventListener("storage", (event) => {
         if (!event.key || SECTION_RESULTS.some(({ key }) => event.key === key)) renderScore();
     });

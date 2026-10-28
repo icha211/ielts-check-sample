@@ -156,6 +156,7 @@
         .attempt-actions { display: grid; gap: 8px; }
         .attempt-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 0 9px; border: 1px solid #dce6f0; border-radius: 18px; background: #fff; color: #6c8298; text-decoration: none; font-size: 10px; font-weight: 500; white-space: nowrap; }
         .attempt-action:hover { border-color: #91bad3; color: var(--blue); }
+        .attempt-action:disabled { opacity: .6; cursor: not-allowed; }
         .attempt-action i { font-size: 14px; }
         .empty-state { display: grid; justify-items: center; gap: 10px; padding: 54px 18px; border: 1px dashed #cad8e5; border-radius: 10px; color: #71869b; text-align: center; }
         .empty-state i { color: #7aa9c8; font-size: 28px; }
@@ -282,7 +283,7 @@
             </div>
         </main>
     </div>
-    <script src="toefl-test-history.js?v=20261024b"></script>
+    <script src="toefl-test-history.js?v=20261028a"></script>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script>
         (() => {
@@ -328,15 +329,25 @@
             }
 
             function makeLink(attempt, target) {
-                const paths = sectionPaths[attempt.sectionKey] || sectionPaths.structure;
+                const paths = sectionPaths[attempt.sectionKey] || sectionPaths.listening;
                 const params = new URLSearchParams();
                 if (attempt.setId) params.set("setId", attempt.setId);
                 if (attempt.setDate) params.set("setDate", attempt.setDate);
                 params.set("testType", attempt.testType || "mocktest");
                 if (attempt.runMode) params.set("runMode", attempt.runMode);
                 if (target === "review") {
-                    if (attempt.testType === "practicetest") params.set("section", attempt.sectionKey || "structure");
+                    if (attempt.entryKind === "full-mock") {
+                        params.set("fullTest", "true");
+                        params.set("mockSessionId", attempt.mockSessionId);
+                    } else {
+                        params.set("section", attempt.sectionKey || "structure");
+                    }
                     return `full-test-summary.html?${params.toString()}`;
+                }
+                if (attempt.entryKind === "full-mock") {
+                    params.set("fullTest", "true");
+                    const listening = attempt.sectionAttempts.find((item) => item.sectionKey === "listening");
+                    if (listening?.setId) params.set("setId", listening.setId);
                 }
                 return `${paths[target]}?${params.toString()}`;
             }
@@ -344,40 +355,64 @@
             function renderAttempt(attempt, index, isLatest) {
                 const rawScore = Math.max(0, Number(attempt.rawScore) || 0);
                 const totalQuestions = Math.max(0, Number(attempt.totalQuestions) || 0);
-                const section = sectionPaths[attempt.sectionKey] || sectionPaths.structure;
-                const testName = attempt.testType === "practicetest" ? "Practice Test" : "Mock Test";
+                const fullMock = attempt.entryKind === "full-mock";
+                const completed = attempt.status !== "in-progress";
+                const testName = attempt.testType === "practicetest" ? "Practice Test"
+                    : fullMock ? "Mock Test" : attempt.schemaVersion === 2 ? "Mock Section" : "Earlier Section Result";
                 const title = `${testName} - ${String(index).padStart(2, "0")}`;
                 const sectionTitle = escapeHtml(attempt.sectionTitle || "TOEFL ITP");
+                const detailsAvailable = (attempt.sectionAttempts || [attempt])
+                    .every((item) => item.result && Array.isArray(item.result.questions));
+                const showTotalScore = fullMock && completed;
+                const score = showTotalScore ? attempt.scaledScore : rawScore;
+                const scoreMaximum = showTotalScore ? 677 : totalQuestions || "--";
                 return `<article class="attempt-card${isLatest ? " is-latest" : ""}">
                     <img class="attempt-art" src="../asset/figma/test-history-card.png" alt="">
                     <div class="attempt-copy">
-                        <div class="attempt-title-line"><h2 class="attempt-title">${title}</h2><span class="status-pill"><i data-lucide="circle-check"></i>Completed</span></div>
+                        <div class="attempt-title-line"><h2 class="attempt-title">${title}</h2><span class="status-pill"><i data-lucide="${completed ? "circle-check" : "clock"}"></i>${completed ? "Completed" : "In progress"}</span></div>
                         <p class="attempt-subtitle">${sectionTitle}${totalQuestions ? ` · ${totalQuestions} ${totalQuestions === 1 ? "question" : "questions"}` : ""}</p>
                         <div class="attempt-meta"><span><i data-lucide="calendar-days"></i>${escapeHtml(formatDate(attempt))}</span><span class="meta-divider" aria-hidden="true"></span><span><i data-lucide="circle-check"></i>${rawScore} correct</span></div>
                     </div>
-                    <div class="score-box"><span class="score-label">Raw Score</span><strong class="score-number">${rawScore}<small>/ ${totalQuestions || "--"}</small></strong></div>
-                    <div class="attempt-actions"><a class="attempt-action" href="${escapeHtml(makeLink(attempt, "review"))}"><i data-lucide="file-chart-column"></i>View Result</a><a class="attempt-action" href="${escapeHtml(makeLink(attempt, "test"))}"><i data-lucide="rotate-ccw"></i>Try Again</a></div>
+                    <div class="score-box"><span class="score-label">${showTotalScore ? "TOEFL Score" : "Raw Score"}</span><strong class="score-number">${score}<small>/ ${scoreMaximum}</small></strong></div>
+                    <div class="attempt-actions">${detailsAvailable
+                        ? `<a class="attempt-action" data-result-id="${escapeHtml(attempt.id)}" href="${escapeHtml(makeLink(attempt, "review"))}"><i data-lucide="file-chart-column"></i>View Result</a>`
+                        : '<button class="attempt-action" type="button" disabled title="Answer details were not saved with this older section result.">Details unavailable</button>'
+                    }<a class="attempt-action" href="${escapeHtml(makeLink(attempt, "test"))}"><i data-lucide="rotate-ccw"></i>Try Again</a></div>
                 </article>`;
             }
 
+            function historyCount(attempts) {
+                if (state.type === "practicetest") return `${attempts.length} ${attempts.length === 1 ? "attempt" : "attempts"}`;
+                const tests = attempts.filter((attempt) => attempt.entryKind === "full-mock").length;
+                const sections = attempts.length - tests;
+                return [
+                    tests ? `${tests} mock ${tests === 1 ? "test" : "tests"}` : "",
+                    sections ? `${sections} section ${sections === 1 ? "result" : "results"}` : ""
+                ].filter(Boolean).join(", ");
+            }
+
             function renderPagination(totalPages, totalItems) {
+                const count = escapeHtml(historyCount(getFilteredAttempts()));
                 if (totalPages <= 1) {
-                    pagination.innerHTML = totalItems ? `<span class="pagination-note">${totalItems} ${totalItems === 1 ? "attempt" : "attempts"}</span>` : "";
+                    pagination.innerHTML = totalItems ? `<span class="pagination-note">${count}</span>` : "";
                     return;
                 }
                 let html = `<button class="page-button" type="button" data-page="${state.page - 1}" aria-label="Previous page" ${state.page === 1 ? "disabled" : ""}><i data-lucide="chevron-left"></i></button>`;
                 for (let page = 1; page <= totalPages; page += 1) {
                     html += `<button class="page-button" type="button" data-page="${page}" ${page === state.page ? 'aria-current="page"' : ""}>${page}</button>`;
                 }
-                html += `<button class="page-button" type="button" data-page="${state.page + 1}" aria-label="Next page" ${state.page === totalPages ? "disabled" : ""}><i data-lucide="chevron-right"></i></button><span class="pagination-note">${totalItems} attempts</span>`;
+                html += `<button class="page-button" type="button" data-page="${state.page + 1}" aria-label="Next page" ${state.page === totalPages ? "disabled" : ""}><i data-lucide="chevron-right"></i></button><span class="pagination-note">${count}</span>`;
                 pagination.innerHTML = html;
             }
 
             function render() {
-                state.attempts = window.toeflTestHistory ? window.toeflTestHistory.readAttempts() : [];
-                const mockCount = state.attempts.filter((attempt) => attempt.testType === "mocktest").length;
+                state.attempts = window.toeflTestHistory ? window.toeflTestHistory.readHistoryEntries() : [];
+                const mockAttempts = state.attempts.filter((attempt) => attempt.testType === "mocktest");
+                const mockCount = mockAttempts.filter((attempt) => attempt.entryKind === "full-mock").length;
+                const mockSections = mockAttempts.length - mockCount;
                 const practiceCount = state.attempts.filter((attempt) => attempt.testType === "practicetest").length;
-                document.getElementById("mockCount").textContent = String(mockCount);
+                document.getElementById("mockCount").textContent = mockSections
+                    ? `${mockCount} ${mockCount === 1 ? "test" : "tests"}, ${mockSections} ${mockSections === 1 ? "section" : "sections"}` : String(mockCount);
                 document.getElementById("practiceCount").textContent = String(practiceCount);
                 const filtered = getFilteredAttempts();
                 const totalPages = Math.ceil(filtered.length / pageSize);
@@ -387,8 +422,12 @@
                 if (!visible.length) {
                     list.innerHTML = `<div class="empty-state"><i data-lucide="clipboard-list"></i><h2>No ${state.type === "practicetest" ? "practice" : "mock"} test attempts yet</h2><p>Completed tests will appear here automatically with their score and completion time.</p></div>`;
                 } else {
-                    const totalByType = state.attempts.filter((attempt) => attempt.testType === state.type).length;
-                    list.innerHTML = visible.map((attempt, index) => renderAttempt(attempt, totalByType - firstIndex - index, firstIndex + index === 0)).join("");
+                    list.innerHTML = visible.map((attempt, index) => {
+                        const related = state.attempts.filter((item) =>
+                            item.testType === state.type && item.entryKind === attempt.entryKind);
+                        const number = related.length - related.findIndex((item) => item.id === attempt.id);
+                        return renderAttempt(attempt, number, firstIndex + index === 0);
+                    }).join("");
                 }
                 renderPagination(totalPages, filtered.length);
                 if (window.lucide) window.lucide.createIcons({ attrs: { "stroke-width": 1.7 } });
@@ -407,6 +446,19 @@
                 if (!button || button.disabled) return;
                 state.page = Number(button.dataset.page) || 1;
                 render();
+            });
+            list.addEventListener("click", (event) => {
+                const link = event.target.closest("[data-result-id]");
+                if (!link) return;
+                try {
+                    window.toeflTestHistory.restoreResults(link.dataset.resultId);
+                } catch (error) {
+                    event.preventDefault();
+                    console.error("[TestHistory] Could not open saved result:", error);
+                    const statusElement = document.getElementById("historySyncStatus");
+                    statusElement.textContent = "Could not load this result's saved answers. Please reconnect and try again.";
+                    statusElement.dataset.state = "error";
+                }
             });
             document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
             if (window.toeflTestHistory) {

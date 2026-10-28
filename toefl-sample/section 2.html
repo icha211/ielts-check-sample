@@ -1795,7 +1795,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="toefl-storage-sync.js?v=20261010b"></script>
-    <script src="toefl-test-history.js?v=20261024b"></script>
+    <script src="toefl-test-history.js?v=20261028a"></script>
     <script src="mocknav-question.js"></script>
     <script>
         const PARTS = [
@@ -4770,7 +4770,14 @@
             
             // Save results to storage
             localStorage.setItem('toefl_section2_result', JSON.stringify(result));
-            if (window.toeflTestHistory) await window.toeflTestHistory.record(result);
+            if (window.toeflTestHistory) {
+                const attempt = await window.toeflTestHistory.record(result);
+                if (attempt?.mockSessionId) {
+                    urlParams.set("mockSessionId", attempt.mockSessionId);
+                    result.mockSessionId = attempt.mockSessionId;
+                    localStorage.setItem("toefl_section2_result", JSON.stringify(result));
+                }
+            }
 
             if (isFullTest) {
                 // Dynamically find the corresponding Reading set ID for this date

@@ -795,6 +795,8 @@
             function buildSection(cfg) {
                 const result = readResult(cfg.storage);
                 if (!result || !Array.isArray(result.questions)) return null;
+                const requestedSessionId = params.get("mockSessionId");
+                if (requestedSessionId && result.mockSessionId !== requestedSessionId) return null;
                 const questions = result.questions;
                 const total = Number(result.totalQuestions) || questions.length;
                 const correct = Number.isFinite(Number(result.rawScore)) ? Number(result.rawScore) : questions.filter((q) => q.isCorrect).length;
