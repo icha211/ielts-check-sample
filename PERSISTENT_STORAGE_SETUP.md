@@ -204,11 +204,21 @@ New full mock tests carry a `mockSessionId` through all three section URLs. Sect
 
 ## Realtime TOEFL messages
 
-The Messages page uses Firebase Authentication and Realtime Database, not demo conversations or browser-local message storage. New message recipients come from the signed-in learner directory, and the dashboard's **Send message** button opens the selected learner. Photos and online status update with the directory; accounts without photos use initials.
+The Messages page uses Firebase Authentication and Realtime Database, not demo conversations or browser-local message storage. New message recipients come from the signed-in learner directory. Photos and online status update with the directory; accounts without photos use initials.
 
-Each send atomically creates the same immutable message at `user_messages/{senderUid}/{recipientUid}/{messageId}` and `user_messages/{recipientUid}/{senderUid}/{messageId}` with a server timestamp. Rules permit only the authenticated sender to create messages with their own UID, and only each inbox owner can read that inbox. Messages are limited to 2,000 characters; recipient profiles must be listed to receive new messages. Favorites, archived/deleted-folder flags and read timestamps are stored separately at `message_preferences/{uid}/{peerUid}` and can be accessed only by that account. Recently deleted hides the conversation for that user; it does not erase the other participant's messages.
+### Message requests
 
-The page subscribes to messages, directory profiles and private folder/read state. Account changes detach listeners and clear the previous account's UI. Sending is confirmed only after Firebase acknowledges the atomic write; failures preserve the composed text. Offline writes may remain pending until reconnection. There are no attachments, group chats, automated replies, rate limiting or blocking controls in this initial direct-messaging implementation.
+Learners must accept a message request before either side can send messages:
+
+1. The requester chooses **Send request** (dashboard partner card or Messages page). One atomic write stores `message_contacts/{requesterUid}/{recipientUid}` with `status: "outgoing"` and `message_contacts/{recipientUid}/{requesterUid}` with `status: "incoming"`. The recipient must be listed in the learner directory, and no request may already exist in either direction.
+2. The recipient sees the request in their inbox and the sidebar Message badge. Only the recipient can **Accept**, which atomically sets both sides to `connected`.
+3. Either learner can decline or cancel a pending request. This deletes both sides together.
+
+Rules allow each learner to read only their own `message_contacts/{uid}`. They also reject one-sided writes, self-requests, accepts by the requester, status rollbacks, client timestamps and extra fields. Message creation requires the sender's own contact status to be `connected`.
+
+Each send atomically creates the same immutable message at `user_messages/{senderUid}/{recipientUid}/{messageId}` and `user_messages/{recipientUid}/{senderUid}/{messageId}` with a server timestamp. Rules permit only the authenticated sender to create messages with their own UID, and only each inbox owner can read that inbox. Messages are limited to 2,000 characters. Favorites, archived/deleted-folder flags and read timestamps are stored separately at `message_preferences/{uid}/{peerUid}` and can be accessed only by that account. Recently deleted hides the conversation for that user; it does not erase the other participant's messages.
+
+The page subscribes to messages, contacts, directory profiles and private folder/read state. The sidebar badge counts unread incoming messages plus pending incoming requests. Account changes detach listeners and clear the previous account's UI. Sending is confirmed only after Firebase acknowledges the atomic write; failures preserve the composed text. Offline writes may remain pending until reconnection. There are no attachments, group chats, automated replies, rate limiting or blocking controls in this direct-messaging implementation.
 
 Deploy `database.rules.json` using `firebase deploy --only database --project quickcheck-25590` before using the updated website. Website assets must also be served from an updated deployment (or locally via the development site). Rules tests in `toefl-sample/messaging-rules.test.js` require the Realtime Database emulator and `FIREBASE_DATABASE_EMULATOR_HOST`; service tests run with `node --test toefl-sample/messaging.test.js`.
 

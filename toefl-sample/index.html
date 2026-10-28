@@ -4363,7 +4363,8 @@ body {
         let partnerProfiles = [];
         let partnerOffset = 0;
         let selectedPartnerId = null;
-        let partnerRequestSent = false;
+        let partnerContacts = {};
+        let partnerActionBusy = false;
         let partnerDirectoryAuthenticated = false;
 
         const partnerCountryNames = {
@@ -4496,7 +4497,6 @@ body {
 
         function resetSelectedPartner() {
             selectedPartnerId = null;
-            partnerRequestSent = false;
             partnerSelected.innerHTML = '<span class="partner-selected-icon" aria-hidden="true">✦</span><span class="partner-selected-copy"><b>Choose a study partner</b><small>Members choose what to share</small></span>';
             partnerMatchButton.disabled = true;
             partnerMatchButton.textContent = "Choose a partner";
@@ -4673,16 +4673,37 @@ body {
                 selectedAvatar.classList.add("is-fallback");
             }
             partnerSelected.append(selectedAvatar, profileCopy);
-            partnerMatchButton.disabled = partnerRequestSent;
-            partnerMatchButton.textContent = "Send message";
+            renderPartnerAction();
         }
+
+        function partnerContactStatus(profileId) {
+            return partnerContacts[profileId]?.status || "none";
+        }
+
+        function renderPartnerAction() {
+            if (!selectedPartnerId) return;
+            const status = partnerContactStatus(selectedPartnerId);
+            const labels = {
+                none: "Send request",
+                outgoing: "Request sent",
+                incoming: "Accept request",
+                connected: "Send message"
+            };
+            partnerMatchButton.textContent = partnerActionBusy ? "Updating..." : labels[status] || labels.none;
+            partnerMatchButton.disabled = partnerActionBusy || status === "outgoing" || !partnerDirectoryAuthenticated;
+            partnerMatchButton.title = status === "outgoing" ? "Waiting for this learner to accept your request" : "";
+        }
+
+        window.setToeflPartnerContacts = (contacts) => {
+            partnerContacts = contacts || {};
+            renderPartnerAction();
+        };
 
         function selectPartner(profileId, centerProfile = false) {
             const profile = partnerProfiles.find((item) => item.id === profileId);
             if (!profile) return;
 
             selectedPartnerId = profile.id;
-            partnerRequestSent = false;
             if (centerProfile) {
                 const profileIndex = partnerProfiles.indexOf(profile);
                 partnerOffset = (profileIndex - 2 + partnerProfiles.length) % partnerProfiles.length;
@@ -4770,9 +4791,29 @@ body {
             partnerOffset = (partnerOffset + 1) % partnerProfiles.length;
             renderPartnerOrbit();
         });
-        partnerMatchButton.addEventListener("click", () => {
-            if (!selectedPartnerId) return;
-            window.location.href = `message.html?${new URLSearchParams({ to: selectedPartnerId }).toString()}`;
+        partnerMatchButton.addEventListener("click", async () => {
+            if (!selectedPartnerId || partnerActionBusy) return;
+            const peerId = selectedPartnerId;
+            const status = partnerContactStatus(peerId);
+            if (status === "connected") {
+                window.location.href = `message.html?${new URLSearchParams({ to: peerId }).toString()}`;
+                return;
+            }
+            const action = status === "incoming" ? "accept" : status === "none" ? "request" : null;
+            if (!action || typeof window.toeflPartnerConnectionAction !== "function") return;
+            partnerActionBusy = true;
+            renderPartnerAction();
+            try {
+                await window.toeflPartnerConnectionAction(action, peerId);
+            } catch (error) {
+                console.error("Could not update the message request:", error);
+                window.dispatchEvent(new CustomEvent("toefl-partner-directory-error", {
+                    detail: { message: "That message request could not be updated. Please try again." }
+                }));
+            } finally {
+                partnerActionBusy = false;
+                renderPartnerAction();
+            }
         });
 
         renderPartnerOrbit();
@@ -5342,6 +5383,7 @@ body {
     <script type="module">
         import { auth, db } from "./js/firebase-config.js";
         import { setPartnerVisibility } from "./js/partner-directory.js";
+        import { requestConnection, acceptConnection, subscribeContacts } from "./js/messaging.js?v=20261030a";
         import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import {
             get,
@@ -5364,6 +5406,7 @@ body {
         let partnerDirectoryUser = null;
         let partnerDirectoryOptedIn = false;
         let stopPartnerDirectoryListener = null;
+        let stopPartnerContactsListener = null;
         let currentPartnerDirectory = {};
         let partnerAuthVersion = 0;
 
@@ -5405,7 +5448,24 @@ body {
                 stopPartnerDirectoryListener();
                 stopPartnerDirectoryListener = null;
             }
+            if (stopPartnerContactsListener) {
+                stopPartnerContactsListener();
+                stopPartnerContactsListener = null;
+            }
+            window.setToeflPartnerContacts({});
         }
+
+        window.toeflPartnerConnectionAction = async (action, peerId) => {
+            const user = partnerDirectoryUser;
+            if (!user || auth.currentUser?.uid !== user.uid) throw new Error("Sign in to send message requests.");
+            if (action === "request") {
+                await requestConnection(peerId);
+                if (partnerDirectoryUser?.uid === user.uid) showPartnerDirectoryMessage("Message request sent. You can chat after they accept.");
+            } else if (action === "accept") {
+                await acceptConnection(peerId);
+                if (partnerDirectoryUser?.uid === user.uid) showPartnerDirectoryMessage("Request accepted. You can message each other now.");
+            }
+        };
 
         async function initializePartnerDirectory(user, data) {
             partnerDirectoryUser = user;
@@ -5425,6 +5485,13 @@ body {
                 if (partnerDirectoryUser?.uid !== user.uid) return;
                 console.error("Could not load partner profiles:", error);
                 showPartnerDirectoryMessage("Partner profiles could not be loaded. Please try again later.");
+            });
+            stopPartnerContactsListener = subscribeContacts(user.uid, (contacts) => {
+                if (partnerDirectoryUser?.uid !== user.uid) return;
+                window.setToeflPartnerContacts(contacts);
+            }, (error) => {
+                if (partnerDirectoryUser?.uid !== user.uid) return;
+                console.error("Could not load message requests:", error);
             });
 
         }

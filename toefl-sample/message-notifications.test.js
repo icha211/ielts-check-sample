@@ -64,6 +64,9 @@ test("unread count includes only incoming messages newer than each private read 
         forged: { e: incoming("someone-else", "me", 99) }
     }, { dara: { readAt: 20 }, removed: { deleted: true } });
     assert.equal(count, 2);
+    assert.equal(app.context.countUnreadMessages("me", {}, {}, {
+        dara: { status: "incoming" }, lina: { status: "outgoing" }, sam: { status: "connected" }, me: { status: "incoming" }
+    }), 1, "pending incoming requests count as notifications");
     assert.equal(app.context.countUnreadMessages(null, { dara: { a: incoming("dara", null, 1) } }, {}), 0);
 });
 
@@ -75,10 +78,14 @@ test("sidebar badges update in real time as messages arrive and are read", () =>
     app.emit("user_messages/me", { dara: { a: incoming("dara", "me", 10), b: incoming("dara", "me", 11) } });
     app.emit("message_preferences/me", {});
     assert.ok(app.badges.every((badge) => !badge.hidden && badge.textContent === "2"));
-    assert.equal(app.links[0].attributes["aria-label"], "Message, 2 unread messages");
+    assert.equal(app.links[0].attributes["aria-label"], "Message, 2 unread notifications");
     app.emit("message_preferences/me", { dara: { readAt: 11 } });
     assert.ok(app.badges.every((badge) => badge.hidden));
     assert.equal(app.links[1].attributes["aria-label"], "Social menu");
+    app.emit("message_contacts/me", { lina: { status: "incoming", updatedAt: 1 } });
+    assert.ok(app.badges.every((badge) => !badge.hidden && badge.textContent === "1"));
+    app.emit("message_contacts/me", { lina: { status: "connected", updatedAt: 2 } });
+    assert.ok(app.badges.every((badge) => badge.hidden));
     const many = Object.fromEntries(Array.from({ length: 120 }, (_, index) => [`m${index}`, incoming("dara", "me", 100 + index)]));
     app.emit("user_messages/me", { dara: many });
     assert.equal(app.badges[0].textContent, "99+");

@@ -92,8 +92,11 @@ test("real-time subscriptions clear account data and reject stale callbacks afte
     app.emit("partnerDirectory", { peer: { displayName: "Dara" } });
     app.emit("user_messages/one", { peer: { m1: { text: "private" } } });
     app.emit("message_preferences/one", { peer: { favorite: true } });
+    assert.equal(snapshots.at(-1).loading, true, "waits for message contacts");
+    app.emit("message_contacts/one", { peer: { status: "incoming", updatedAt: 1 } });
     app.emit(".info/connected", true);
     assert.equal(snapshots.at(-1).loading, false);
+    assert.equal(snapshots.at(-1).contacts.peer.status, "incoming");
     assert.equal(snapshots.at(-1).connected, true);
     app.signIn("two");
     assert.deepEqual(snapshots.at(-1).messages, {});
@@ -106,6 +109,27 @@ test("real-time subscriptions clear account data and reject stale callbacks afte
     assert.equal(snapshots.at(-1).uid, null);
     assert.equal(errors.length, 0);
     stop();
+});
+
+test("message requests, accepts and removals write both sides atomically", async () => {
+    const app = fixture();
+    await assert.rejects(app.context.requestConnection("peer"), /Sign in/);
+    app.auth.currentUser = { uid: "me" };
+    for (const peer of ["me", "bad/path", ""]) {
+        await assert.rejects(app.context.requestConnection(peer));
+    }
+    assert.equal(app.writes.length, 0);
+    await app.context.requestConnection("peer");
+    await app.context.acceptConnection("peer");
+    await app.context.removeConnection("peer");
+    const [requested, accepted, removed] = app.writes.map((write) => write.value);
+    assert.ok(app.writes.every((write) => write.target === ""));
+    assert.equal(requested["message_contacts/me/peer"].status, "outgoing");
+    assert.equal(requested["message_contacts/peer/me"].status, "incoming");
+    assert.deepEqual(requested["message_contacts/me/peer"].updatedAt, { ".sv": "timestamp" });
+    assert.equal(accepted["message_contacts/me/peer"].status, "connected");
+    assert.equal(accepted["message_contacts/peer/me"].status, "connected");
+    assert.deepEqual(removed, { "message_contacts/me/peer": null, "message_contacts/peer/me": null });
 });
 
 test("auth and database failures are surfaced, and authentication failure clears messages", async () => {

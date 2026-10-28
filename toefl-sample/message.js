@@ -1,11 +1,13 @@
-import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/messaging.js";
+import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConnection, acceptConnection, removeConnection } from "./js/messaging.js?v=20261030a";
 
 (() => {
   let profiles = [];
   let byId = {};
   let threads = [];
+  let contacts = {};
   let currentUid = null;
   let sending = false;
+  let connectionBusy = false;
   let loading = true;
   let accountVersion = 0;
   let connectionError = null;
@@ -38,6 +40,10 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/
   const favoriteButton = document.getElementById("favoriteButton");
   const archiveButton = document.getElementById("archiveButton");
   const deleteButton = document.getElementById("deleteButton");
+  const connectionPanel = document.getElementById("connectionPanel");
+  const connectionCopy = document.getElementById("connectionCopy");
+  const connectionPrimary = document.getElementById("connectionPrimary");
+  const connectionSecondary = document.getElementById("connectionSecondary");
   const composeDialog = document.getElementById("composeDialog");
   const recipientSearch = document.getElementById("recipientSearch");
   const recipientList = document.getElementById("recipientList");
@@ -48,9 +54,16 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/
 
   const personFor = (thread) => byId[thread.id] || { id: thread.id, name: "Learner", detail: "Profile not listed", avatar: "" };
   const latestMessage = (thread) => thread.messages.at(-1);
+  const contactStatus = (id) => contacts[id]?.status || "none";
   const latestPreview = (thread) => {
     const message = latestMessage(thread);
-    if (!message) return "Start a conversation";
+    if (!message) {
+      const status = contactStatus(thread.id);
+      if (status === "incoming") return "Wants to message you";
+      if (status === "outgoing") return "Message request sent";
+      if (status === "connected") return "Request accepted. Say hello";
+      return "Send a message request";
+    }
     return `${message.from === "me" ? "You: " : ""}${message.text}`;
   };
   const isVisibleInFolder = (thread, folder) => {
@@ -131,7 +144,12 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/
     copy.append(top, preview);
     row.append(copy);
 
-    if (thread.unread > 0 && !pinned) {
+    if (contactStatus(thread.id) === "incoming" && !pinned) {
+      const request = document.createElement("span");
+      request.className = "unread-badge request-badge";
+      request.textContent = "Request";
+      row.append(request);
+    } else if (thread.unread > 0 && !pinned) {
       const unread = document.createElement("span");
       unread.className = "unread-badge";
       unread.textContent = String(thread.unread);
@@ -166,6 +184,7 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/
     if (!thread) {
       threadPerson.replaceChildren();
       threadMessages.replaceChildren();
+      connectionPanel.hidden = true;
       threadActionsHidden(true);
       emptyTitle.textContent = loading ? "Loading messages..." : !currentUid ? "Sign in to message learners"
         : currentFolder === "deleted" ? "Recently deleted is empty" : `No ${folderLabel(currentFolder).toLowerCase()} conversations`;
@@ -199,18 +218,55 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/
     deleteButton.title = thread.deleted ? "Restore conversation" : "Move to recently deleted";
     deleteButton.querySelector("i").className = thread.deleted ? "ti ti-restore" : "ti ti-trash";
     renderMessages(thread);
-    messageInput.disabled = thread.deleted || sending || !currentUid || !byId[thread.id];
-    document.getElementById("sendButton").disabled = thread.deleted || sending || !currentUid || !byId[thread.id];
-    messageInput.placeholder = thread.deleted ? "Restore this conversation to reply"
-      : !byId[thread.id] ? "This learner is not currently listed" : "Write a message...";
+    const status = contactStatus(thread.id);
+    const connected = status === "connected";
+    renderConnectionPanel(thread, person, status);
+    messageForm.hidden = !connected || thread.deleted;
+    messageInput.disabled = thread.deleted || sending || !currentUid || !connected;
+    document.getElementById("sendButton").disabled = thread.deleted || sending || !currentUid || !connected;
+    messageInput.placeholder = thread.deleted ? "Restore this conversation to reply" : "Write a message...";
     if (thread.messages.length === 0) {
       threadMessages.innerHTML = "";
       const placeholder = document.createElement("p");
       placeholder.className = "message-placeholder";
       const heading = document.createElement("strong");
-      heading.textContent = `Say hello to ${person.name}`;
-      placeholder.append(heading, document.createTextNode("Your conversation starts here. Send a message to get things going."));
+      heading.textContent = connected ? `Say hello to ${person.name}` : `Connect with ${person.name}`;
+      placeholder.append(heading, document.createTextNode(connected
+        ? "You are connected. Send a message to get things going."
+        : "Learners accept a message request before either of you can send messages."));
       threadMessages.append(placeholder);
+    }
+  };
+
+  const renderConnectionPanel = (thread, person, status) => {
+    const setButton = (button, label, action, hidden = false) => {
+      button.textContent = label;
+      button.dataset.action = action;
+      button.hidden = hidden;
+      button.disabled = connectionBusy || !currentUid;
+    };
+    if (status === "connected" || thread.deleted) {
+      connectionPanel.hidden = true;
+      return;
+    }
+    connectionPanel.hidden = false;
+    connectionPanel.dataset.state = status;
+    if (status === "incoming") {
+      connectionCopy.textContent = `${person.name} wants to message you. Accept to start chatting.`;
+      setButton(connectionPrimary, "Accept", "accept");
+      setButton(connectionSecondary, "Decline", "remove");
+    } else if (status === "outgoing") {
+      connectionCopy.textContent = `Request sent. You can message ${person.name} after they accept.`;
+      setButton(connectionPrimary, "", "", true);
+      setButton(connectionSecondary, "Cancel request", "remove");
+    } else if (!byId[thread.id]) {
+      connectionCopy.textContent = "This learner is not currently listed, so a request cannot be sent.";
+      setButton(connectionPrimary, "", "", true);
+      setButton(connectionSecondary, "", "", true);
+    } else {
+      connectionCopy.textContent = `Send ${person.name} a message request. You can chat once they accept.`;
+      setButton(connectionPrimary, "Send request", "request");
+      setButton(connectionSecondary, "", "", true);
     }
   };
 
@@ -293,7 +349,8 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/
       const name = document.createElement("strong");
       name.textContent = person.name;
       const detail = document.createElement("small");
-      detail.textContent = person.detail;
+      const relation = { incoming: " / Wants to message you", outgoing: " / Request sent", connected: " / Connected" }[contactStatus(person.id)] || "";
+      detail.textContent = `${person.detail}${relation}`;
       copy.append(name, detail);
       option.append(copy);
       option.addEventListener("click", () => startConversation(person.id));
@@ -323,6 +380,37 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/
     selectThread(id);
     setStatus(`Conversation with ${personFor(thread).name} opened.`);
   };
+
+  const connectionActions = {
+    request: [requestConnection, "Message request sent."],
+    accept: [acceptConnection, "Request accepted. You can message each other now."],
+    remove: [removeConnection, "Request removed."]
+  };
+  const runConnectionAction = async (event) => {
+    const [action, message] = connectionActions[event.currentTarget.dataset.action] || [];
+    const peerId = selectedId;
+    if (!action || !peerId || connectionBusy || !currentUid) return;
+    const version = accountVersion;
+    connectionBusy = true;
+    renderThread();
+    try {
+      await action(peerId);
+      if (version !== accountVersion) return;
+      setStatus(message);
+    } catch (error) {
+      if (version !== accountVersion) return;
+      console.error("[Messages] Request update failed:", error);
+      setStatus("That request could not be updated. It may have changed, please try again.");
+    } finally {
+      if (version === accountVersion) {
+        connectionBusy = false;
+        renderThread();
+        if (selectedId === peerId && contactStatus(peerId) === "connected") messageInput.focus({ preventScroll: true });
+      }
+    }
+  };
+  connectionPrimary.addEventListener("click", runConnectionAction);
+  connectionSecondary.addEventListener("click", runConnectionAction);
 
   document.querySelectorAll(".folder-tab").forEach((tab) => {
     tab.addEventListener("click", () => chooseFolder(tab.dataset.folder));
@@ -364,7 +452,7 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/
     event.preventDefault();
     const thread = threads.find((item) => item.id === selectedId);
     const text = messageInput.value.trim();
-    if (!thread || thread.deleted || sending || !currentUid) return;
+    if (!thread || thread.deleted || sending || !currentUid || contactStatus(thread.id) !== "connected") return;
     if (!text) {
       messageError.textContent = "Write a message before sending.";
       messageError.hidden = false;
@@ -441,6 +529,7 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/
       composerDrafts.clear();
       readWrites.clear();
       sending = false;
+      connectionBusy = false;
       messageInput.value = "";
       messageError.hidden = true;
       setStatus("");
@@ -460,7 +549,9 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/
         detail: `${Object.values(profile.presence || {}).some((online) => online === true) ? "Online" : "Offline"}${profile.nationality ? ` / ${profile.nationality}` : ""}${profile.level ? ` / ${profile.level}` : ""}`
       }));
     byId = Object.fromEntries(profiles.map((profile) => [profile.id, profile]));
-    const ids = new Set([...Object.keys(snapshot.messages), ...drafts]);
+    contacts = Object.fromEntries(Object.entries(snapshot.contacts || {})
+      .filter(([id, contact]) => id !== currentUid && ["incoming", "outgoing", "connected"].includes(contact?.status)));
+    const ids = new Set([...Object.keys(snapshot.messages), ...Object.keys(contacts), ...drafts]);
     threads = [...ids].map((id) => {
       const preference = snapshot.preferences[id] || {};
       const messages = Object.entries(snapshot.messages[id] || {})
@@ -474,8 +565,8 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences } from "./js/
         id, messages, pinned: false, favorite: preference.favorite === true,
         archived: preference.archived === true, deleted: preference.deleted === true,
         unread: messages.filter((message) => message.from === "them" && message.sentAt > (preference.readAt || 0)).length,
-        time: messages.length ? formatTime(messages.at(-1).sentAt) : "",
-        sentAt: messages.at(-1)?.sentAt || 0
+        time: messages.length ? formatTime(messages.at(-1).sentAt) : contacts[id]?.updatedAt ? formatTime(contacts[id].updatedAt) : "",
+        sentAt: Math.max(messages.at(-1)?.sentAt || 0, Number(contacts[id]?.updatedAt) || 0)
       };
     }).sort((left, right) => right.sentAt - left.sentAt);
     const status = document.getElementById("messagingStatus");
