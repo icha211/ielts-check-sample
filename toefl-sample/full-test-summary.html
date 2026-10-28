@@ -75,6 +75,7 @@
   border-radius: 18px; 
   background: linear-gradient(120deg, #0a5fc0, #1786f0); 
 }
+.score-panel.is-single-section { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 
 /* Total Card Container */
 .total-card {
@@ -674,6 +675,8 @@
         @media (max-width: 1180px) {
             .score-panel { grid-template-columns: repeat(3, minmax(0, 1fr)); }
             .total-card { grid-column: 1 / -1; }
+            .score-panel.is-single-section { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .score-panel.is-single-section .total-card { grid-column: auto; }
             .detail-head { grid-template-columns: 52px minmax(0, 1fr) auto; }
             .detail-head .bar { grid-column: 1 / -1; grid-row: 2; }
         }
@@ -738,11 +741,36 @@
             const params = new URLSearchParams(window.location.search);
             const requestedSection = params.get("section");
             const focusedSection = SECTIONS.find((section) => section.key === requestedSection) || null;
+            const isPracticeTest = String(params.get("testType") || "").toLowerCase() === "practicetest";
+            const isPracticeSectionResult = isPracticeTest && Boolean(focusedSection);
             const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
             const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
 
             function readResult(key) {
                 try { return JSON.parse(localStorage.getItem(key) || "null"); } catch (_) { return null; }
+            }
+
+            function normalizeAttemptDate(value) {
+                const dateText = String(value || "").trim();
+                const isoDate = dateText.match(/^\d{4}-\d{2}-\d{2}/);
+                if (isoDate) return isoDate[0];
+                const date = new Date(dateText);
+                return Number.isNaN(date.getTime()) ? dateText : date.toISOString().slice(0, 10);
+            }
+
+            function matchesRequestedPracticeAttempt(section) {
+                if (!isPracticeSectionResult || !section) return Boolean(section);
+
+                const requestedSetId = params.get("setId");
+                if (requestedSetId && String(section.result.setId || "") !== requestedSetId) return false;
+
+                const requestedSetDate = params.get("setDate");
+                if (requestedSetDate) {
+                    const savedSetDate = section.result.setDate || section.result.submittedAt;
+                    if (normalizeAttemptDate(savedSetDate) !== normalizeAttemptDate(requestedSetDate)) return false;
+                }
+
+                return true;
             }
 
             function setUserName() {
@@ -819,9 +847,7 @@
         ? focusedResult.scaled
         : complete ? Math.round(sections.reduce((s, x) => x ? s + x.scaled : s, 0) * 10 / 3) : null;
 
-    const cards = focusedSection ? "" : SECTIONS.map((cfg, i) => {
-        const s = sections[i];
-        
+    const renderSectionScore = (s, cfg, i) => {
         if (!s) {
             return `<article class="section-score ${cfg.key}">
                 <div class="score-head">
@@ -833,32 +859,37 @@
             </article>`;
         }
 
+        const answered = s.result.questions.filter((q) => String(q.userAnswer || "").trim()).length;
         return `<article class="section-score ${cfg.key}">
             <div class="score-head">
                 <img src="../asset/figma/${cfg.icon}" alt="">
-                <span class="section-label">Section ${i + 1}</span>
+                <span class="section-label">Section ${i + 1}${isPracticeSectionResult ? " · Practice Test" : ""}</span>
                 <span class="section-title">${esc(cfg.name)}</span>
             </div>
-            
             <div class="score-value">${s.scaled} <small>/ ${cfg.max}</small></div>
-            
-            <div class="score-correct">${s.correct} / ${s.total} correct</div>
-            
+            <div class="score-correct">${isPracticeSectionResult ? `${answered} / ${s.total} answered · ${s.correct} correct` : `${s.correct} / ${s.total} correct`}</div>
             <div class="progress-row">
                 <div class="bar"><span style="width:${s.accuracy}%"></span></div>
                 <span class="accuracy-percent">${s.accuracy}%</span>
             </div>
         </article>`;
+    };
+
+    const cards = isPracticeSectionResult && focusedResult
+        ? renderSectionScore(focusedResult, focusedSection, focusedSection.num - 1)
+        : focusedSection ? "" : SECTIONS.map((cfg, i) => {
+        const s = sections[i];
+        return renderSectionScore(s, cfg, i);
     }).join("");
 
-    return `<section class="score-panel" aria-label="Score overview">
+    return `<section class="score-panel${isPracticeSectionResult ? " is-single-section" : ""}" aria-label="${isPracticeSectionResult ? "Practice test section score" : "Score overview"}">
         <article class="total-card">
             <div class="rectangle-div"></div>
             <div class="background-circle"><img src="../asset/figma/total-card-circle-back.svg" alt=""></div>
             <div class="total-content">
-                <div class="total-head"><img src="../asset/figma/test-history-trophy.png" alt="">${focusedSection ? `Section ${focusedSection.num} Score` : "Total Score"}</div>
+                <div class="total-head"><img src="../asset/figma/test-history-trophy.png" alt="">${focusedSection ? `${isPracticeSectionResult ? "Practice Test · " : ""}Section ${focusedSection.num} Score` : "Total Score"}</div>
                 <div class="total-score">${total ?? "—"} <small>/ ${focusedSection ? focusedSection.max : 677}</small></div>
-                <p class="total-note">${focusedResult ? `${focusedResult.correct} of ${focusedResult.total} questions correct.` : complete ? esc(totalNote(total)) : "Complete all three sections to see your total score."}</p>
+                <p class="total-note">${focusedResult ? (isPracticeSectionResult ? `${focusedResult.result.questions.filter((q) => String(q.userAnswer || "").trim()).length} of ${focusedResult.total} questions answered · ${focusedResult.correct} correct.` : `${focusedResult.correct} of ${focusedResult.total} questions correct.`) : complete ? esc(totalNote(total)) : "Complete all three sections to see your total score."}</p>
             </div>
         </article>${cards}
     </section>`;
@@ -997,14 +1028,22 @@
                 return `${encodeURI(s.cfg.review)}?${p.toString()}`;
             }
 
+            function groupsForDetail(s) {
+                if (!isPracticeSectionResult) return s.groups;
+                return s.groups.filter((group) =>
+                    group.questions.some((q) => String(q.userAnswer || "").trim())
+                );
+            }
+
             function renderDetail(s) {
-                const tabs = s.groups.map((g, i) => `<button class="part-tab ${i ? "" : "is-active"}" type="button" data-group="${i}">${esc(g.label)}</button>`).join("");
-                const activeGroup = s.groups[0];
+                const groups = groupsForDetail(s);
+                const tabs = groups.map((g, i) => `<button class="part-tab ${i ? "" : "is-active"}" type="button" data-group="${i}">${esc(g.label)}</button>`).join("");
+                const activeGroup = groups[0];
 
                 return `<article class="detail-card ${s.cfg.key}" data-section="${s.cfg.key}">
                     <div class="detail-head">
                         <img src="../asset/figma/${s.cfg.icon}" alt="">
-                        <div><h3>Section ${s.cfg.num}: ${esc(s.cfg.name)}</h3><p>${s.correct} / ${s.total} correct answers</p></div>
+                        <div><h3>Section ${s.cfg.num}: ${esc(s.cfg.name)}${isPracticeSectionResult ? " · Practice Test" : ""}</h3><p>${isPracticeSectionResult ? `${s.result.questions.filter((q) => String(q.userAnswer || "").trim()).length} / ${s.total} answered · ${s.correct} correct` : `${s.correct} / ${s.total} correct answers`}</p></div>
                         <div class="bar"><span style="width:${s.accuracy}%"></span></div>
                         <span class="acc-tag">${s.accuracy} / 100</span>
                     </div>
@@ -1022,22 +1061,26 @@
                 setUserName();
                 const sections = SECTIONS.map(buildSection);
                 const validSections = sections.filter(Boolean);
-                const focusedResult = focusedSection
+                const loadedFocusedResult = focusedSection
                     ? sections.find((section) => section?.cfg.key === focusedSection.key) || null
                     : null;
+                const focusedResult = matchesRequestedPracticeAttempt(loadedFocusedResult) ? loadedFocusedResult : null;
                 const displayedSections = focusedSection ? (focusedResult ? [focusedResult] : []) : validSections;
 
                 if (!displayedSections.length) {
                     const startHref = focusedSection
-                        ? `${encodeURI(focusedSection.test)}?testType=mocktest`
+                        ? `${encodeURI(focusedSection.test)}?testType=${isPracticeSectionResult ? "practicetest" : "mocktest"}`
                         : "section%201.html?fullTest=true&testType=mocktest";
                     content.innerHTML = focusedSection
-                        ? `<div class="empty-state"><h2>No section result found</h2><p>Complete Section ${focusedSection.num}: ${esc(focusedSection.name)} to view your score and explanation.</p><a class="retake-btn" href="${startHref}">Start this section</a></div>`
+                        ? `<div class="empty-state"><h2>${isPracticeSectionResult ? "Practice result unavailable" : "No section result found"}</h2><p>${isPracticeSectionResult ? "The saved result for this practice attempt is not available on this device. You can start another practice attempt." : `Complete Section ${focusedSection.num}: ${esc(focusedSection.name)} to view your score and explanation.`}</p><a class="retake-btn" href="${startHref}">${isPracticeSectionResult ? "Start another practice test" : "Start this section"}</a></div>`
                         : `<div class="empty-state"><h2>No results yet</h2><p>Finish a mock test to see your results here.</p><a class="retake-btn" href="${startHref}">Start Mock Test</a></div>`;
                     if (focusedSection) {
-                        document.getElementById("pageTitle").textContent = "Section Results";
+                        document.getElementById("pageTitle").textContent = isPracticeSectionResult ? "Practice Test Results" : "Section Results";
                         document.getElementById("heroCopy").textContent = `Section ${focusedSection.num}: ${focusedSection.name}`;
+                        const breadcrumbs = document.querySelector(".breadcrumbs");
+                        if (breadcrumbs) breadcrumbs.innerHTML = `<a href="history.html">Test History</a><span>/</span>${isPracticeSectionResult ? "<strong>Practice Test</strong><span>/</span>" : ""}<strong>Section ${focusedSection.num} Results</strong>`;
                     }
+                    if (isPracticeSectionResult) document.title = "Practice Test Results | TOEFL ITP";
                     lucide.createIcons({ attrs: { "stroke-width": 1.7 } });
                     return;
                 }
@@ -1048,11 +1091,12 @@
                     if (!Number.isNaN(d.getTime())) document.getElementById("heroCopy").textContent = `Completed on ${d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}`;
                 }
                 if (focusedSection) {
-                    document.getElementById("pageTitle").textContent = "Section Results";
+                    document.getElementById("pageTitle").textContent = isPracticeSectionResult ? "Practice Test Results" : "Section Results";
                     document.getElementById("heroCopy").textContent = `Section ${focusedSection.num}: ${focusedSection.name}${latest ? ` · Completed ${new Date(latest).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}` : ""}`;
                     const breadcrumbs = document.querySelector(".breadcrumbs");
-                    if (breadcrumbs) breadcrumbs.innerHTML = `<a href="history.html">Test History</a><span>/</span><strong>Section ${focusedSection.num} Results</strong>`;
+                    if (breadcrumbs) breadcrumbs.innerHTML = `<a href="history.html">Test History</a><span>/</span>${isPracticeSectionResult ? "<strong>Practice Test</strong><span>/</span>" : ""}<strong>Section ${focusedSection.num} Results</strong>`;
                 }
+                if (isPracticeSectionResult) document.title = "Practice Test Results | TOEFL ITP";
 
                 const filterTabsHTML = focusedSection ? "" : `
                     <h2 class="detail-title">Detailed Result</h2>
@@ -1067,11 +1111,15 @@
                 `;
 
                 const sectionDetails = focusedSection ? [focusedResult] : validSections;
+                const retakeParams = new URLSearchParams({ testType: isPracticeSectionResult ? "practicetest" : "mocktest" });
+                if (focusedResult?.result.setId) retakeParams.set("setId", focusedResult.result.setId);
+                if (focusedResult?.result.setDate) retakeParams.set("setDate", focusedResult.result.setDate);
+                if (isPracticeSectionResult && focusedResult?.result.runMode) retakeParams.set("runMode", focusedResult.result.runMode);
                 const retakeBar = focusedSection
-                    ? `<section class="retake-bar"><p><strong>Want another attempt?</strong>Retake ${esc(focusedSection.name)} to track your progress.</p><a class="retake-btn" href="${encodeURI(focusedSection.test)}?testType=mocktest"><i data-lucide="rotate-ccw"></i>Retake Section</a></section>`
+                    ? `<section class="retake-bar"><p><strong>Want another attempt?</strong>Retake ${esc(focusedSection.name)} to track your progress.</p><a class="retake-btn" href="${encodeURI(focusedSection.test)}?${retakeParams.toString()}"><i data-lucide="rotate-ccw"></i>Retake Section</a></section>`
                     : `<section class="retake-bar"><p><strong>Ready for another attempt?</strong>Retake the full mock test to track your improvement.</p><a class="retake-btn" href="section%201.html?fullTest=true&testType=mocktest"><i data-lucide="rotate-ccw"></i>Retake Mock Test</a></section>`;
                 content.innerHTML = renderScores(sections, focusedResult)
-                    + renderPriorities(sectionDetails)
+                    + (isPracticeSectionResult ? "" : renderPriorities(sectionDetails))
                     + filterTabsHTML
                     + sectionDetails.map(renderDetail).join("")
                     + retakeBar;
@@ -1096,7 +1144,7 @@
                     const s = sectionDetails.find((x) => x && x.cfg.key === card.dataset.section);
                     card.querySelectorAll(".part-tab").forEach((tab) => tab.addEventListener("click", () => {
                         card.querySelectorAll(".part-tab").forEach((t) => t.classList.toggle("is-active", t === tab));
-                        card.querySelector(".chip-grid").innerHTML = renderChips(s.groups[Number(tab.dataset.group)]);
+                        card.querySelector(".chip-grid").innerHTML = renderChips(groupsForDetail(s)[Number(tab.dataset.group)]);
                         lucide.createIcons({ attrs: { "stroke-width": 1.7 } });
                     }));
                 });

@@ -177,6 +177,7 @@
         .component-34.section3-review-layout {
             max-width: 1438px;
             margin: 0 auto;
+            grid-template-rows: minmax(0, 1fr);
             grid-template-columns: calc(16cm + 108px) minmax(320px, 1fr);
             gap: 12px;
             height: 836px;
@@ -184,6 +185,13 @@
             background: #F4F7FB;
             box-sizing: border-box;
             display: grid;
+        }
+
+        .component-34.section3-review-layout > .section3-review-left,
+        .component-34.section3-review-layout > .section3-review-right {
+            align-self: stretch;
+            height: 100%;
+            min-height: 0;
         }
 
         .section3-review-layout .left-col {
@@ -208,7 +216,7 @@
             box-shadow: none;
             position: relative;
             width: calc(16cm + 108px);
-            flex: 0 0 calc(16cm + 108px);
+            flex: 1 1 0;
             min-width: 0;
             max-width: none;
             padding: 0;
@@ -217,8 +225,8 @@
             scrollbar-width: none;
             display: flex;
             flex-direction: column;
-            min-height: 800px;
-            height: 100%;
+            min-height: 0;
+            height: auto;
             box-sizing: border-box;
         }
 
@@ -257,14 +265,15 @@
             flex-direction: column;
             align-items: flex-start;
             gap: 4px;
-            padding: 18px 16px 10px;
-            border-bottom: 1px solid #d1dce8;
-            background: #fff;
+            padding: 14px 18px;
+            border-bottom: 0;
+            background: #003560;
+            color: #fff;
         }
 
         .passage-section .passage-part-label {
             font: 600 18px/1.2 "Outfit", Arial, sans-serif;
-            color: #000;
+            color: #fff;
         }
 
         .passage-section .passage-heading {
@@ -273,7 +282,7 @@
             padding: 0;
             background: transparent;
             border-bottom: 0;
-            color: #7a8fa6;
+            color: #fff;
             font: 500 14px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
         }
 
@@ -369,7 +378,7 @@
         }
 
         .passage-section .passage-box mark.passage-highlight {
-            background: #fef3c7;
+            background: #ffff00;
             color: #0f172a;
             text-decoration: none;
             padding: 0 4px;
@@ -377,7 +386,7 @@
         }
 
         .section3-review-right {
-            border-radius: 8px;
+            border-radius: 16px;
             border: 1px solid #d1dce8;
             background: #fff;
             box-shadow: none;
@@ -454,7 +463,7 @@
         }
 
         .section3-review-right .what-does-the2 {
-            font: 500 15px/1.45 'Plus Jakarta Sans', Arial, sans-serif;
+            font: 500 18px/1.45 'Times New Roman', Times, serif;
             letter-spacing: 0;
             color: #0f172a;
             text-align: left;
@@ -614,7 +623,7 @@
         .section3-explanation-body {
             padding: 10px 0 0;
             color: #1e293b;
-            font: 400 13px/1.45 'Plus Jakarta Sans', Arial, sans-serif;
+            font: 400 16px/1.45 'Plus Jakarta Sans', Arial, sans-serif;
             white-space: normal;
             border-top: 0;
             margin-top: 0;
@@ -682,15 +691,15 @@
         .section3-structured-evidence { padding: 12px 20px; border-radius: 16px; background: #fdf3d6; color: #3a4a5c; }
         .section3-structured-evidence__head { display: flex; justify-content: space-between; gap: 10px; color: #b45309; font: 600 14px/1.45 'Plus Jakarta Sans', Arial, sans-serif; }
         .section3-structured-evidence__label { font-size: 12px; font-weight: 700; white-space: nowrap; }
-        .section3-structured-evidence p, .section3-structured-reason { margin: 8px 0 0; font: 400 12px/1.48 'Plus Jakarta Sans', Arial, sans-serif; }
-        .section3-structured-heading { margin: 18px 0 0; padding-bottom: 10px; border-bottom: 1px solid #d1dce8; color: #7a8fa6; font: 700 12px/1.48 'Plus Jakarta Sans', Arial, sans-serif; }
+        .section3-structured-evidence p, .section3-structured-reason { margin: 8px 0 0; font: 400 16px/1.48 'Plus Jakarta Sans', Arial, sans-serif; }
+        .section3-structured-heading { margin: 18px 0 0; padding-bottom: 10px; border-bottom: 1px solid #d1dce8; color: #7a8fa6; font: 700 16px/1.48 'Plus Jakarta Sans', Arial, sans-serif; }
         .section3-structured-options { display: grid; gap: 14px; margin-top: 14px; }
         .section3-structured-option { display: flex; gap: 18px; padding-bottom: 14px; border-bottom: 1px solid #e5e5ea; }
         .section3-structured-option:last-child { border-bottom: 0; padding-bottom: 0; }
         .section3-structured-option__letter { width: 32px; height: 32px; background: #e63862; font: 700 19px/1 'Plus Jakarta Sans', Arial, sans-serif; }
-        .section3-structured-option__title { color: #082f5e; font: 600 14px/1.35 'Plus Jakarta Sans', Arial, sans-serif; }
+        .section3-structured-option__title { color: #082f5e; font: 600 16px/1.35 'Plus Jakarta Sans', Arial, sans-serif; }
         .section3-structured-option__rule { width: 38px; height: 4px; margin: 8px 0; border-radius: 999px; background: #e63862; }
-        .section3-structured-option__reason { color: #000; font: 400 12px/1.34 'Plus Jakarta Sans', Arial, sans-serif; }
+        .section3-structured-option__reason { color: #000; font: 400 16px/1.34 'Plus Jakarta Sans', Arial, sans-serif; }
 
         .reading-passages-review .passage-box mark.passage-highlight {
             background: #fef3c7;
@@ -1449,7 +1458,29 @@
             var params = new URLSearchParams(window.location.search);
             var setId = String(params.get('setId') || '').trim();
             var testType = String(params.get('testType') || 'mocktest').toLowerCase();
+            var answerKeyMode = params.get('answerKey') === 'true';
+            var requestedDateValue = params.get('setDate') || params.get('date') || '';
+            var requestedDate = requestedDateValue ? normalizeDateKey(requestedDateValue) : '';
+
+            if (!setId && answerKeyMode && requestedDate && window.toeflStorage && typeof window.toeflStorage.getSetRecordsByTestType === 'function') {
+                try {
+                    var records = await window.toeflStorage.getSetRecordsByTestType(testType);
+                    var matchingRecord = (records || []).find(function(record) {
+                        return record
+                            && String(record.module || '').toLowerCase() === 'reading'
+                            && normalizeDateKey(record.setDate || record.date) === requestedDate;
+                    });
+                    if (matchingRecord && matchingRecord.setId) setId = String(matchingRecord.setId);
+                } catch (error) {
+                    console.error('[Reading Review] Unable to resolve the selected reading set:', error);
+                }
+            }
+
             if (setId && (result?.setId !== setId || result?.testType !== testType)) result = null;
+            if (!setId && answerKeyMode && result) {
+                var resultDate = normalizeDateKey(result.setDate || result.submittedAt || '');
+                if ((requestedDate && resultDate !== requestedDate) || String(result.testType || '').toLowerCase() !== testType) result = null;
+            }
             if (!setId || !window.toeflStorage || typeof window.toeflStorage.getDraftBySetIdAndType !== 'function') return result;
 
             var draft = await window.toeflStorage.getDraftBySetIdAndType(setId, testType).catch(function(error) { console.error("[Reading Review] Draft load failed:", error); return null; });
@@ -1476,7 +1507,7 @@
                     question.uid = key;
                     question.correctAnswer = answers[question.number] || '';
                     question.userAnswer = previousAnswers[key] || '';
-                    question.isCorrect = question.userAnswer === question.correctAnswer;
+                    question.isCorrect = Boolean(question.userAnswer && question.correctAnswer && question.userAnswer === question.correctAnswer);
                     question.explanation = allBahasa[key] || bahasa[question.number] || '';
                     question.explanationEnglish = allEnglish[key] || english[question.number] || '';
                     questions.push(question);
@@ -1739,7 +1770,10 @@
             result = await hydrateReviewFromFirebase(result);
 
             if (!result || !Array.isArray(result.questions) || !result.questions.length) {
-                document.getElementById('reviewQuestionText').textContent = 'No review data found. Complete Section 3 first.';
+                var answerKeyMode = new URLSearchParams(window.location.search).get('answerKey') === 'true';
+                document.getElementById('reviewQuestionText').textContent = answerKeyMode
+                    ? 'No saved question set was found for this section.'
+                    : 'No review data found. Complete Section 3 first.';
                 document.getElementById('reviewExplanationText').textContent = 'No explanation available.';
                 document.getElementById('reviewOptionList').innerHTML = '';
                 document.getElementById('reviewPassageBox').innerHTML = '';

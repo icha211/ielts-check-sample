@@ -14,7 +14,20 @@ function functionSource(name, nextName) {
 }
 
 function makeContext(search, testType) {
+    const userViewClasses = new Set();
+    const userView = {
+        classList: {
+            toggle(name, force) {
+                if (force) userViewClasses.add(name);
+                else userViewClasses.delete(name);
+            },
+            contains(name) {
+                return userViewClasses.has(name);
+            }
+        }
+    };
     const elements = new Map([
+        ["user-view", userView],
         ["navigator-panel", { style: {} }],
         ["reading-part-header", { style: {} }],
         ["display-questions-1", { style: {} }],
@@ -81,6 +94,7 @@ test("full-test mode keeps passage navigation visible while instant practice use
         const { context, elements } = makeContext(search, testType);
         context.applyPracticeRunMode();
         assert.equal(elements.get("reading-part-header").style.display, "");
+        assert.equal(elements.get("user-view").classList.contains("is-reading-instant-practice"), false);
     }
 
     const instant = makeContext("?testType=practicetest&runMode=instant", "practicetest");
@@ -88,6 +102,7 @@ test("full-test mode keeps passage navigation visible while instant practice use
     assert.equal(instant.elements.get("reading-part-header").style.display, "flex");
     assert.equal(instant.elements.get("display-questions-1").style.display, "none");
     assert.equal(instant.elements.get("instant-question-host-1").hidden, false);
+    assert.equal(instant.elements.get("user-view").classList.contains("is-reading-instant-practice"), true);
 });
 
 test("Section 3 inline scripts remain valid JavaScript", () => {

@@ -201,6 +201,7 @@ test("review hydration uses routed draft and never another test's answers or sam
         assert.equal(result.setId, "current");
         assert.equal(result.questions[0].explanation, "Current explanation");
         assert.equal(result.questions[0].userAnswer, "");
+        assert.equal(result.questions[0].isCorrect, false);
         draft.bulkExplanationId = "Question 1\nRealtime update";
         const updated = await context.hydrateReviewFromFirebase(result);
         assert.equal(updated.questions[0].explanation, "Realtime update");
@@ -209,6 +210,48 @@ test("review hydration uses routed draft and never another test's answers or sam
         assert.ok(!source.includes("            applyOctoberFirstSample(result);"));
         assert.ok(!source.includes("            ensureQuestionOneFallback(reviewResultData);"));
     }
+});
+
+test("Answer Key resolves the selected reading draft by date and leaves questions unanswered", async () => {
+    const { context, window } = fixture("?setDate=2026-10-12&testType=practicetest&answerKey=true");
+    for (const name of [
+        "parseReadingDraftQuestions", "parseReadingAnswerKey",
+        "parseReadingBulkExplanations", "parseAllReadingBulkExplanations",
+        "normalizeDateKey", "hydrateReviewFromFirebase"
+    ]) loadFunction(context, review, name);
+
+    window.toeflStorage = {
+        getSetRecordsByTestType: async (testType) => {
+            assert.equal(testType, "practicetest");
+            return [
+                { module: "listening", setDate: "2026-10-12", setId: "other-section" },
+                { module: "reading", setDate: "2026-10-11", setId: "other-date" },
+                { module: "reading", setDate: "2026-10-12", setId: "selected-reading" }
+            ];
+        },
+        getDraftBySetIdAndType: async (setId, testType) => {
+            assert.equal(setId, "selected-reading");
+            assert.equal(testType, "practicetest");
+            return {
+                passages: {
+                    1: {
+                        passage: "Selected reading passage",
+                        questions: "1. Selected question\nA. Correct option\nB. Other option",
+                        answerKey: "1. A"
+                    }
+                },
+                bulkExplanationId: "Question 1\nSelected explanation"
+            };
+        }
+    };
+    context.toeflStorage = window.toeflStorage;
+
+    const result = await context.hydrateReviewFromFirebase(null);
+    assert.equal(result.setId, "selected-reading");
+    assert.equal(result.questions[0].correctAnswer, "a");
+    assert.equal(result.questions[0].userAnswer, "");
+    assert.equal(result.questions[0].isCorrect, false);
+    assert.equal(result.questions[0].explanation, "Selected explanation");
 });
 
 test("save requests are serialized and the review route drops the new-test flag", async () => {

@@ -2454,7 +2454,7 @@
                                     <span>${lifecycle.locked ? "Locked" : "Start Test"}</span>
                                     <i class="ti ti-arrow-right"></i>
                                 </button>
-                                <button class="btn btn-secondary" type="button" data-toggle-section="${sectionId}">
+                                <button class="btn btn-secondary" type="button" data-answer-section="${sectionId}">
                                     <i class="ti ${isCompleted ? 'ti-check' : 'ti-circle-key'}"></i>
                                     <span>${isCompleted ? 'Completed' : 'Answer Key'}</span>
                                 </button>
@@ -2508,14 +2508,24 @@
 
                     sectionGrid.appendChild(card);
 
-                    card.querySelectorAll("[data-toggle-section]").forEach((button) => {
+                    card.querySelectorAll("[data-answer-section]").forEach((button) => {
                         button.addEventListener("click", () => {
-                            const sectionId = button.getAttribute("data-toggle-section");
-                            if (dayData.sections[sectionId]) {
-                                dayData.sections[sectionId].completed = !dayData.sections[sectionId].completed;
-                                saveMonthStore(year, month, store);
-                                renderMockPanel();
-                            }
+                            const sectionId = button.getAttribute("data-answer-section");
+                            const lookupKey = sectionId === "writing" ? "structure" : sectionId;
+                            const fileMap = {
+                                listening: "section 1-answered.html",
+                                structure: "section 2-answered.html",
+                                reading: "section 3-answered.html"
+                            };
+                            const file = fileMap[lookupKey];
+                            if (!file) return;
+
+                            const targetRecord = availableByModule?.[lookupKey] || null;
+                            const params = new URLSearchParams({ setDate, testType });
+                            const setId = String(targetRecord?.setId || "");
+                            if (setId) params.set("setId", setId);
+                            params.set("answerKey", "true");
+                            window.location.href = `${file}?${params.toString()}`;
                         });
                     });
 

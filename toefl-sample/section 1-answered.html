@@ -4330,6 +4330,89 @@
             return answerKey;
         }
 
+        async function loadAnswerKeyPreviewFromDraft() {
+            var params = new URLSearchParams(window.location.search || '');
+            var setId = String(params.get('setId') || '').trim();
+            var setDate = String(params.get('setDate') || params.get('date') || '').trim();
+            var testType = String(params.get('testType') || 'mocktest').trim().toLowerCase();
+            var storage = window.toeflStorage;
+            var draft = null;
+
+            if (!storage) return null;
+
+            if (setId && typeof storage.getDraftBySetIdAndType === 'function') {
+                try {
+                    draft = await storage.getDraftBySetIdAndType(setId, testType);
+                } catch (error) {
+                    console.warn('[Answer Key] Unable to load the selected listening set draft:', error);
+                }
+            }
+
+            if ((!draft || !draft.parts) && setDate && typeof storage.getSetRecordsByTestType === 'function') {
+                try {
+                    var records = await storage.getSetRecordsByTestType(testType);
+                    var matchingRecord = (records || []).find(function(record) {
+                        return record
+                            && String(record.module || '').toLowerCase() === 'listening'
+                            && normalizeDateKey(record.setDate || record.date) === normalizeDateKey(setDate);
+                    });
+                    if (matchingRecord && matchingRecord.setId && typeof storage.getDraftBySetIdAndType === 'function') {
+                        setId = String(matchingRecord.setId);
+                        draft = await storage.getDraftBySetIdAndType(setId, testType);
+                    }
+                } catch (error) {
+                    console.warn('[Answer Key] Unable to resolve the listening set for the selected date:', error);
+                }
+            }
+
+            if (!draft || !draft.parts) return null;
+
+            var questions = [];
+            for (var partId = 1; partId <= 3; partId += 1) {
+                var part = draft.parts[partId] || draft.parts[String(partId)] || {};
+                var parsedQuestions = parseStoredPartQuestions(part.questions);
+                var answers = parseStoredAnswerKey(part.answerKey);
+                var explanations = part.explanationTexts || {};
+                var questionNumbers = Object.keys(parsedQuestions);
+
+                for (var questionIndex = 0; questionIndex < questionNumbers.length; questionIndex += 1) {
+                    var questionNumber = Number(questionNumbers[questionIndex]);
+                    var storedQuestion = parsedQuestions[questionNumber];
+                    var explanation = explanations[questionNumber] || explanations[String(questionNumber)] || {};
+                    var questionExplanation = typeof explanation === 'string'
+                        ? explanation
+                        : String(explanation.explanation || explanation.explanationId || '');
+                    questions.push({
+                        number: questionNumber,
+                        partId: partId,
+                        partName: partId === 1 ? 'Part A' : (partId === 2 ? 'Part B' : 'Part C'),
+                        questionText: storedQuestion.questionText || ('Question ' + questionNumber),
+                        options: normalizeOptionsMap(storedQuestion.options),
+                        correctAnswer: answers[questionNumber] || '',
+                        userAnswer: '',
+                        isCorrect: false,
+                        explanation: questionExplanation,
+                        explanationSchema: (part.explanationSchemas || {})[questionNumber] || ''
+                    });
+                }
+            }
+
+            if (!questions.length) return null;
+            questions.sort(function(left, right) { return left.number - right.number; });
+            return {
+                sectionTitle: 'Section 1: Listening Comprehension',
+                sectionKey: 'listening',
+                setId: setId,
+                setDate: setDate,
+                testType: testType,
+                isAnswerKeyPreview: true,
+                totalQuestions: questions.length,
+                rawScore: 0,
+                scaledScore: getScaledListeningScore(0, questions.length),
+                questions: questions
+            };
+        }
+
         async function hydrateReviewQuestionMetadata(result) {
             if (!result || !Array.isArray(result.questions) || !reviewSetId || !window.toeflStorage) return;
             var draft = null;
@@ -4347,7 +4430,7 @@
 
             // A remote draft may contain questions but omit newer explanation fields.
             // Merge those fields from the legacy/local editor draft before rendering.
-            if (localDraft && localDraft.parts) {
+            if (localDraft && localDraft.parts && !result.isAnswerKeyPreview) {
                 draft = draft && draft.parts ? draft : { parts: {} };
                 draft.parts = draft.parts || {};
                 for (var localPartId = 1; localPartId <= 3; localPartId += 1) {
@@ -5206,11 +5289,18 @@
             document.body.classList.toggle('review-practice-full-mode', praticTestFullTestMode);
 
             var result = readReviewResultFromStorage();
+            var answerKeyMode = entryParams.get('answerKey') === 'true';
+            if ((!result || !Array.isArray(result.questions) || !result.questions.length) && answerKeyMode) {
+                result = await loadAnswerKeyPreviewFromDraft();
+            }
 
             if (!result || !Array.isArray(result.questions) || !result.questions.length) {
                 var explainHost = document.getElementById('explainationTabContent');
                 if (explainHost) {
-                    explainHost.innerHTML = '<div class="explaination-figma"><div class="explaination-figma-header"><div class="explaination-figma-question-wrap"><div class="explaination-figma-qnum">-</div><div class="explaination-figma-qtext">No review data found. Complete Section 1 first.</div></div></div></div>';
+                    var emptyMessage = answerKeyMode
+                        ? 'No saved question set was found for this section.'
+                        : 'No review data found. Complete Section 1 first.';
+                    explainHost.innerHTML = '<div class="explaination-figma"><div class="explaination-figma-header"><div class="explaination-figma-question-wrap"><div class="explaination-figma-qnum">-</div><div class="explaination-figma-qtext">' + escapeHtml(emptyMessage) + '</div></div></div></div>';
                 }
                 renderHeaderNavigator({ questions: [] }, 1);
                 var prevBtn = document.getElementById('headerPrevQuestionBtn');
@@ -5227,13 +5317,13 @@
             var params = new URLSearchParams(window.location.search || '');
             reviewSetDate = String(urlPackageDate || result.setDate || params.get('setDate') || '');
             reviewSetId = await resolveReviewSetId(result);
-            if (reviewSetId) {
+            if (reviewSetId && !result.isAnswerKeyPreview) {
                 result.setId = reviewSetId;
                 try { localStorage.setItem(getReviewResultStorageKey(reviewSetId), JSON.stringify(result)); } catch (_) {}
             }
             await hydrateReviewQuestionMetadata(result);
             renderReviewPackageLabel(reviewSetDate);
-            if (reviewSetId && (!result.setId || String(result.setId) !== reviewSetId)) {
+            if (reviewSetId && !result.isAnswerKeyPreview && (!result.setId || String(result.setId) !== reviewSetId)) {
                 result.setId = reviewSetId;
                 try {
                     localStorage.setItem(getReviewResultStorageKey(reviewSetId), JSON.stringify(result));

@@ -2958,6 +2958,14 @@
             // Define content variations based on test type
             const isMock = testType.toLowerCase().includes('mock');
 
+            const introText = isMock
+                ? "This section checks how well you understand spoken English. Read the instructions below so you can get ready and focus."
+                : "Practice listening at your own pace. Use the audio and questions to build your understanding of spoken English.";
+
+            const startText = isMock
+                ? "Click Start to begin. The directions play first; you can skip them if you prefer, then continue with the section audio."
+                : "Click Start to begin reviewing each question and testing your listening comprehension.";
+
             const singlePlayText = isMock
                 ? "The original audio plays once from the beginning. Questions unlock after the directions finish—at about 2:19 for Part A, 0:36 for Part B, and 2:48 for Part C—then the same audio continues."
                 : "You can control playback during practice, but pay close attention to audio cues as you answer each question.";
@@ -2966,12 +2974,20 @@
                 ? "Read each question and its four answer choices carefully. You must progress through the session as the audio dictates. You cannot jump ahead or return to previous questions."
                 : "Select your answer choice and click Next to reveal explanations or proceed to the next question.";
 
-            const modalContent = isMock
-                ? `
+            const timeText = isMock
+                ? "Watch the countdown in the top bar. The test moves on when the audio ends or the time limit is reached."
+                : "Monitor the timer in the top bar and pace yourself. If your practice has no time limit, work at your own pace.";
+
+            const focusText = isMock
+                ? "Keep your attention on the audio and questions. Make sure you’re ready before you start."
+                : "Review the explanations after each question to learn from your answers.";
+
+            const startLabel = isMock ? "Start the Listening" : "Start Practice";
+            const modalContent = `
                     <header class="instruction-popup__header">
                         <span class="instruction-popup__eyebrow"><i data-lucide="headphones" aria-hidden="true"></i>Before you start</span>
-                        <h1 class="instruction-popup__title" id="listening-intro-title">Here’s how the Listening test works</h1>
-                        <p class="instruction-popup__intro">This section checks how well you understand spoken English. Read the instructions below so you can get ready and focus.</p>
+                        <h1 class="instruction-popup__title" id="listening-intro-title">${isMock ? "Here’s how the Listening test works" : "Here’s how Listening practice works"}</h1>
+                        <p class="instruction-popup__intro">${introText}</p>
                     </header>
                     <div class="instruction-popup__content">
                         <div class="instruction-popup__main">
@@ -2980,24 +2996,24 @@
                                     <span class="instruction-item__number" aria-hidden="true">1</span>
                                     <span class="instruction-item__icon-wrap" aria-hidden="true"><i data-lucide="play"></i></span>
                                     <div class="instruction-item__content">
-                                        <h2 class="instruction-item__heading">Start the listening</h2>
-                                        <p class="instruction-item__text">Click Start to begin. The directions play first; you can skip them if you prefer, then continue with the section audio.</p>
+                                        <h2 class="instruction-item__heading">${isMock ? "Start the listening" : "Start the practice"}</h2>
+                                        <p class="instruction-item__text">${startText}</p>
                                     </div>
                                 </article>
                                 <article class="instruction-item instruction-item--single">
                                     <span class="instruction-item__number" aria-hidden="true">2</span>
                                     <span class="instruction-item__icon-wrap" aria-hidden="true"><i data-lucide="volume-2"></i></span>
                                     <div class="instruction-item__content">
-                                        <h2 class="instruction-item__heading">Single play only</h2>
-                                        <p class="instruction-item__text">The section audio plays once. You cannot replay, rewind, or pause it.</p>
+                                        <h2 class="instruction-item__heading">${isMock ? "Single play only" : "Audio controls"}</h2>
+                                        <p class="instruction-item__text">${singlePlayText}</p>
                                     </div>
                                 </article>
                                 <article class="instruction-item instruction-item--navigator">
                                     <span class="instruction-item__number" aria-hidden="true">3</span>
                                     <span class="instruction-item__icon-wrap" aria-hidden="true"><i data-lucide="layout-grid"></i></span>
                                     <div class="instruction-item__content">
-                                        <h2 class="instruction-item__heading">Question navigator</h2>
-                                        <p class="instruction-item__text">Read each question and its four choices carefully. Move through the test in order; you can’t return to an earlier part.</p>
+                                        <h2 class="instruction-item__heading">${isMock ? "Question navigator" : "Question navigation"}</h2>
+                                        <p class="instruction-item__text">${navText}</p>
                                     </div>
                                 </article>
                                 <article class="instruction-item instruction-item--time">
@@ -3005,26 +3021,26 @@
                                     <span class="instruction-item__icon-wrap" aria-hidden="true"><i data-lucide="clock-3"></i></span>
                                     <div class="instruction-item__content">
                                         <h2 class="instruction-item__heading">Manage your time</h2>
-                                        <p class="instruction-item__text">Watch the countdown in the top bar. The test moves on when the audio ends or the time limit is reached.</p>
+                                        <p class="instruction-item__text">${timeText}</p>
                                     </div>
                                 </article>
                                 <article class="instruction-item instruction-item--focus">
                                     <span class="instruction-item__number" aria-hidden="true">5</span>
                                     <span class="instruction-item__icon-wrap" aria-hidden="true"><i data-lucide="check"></i></span>
                                     <div class="instruction-item__content">
-                                        <h2 class="instruction-item__heading">Stay focused</h2>
-                                        <p class="instruction-item__text">Keep your attention on the audio and questions. Make sure you’re ready before you start.</p>
+                                        <h2 class="instruction-item__heading">${isMock ? "Stay focused" : "Learn as you go"}</h2>
+                                        <p class="instruction-item__text">${focusText}</p>
                                     </div>
                                 </article>
                             </div>
                             <div class="instruction-popup__cta">
-                                <button class="instruction-popup__play-button" type="button" id="start-onboarding-btn" data-ready-label="Start the Listening" ${examInitializationComplete ? "" : "disabled aria-busy=\"true\""}>
+                                <button class="instruction-popup__play-button" type="button" id="start-onboarding-btn" data-ready-label="${startLabel}" ${examInitializationComplete ? "" : "disabled aria-busy=\"true\""}>
                                     <span class="instruction-popup__play-icon" aria-hidden="true"><i data-lucide="play"></i></span>
-                                    <span class="instruction-popup__play-label">${examInitializationComplete ? "Start the Listening" : "Preparing…"}</span>
+                                    <span class="instruction-popup__play-label">${examInitializationComplete ? startLabel : "Preparing…"}</span>
                                 </button>
                             </div>
                         </div>
-                        <aside class="instruction-popup__aside" aria-label="Listening test tips">
+                        <aside class="instruction-popup__aside" aria-label="Listening ${isMock ? "test" : "practice"} tips">
                             <img class="instruction-popup__illustration" src="../asset/icon/introlistening.png" alt="Student wearing headphones and listening at a laptop">
                             <section class="instruction-popup__tip-card" aria-labelledby="listening-quick-tips">
                                 <h2 class="instruction-popup__tip-heading" id="listening-quick-tips"><span class="instruction-popup__tip-icon" aria-hidden="true"><i data-lucide="lightbulb"></i></span>Quick tips</h2>
@@ -3036,64 +3052,16 @@
                                     <li><i data-lucide="check" aria-hidden="true"></i><span>Manage your time and don’t rush.</span></li>
                                 </ul>
                             </section>
-                            <section class="instruction-popup__ready-card" aria-label="You’re ready">
+                            <section class="instruction-popup__ready-card" aria-label="${isMock ? "You’re ready" : "Ready to practice"}">
                                 <span class="instruction-popup__ready-icon" aria-hidden="true"><i data-lucide="target"></i></span>
-                                <div><h2 class="instruction-popup__ready-title">You’re ready</h2><p class="instruction-popup__ready-copy">Take a breath, then start the listening test.</p></div>
+                                <div><h2 class="instruction-popup__ready-title">${isMock ? "You’re ready" : "Ready to practice"}</h2><p class="instruction-popup__ready-copy">${isMock ? "Take a breath, then start the listening test." : "Take your time and start when you’re ready."}</p></div>
                             </section>
                         </aside>
-                    </div>
-                `
-                : `
-                    <div class="instruction-popup__title">Instruction</div>
-                    <div class="instruction-popup__content">
-                        <div class="instruction-list">
-                            <article class="instruction-item instruction-item--play">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true"><i class="ph ph-play instruction-item__icon"></i></div>
-                                <div class="instruction-item__content">
-                                    <h3 class="instruction-item__heading">Start The Practice</h3>
-                                    <p class="instruction-item__text">Click the Start button to review each question and test your knowledge.</p>
-                                </div>
-                            </article>
-                            <article class="instruction-item instruction-item--single">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true"><i class="ph ph-speaker-high instruction-item__icon"></i></div>
-                                <div class="instruction-item__content">
-                                    <h3 class="instruction-item__heading">Audio Controls</h3>
-                                    <p class="instruction-item__text">${singlePlayText}</p>
-                                </div>
-                            </article>
-                            <article class="instruction-item instruction-item--navigator">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true"><i class="ph ph-squares-four instruction-item__icon"></i></div>
-                                <div class="instruction-item__content">
-                                    <h3 class="instruction-item__heading">Question Navigation</h3>
-                                    <p class="instruction-item__text">${navText}</p>
-                                </div>
-                            </article>
-                            <article class="instruction-item instruction-item--time">
-                                <div class="instruction-item__icon-wrap" aria-hidden="true"><i class="ph ph-clock instruction-item__icon"></i></div>
-                                <div class="instruction-item__content">
-                                    <h3 class="instruction-item__heading">Time Management</h3>
-                                    <p class="instruction-item__text">Monitor the countdown timer in the top bar. Pace yourself according to your goals.</p>
-                                </div>
-                            </article>
-                        </div>
-                        <div class="instruction-popup__cta">
-                            <div class="instruction-popup__cta-text">
-                                <div class="instruction-popup__ready">Are you ready?</div>
-                                <div class="instruction-popup__click">Click to Play</div>
-                            </div>
-                            <button class="instruction-popup__play-button" type="button" id="start-onboarding-btn" data-ready-label="Play" ${examInitializationComplete ? "" : "disabled aria-busy=\"true\""}>
-                                <span class="instruction-popup__play-icon" aria-hidden="true">
-                                    <i class="ph ph-play instruction-popup__play-icon-glyph icon-regular"></i>
-                                    <i class="ph-fill ph-play instruction-popup__play-icon-glyph icon-filled"></i>
-                                </span>
-                                <span class="instruction-popup__play-label">${examInitializationComplete ? "Play" : "Preparing…"}</span>
-                            </button>
-                        </div>
                     </div>
                 `;
 
             const modalHTML = `
-                <div class="instruction-popup ${isMock ? "instruction-popup--listening" : ""}" id="onboarding-overlay" role="dialog" aria-modal="true" aria-label="${isMock ? "Listening test instructions" : "Test instructions"}" aria-hidden="false">
+                <div class="instruction-popup instruction-popup--listening" id="onboarding-overlay" role="dialog" aria-modal="true" aria-label="Listening ${isMock ? "test" : "practice"} instructions" aria-hidden="false">
                     <div class="instruction-popup__backdrop"></div>
                     ${modalContent}
                 </div>
@@ -3101,17 +3069,15 @@
 
             // Append to body
             document.body.insertAdjacentHTML('beforeend', modalHTML);
-            if (isMock) {
-                const overlay = document.getElementById('onboarding-overlay');
-                listeningIntroResizeHandler = () => {
-                    const header = document.querySelector('.mock-test-header');
-                    const headerBottom = header?.getBoundingClientRect().bottom || 0;
-                    overlay?.style.setProperty('--listening-header-offset', `${Math.max(0, headerBottom)}px`);
-                };
-                listeningIntroResizeHandler();
-                window.addEventListener('resize', listeningIntroResizeHandler);
-            }
-            if (isMock && window.lucide?.createIcons) {
+            const overlay = document.getElementById('onboarding-overlay');
+            listeningIntroResizeHandler = () => {
+                const header = document.querySelector('#user-view .cbt-header');
+                const headerBottom = header?.getBoundingClientRect().bottom || 64;
+                overlay?.style.setProperty('--listening-header-offset', `${Math.max(0, headerBottom)}px`);
+            };
+            listeningIntroResizeHandler();
+            window.addEventListener('resize', listeningIntroResizeHandler);
+            if (window.lucide?.createIcons) {
                 window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
             }
 
