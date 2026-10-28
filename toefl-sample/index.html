@@ -3809,6 +3809,22 @@ body {
 
         .partner-card .partner-orbit {
             min-height: 82px;
+            overflow: hidden;
+            justify-content: flex-start;
+            container-type: inline-size;
+        }
+
+        .partner-track { display: flex; width: max-content; flex: 0 0 auto; }
+        .partner-track-group { display: flex; align-items: center; justify-content: space-around; min-width: 100cqw; padding: 12px 0; gap: 16px; }
+        .partner-card .partner-track .partner-avatar { width: 52px; height: 52px; flex: 0 0 52px; margin: 0 8px; }
+        .partner-track.is-moving { animation: partner-drift-right var(--partner-loop-duration, 24s) cubic-bezier(.37, .36, .63, .64) infinite; }
+        .partner-carousel:hover .partner-track,
+        .partner-carousel:focus-within .partner-track,
+        .partner-track.is-paused { animation-play-state: paused; }
+        @keyframes partner-drift-right { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+        @media (prefers-reduced-motion: reduce) {
+            .partner-track.is-moving { animation: none; }
+            .partner-track-group[aria-hidden="true"] { display: none; }
         }
 
         .partner-card .partner-orbit::before {
@@ -4152,6 +4168,7 @@ body {
                                             <button class="partner-arrow" id="previousPartner" type="button" aria-label="Previous suggested partners"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
                                             <span class="partner-pagination" id="partnerPagination" aria-hidden="true"></span>
                                             <button class="partner-arrow" id="nextPartner" type="button" aria-label="Next suggested partners"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+                                            <button class="partner-arrow" id="togglePartnerMotion" type="button" aria-label="Pause partner carousel" aria-pressed="false"><i class="ti ti-player-pause" aria-hidden="true"></i></button>
                                         </div>
                                         <div class="partner-selected" id="partnerSelected" aria-live="polite">
                                             <span class="partner-selected-icon" aria-hidden="true">✦</span>
@@ -4373,6 +4390,8 @@ body {
         const partnerMatchButton = document.getElementById("partnerMatchButton");
         const previousPartnerButton = document.getElementById("previousPartner");
         const nextPartnerButton = document.getElementById("nextPartner");
+        const togglePartnerMotionButton = document.getElementById("togglePartnerMotion");
+        let partnerMotionPaused = false;
 
         let partnerProfiles = [];
         let partnerOffset = 0;
@@ -4633,12 +4652,26 @@ body {
             if (partnerControls) partnerControls.hidden = false;
             previousPartnerButton.disabled = partnerProfiles.length < 2;
             nextPartnerButton.disabled = partnerProfiles.length < 2;
-            const visibleProfiles = Array.from({ length: Math.min(5, partnerProfiles.length) }, (_, slot) => {
+            togglePartnerMotionButton.disabled = partnerProfiles.length < 2;
+            const track = document.createElement("div");
+            track.className = `partner-track${partnerProfiles.length > 1 ? " is-moving" : ""}${partnerMotionPaused ? " is-paused" : ""}`;
+            track.style.setProperty("--partner-loop-duration", `${Math.max(24, partnerProfiles.length * 5)}s`);
+            const visibleProfiles = Array.from({ length: partnerProfiles.length }, (_, slot) => {
                 return partnerProfiles[(partnerOffset + slot) % partnerProfiles.length];
             });
-            visibleProfiles.forEach((profile, slot) => {
-                partnerOrbit.append(createPartnerAvatar(profile, slot));
+            const copies = partnerProfiles.length > 1 ? 2 : 1;
+            Array.from({ length: copies }, (_, copy) => {
+                const group = document.createElement("div");
+                group.className = "partner-track-group";
+                if (copy) group.setAttribute("aria-hidden", "true");
+                visibleProfiles.forEach((profile) => {
+                    const avatar = createPartnerAvatar(profile, 1);
+                    if (copy) avatar.tabIndex = -1;
+                    group.append(avatar);
+                });
+                track.append(group);
             });
+            partnerOrbit.append(track);
 
             partnerPagination.replaceChildren();
             partnerProfiles.forEach((_, index) => {
@@ -4798,6 +4831,13 @@ body {
         }
 
         partnerSearch.addEventListener("input", () => renderPartnerSearch(partnerSearch.value));
+        togglePartnerMotionButton.addEventListener("click", () => {
+            partnerMotionPaused = !partnerMotionPaused;
+            togglePartnerMotionButton.setAttribute("aria-pressed", String(partnerMotionPaused));
+            togglePartnerMotionButton.setAttribute("aria-label", partnerMotionPaused ? "Resume partner carousel" : "Pause partner carousel");
+            togglePartnerMotionButton.firstElementChild.className = partnerMotionPaused ? "ti ti-player-play" : "ti ti-player-pause";
+            partnerOrbit.querySelector(".partner-track")?.classList.toggle("is-paused", partnerMotionPaused);
+        });
         previousPartnerButton.addEventListener("click", () => {
             if (partnerProfiles.length < 2) return;
             partnerOffset = (partnerOffset - 1 + partnerProfiles.length) % partnerProfiles.length;
