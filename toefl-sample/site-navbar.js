@@ -1,5 +1,11 @@
 /* Shared TOEFL top bar + sidebar + mobile dock. Include right after <body> opens. */
 (() => {
+  import("./js/partner-directory.js").catch((error) => {
+    console.error("[PartnerDirectory] Could not start live partner updates:", error);
+    window.dispatchEvent(new CustomEvent("toefl-partner-directory-error", {
+      detail: { message: "Live partner updates could not start. Please reload this page." }
+    }));
+  });
   const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
   const pageKey = {
     "index.html": "dashboard",

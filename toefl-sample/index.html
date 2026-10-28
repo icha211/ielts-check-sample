@@ -4017,7 +4017,7 @@ body {
     <script src="card-strike.js" defer></script>
 </head>
 <body>
-    <script src="site-navbar.js?v=20261013a"></script>
+    <script src="site-navbar.js?v=20261028a"></script>
     <div class="shell">
         <div class="page-content">
         <header class="hero">
@@ -4121,14 +4121,14 @@ body {
                                 <p class="partner-card-intro">Practice English with friendly faces around the world.</p>
                                 <div class="partner-status-row">
                                     <p class="partner-status"><span class="status-dot"></span><span id="partnerDirectoryStatus">Loading member directory…</span></p>
-                                    <button class="you-have-50-connection-parent" id="showPartnerNetwork" type="button" aria-label="View opt-in partner network" aria-expanded="false" aria-controls="partnerCardBack">
+                                    <button class="you-have-50-connection-parent" id="showPartnerNetwork" type="button" aria-label="View learner network" aria-expanded="false" aria-controls="partnerCardBack">
                                         <span class="you-have-50-container"><span class="connection"><span class="connection2">Explore network</span></span></span>
                                         <i class="ti ti-arrow-right arrow-right-icon" aria-hidden="true"></i>
                                     </button>
                                 </div>
                                 <label class="partner-directory-optin" id="partnerDirectorySetting" hidden>
                                     <input id="partnerDirectoryOptIn" type="checkbox">
-                                    <span>Share my name, country, CEFR level and photo with signed-in learners. My online status is visible while connected.</span>
+                                    <span>Show my name, country, level and photo to signed-in learners. Listed automatically; uncheck to hide my profile.</span>
                                 </label>
                                 <p class="partner-directory-message" id="partnerDirectoryMessage" role="status" aria-live="polite" hidden></p>
                                 <div class="partner-carousel">
@@ -4149,7 +4149,7 @@ body {
                                 <div class="partner-search-wrap">
                                     <label class="partner-search">
                                         <i class="ti ti-search" aria-hidden="true"></i>
-                                        <input id="partnerSearch" type="search" placeholder="Search name, country or level" autocomplete="off" aria-label="Search opted-in study partners">
+                                        <input id="partnerSearch" type="search" placeholder="Search name, country or level" autocomplete="off" aria-label="Search study partners">
                                         <i class="ti ti-arrow-right" aria-hidden="true"></i>
                                     </label>
                                     <div class="partner-search-result" id="partnerSearchResult" aria-live="polite"></div>
@@ -4163,7 +4163,7 @@ body {
                             <section class="partner-card__face partner-card-back" id="partnerCardBack" aria-label="Your global network" aria-hidden="true" inert>
                                 <div class="network-card-heading">
                                     <h3 class="network-card-title">Your global network</h3>
-                                    <div class="network-card-total"><span class="network-card-total__count"><i class="ti ti-users" aria-hidden="true"></i><span id="partnerConnectionCount">0</span></span><strong>OPT-IN MEMBERS</strong></div>
+                                    <div class="network-card-total"><span class="network-card-total__count"><i class="ti ti-users" aria-hidden="true"></i><span id="partnerConnectionCount">0</span></span><strong>LEARNERS</strong></div>
                                 </div>
                                 <div class="network-card-body">
                                     <div class="network-insights">
@@ -4171,7 +4171,7 @@ body {
                                         <span class="network-divider" aria-hidden="true"></span>
                                         <section class="network-countries"><h4>Top countries</h4><div id="partnerTopCountries"><p class="partner-network-empty">No country data yet.</p></div></section>
                                     </div>
-                                    <section class="network-connections"><h4>Opt-in members</h4><div class="network-connection-grid" id="partnerConnectionGrid"><p class="partner-network-empty">No members have opted in yet.</p></div><span class="network-view-all" id="partnerDirectoryMemberCount">0 opted-in members</span></section>
+                                    <section class="network-connections"><h4>Learners</h4><div class="network-connection-grid" id="partnerConnectionGrid"><p class="partner-network-empty">No other learners have joined yet.</p></div><span class="network-view-all" id="partnerDirectoryMemberCount">0 learners</span></section>
                                 </div>
                                 <button class="network-back-button" id="hidePartnerNetwork" type="button"><span>Go Back to Matchmaking</span><i class="ti ti-arrow-right" aria-hidden="true"></i></button>
                             </section>
@@ -4485,13 +4485,13 @@ body {
                 if (!profiles.length) {
                     const empty = document.createElement("p");
                     empty.className = "partner-network-empty";
-                    empty.textContent = "No members have opted in yet.";
+                    empty.textContent = "No learners have joined yet.";
                     connectionGrid.append(empty);
                 }
             }
 
             const memberCount = document.getElementById("partnerDirectoryMemberCount");
-            if (memberCount) memberCount.textContent = `${profiles.length} opted-in member${profiles.length === 1 ? "" : "s"}`;
+            if (memberCount) memberCount.textContent = `${profiles.length} learner${profiles.length === 1 ? "" : "s"}`;
         }
 
         function resetSelectedPartner() {
@@ -4518,7 +4518,8 @@ body {
                 };
             });
             const currentProfile = profiles.find((profile) => profile.id === currentUid);
-            partnerProfiles = profiles.filter((profile) => profile.id !== currentUid);
+            partnerProfiles = profiles.filter((profile) => profile.id !== currentUid)
+                .sort((left, right) => Number(right.isOnline) - Number(left.isOnline) || left.name.localeCompare(right.name));
             partnerOffset = Math.min(partnerOffset, Math.max(0, partnerProfiles.length - 1));
             renderPartnerNetwork(profiles);
             renderPartnerOrbit();
@@ -4530,11 +4531,13 @@ body {
             }
 
             const status = document.getElementById("partnerDirectoryStatus");
-            if (status) status.textContent = partnerProfiles.length
-                ? `${partnerProfiles.length} learner${partnerProfiles.length === 1 ? "" : "s"} opted in`
-                : currentProfile
-                    ? "You’re listed · waiting for members"
-                    : "No members yet · opt in to be found";
+            if (status) status.textContent = !partnerDirectoryAuthenticated
+                ? "Sign in to find study partners"
+                : partnerProfiles.length
+                    ? `${partnerProfiles.filter((profile) => profile.isOnline).length} online / ${partnerProfiles.length} learners`
+                    : currentProfile
+                        ? "You are listed. Waiting for other learners."
+                        : "No other learners yet.";
             if (partnerSearch.value.trim()) renderPartnerSearch(partnerSearch.value);
         };
 
@@ -4577,7 +4580,7 @@ body {
                 button.classList.add("partner-avatar--fallback");
             }
 
-            button.append(image);
+            if (profile.photo) button.append(image);
             if (profile.flag) {
                 const flag = document.createElement("span");
                 flag.className = "nationality-badge";
@@ -4602,8 +4605,8 @@ body {
                 const emptyMessage = document.createElement("p");
                 emptyMessage.className = "partner-directory-empty";
                 emptyMessage.textContent = partnerDirectoryAuthenticated
-                    ? "No learners have opted in yet. Join the directory to be discoverable."
-                    : "Sign in to see learners who opted in.";
+                    ? "No other learners yet. They will appear here when they sign in."
+                    : "Sign in to see study partners.";
                 partnerOrbit.append(emptyMessage);
                 partnerPagination.replaceChildren();
                 previousPartnerButton.disabled = true;
@@ -4704,7 +4707,7 @@ body {
             if (matches.length === 0) {
                 const emptyMessage = document.createElement("p");
                 emptyMessage.className = "partner-search-empty";
-                emptyMessage.textContent = "No opted-in members match that search.";
+                emptyMessage.textContent = "No learners match that search.";
                 partnerSearchResult.append(emptyMessage);
             } else {
                 matches.forEach((profile) => {
@@ -5342,16 +5345,12 @@ body {
     <!-- Add Firebase Auth Guard -->
     <script type="module">
         import { auth, db } from "./js/firebase-config.js";
+        import { setPartnerVisibility } from "./js/partner-directory.js";
         import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import {
             get,
-            onDisconnect,
             onValue,
-            push,
-            ref,
-            remove,
-            set,
-            update
+            ref
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         // DOM Elements
@@ -5367,12 +5366,10 @@ body {
         const partnerDirectoryOptIn = document.getElementById("partnerDirectoryOptIn");
         const partnerDirectoryMessage = document.getElementById("partnerDirectoryMessage");
         let partnerDirectoryUser = null;
-        let partnerDirectoryProfile = {};
         let partnerDirectoryOptedIn = false;
-        let partnerPresenceSession = null;
-        let stopPartnerPresenceConnection = null;
         let stopPartnerDirectoryListener = null;
         let currentPartnerDirectory = {};
+        let partnerAuthVersion = 0;
 
         function countryFlag(countryValue) {
             if (typeof countryValue !== "string") return "";
@@ -5401,57 +5398,10 @@ body {
             return String.fromCodePoint(...[...code].map((letter) => 127397 + letter.charCodeAt(0)));
         }
 
-        function createDirectoryProfile(user, data) {
-            const firstName = data.first_name || data.firstName || "";
-            const lastName = data.last_name || data.lastName || "";
-            const displayName = `${firstName} ${lastName}`.trim() || user.displayName || "Learner";
-            const dashboardLevel = document.getElementById("cefrText")?.textContent.replace(/^\/\s*/, "").trim();
-            return {
-                displayName: displayName.slice(0, 80),
-                nationality: String(data.nationality || data.country || "").slice(0, 60),
-                level: String(data.cefrLevel || data.cefr_level || dashboardLevel || "").slice(0, 16),
-                photoURL: String(user.photoURL || data.photoURL || "").slice(0, 2048)
-            };
-        }
-
         function showPartnerDirectoryMessage(message) {
             if (!partnerDirectoryMessage) return;
             partnerDirectoryMessage.textContent = message;
             partnerDirectoryMessage.hidden = !message;
-        }
-
-        function stopPartnerPresence() {
-            if (stopPartnerPresenceConnection) {
-                stopPartnerPresenceConnection();
-                stopPartnerPresenceConnection = null;
-            }
-            if (partnerPresenceSession) {
-                const session = partnerPresenceSession;
-                partnerPresenceSession = null;
-                remove(session).catch((error) => {
-                    console.error("Could not clear partner presence:", error);
-                    showPartnerDirectoryMessage("Could not update your online status. Please try again.");
-                });
-            }
-        }
-
-        function startPartnerPresence(user) {
-            stopPartnerPresence();
-            const session = push(ref(db, `partnerDirectory/${user.uid}/presence`));
-            partnerPresenceSession = session;
-            stopPartnerPresenceConnection = onValue(ref(db, ".info/connected"), async (snapshot) => {
-                if (snapshot.val() !== true || !partnerDirectoryOptedIn) return;
-                try {
-                    await onDisconnect(session).remove();
-                    await set(session, true);
-                } catch (error) {
-                    console.error("Could not publish partner presence:", error);
-                    showPartnerDirectoryMessage("Could not update your online status. Please try again.");
-                }
-            }, (error) => {
-                console.error("Could not monitor Firebase connection for partner presence:", error);
-                showPartnerDirectoryMessage("Online status is unavailable right now.");
-            });
         }
 
         function stopPartnerDirectoryListeners() {
@@ -5463,8 +5413,7 @@ body {
 
         async function initializePartnerDirectory(user, data) {
             partnerDirectoryUser = user;
-            partnerDirectoryProfile = createDirectoryProfile(user, data);
-            partnerDirectoryOptedIn = data.partnerDirectoryOptIn === true;
+            partnerDirectoryOptedIn = data.partnerDirectoryHidden !== true;
             partnerDirectoryOptIn.checked = partnerDirectoryOptedIn;
             partnerDirectorySetting.hidden = false;
             partnerDirectoryOptIn.disabled = false;
@@ -5473,35 +5422,36 @@ body {
 
             stopPartnerDirectoryListeners();
             stopPartnerDirectoryListener = onValue(ref(db, "partnerDirectory"), (snapshot) => {
+                if (partnerDirectoryUser?.uid !== user.uid) return;
                 currentPartnerDirectory = snapshot.val() || {};
                 window.updateToeflPartnerDirectory(currentPartnerDirectory, user.uid);
             }, (error) => {
-                console.error("Could not load opt-in partner profiles:", error);
+                if (partnerDirectoryUser?.uid !== user.uid) return;
+                console.error("Could not load partner profiles:", error);
                 showPartnerDirectoryMessage("Partner profiles could not be loaded. Please try again later.");
             });
 
-            if (partnerDirectoryOptedIn) {
-                await update(ref(db, `partnerDirectory/${user.uid}`), partnerDirectoryProfile);
-                startPartnerPresence(user);
-            }
         }
+
+        window.addEventListener("toefl-partner-directory-error", (event) => {
+            showPartnerDirectoryMessage(event.detail.message);
+        });
+        window.addEventListener("toefl-partner-visibility", (event) => {
+            if (event.detail.uid !== partnerDirectoryUser?.uid) return;
+            partnerDirectoryOptedIn = event.detail.visible;
+            partnerDirectoryOptIn.checked = event.detail.visible;
+        });
 
         partnerDirectoryOptIn.addEventListener("change", async () => {
             if (!partnerDirectoryUser) return;
             partnerDirectoryOptIn.disabled = true;
             const willOptIn = partnerDirectoryOptIn.checked;
-            const updates = {
-                [`users/${partnerDirectoryUser.uid}/partnerDirectoryOptIn`]: willOptIn,
-                [`partnerDirectory/${partnerDirectoryUser.uid}`]: willOptIn ? partnerDirectoryProfile : null
-            };
             try {
-                await update(ref(db), updates);
+                await setPartnerVisibility(willOptIn);
                 partnerDirectoryOptedIn = willOptIn;
                 if (willOptIn) {
-                    startPartnerPresence(partnerDirectoryUser);
                     showPartnerDirectoryMessage("Your profile is listed for signed-in learners.");
                 } else {
-                    stopPartnerPresence();
                     showPartnerDirectoryMessage("Your profile is no longer listed.");
                 }
             } catch (error) {
@@ -5515,15 +5465,15 @@ body {
 
         // Listen for Authentication State Changes
         onAuthStateChanged(auth, async (user) => {
+            const version = ++partnerAuthVersion;
             if (partnerDirectoryUser && user && partnerDirectoryUser.uid !== user.uid) {
-                stopPartnerPresence();
                 stopPartnerDirectoryListeners();
+                partnerDirectoryUser = null;
                 partnerDirectoryOptedIn = false;
                 window.setToeflPartnerDirectoryState(false);
             }
 
             if (!user) {
-                stopPartnerPresence();
                 stopPartnerDirectoryListeners();
                 partnerDirectoryUser = null;
                 partnerDirectoryOptedIn = false;
@@ -5540,7 +5490,12 @@ body {
                 // Fetch the user's profile from Realtime Database
                 try {
                     const userProfile = await get(ref(db, `users/${user.uid}`));
+                    if (version !== partnerAuthVersion) return;
                     const data = userProfile.exists() ? userProfile.val() : {};
+                    if (userCountryFlag) {
+                        userCountryFlag.hidden = true;
+                        userCountryFlag.textContent = "";
+                    }
 
                     let nameToDisplay = user.displayName || user.email?.split("@")[0] || "Student";
 
@@ -5575,6 +5530,7 @@ body {
 
                     await initializePartnerDirectory(user, data);
                 } catch (error) {
+                    if (version !== partnerAuthVersion) return;
                     console.error("Error fetching user data:", error);
                     showPartnerDirectoryMessage("Your profile could not be loaded. Partner sharing is unavailable.");
                 }

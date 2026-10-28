@@ -184,11 +184,13 @@ storage-sync.js (helper library)
 
 ---
 
-## Opt-in TOEFL study-partner directory
+## Live TOEFL study-partner directory
 
-The TOEFL dashboard does not publish a profile by default. A signed-in learner must enable **Share my name, country, CEFR level and photo with learners** before their profile appears in partner search. Their online status is visible to signed-in users only while an opted-in session is connected. Email addresses and phone numbers are not copied into the directory.
+Signed-in learners are automatically listed with their name, available country, CEFR level and photo. The dashboard's **Show my name, country, level and photo** checkbox lets them hide their profile; this stores `users/{uid}/partnerDirectoryHidden: true`. The older opt-in field is no longer the visibility setting. Email addresses and phone numbers are not copied into the directory. Missing photos use initials, and country badges are shown only when the profile has a known country.
 
-The directory and connection status are stored in `partnerDirectory/{uid}` and `partnerDirectory/{uid}/presence/{connectionId}`. `database.rules.json` restricts profile and presence writes to the signed-in account that owns each UID; only authenticated users can read the opted-in directory. Presence is nested under the opted-in profile, so opting out removes its visibility. Deploy the updated rules with:
+The shared navigation starts `toefl-sample/js/partner-directory.js` on TOEFL pages. It subscribes to the account profile and updates `partnerDirectory/{uid}`. Connection status uses `partnerDirectory/{uid}/presence/{connectionId}` with Firebase `onDisconnect` cleanup and a separate connection for each tab/device. The carousel prioritizes online learners, excludes the viewer's own profile, and updates in real time. Hiding a profile removes it from the directory. Existing accounts appear when they next open an updated TOEFL page; this does not backfill all Firebase Auth accounts.
+
+`database.rules.json` restricts profile and presence writes to the signed-in account that owns each UID; only authenticated users can read the directory. Deploy the rules with:
 
 ```bash
 firebase deploy --only database
