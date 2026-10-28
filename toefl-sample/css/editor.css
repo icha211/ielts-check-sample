@@ -946,8 +946,8 @@ body {
 .topbar-icon span { display: none; }
 
 .exam-body {
-    flex: 0 0 836px;
-    height: 836px;
+    flex: 1 1 auto;
+    height: auto;
     min-height: 0;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -1157,7 +1157,7 @@ body {
 .section3-layout #user-passages-container .question-item.is-answered {
     border-color: #8eb4da;
     background: rgba(14, 165, 233, 0.06);
-    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.08);
+    box-shadow: 0 0px 4px rgba(15, 23, 42, 0.16);
 }
 
 .section3-layout #user-passages-container .question-head {
@@ -1577,19 +1577,18 @@ body {
 }
 
 .question-item {
-    width: min(922px, calc(100% - 113px));
-    box-sizing: border-box;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 4px 2px rgba(0, 53, 96, 0.10);
-    padding: 16px 24px 16px 22px;
-    display: grid;
-    grid-template-columns: 40px minmax(0, 1fr);
-    gap: 24px;
-    align-items: flex-start;
-    margin-left: 113px;
-    margin-right: auto;
-    scroll-margin-bottom: 120px;
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 16px 24px;
+    border-radius: 16px;
+    border: 1px solid #edf2f7;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 0px 4px rgba(15, 23, 42, 0.16);
 }
 
 /* Section 1: keep audio + question cards on one centered content track so both
@@ -1620,8 +1619,27 @@ body {
     margin-right: auto;
 }
 
-.section2-layout #user-passages-container [id^="display-questions-"] {
+.section2-layout #user-passages-container .section2-question-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
     width: 100%;
+    box-sizing: border-box;
+    background: #fff;
+    padding: 24px 28px;
+    border-radius: 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}
+
+.section2-layout #user-passages-container .section2-question-panel [id^="display-questions-"] {
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    gap: 12px;
 }
 
 .section2-layout #user-passages-container .question-item,
@@ -1630,6 +1648,16 @@ body {
     max-width: 100%;
     margin-left: 0;
     margin-right: 0;
+}
+
+.exam-body .question-item,
+.section2-layout #user-passages-container .question-item {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    align-items: start;
+    column-gap: 24px;
+    row-gap: 8px;
+    background: #fff;
 }
 
 .question-number-badge {
@@ -1672,10 +1700,10 @@ body {
     box-sizing: border-box;
     width: min(922px, calc(100% - 113px));
     margin: 0 0 16px 113px;
-    padding: 14px 36px;
-    background: linear-gradient(to right, var(--navy-dark, #003560) 15%, var(--sky, #0EA5E9));
+    padding: 24px 32px;
+    background: #003560;
     box-shadow: 0 4px 4px rgba(0, 53, 96, 0.1);
-    border-radius: 8px;
+    border-radius: 16px;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -2667,7 +2695,7 @@ body {
 #user-view .audio-shell__status { font-size: calc(11px * var(--text-scale)); }
 #user-view .audio-transport-btn.skip-label { font-size: calc(9px * var(--text-scale)); }
 #user-view .structure-parta-directions__title { font-size: calc(20px * var(--text-scale)); }
-#user-view .structure-parta-directions__text { font-size: calc(20px * var(--text-scale)); }
+#user-view .structure-parta-directions__text { font-size: calc(16px * var(--text-scale)); }
 #user-view .question-title { font-size: calc(18px * var(--text-scale)); }
 #user-view .question-stem { font-size: calc(18px * var(--text-scale)); }
 #user-view .inline-question-text { font-size: calc(18px * var(--text-scale)); }
@@ -2909,82 +2937,6 @@ body {
     color: #475569;
     margin-bottom: 12px;
     line-height: 1.5;
-}
-
-/* Section 3 reading card overrides (keep at end to override shared radio styles) */
-.section3-layout #user-passages-container .question-item {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-}
-
-.section3-layout #user-passages-container .question-item.is-answered {
-    border-color: #8eb4da !important;
-    background: rgba(14, 165, 233, 0.06) !important;
-    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.08) !important;
-}
-
-.section3-layout #user-passages-container .question-head {
-    display: grid !important;
-    grid-template-columns: 40px minmax(0, 1fr) !important;
-    align-items: end !important;
-    column-gap: 30px !important;
-}
-
-.section3-layout #user-passages-container .question-item .radio-group {
-    width: 100% !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-}
-
-.section3-layout #user-passages-container .question-item .radio-group label {
-    width: 100% !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 35px !important;
-    min-height: 50px !important;
-    padding: 0 !important;
-    border: none !important;
-    border-radius: 0 !important;
-    background: transparent !important;
-}
-
-.section3-layout #user-passages-container .question-item .option-letter-badge {
-    flex: 0 0 30px !important;
-}
-
-.section3-layout #user-passages-container .question-index-pill.is-answered {
-    background: #003560 !important;
-    border-color: #fff !important;
-    color: #fff !important;
-    box-shadow: 0 1px 4px rgba(14, 165, 233, 1) !important;
-}
-
-.section3-layout #user-passages-container .question-item .option-card-text {
-    flex: 1 1 auto !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    min-height: 50px !important;
-    display: flex !important;
-    align-items: center !important;
-    box-sizing: border-box !important;
-    padding: 10px 16px !important;
-    border: 1px solid #d1dce8 !important;
-    border-radius: 8px !important;
-    background: #fff !important;
-}
-
-.section3-layout #user-passages-container .question-item .radio-group label.selected .option-letter-badge {
-    border-color: #003560 !important;
-    background: #003560 !important;
-    color: #fff !important;
-}
-
-.section3-layout #user-passages-container .question-item .radio-group label.selected .option-card-text {
-    border-color: #8eb4da !important;
-    background: rgba(14, 165, 233, 0.14) !important;
-    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.18) !important;
 }
 
 .format-toolbar {
@@ -3532,7 +3484,7 @@ body {
 /* Question body */
 #user-view.is-dark .question-item {
     background: #003560;
-    box-shadow: 0 4px 2px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 0px 4px rgba(15, 23, 42, 0.16);
 }
 
 #user-view.is-dark .question-title { color: #ffffff; }

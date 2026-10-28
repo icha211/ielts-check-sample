@@ -13,6 +13,68 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
     <style>
+        .section2-part-actions {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 18px 0 2px;
+            border-top: 1px solid #d1dce8;
+        }
+
+        .section2-part-actions[hidden] {
+            display: none;
+        }
+
+        .section2-part-next {
+            display: inline-flex;
+            min-height: 48px;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 0 24px;
+            border: 0;
+            border-radius: 12px;
+            box-sizing: border-box;
+            background: #4b968c;
+            color: #fff;
+            cursor: pointer;
+            font: 600 16px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+            white-space: nowrap;
+            transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+        }
+
+        .section2-part-next:hover {
+            background: #3e8279;
+            box-shadow: 0 3px 8px rgba(0, 53, 96, 0.14);
+        }
+
+        .section2-part-next:active {
+            transform: translateY(1px);
+        }
+
+        .section2-part-next:focus-visible {
+            outline: 3px solid rgba(14, 165, 233, 0.45);
+            outline-offset: 3px;
+        }
+
+        .section2-part-next svg {
+            width: 20px;
+            height: 20px;
+            flex: 0 0 auto;
+        }
+
+        @media (max-width: 900px) {
+            #user-view .section2-part-actions {
+                justify-content: stretch;
+            }
+
+            #user-view .section2-part-next {
+                width: 100%;
+            }
+        }
+
         #instant-question-host .section2-materi-lesson { width: 100%; min-width: 0; }
         #instant-question-host .section2-materi-lesson .lesson-trail { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
         #instant-question-host .section2-materi-lesson .topic-chip { display: inline-flex; align-items: center; min-height: 30px; padding: 0 13px; border: 1px solid #dce6f0; border-radius: 16px; color: #5d7088; background: #fff; font: 600 11px "Plus Jakarta Sans", sans-serif; overflow-wrap: anywhere; }
@@ -663,14 +725,6 @@
             justify-content: center;
             padding-top: 2px;
         }
-
-        /* .section2-qc-bullet {
-            width: 5px;
-            height: 5px;
-            margin-top: 8px;
-            border-radius: 999px;
-            background: #000000;
-        } */
 
     @media (max-width: 720px) {
         .qc-core__item { grid-template-columns: 1fr; }
@@ -3198,6 +3252,32 @@
             setBar("progress-part-b", partBAnswered, partBTotal);
         }
 
+        function refreshStructurePartActions() {
+            const params = new URLSearchParams(window.location.search);
+            const testType = String(params.get("testType") || currentTestType || "mocktest").toLowerCase();
+            const isMockTest = testType === "mocktest";
+            const isFullMockTest = isMockTest && params.get("fullTest") === "true";
+            const isIndividualMockTest = isMockTest && !isFullMockTest;
+            const partAActions = document.getElementById("structure-part-a-actions");
+            const partBActions = document.getElementById("structure-part-b-actions");
+            const partBLabel = document.querySelector("#structure-part-b-actions .section2-part-next span");
+
+            if (partAActions) partAActions.hidden = !isFullMockTest;
+            if (partBActions) partBActions.hidden = !(isFullMockTest || isIndividualMockTest);
+            if (partBLabel) partBLabel.textContent = isFullMockTest ? "Continue to Reading" : "Submit";
+        }
+
+        function moveToStructurePart(partId) {
+            const firstQuestion = getPartQuestionNumbers(partId)[0];
+            if (firstQuestion) {
+                scrollToQuestion(firstQuestion.uid);
+                return;
+            }
+
+            const navButton = document.getElementById(`btn-nav-${partId}`);
+            if (navButton) openSubTab({ currentTarget: navButton }, `user-part-${partId}`, "user-sub-btn");
+        }
+
         function initStructure() {
             const userContainer = document.getElementById('user-passages-container');
             const userNavContainer = document.getElementById('user-sub-nav-container');
@@ -3229,7 +3309,22 @@
                 <div id="user-part-${p}" class="sub-content ${p === 1 ? 'active' : ''}">
                     <div class="user-main">
                         ${instructionsMarkup}
-                        <div id="display-questions-${p}"></div>
+                        <div class="section2-question-panel">
+                            <div id="display-questions-${p}"></div>
+                            ${p === 1 ? `
+                            <div class="section2-part-actions" id="structure-part-a-actions" hidden>
+                                <button class="section2-part-next" type="button" onclick="moveToStructurePart(2)" aria-label="Move to Part B: Written">
+                                    <span>Move to Part B: Written</span>
+                                    <i data-lucide="chevron-right" aria-hidden="true"></i>
+                                </button>
+                            </div>` : `
+                            <div class="section2-part-actions" id="structure-part-b-actions" hidden>
+                                <button class="section2-part-next" type="button" onclick="submitAnswers()">
+                                    <span>Submit</span>
+                                    <i data-lucide="chevron-right" aria-hidden="true"></i>
+                                </button>
+                            </div>`}
+                        </div>
                     </div>
                 </div>`;
 
@@ -4390,6 +4485,7 @@
             refreshStructurePartAState();
             buildQuestionNavigator();
             updateHeaderProgress();
+            refreshStructurePartActions();
             applyPracticeRunMode();
             startTimer();
         }

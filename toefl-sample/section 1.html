@@ -38,9 +38,84 @@
     }
 
     .exam-body .mock-listening-directions {
-        width: min(922px, 100%);
+        width: min(var(--listening-content-width, 922px), 100%);
         margin-right: auto;
         margin-left: auto;
+    }
+
+    .exam-body .audio-shell,
+    .exam-body .question-section {
+        width: min(var(--listening-content-width, 922px), 100%);
+        margin-right: auto;
+        margin-left: auto;
+    }
+
+    .exam-body .question-section {
+        background: #fff;
+        padding: 24px 28px;
+        border-radius: 24px;
+        gap: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    }
+
+    .exam-body [id^="display-questions-"] {
+        gap: 12px;
+    }
+
+    #user-view .exam-body .question-item {
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.07);
+    }
+
+    .listening-part-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 16px;
+        padding: 18px 0 2px;
+        border-top: 1px solid #d1dce8;
+    }
+
+    .listening-next-part {
+        display: inline-flex;
+        min-height: 48px;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 0 24px;
+        border: 0;
+        border-radius: 12px;
+        background: #4b968c;
+        color: #fff;
+        cursor: pointer;
+        font: 600 16px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
+        white-space: nowrap;
+        transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    .listening-next-part:hover {
+        background: #3e8279;
+        box-shadow: 0 3px 8px rgba(0, 53, 96, 0.14);
+    }
+
+    .listening-next-part:active {
+        transform: translateY(1px);
+    }
+
+    .listening-next-part:focus-visible {
+        outline: 3px solid rgba(14, 165, 233, 0.45);
+        outline-offset: 3px;
+    }
+
+    .listening-next-part svg {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 auto;
+        color: currentColor;
+        stroke: currentColor;
+    }
+
+    .listening-part-actions[hidden] {
+        display: none;
     }
 
     .exam-main.has-mock-listening-directions {
@@ -88,6 +163,14 @@
             max-width: 100%;
             margin-right: 0;
             margin-left: 0;
+        }
+
+        #user-view .listening-part-actions {
+            justify-content: stretch;
+        }
+
+        #user-view .listening-next-part {
+            width: 100%;
         }
 
         #onboarding-overlay {
@@ -2594,6 +2677,7 @@
         let zoomLevel = 1;
         let frameFitScale = 1;
         let zoomBeforeFullScreen = null;
+        const LISTENING_CONTENT_WIDTH = 922;
 
         const ZOOM_MIN = 0.8;
         const ZOOM_MAX = 1.3;
@@ -2637,10 +2721,7 @@
                     return;
                 }
                 const safeFrameFitScale = Math.max(frameFitScale, 0.01);
-                const viewportFitScale = Math.min(
-                    (window.innerWidth || 1438) / 1438,
-                    (window.innerHeight || 900) / 900
-                );
+                const viewportFitScale = Math.min((window.innerWidth || 1438) / 1438, 1);
                 const combinedScale = Math.min(zoomLevel * safeFrameFitScale, viewportFitScale);
                 examShell.style.transformOrigin = "top left";
                 examShell.style.transform = `scale(${combinedScale})`;
@@ -4367,7 +4448,7 @@
                 ? source.slice(distractorMarker + source.match(/\*{2}WHY THE OTHER OPTION IS INCORRECT\*{2}/i)[0].length).trim()
                 : "";
             const distractors = [];
-            const itemRegex = /^\s*[\*\-]\s*\*{0,2}\(?([A-D])\)?\s*(?:([^:\*\n]+?)\s*(?::\*{0,2}|\*{0,2}:)|\*{0,2}:\*{0,2})?\s*(?:This option is incorrect because\s*)?([^\n]+)$/gim;
+            const itemRegex = /^\s*[\*\-]\s*\*{0,2}\(?([A-D])\)?\s*(?:([^:\*\n]+?)\s*(?::\*{0,2}|\*{0,2}:)|\*{0,2}:\*{0,2})?\s?([^\n]+)$/gim;
             let match;
             while ((match = itemRegex.exec(distractorText))) {
                 distractors.push({
@@ -5438,6 +5519,46 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
                 }
             }
             return null;
+        }
+
+        function refreshListeningPartNavigation() {
+            const isFullTest = new URLSearchParams(window.location.search).get("fullTest") === "true";
+
+            document.querySelectorAll(".listening-part-actions").forEach((actions) => {
+                if (actions.dataset.final === "true") {
+                    actions.hidden = !isFullTest;
+                    return;
+                }
+
+                const partId = Number(actions.dataset.partId);
+                const nextPartId = findNextAvailablePart(partId);
+                const nextPart = PARTS.find((part) => part.id === nextPartId);
+                const button = actions.querySelector(".listening-next-part");
+                const label = button?.querySelector("span");
+
+                if (!button || !label || isPracticeTestType() || !nextPart) {
+                    actions.hidden = true;
+                    return;
+                }
+
+                label.textContent = `Move to ${nextPart.name}`;
+                button.setAttribute("aria-label", `Move to ${nextPart.name}`);
+                actions.hidden = false;
+            });
+        }
+
+        function moveToNextListeningPart(currentPartId) {
+            const partId = Number(currentPartId);
+            if (!Number.isInteger(partId)) return;
+
+            const nextPartId = findNextAvailablePart(partId);
+            if (!nextPartId) return;
+
+            setActivePart(nextPartId, { resetScroll: true });
+            const firstQuestion = getQuestionUidsByPart(nextPartId)[0];
+            if (firstQuestion) {
+                setTimeout(() => scrollToQuestion(firstQuestion), 80);
+            }
         }
 
         function setActivePart(partId, options = {}) {
@@ -7245,8 +7366,24 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
                 return `
                 <section class="question-section" id="user-part-${part.id}">
                     <div id="display-questions-${part.id}"></div>
+                    ${part.id < PARTS.length ? `
+                    <div class="listening-part-actions" data-part-id="${part.id}" hidden>
+                        <button class="listening-next-part" type="button" onclick="moveToNextListeningPart(${part.id})">
+                            <span>Move to next part</span>
+                            <i data-lucide="chevron-right" aria-hidden="true"></i>
+                        </button>
+                    </div>` : `
+                    <div class="listening-part-actions" data-part-id="${part.id}" data-final="true" hidden>
+                        <button class="listening-next-part" type="button" onclick="submitAnswers()">
+                            <span>Continue to Structure &amp; Writing</span>
+                            <i data-lucide="chevron-right" aria-hidden="true"></i>
+                        </button>
+                    </div>`}
                 </section>`;
             }).join("");
+            if (window.lucide?.createIcons) {
+                window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
+            }
 
             PARTS.forEach((part) => {
                 const devBtn = document.createElement("button");
@@ -8414,7 +8551,12 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             if (typeof state.transcriptExpanded !== "boolean") state.transcriptExpanded = true;
             if (typeof state.followAlong !== "boolean") state.followAlong = true;
             content.hidden = !state.transcriptExpanded;
-            toggleLabel.textContent = state.transcriptExpanded ? "Hide directions ˄" : "Show directions ˅";
+            const toggleIcon = state.transcriptExpanded ? "chevron-up" : "chevron-down";
+            const toggleText = state.transcriptExpanded ? "Hide directions" : "Show directions";
+            toggleLabel.innerHTML = `${toggleText} <i data-lucide="${toggleIcon}" aria-hidden="true"></i>`;
+            if (window.lucide?.createIcons) {
+                window.lucide.createIcons({ attrs: { "stroke-width": 1.8 } });
+            }
             toggle.setAttribute("aria-expanded", state.transcriptExpanded ? "true" : "false");
             transcript.style.fontSize = `${state.fontSize}px`;
             followButton.classList.toggle("is-active", state.followAlong);
@@ -9345,6 +9487,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 }
             }
 
+            refreshListeningPartNavigation();
+
             const preferredPartId = (shouldSaveMeta && preferEditedPart) ? getPreferredPartFromActiveDevTab() : null;
             if (preferredPartId) {
                 activePartId = preferredPartId;
@@ -9582,13 +9726,15 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             const userView = document.getElementById("user-view");
             if (!userView) return;
             const frameWidth = 1438;
-            const frameHeight = 900;
             const viewportWidth = window.innerWidth || frameWidth;
-            const viewportHeight = window.innerHeight || frameHeight;
             frameFitScale = viewportWidth <= 900
                 ? 1
-                : Math.min(viewportWidth / frameWidth, viewportHeight / frameHeight, 1);
+                : Math.min(viewportWidth / frameWidth, 1);
             userView.style.setProperty("--figma-scale", String(frameFitScale));
+            userView.style.setProperty(
+                "--listening-content-width",
+                `${LISTENING_CONTENT_WIDTH / frameFitScale}px`
+            );
             applyZoom(zoomLevel, { persist: false });
             updateOnboardingScale();
             positionListeningHeaderTimer();
