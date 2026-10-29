@@ -68,7 +68,28 @@
         <div class="qcnav-notify-list" id="qcnavNotifyList" aria-live="polite"><p class="qcnav-notify-empty">Sign in to see notifications.</p></div>
       </section>
     </div>
-    <div class="qcnav-avatar" aria-hidden="true">U</div>
+    <div class="qcnav-account-menu">
+      <button class="qcnav-account-btn" id="qcnavAccountBtn" type="button" aria-label="Account menu" aria-haspopup="true" aria-expanded="false" aria-controls="qcnavAccountPanel"><span class="qcnav-avatar" aria-hidden="true">U</span></button>
+      <section class="qcnav-account-panel" id="qcnavAccountPanel" aria-label="Account" hidden>
+        <div class="qcnav-account-head" data-account-signed-in hidden>
+          <span class="qcnav-account-avatar" data-account-avatar aria-hidden="true">U</span>
+          <div class="qcnav-account-id">
+            <p class="qcnav-account-name" data-account-name>Student</p>
+            <p class="qcnav-account-email" data-account-email></p>
+          </div>
+          <span class="qcnav-account-plan" data-account-plan>Free</span>
+        </div>
+        <div class="qcnav-account-head" data-account-signed-out>
+          <div class="qcnav-account-id"><p class="qcnav-account-name">You are not signed in</p><p class="qcnav-account-email">Sign in to manage your profile.</p></div>
+        </div>
+        <div class="qcnav-account-sep" role="presentation"></div>
+        <a class="qcnav-account-item" href="profile.html" data-account-signed-in hidden><i data-lucide="user-round"></i><span>Profile</span></a>
+        <a class="qcnav-account-item" href="mailto:support@quickcheck.id"><i data-lucide="headset"></i><span>Support</span></a>
+        <div class="qcnav-account-sep" role="presentation"></div>
+        <button class="qcnav-account-item" type="button" data-account-logout data-account-signed-in hidden><i data-lucide="log-out"></i><span>Log out</span></button>
+        <a class="qcnav-account-item" href="signup.html" data-account-signed-out><i data-lucide="log-in"></i><span>Sign in</span></a>
+      </section>
+    </div>
   </div>
 </header>
 <div class="qcnav-scrim" id="qcnavScrim"></div>
@@ -128,6 +149,9 @@
     });
   }).catch((error) => {
     console.error("[DeveloperAccess] Could not check developer access:", error);
+  });
+  import("./js/account-menu.js?v=20261031-account").then(({ initAccountMenu }) => initAccountMenu()).catch((error) => {
+    console.error("[AccountMenu] Could not load account menu:", error);
   });
   const setCollapsed = (value) => {
     body.classList.toggle("qcnav-collapsed", value);
@@ -201,9 +225,30 @@
     if (open) window.dispatchEvent(new CustomEvent("toefl-notifications-opened"));
     if (!open && restoreFocus) notifyBtn.focus();
   };
+  const accountBtn = doc.getElementById("qcnavAccountBtn");
+  const accountPanel = doc.getElementById("qcnavAccountPanel");
+  const setAccountOpen = (open, restoreFocus = false) => {
+    if (accountPanel.hidden === !open) return;
+    accountPanel.hidden = !open;
+    accountBtn.setAttribute("aria-expanded", String(open));
+    if (!open && restoreFocus) accountBtn.focus();
+  };
+  accountBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeAll();
+    setNotifyOpen(false);
+    setAccountOpen(accountPanel.hidden);
+  });
+  doc.addEventListener("click", (e) => {
+    if (!accountPanel.hidden && !e.target.closest(".qcnav-account-menu")) setAccountOpen(false);
+  });
+  doc.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !accountPanel.hidden) setAccountOpen(false, true);
+  });
   notifyBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     closeAll();
+    setAccountOpen(false);
     setNotifyOpen(notifyPanel.hidden);
   });
   doc.addEventListener("click", (e) => {
