@@ -276,12 +276,11 @@ test("carousel controls stay constant-sized for 1,000 online learners and arrows
             addEventListener(event, callback) { this.handlers[event] = callback; }
         };
     }
-    const controls = element();
     const context = vm.createContext({
-        document: { createElement: element, querySelector: () => controls },
+        document: { createElement: element },
         partnerProfiles: Array.from({ length: 1000 }, (_, id) => ({ id: String(id) })),
         partnerOffset: 0, partnerDirectoryAuthenticated: true,
-        partnerOrbit: element(), partnerPagination: element(),
+        partnerOrbit: element(),
         previousPartnerButton: element(), nextPartnerButton: element(),
         partnerSearch: element(),
         createPartnerAvatar: () => element()
@@ -291,24 +290,23 @@ test("carousel controls stay constant-sized for 1,000 online learners and arrows
     const eventsStart = html.indexOf('        partnerSearch.addEventListener("input"');
     vm.runInContext(html.slice(eventsStart, html.indexOf('        partnerMatchButton.addEventListener', eventsStart)), context);
     context.renderPartnerOrbit();
-    const total = vm.runInContext("(1000).toLocaleString()", context);
-    assert.equal(context.partnerPagination.textContent, `1 / ${total}`);
-    assert.equal(context.partnerPagination.children.length, 0, "does not create one dot per learner");
+    assert.doesNotMatch(html, /partnerPagination|partner-pagination/, "no visible position counter");
+    assert.match(html, /id="previousPartner"[\s\S]*?id="partnerOrbit"[\s\S]*?id="nextPartner"/, "arrows flank the avatar orbit");
     assert.equal(context.partnerOrbit.children[0].children.length, 6, "only five avatars plus their motion style are mounted");
     assert.equal(context.previousPartnerButton.disabled, false);
+    assert.equal(context.previousPartnerButton.hidden, false);
+    assert.equal(context.nextPartnerButton.hidden, false);
     context.previousPartnerButton.handlers.click();
     assert.equal(context.partnerOffset, 999);
-    assert.equal(context.partnerPagination.textContent, `${total} / ${total}`);
     context.nextPartnerButton.handlers.click();
     assert.equal(context.partnerOffset, 0);
     context.partnerProfiles = [{ id: "one" }];
     context.renderPartnerOrbit();
-    assert.equal(context.partnerPagination.textContent, "1 / 1");
     assert.equal(context.previousPartnerButton.disabled, true);
     assert.equal(context.nextPartnerButton.disabled, true);
     context.partnerProfiles = [];
     context.renderPartnerOrbit();
-    assert.equal(controls.hidden, true);
-    assert.equal(context.partnerPagination.textContent, "");
+    assert.equal(context.previousPartnerButton.hidden, true);
+    assert.equal(context.nextPartnerButton.hidden, true);
     assert.match(context.partnerOrbit.children[0].textContent, /No other learners online/);
 });

@@ -423,15 +423,55 @@
     .qc-core__head {
         display: flex;
         align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        background: #4f46e5;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 60px;
+        padding: 10px 16px;
+        background: #6366f1;
         color: #fff;
-        font: 750 14px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        font: 750 18px/1.2 "Plus Jakarta Sans", Arial, sans-serif;
         letter-spacing: 0.06em;
     }
 
+    .qc-core__heading {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .qc-core__heading-icon {
+        color: #ffe27a;
+        font-size: 22px;
+        flex: 0 0 auto;
+    }
+
+    .qc-core__toggle {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 40px;
+        padding: 0 14px;
+        border: 1px solid rgba(255, 255, 255, .46);
+        border-radius: 999px;
+        background: rgba(79, 70, 229, .32);
+        color: #fff;
+        cursor: pointer;
+        font: 500 12px/1 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: .04em;
+        white-space: nowrap;
+        transition: background-color 160ms ease, transform 160ms ease;
+    }
+
+    .qc-core__toggle:hover { background: rgba(79, 70, 229, .58); }
+    .qc-core__toggle:active { transform: scale(.98); }
+    .qc-core__toggle:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    .qc-core__toggle i { font-size: 16px; }
+
     .qc-core__body { padding: 16px 18px; display: grid; gap: 16px; background: #fff; }
+    .qc-core__body[hidden] { display: none; }
     .qc-core__block { display: grid; gap: 6px; }
 
     .qc-core__label {
@@ -727,8 +767,20 @@
         }
 
     @media (max-width: 720px) {
+        .qc-core__head { gap: 10px; padding: 10px 12px; }
+        .qc-core__heading { font-size: 15px; }
+        .qc-core__toggle { min-height: 36px; padding: 0 10px; font-size: 11px; }
         .qc-core__item { grid-template-columns: 1fr; }
         .qc-core__row { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 460px) {
+        .qc-core__head { align-items: flex-start; flex-direction: column; }
+        .qc-core__toggle { align-self: flex-end; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .qc-core__toggle { transition: none; }
     }
 
     #user-view #onboarding-overlay.structure-intro {
@@ -3321,9 +3373,28 @@
             const explanationSource = source || buildQcCoreMarkdown(questionNumber, question, correct);
 
             const parsed = parseQcCoreExplanation(explanationSource);
+            const bodyId = `qc-core-body-${String(uid).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+            const buildQcCoreHeader = (expandLabel, collapseLabel) => `
+                <div class="qc-core__head">
+                    <div class="qc-core__heading">
+                        <i class="ph ph-lightbulb qc-core__heading-icon" aria-hidden="true"></i>
+                        <span>QC CORE ANALYSIS</span>
+                    </div>
+                    <button class="qc-core__toggle" type="button" data-qc-core-toggle
+                        data-expand-label="${expandLabel}" data-collapse-label="${collapseLabel}"
+                        aria-controls="${bodyId}" aria-expanded="true">
+                        <span data-qc-core-toggle-label>${collapseLabel}</span>
+                        <i class="ph ph-caret-up" aria-hidden="true"></i>
+                    </button>
+                </div>`;
             if (parsed.isEmpty) {
                 return `<section class="instant-panel"><div class="qc-core">
-                    <div class="qc-core__head"><i class="ph ph-lightbulb" aria-hidden="true"></i> EXPLANATION</div>
+                    <div class="qc-core__head">
+                        <div class="qc-core__heading">
+                            <i class="ph ph-lightbulb qc-core__heading-icon" aria-hidden="true"></i>
+                            <span>EXPLANATION</span>
+                        </div>
+                    </div>
                     <div class="qc-core__body"><div class="qc-core__text">${markdownInlineToHtml(explanationSource)}</div>${buildInstantCompleteSentenceHtml(uid)}</div>
                 </div></section>`;
             }
@@ -3364,8 +3435,8 @@
                 return `
                 <section class="instant-panel">
                     <div class="qc-core">
-                        <div class="qc-core__head"><i class="ph ph-lightbulb" aria-hidden="true"></i> QC C.O.R.E ANALYSIS</div>
-                        <div class="qc-core__body">
+                        ${buildQcCoreHeader("What is C.O.R.E Analysis?", "Hide C.O.R.E Analysis?")}
+                        <div class="qc-core__body" id="${bodyId}">
                             ${parsed.concept ? `<div class="qc-core__block qc-core__concept">
                                 <div class="qc-core__label">C – Concept :</div>
                                 <div class="qc-core__text"><strong>${escapeHtml(parsed.concept)}</strong></div>
@@ -4426,6 +4497,23 @@
                 if (firstB) scrollToQuestion(firstB.uid);
             });
             if (userContainer) {
+                userContainer.addEventListener("click", (event) => {
+                    const toggle = event.target.closest("[data-qc-core-toggle]");
+                    if (!toggle) return;
+
+                    const body = document.getElementById(toggle.getAttribute("aria-controls"));
+                    if (!body) return;
+
+                    const isExpanded = toggle.getAttribute("aria-expanded") !== "true";
+                    toggle.setAttribute("aria-expanded", String(isExpanded));
+                    body.hidden = !isExpanded;
+                    toggle.querySelector("[data-qc-core-toggle-label]").textContent =
+                        isExpanded ? toggle.dataset.collapseLabel : toggle.dataset.expandLabel;
+                    const icon = toggle.querySelector("i");
+                    icon.classList.toggle("ph-caret-up", isExpanded);
+                    icon.classList.toggle("ph-caret-down", !isExpanded);
+                });
+
                 userContainer.addEventListener("change", (event) => {
                     const target = event.target;
                     if (target && target.matches('input[type="radio"]')) {
