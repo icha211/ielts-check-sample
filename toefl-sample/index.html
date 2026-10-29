@@ -4014,6 +4014,90 @@ body {
             font: 700 12px "Plus Jakarta Sans", sans-serif;
         }
         .partner-card .partner-selected-icon img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+        .partner-card button.partner-selected-icon {
+            padding: 0;
+            border: 0;
+            cursor: zoom-in;
+            font: inherit;
+            transition: transform 160ms ease, box-shadow 160ms ease;
+        }
+        .partner-card button.partner-selected-icon:hover { transform: scale(1.06); box-shadow: 0 0 0 2px rgba(255, 255, 255, .7); }
+        .partner-card button.partner-selected-icon:active { transform: scale(.97); }
+        .partner-card button.partner-selected-icon:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+        .partner-photo-viewer {
+            width: 100%;
+            max-width: none;
+            height: 100%;
+            max-height: none;
+            margin: 0;
+            padding: 24px;
+            border: 0;
+            background: transparent;
+            overflow: hidden;
+        }
+        .partner-photo-viewer[open] { display: grid; place-items: center; }
+        .partner-photo-viewer::backdrop {
+            background: rgba(246, 248, 250, .82);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .partner-photo-viewer__figure {
+            display: grid;
+            margin: 0;
+            gap: 14px;
+            justify-items: center;
+        }
+        .partner-photo-viewer__media {
+            display: grid;
+            width: min(540px, 82vw, calc(100dvh - 190px));
+            aspect-ratio: 1;
+            place-items: center;
+            overflow: hidden;
+            border-radius: 6px;
+            background: #5b4de0;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, .28);
+        }
+        .partner-photo-viewer__media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+        .partner-photo-viewer__media.is-fallback { border-radius: 50%; }
+        .partner-photo-viewer__media.is-fallback::before {
+            color: #fff;
+            content: attr(data-initials);
+            font: 700 clamp(56px, 16vw, 140px) "Plus Jakarta Sans", sans-serif;
+            text-transform: uppercase;
+        }
+        .partner-photo-viewer__caption { display: grid; gap: 3px; text-align: center; color: #0f172a; }
+        .partner-photo-viewer__caption b { font: 700 16px "Plus Jakarta Sans", sans-serif; }
+        .partner-photo-viewer__caption small { color: #475569; font: 500 12px "Plus Jakarta Sans", sans-serif; }
+        .partner-photo-viewer__close {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            display: grid;
+            width: 42px;
+            height: 42px;
+            place-items: center;
+            border: 1px solid rgba(15, 23, 42, .12);
+            border-radius: 50%;
+            background: #fff;
+            color: #0f172a;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, .12);
+            transition: background 160ms ease, transform 160ms ease;
+        }
+        .partner-photo-viewer__close:hover { background: #f1f5f9; }
+        .partner-photo-viewer__close:active { transform: scale(.95); }
+        .partner-photo-viewer__close:focus-visible { outline: 3px solid #087e77; outline-offset: 3px; }
+        @media (prefers-reduced-motion: no-preference) {
+            .partner-photo-viewer[open] .partner-photo-viewer__figure { animation: partner-photo-in 220ms cubic-bezier(.16, 1, .3, 1); }
+            .partner-photo-viewer[open]::backdrop { animation: partner-photo-fade 220ms ease; }
+        }
+        @keyframes partner-photo-in { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: scale(1); } }
+        @keyframes partner-photo-fade { from { opacity: 0; } to { opacity: 1; } }
+        @media (prefers-reduced-motion: reduce) {
+            .partner-card button.partner-selected-icon { transition: none; }
+        }
         .partner-card .partner-discord-link {
             position: relative;
             right: auto;
@@ -4827,6 +4911,52 @@ body {
 
         }
 
+        let partnerPhotoViewerTrigger = null;
+
+        function bindPartnerPhotoViewer(viewer) {
+            if (viewer.dataset.bound) return;
+            viewer.dataset.bound = "true";
+            viewer.querySelector(".partner-photo-viewer__close").addEventListener("click", () => viewer.close());
+            viewer.addEventListener("click", (event) => {
+                if (!event.target.closest(".partner-photo-viewer__media, .partner-photo-viewer__close")) viewer.close();
+            });
+            viewer.addEventListener("close", () => {
+                const target = partnerPhotoViewerTrigger?.isConnected
+                    ? partnerPhotoViewerTrigger
+                    : document.querySelector("#partnerSelected button.partner-selected-icon");
+                target?.focus();
+                partnerPhotoViewerTrigger = null;
+            });
+        }
+
+        function openPartnerPhotoViewer(profile, trigger) {
+            const viewer = document.getElementById("partnerPhotoViewer");
+            if (!viewer || typeof viewer.showModal !== "function") return;
+            bindPartnerPhotoViewer(viewer);
+            const media = viewer.querySelector(".partner-photo-viewer__media");
+            const initials = profile.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2);
+            media.replaceChildren();
+            media.classList.remove("is-fallback");
+            media.dataset.initials = initials;
+            if (profile.photo) {
+                const image = document.createElement("img");
+                image.src = profile.photo;
+                image.alt = `${profile.name}'s profile photo`;
+                image.addEventListener("error", () => {
+                    image.remove();
+                    media.classList.add("is-fallback");
+                }, { once: true });
+                media.append(image);
+            } else {
+                media.classList.add("is-fallback");
+            }
+            viewer.querySelector("#partnerPhotoViewerName").textContent = profile.name;
+            viewer.querySelector("#partnerPhotoViewerDetails").textContent =
+                `${profile.flag ? `${profile.flag} ` : ""}${profile.country} · ${profile.level}`;
+            partnerPhotoViewerTrigger = trigger || null;
+            viewer.showModal();
+        }
+
         function renderSelectedPartner(profile) {
             const profileCopy = document.createElement("span");
             profileCopy.className = "partner-selected-copy";
@@ -4850,10 +4980,13 @@ body {
             profileCopy.append(nameRow, details);
             partnerSelected.replaceChildren();
 
-            const selectedAvatar = document.createElement("span");
+            const selectedAvatar = document.createElement("button");
+            selectedAvatar.type = "button";
             selectedAvatar.className = "partner-selected-icon";
             selectedAvatar.dataset.initials = profile.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2);
-            selectedAvatar.setAttribute("aria-hidden", "true");
+            selectedAvatar.setAttribute("aria-label", `View ${profile.name}'s profile photo`);
+            selectedAvatar.setAttribute("aria-haspopup", "dialog");
+            selectedAvatar.addEventListener("click", () => openPartnerPhotoViewer(profile, selectedAvatar));
             if (profile.photo) {
                 const selectedImage = document.createElement("img");
                 selectedImage.src = profile.photo;
@@ -5861,6 +5994,16 @@ body {
             }
         });
     </script>
+    <dialog class="partner-photo-viewer" id="partnerPhotoViewer" aria-labelledby="partnerPhotoViewerName">
+        <button class="partner-photo-viewer__close" type="button" aria-label="Close photo"><i class="ti ti-x" aria-hidden="true"></i></button>
+        <figure class="partner-photo-viewer__figure">
+            <div class="partner-photo-viewer__media"></div>
+            <figcaption class="partner-photo-viewer__caption">
+                <b id="partnerPhotoViewerName"></b>
+                <small id="partnerPhotoViewerDetails"></small>
+            </figcaption>
+        </figure>
+    </dialog>
     <script src="site-footer.js?v=20261029-social" defer></script>
 </body>
 </html>
