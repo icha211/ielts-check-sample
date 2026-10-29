@@ -21,7 +21,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 [hidden] { display: none !important; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-.messages-page { width: calc(100% - 96px); min-height: calc(100dvh - 64px); margin: 0 48px; padding: 32px 0 48px; display: flex; flex-direction: column; }
+.messages-page { width: calc(100% - 96px); height: calc(100dvh - 64px); min-height: 0; margin: 0 48px; padding: 32px 0 48px; display: flex; flex-direction: column; }
+.page-heading, .messaging-status, .folder-tabs, .conversation-tools, .thread-header { flex-shrink: 0; }
 .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin: 0 0 22px; }
 .page-heading h1 { margin: 0; font: 600 28px/1.2 Outfit, "Plus Jakarta Sans", sans-serif; letter-spacing: -.035em; }
 .page-heading p { margin: 5px 0 0; color: var(--message-muted); font-size: 13px; line-height: 1.5; }
@@ -41,7 +42,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px
 .folder-tab[aria-selected="true"] .folder-count { background: var(--message-primary-wash); color: var(--message-primary-dark); }
 
 .message-layout { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(270px, 335px) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); overflow: hidden; border-radius: 0 0 10px 10px; }
-.conversation-panel { min-width: 0; display: flex; flex-direction: column; border-right: 1px solid #e5edeb; background: linear-gradient(180deg, #fff, #fcfdfd); }
+.conversation-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid #e5edeb; background: linear-gradient(180deg, #fff, #fcfdfd); }
 .conversation-tools { padding: 14px 14px 12px; border-bottom: 1px solid #edf0f4; }
 .search-field { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid #e4ece9; border-radius: 9px; color: #84918d; background: #f8faf9; }
 .search-field:focus-within { border-color: #68b7ae; background: #fff; box-shadow: 0 0 0 3px rgba(8, 126, 119, .1); }
@@ -87,6 +88,8 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 .back-button { display: none; width: 34px; height: 34px; place-items: center; border: 0; border-radius: 7px; background: transparent; color: #526275; cursor: pointer; }
 
 .thread-messages { min-height: 0; flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 20px clamp(16px, 3vw, 34px); overflow-y: auto; background-color: #f6f9f8; background-image: radial-gradient(rgba(111, 151, 139, .2) .55px, transparent .55px); background-size: 18px 18px; }
+.thread-messages > * { flex-shrink: 0; }
+.thread-messages, .conversation-scroll { overscroll-behavior-y: contain; }
 .day-divider { align-self: center; margin: 0 0 2px; padding: 5px 10px; border: 1px solid #e6ebf1; border-radius: 12px; color: #657386; background: #fff; font-size: 10px; }
 .message-row { max-width: min(78%, 470px); display: grid; gap: 4px; }
 .message-row.outgoing { align-self: flex-end; }
@@ -160,7 +163,7 @@ button:disabled { opacity: .6; cursor: not-allowed; }
 }
 
 @media (max-width: 780px) {
-    .messages-page { min-height: calc(100dvh - 64px - 76px - env(safe-area-inset-bottom, 0px)); padding: 20px 12px; }
+    .messages-page { width: 100%; height: calc(100dvh - 64px - 76px - env(safe-area-inset-bottom, 0px)); margin: 0; padding: 20px 12px; }
     .page-heading { margin-bottom: 13px; }
     .page-heading h1 { font-size: 22px; }
     .page-heading p { font-size: 11px; }
@@ -169,7 +172,7 @@ button:disabled { opacity: .6; cursor: not-allowed; }
     .folder-tabs { min-height: 48px; padding: 0 5px; }
     .folder-tab { gap: 6px; padding: 0 10px; font-size: 11px; }
     .folder-tab .ti { font-size: 15px; }
-    .message-layout { position: relative; min-height: 300px; grid-template-columns: minmax(0, 1fr); }
+    .message-layout { position: relative; min-height: 0; grid-template-columns: minmax(0, 1fr); }
     .conversation-panel { border-right: 0; }
     .thread-panel { display: none; }
     .message-layout.show-thread .conversation-panel { display: none; }
