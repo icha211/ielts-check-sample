@@ -141,6 +141,42 @@ import { subscribeMessaging, sendMessage, editMessage, deleteMessage, markConver
     return image;
   };
 
+  const photoViewer = document.getElementById("photoViewer");
+  let photoViewerTrigger = null;
+  photoViewer?.querySelector(".photo-viewer__close").addEventListener("click", () => photoViewer.close());
+  photoViewer?.addEventListener("click", (event) => {
+    if (!event.target.closest(".photo-viewer__media, .photo-viewer__close")) photoViewer.close();
+  });
+  photoViewer?.addEventListener("close", () => {
+    const target = photoViewerTrigger?.isConnected ? photoViewerTrigger : threadPerson.querySelector(".thread-person-photo");
+    target?.focus();
+    photoViewerTrigger = null;
+  });
+
+  const openPhotoViewer = (person, trigger) => {
+    if (!photoViewer || typeof photoViewer.showModal !== "function") return;
+    const media = photoViewer.querySelector(".photo-viewer__media");
+    media.replaceChildren();
+    media.classList.remove("is-fallback");
+    media.dataset.initials = person.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
+    if (person.avatar) {
+      const image = document.createElement("img");
+      image.src = person.avatar;
+      image.alt = `${person.name}'s profile photo`;
+      image.addEventListener("error", () => {
+        image.remove();
+        media.classList.add("is-fallback");
+      }, { once: true });
+      media.append(image);
+    } else {
+      media.classList.add("is-fallback");
+    }
+    photoViewer.querySelector("#photoViewerName").textContent = person.name;
+    photoViewer.querySelector("#photoViewerDetails").textContent = person.detail || "";
+    photoViewerTrigger = trigger || null;
+    photoViewer.showModal();
+  };
+
   const renderCounts = () => {
     folders.forEach((folder) => {
       const count = document.querySelector(`[data-count="${folder}"]`);
@@ -232,8 +268,15 @@ import { subscribeMessaging, sendMessage, editMessage, deleteMessage, markConver
     archiveButton.hidden = thread.deleted;
     const person = personFor(thread);
     const avatar = makeAvatar(person, "");
-    avatar.alt = person.name;
-    threadPerson.replaceChildren(avatar);
+    avatar.alt = "";
+    const photoButton = document.createElement("button");
+    photoButton.type = "button";
+    photoButton.className = "thread-person-photo";
+    photoButton.setAttribute("aria-haspopup", "dialog");
+    photoButton.setAttribute("aria-label", `View ${person.name}'s profile photo`);
+    photoButton.append(avatar);
+    photoButton.addEventListener("click", () => openPhotoViewer(person, photoButton));
+    threadPerson.replaceChildren(photoButton);
     const details = document.createElement("span");
     const name = document.createElement("strong");
     name.textContent = person.name;
