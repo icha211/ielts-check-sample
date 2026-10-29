@@ -19,6 +19,26 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
     ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(timestamp))
     : "Sending...";
 
+  const messageDayKey = (timestamp) => {
+    const date = new Date(timestamp);
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  };
+  const formatMessageDay = (timestamp, now = Date.now()) => {
+    const date = new Date(timestamp);
+    const today = new Date(now);
+    const calendarDay = (value) => Date.UTC(value.getFullYear(), value.getMonth(), value.getDate());
+    const daysAgo = (calendarDay(today) - calendarDay(date)) / 86400000;
+    if (daysAgo === 0) return "Today";
+    if (daysAgo === 1) return "Yesterday";
+    if (daysAgo > 1 && daysAgo < 7) {
+      return new Intl.DateTimeFormat("en", { weekday: "long" }).format(date);
+    }
+    return new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(date);
+  };
+  const formatMessageClock = (timestamp) => new Intl.DateTimeFormat(undefined, {
+    hour: "numeric", minute: "2-digit"
+  }).format(new Date(timestamp));
+
   const layout = document.querySelector(".message-layout");
   const conversationPanel = document.getElementById("conversationPanel");
   const pinnedSection = document.getElementById("pinnedSection");
@@ -277,20 +297,37 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
   const renderMessages = (thread) => {
     if (!thread.messages.length) return;
     threadMessages.replaceChildren();
-    const divider = document.createElement("div");
-    divider.className = "day-divider";
-    divider.textContent = "Conversation";
-    threadMessages.append(divider);
+    let previousDay = null;
     thread.messages.forEach((message) => {
+      if (message.sentAt > 0) {
+        const day = messageDayKey(message.sentAt);
+        if (day !== previousDay) {
+          const divider = document.createElement("time");
+          divider.className = "day-divider";
+          divider.dateTime = new Date(message.sentAt).toISOString();
+          divider.dataset.timestamp = String(message.sentAt);
+          divider.textContent = formatMessageDay(message.sentAt);
+          divider.title = new Date(message.sentAt).toLocaleDateString(undefined, { dateStyle: "full" });
+          threadMessages.append(divider);
+          previousDay = day;
+        }
+      }
       const row = document.createElement("div");
       row.className = `message-row ${message.from === "me" ? "outgoing" : "incoming"}`;
       const bubble = document.createElement("p");
       bubble.className = "message-bubble";
-      bubble.textContent = message.text;
-      const meta = document.createElement("span");
+      const text = document.createElement("span");
+      text.className = "message-text";
+      text.textContent = message.text;
+      const meta = document.createElement("time");
       meta.className = "message-meta";
-      meta.textContent = message.time;
-      row.append(bubble, meta);
+      meta.textContent = message.sentAt > 0 ? formatMessageClock(message.sentAt) : "Sending...";
+      if (message.sentAt > 0) {
+        meta.dateTime = new Date(message.sentAt).toISOString();
+        meta.title = new Date(message.sentAt).toLocaleString();
+      }
+      bubble.append(text, meta);
+      row.append(bubble);
       threadMessages.append(row);
     });
     threadMessages.scrollTop = threadMessages.scrollHeight;
@@ -590,7 +627,15 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
     if (active && !document.hidden) markRead(active);
   }, showError);
   document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshMessageDayLabels();
     const active = threads.find((thread) => thread.id === selectedId);
     if (active && !document.hidden) markRead(active);
   });
+  function refreshMessageDayLabels() {
+    threadMessages.querySelectorAll(".day-divider[data-timestamp]").forEach((divider) => {
+      const label = formatMessageDay(Number(divider.dataset.timestamp));
+      if (divider.textContent !== label) divider.textContent = label;
+    });
+  }
+  window.setInterval(refreshMessageDayLabels, 60000);
 })();

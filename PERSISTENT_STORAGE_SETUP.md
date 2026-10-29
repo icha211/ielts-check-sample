@@ -220,6 +220,8 @@ Both contact records also store `requesterId`, the UID of the learner who sent t
 
 ### Accepted-request notifications
 
+Message threads group messages by the viewer's local calendar day, with centered separators: Today, Yesterday, weekday names for two through six days ago, and a full date for seven or more days ago. Labels refresh every minute and on returning to the tab without rebuilding the conversation or changing its scroll position. Each bubble contains a compact time in its lower-right corner, with a full timestamp available on hover and a machine-readable `time` element. Multiline text and long words wrap without overlapping the time.
+
 The dashboard's **Your global network** panel lists only the signed-in learner's accepted (`connected`) contacts that are available in the learner directory. Its connection total, CEFR breakdown and top countries all use that same filtered list and refresh when profiles or contacts change. Pending requests, unrelated learners and the viewer are excluded. Matchmaking still uses the full learner directory; its aggregate online/learner status text is not displayed.
 
 The matchmaking avatar carousel automatically loops rightward along a five-position arc when at least two learners are available. The center avatar is largest; avatars shrink and sit lower toward either edge. All available profiles rotate through the arc without duplicating learners. Hovering or focusing within the carousel temporarily pauses motion for selection; motion resumes when neither applies. There is no pause button. Reduced-motion preferences disable autoplay and show up to five static profiles; the previous/next buttons remain available.
