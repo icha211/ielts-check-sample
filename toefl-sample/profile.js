@@ -1,5 +1,6 @@
 import { auth, db } from "./js/firebase-config.js";
 import { signOutAndRedirect, resolveDisplayName } from "./js/account-menu.js?v=20261031-account";
+import { compressImageToLimit } from "./js/image-compress.js?v=20261031-compress";
 import {
     deleteUser,
     onAuthStateChanged,
@@ -16,6 +17,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+const MAX_SOURCE_BYTES = 40 * 1024 * 1024;
 const PHOTO_TYPES = ["image/png", "image/jpeg", "image/gif"];
 const RECENT_LOGIN_MS = 5 * 60 * 1000;
 
@@ -167,17 +169,22 @@ photoInput.addEventListener("change", async () => {
         setStatus("Please choose a PNG, JPEG or GIF image.", true);
         return;
     }
-    if (file.size > MAX_PHOTO_BYTES) {
-        setStatus("That image is larger than 2MB. Please choose a smaller one.", true);
+    if (file.size > MAX_SOURCE_BYTES) {
+        setStatus("That image is too large to process. Please choose one under 40MB.", true);
         return;
     }
-    setStatus("Uploading your photo...");
     photoRemove.disabled = true;
     try {
-        const ext = file.type === "image/png" ? "png" : file.type === "image/gif" ? "gif" : "jpg";
+        let upload = { blob: file, type: file.type, compressed: false };
+        if (file.size > MAX_PHOTO_BYTES) {
+            setStatus("Compressing your photo...");
+            upload = await compressImageToLimit(file, MAX_PHOTO_BYTES);
+        }
+        setStatus("Uploading your photo...");
+        const ext = upload.type === "image/png" ? "png" : upload.type === "image/gif" ? "gif" : "jpg";
         const path = `profiles/${currentUser.uid}/avatar.${ext}`;
         const objectRef = storageRef(storage, path);
-        await uploadBytes(objectRef, file, { contentType: file.type });
+        await uploadBytes(objectRef, upload.blob, { contentType: upload.type });
         const url = await getDownloadURL(objectRef);
         if (photoPath && photoPath !== path) {
             await deleteObject(storageRef(storage, photoPath)).catch(() => {});
@@ -188,10 +195,15 @@ photoInput.addEventListener("change", async () => {
         ]);
         photoPath = path;
         paintPhoto(url, resolveDisplayName(currentUser, { first_name: savedName.first }));
-        setStatus("Your profile photo has been updated.");
+        setStatus(upload.compressed
+            ? `Your profile photo has been updated (compressed to ${(upload.blob.size / 1024 / 1024).toFixed(1)}MB).`
+            : "Your profile photo has been updated.");
     } catch (error) {
         console.error("[Profile] Could not upload photo:", error);
-        setStatus("We could not upload that photo. Please try again.", true);
+        const message = error?.message === "image-too-large" || error?.message === "image-decode-failed"
+            ? "We could not compress that image. Please try a different photo."
+            : "We could not upload that photo. Please try again.";
+        setStatus(message, true);
         photoRemove.disabled = !currentUser.photoURL;
     }
 });

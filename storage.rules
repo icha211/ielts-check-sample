@@ -31,7 +31,10 @@ service firebase.storage {
     }
 
     match /profiles/{uid}/{allPaths=**} {
-      allow read, write: if isOwner(uid) || isDeveloper();
+      allow read, delete: if isOwner(uid) || isDeveloper();
+      allow create, update: if (isOwner(uid) || isDeveloper())
+        && request.resource.size <= 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/(png|jpeg|gif)');
     }
   }
 }

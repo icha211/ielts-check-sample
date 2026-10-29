@@ -111,14 +111,6 @@
   <div class="qcnav-label" data-developer-only hidden>Admin</div>
   <a class="qcnav-item" href="developer.html" data-developer-only hidden><span class="qcnav-ico"><i data-lucide="book-open"></i></span><span class="qcnav-text">Developer</span></a>
   <a class="qcnav-item" href="../index.html"><span class="qcnav-ico"><i data-lucide="undo-2"></i></span><span class="qcnav-text">Back to IELTS</span></a>
-  <div class="qcnav-spacer"></div>
-  <div class="qcnav-account">
-    <div class="sidebar-profile" role="button" tabindex="0" title="Account">
-      <div class="sidebar-avatar" aria-hidden="true">QC</div>
-      <div><p class="sidebar-profile-name">Quick Check</p><p class="sidebar-profile-plan">TOEFL workspace</p></div>
-    </div>
-    <a class="qcnav-auth" id="authActionButton" href="signup.html" title="Sign In / Sign Out" aria-label="Sign In or Sign Out"><i data-lucide="log-out"></i></a>
-  </div>
 </aside>
 <div class="qcnav-quick" id="qcnavQuick">
   ${Object.entries(quickGroups).map(([g, grp]) => `<div class="qcnav-fan" data-group="${g}" role="menu" aria-label="${grp.label}">${grp.items.map((q, i) => {
@@ -210,9 +202,9 @@
     const trigger = doc.querySelector(`.qcnav-dock [data-tab="${group}"]`);
     positionQuick(group, trigger);
   });
-  doc.getElementById("qcnavProfileBtn").addEventListener("click", () => {
-    const profile = doc.querySelector(".qcnav-sidebar .sidebar-profile");
-    if (profile) profile.click(); else location.href = "signup.html";
+  doc.getElementById("qcnavProfileBtn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    doc.getElementById("qcnavAccountBtn").click();
   });
   doc.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
 
