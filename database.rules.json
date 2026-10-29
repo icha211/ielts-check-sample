@@ -56,14 +56,28 @@
         "$peer": {
           ".indexOn": ["sentAt"],
           "$message": {
-            ".write": "auth != null && !data.exists() && newData.exists() && $uid !== $peer && newData.child('senderId').val() === auth.uid && ((auth.uid === $uid && newData.child('recipientId').val() === $peer) || (auth.uid === $peer && newData.child('recipientId').val() === $uid)) && root.child('message_contacts').child(auth.uid).child(newData.child('recipientId').val()).child('status').val() === 'connected'",
-            ".validate": "newData.hasChildren(['senderId', 'recipientId', 'text', 'sentAt'])",
+            ".write": "auth != null && newData.exists() && $uid !== $peer && newData.child('senderId').val() === auth.uid && ((auth.uid === $uid && newData.child('recipientId').val() === $peer) || (auth.uid === $peer && newData.child('recipientId').val() === $uid)) && ((!data.exists() && root.child('message_contacts').child(auth.uid).child(newData.child('recipientId').val()).child('status').val() === 'connected' && !newData.child('editedAt').exists() && !newData.child('deletedAt').exists()) || (data.child('senderId').val() === auth.uid && newData.child('recipientId').val() === data.child('recipientId').val() && newData.child('sentAt').val() === data.child('sentAt').val() && !data.child('deletedAt').exists() && ((newData.child('deletedAt').val() === now && newData.child('text').val() === 'Message deleted' && newData.child('editedAt').val() === data.child('editedAt').val()) || (!newData.child('deletedAt').exists() && newData.child('editedAt').val() === now))))",
+            ".validate": "newData.hasChildren(['senderId', 'recipientId', 'text', 'sentAt']) && newData.child('senderId').val() === newData.parent().parent().parent().child($peer).child($uid).child($message).child('senderId').val() && newData.child('recipientId').val() === newData.parent().parent().parent().child($peer).child($uid).child($message).child('recipientId').val() && newData.child('text').val() === newData.parent().parent().parent().child($peer).child($uid).child($message).child('text').val() && newData.child('sentAt').val() === newData.parent().parent().parent().child($peer).child($uid).child($message).child('sentAt').val() && newData.child('editedAt').val() === newData.parent().parent().parent().child($peer).child($uid).child($message).child('editedAt').val() && newData.child('deletedAt').val() === newData.parent().parent().parent().child($peer).child($uid).child($message).child('deletedAt').val()",
             "senderId": { ".validate": "newData.isString() && newData.val() === auth.uid" },
             "recipientId": { ".validate": "newData.isString()" },
             "text": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 2000" },
-            "sentAt": { ".validate": "newData.isNumber() && newData.val() === now" },
+            "sentAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
+            "editedAt": { ".validate": "newData.isNumber() && (newData.val() === now || (data.exists() && newData.val() === data.val()))" },
+            "deletedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
             "$other": { ".validate": false }
           }
+        }
+      }
+    },
+
+    "message_receipts": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$peer": {
+          ".write": "auth != null && auth.uid === $peer && $uid !== $peer && root.child('user_messages').child($peer).child($uid).exists() && newData.exists()",
+          ".validate": "newData.hasChildren(['readAt'])",
+          "readAt": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= now && (!data.exists() || newData.val() >= data.val())" },
+          "$other": { ".validate": false }
         }
       }
     },

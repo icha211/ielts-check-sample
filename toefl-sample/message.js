@@ -1,4 +1,4 @@
-import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConnection, acceptConnection, removeConnection } from "./js/messaging.js?v=20261030b";
+import { subscribeMessaging, sendMessage, editMessage, deleteMessage, markConversationRead, updateMessagePreferences, requestConnection, acceptConnection, removeConnection } from "./js/messaging.js?v=20261030e";
 
 (() => {
   let profiles = [];
@@ -14,6 +14,12 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
   const drafts = new Set();
   const composerDrafts = new Map();
   const readWrites = new Map();
+  let renderedThread = null;
+  let renderedMessages = "";
+  let editing = null;
+  let menuTarget = null;
+  let deleteTarget = null;
+  let deletingMessage = false;
   let requestedRecipient = new URLSearchParams(location.search).get("to");
   const formatTime = (timestamp) => timestamp
     ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(timestamp))
@@ -56,6 +62,10 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
   const messageForm = document.getElementById("messageForm");
   const messageInput = document.getElementById("messageInput");
   const messageError = document.getElementById("messageError");
+  const messageMenu = document.getElementById("messageMenu");
+  const deleteMessageDialog = document.getElementById("deleteMessageDialog");
+  const deleteMessageError = document.getElementById("deleteMessageError");
+  const confirmMessageDelete = document.getElementById("confirmMessageDelete");
   const liveStatus = document.getElementById("liveStatus");
   const favoriteButton = document.getElementById("favoriteButton");
   const archiveButton = document.getElementById("archiveButton");
@@ -84,7 +94,7 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
       if (status === "connected") return "Request accepted. Say hello";
       return "Send a message request";
     }
-    return `${message.from === "me" ? "You: " : ""}${message.text}`;
+    return `${message.from === "me" ? "You: " : ""}${message.deletedAt ? "Message deleted" : message.text}`;
   };
   const isVisibleInFolder = (thread, folder) => {
     if (folder === "deleted") return thread.deleted;
@@ -109,6 +119,7 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
     connectionError = error.message || "Messages could not sync. Check your connection and try again.";
     const status = document.getElementById("messagingStatus");
     status.textContent = connectionError;
+    status.hidden = false;
     status.dataset.state = "error";
   };
   const makeAvatar = (person, className = "avatar") => {
@@ -202,6 +213,9 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
     threadPanel.hidden = !hasThread;
     threadEmpty.hidden = hasThread;
     if (!thread) {
+      renderedThread = null;
+      renderedMessages = "";
+      closeMessageMenu();
       threadPerson.replaceChildren();
       threadMessages.replaceChildren();
       connectionPanel.hidden = true;
@@ -295,7 +309,22 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
   };
 
   const renderMessages = (thread) => {
-    if (!thread.messages.length) return;
+    if (!thread.messages.length) {
+      renderedThread = null;
+      renderedMessages = "";
+      closeMessageMenu();
+      return;
+    }
+    const signature = JSON.stringify([thread.messages, thread.readAt, thread.deleted]);
+    if (renderedThread === thread.id && renderedMessages === signature) return;
+    const sameThread = renderedThread === thread.id;
+    const atBottom = threadMessages.scrollHeight - threadMessages.scrollTop - threadMessages.clientHeight < 48;
+    const oldScroll = threadMessages.scrollTop;
+    const focusedEditor = document.activeElement?.classList.contains("message-edit-input");
+    const selection = focusedEditor ? [document.activeElement.selectionStart, document.activeElement.selectionEnd] : null;
+    renderedThread = thread.id;
+    renderedMessages = signature;
+    closeMessageMenu();
     threadMessages.replaceChildren();
     let previousDay = null;
     thread.messages.forEach((message) => {
@@ -314,11 +343,13 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
       }
       const row = document.createElement("div");
       row.className = `message-row ${message.from === "me" ? "outgoing" : "incoming"}`;
+      row.dataset.messageId = message.id;
       const bubble = document.createElement("p");
       bubble.className = "message-bubble";
       const text = document.createElement("span");
       text.className = "message-text";
-      text.textContent = message.text;
+      text.textContent = message.deletedAt ? "Message deleted" : message.text;
+      if (message.deletedAt) bubble.classList.add("message-deleted");
       const meta = document.createElement("time");
       meta.className = "message-meta";
       meta.textContent = message.sentAt > 0 ? formatMessageClock(message.sentAt) : "Sending...";
@@ -326,26 +357,233 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
         meta.dateTime = new Date(message.sentAt).toISOString();
         meta.title = new Date(message.sentAt).toLocaleString();
       }
+      if (message.editedAt && !message.deletedAt) meta.prepend("Edited · ");
+      if (message.from === "me" && message.sentAt > 0) {
+        const receipt = document.createElement("span");
+        const read = thread.readAt >= message.sentAt;
+        receipt.className = `message-receipt${read ? " is-read" : ""}`;
+        receipt.setAttribute("role", "img");
+        receipt.setAttribute("aria-label", read ? "Read" : "Sent, not yet read");
+        receipt.title = read ? "Read" : "Sent, not yet read";
+        receipt.innerHTML = '<svg viewBox="0 0 24 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 9 4 4L16 3m-6 10 3 3L23 6"/></svg>';
+        meta.append(receipt);
+      }
       bubble.append(text, meta);
       row.append(bubble);
+      if (message.from === "me" && message.sentAt > 0 && !message.deletedAt && !thread.deleted) {
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "message-more";
+        more.setAttribute("aria-label", "Message actions");
+        more.setAttribute("aria-haspopup", "menu");
+        more.setAttribute("aria-expanded", "false");
+        more.innerHTML = '<i class="ti ti-dots" aria-hidden="true"></i>';
+        more.addEventListener("click", () => {
+          const rect = more.getBoundingClientRect();
+          openMessageMenu(thread.id, message.id, more, rect.right, rect.bottom);
+        });
+        row.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          openMessageMenu(thread.id, message.id, more, event.clientX, event.clientY);
+        });
+        row.append(more);
+      }
+      if (editing && editing.peerId === thread.id && editing.messageId === message.id) {
+        if (message.deletedAt || thread.deleted) editing = null;
+        else renderEditor(row, message);
+      }
       threadMessages.append(row);
     });
-    threadMessages.scrollTop = threadMessages.scrollHeight;
+    threadMessages.scrollTop = !sameThread || atBottom ? threadMessages.scrollHeight : oldScroll;
+    if (selection) {
+      const input = threadMessages.querySelector(".message-edit-input");
+      input?.focus({ preventScroll: true });
+      input?.setSelectionRange(...selection);
+    }
   };
 
+  function closeMessageMenu(restoreFocus = false) {
+    if (menuTarget) {
+      menuTarget.trigger.setAttribute("aria-expanded", "false");
+      if (restoreFocus) menuTarget.trigger.focus({ preventScroll: true });
+    }
+    messageMenu.hidden = true;
+    menuTarget = null;
+  }
+
+  function openMessageMenu(peerId, messageId, trigger, x, y) {
+    if (editing?.saving) {
+      setStatus("Wait for your edit to finish saving.");
+      return;
+    }
+    closeMessageMenu();
+    menuTarget = { peerId, messageId, trigger };
+    trigger.setAttribute("aria-expanded", "true");
+    messageMenu.hidden = false;
+    messageMenu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - messageMenu.offsetWidth - 8))}px`;
+    messageMenu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - messageMenu.offsetHeight - 8))}px`;
+    messageMenu.querySelector("button").focus({ preventScroll: true });
+  }
+
+  function renderEditor(row, message) {
+    const form = document.createElement("form");
+    form.className = "message-editor";
+    const input = document.createElement("textarea");
+    input.className = "message-edit-input";
+    input.setAttribute("aria-label", "Edit message");
+    input.maxLength = 2000;
+    input.value = editing.text;
+    input.disabled = editing.saving;
+    input.addEventListener("input", () => { editing.text = input.value; });
+    const actions = document.createElement("div");
+    actions.className = "connection-actions";
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "connection-button secondary";
+    cancel.textContent = "Cancel";
+    cancel.disabled = editing.saving;
+    cancel.addEventListener("click", cancelEdit);
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !editing.saving) { event.preventDefault(); cancelEdit(); }
+    });
+    const save = document.createElement("button");
+    save.type = "submit";
+    save.className = "connection-button primary";
+    save.textContent = editing.saving ? "Saving..." : "Save";
+    save.disabled = editing.saving;
+    const error = document.createElement("p");
+    error.className = "form-error";
+    error.setAttribute("role", "alert");
+    error.textContent = editing.error || "";
+    error.hidden = !editing.error;
+    actions.append(cancel, save);
+    form.append(input, actions, error);
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const edit = editing;
+      if (!edit || edit.saving) return;
+      if (!input.value.trim()) {
+        error.hidden = false;
+        error.textContent = "Write a message before saving.";
+        input.focus();
+        return;
+      }
+      const version = accountVersion;
+      edit.text = input.value;
+      edit.saving = true;
+      input.disabled = save.disabled = cancel.disabled = true;
+      save.textContent = "Saving...";
+      try {
+        await editMessage(edit.peerId, message.id, edit.text);
+        if (version !== accountVersion || editing !== edit) return;
+        editing = null;
+        renderedMessages = "";
+        renderThread();
+        setStatus("Message edited.");
+        messageInput.focus({ preventScroll: true });
+      } catch (failure) {
+        if (version !== accountVersion || editing !== edit) return;
+        console.error("[Messages] Edit failed:", failure);
+        edit.error = "Changes were not confirmed. Your text is preserved; check your connection before retrying.";
+        edit.saving = false;
+        renderedMessages = "";
+        renderThread();
+      }
+    });
+    row.replaceChildren(form);
+  }
+
+  function cancelEdit() {
+    editing = null;
+    renderedMessages = "";
+    renderThread();
+    messageInput.focus({ preventScroll: true });
+  }
+
+  messageMenu.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-message-action]")?.dataset.messageAction;
+    if (!action || !menuTarget) return;
+    const { peerId, messageId } = menuTarget;
+    const message = threads.find((thread) => thread.id === peerId)?.messages.find((item) => item.id === messageId);
+    closeMessageMenu();
+    if (!message || message.deletedAt || message.from !== "me") return;
+    if (action === "edit") {
+      editing = { peerId, messageId, text: message.text, saving: false };
+      renderedMessages = "";
+      renderThread();
+      threadMessages.querySelector(".message-edit-input")?.focus({ preventScroll: true });
+    } else {
+      deleteTarget = { peerId, messageId };
+      deleteMessageError.hidden = true;
+      deleteMessageDialog.showModal();
+      document.getElementById("cancelMessageDelete").focus();
+    }
+  });
+  messageMenu.addEventListener("keydown", (event) => {
+    const buttons = [...messageMenu.querySelectorAll("button")];
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      const index = buttons.indexOf(document.activeElement);
+      buttons[event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1
+        : (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length].focus();
+    }
+    if (event.key === "Escape" || event.key === "Tab") closeMessageMenu(true);
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!messageMenu.contains(event.target) && !event.target.closest(".message-more")) closeMessageMenu();
+  });
+  threadMessages.addEventListener("scroll", () => {
+    closeMessageMenu();
+    const active = threads.find((thread) => thread.id === selectedId);
+    if (active) markRead(active);
+  });
+  window.addEventListener("resize", () => closeMessageMenu());
+  document.getElementById("cancelMessageDelete").addEventListener("click", () => deleteMessageDialog.close());
+  deleteMessageDialog.addEventListener("cancel", (event) => {
+    if (deletingMessage) event.preventDefault();
+  });
+  confirmMessageDelete.addEventListener("click", async () => {
+    if (!deleteTarget || deletingMessage) return;
+    const target = deleteTarget;
+    const version = accountVersion;
+    deletingMessage = true;
+    confirmMessageDelete.disabled = true;
+    document.getElementById("cancelMessageDelete").disabled = true;
+    deleteMessageError.hidden = true;
+    try {
+      await deleteMessage(target.peerId, target.messageId);
+      if (version !== accountVersion) return;
+      deleteMessageDialog.close();
+      setStatus("Message deleted for everyone.");
+    } catch (error) {
+      if (version !== accountVersion) return;
+      console.error("[Messages] Delete failed:", error);
+      deleteMessageError.textContent = "Deletion was not confirmed. Check your connection before retrying.";
+      deleteMessageError.hidden = false;
+    } finally {
+      if (version === accountVersion) {
+        deletingMessage = false;
+        confirmMessageDelete.disabled = false;
+        document.getElementById("cancelMessageDelete").disabled = false;
+      }
+    }
+  });
+
   const selectThread = (id) => {
+    if (selectedId !== id) editing = null;
     if (selectedId && selectedId !== id) composerDrafts.set(selectedId, messageInput.value);
     if (selectedId !== id) messageInput.value = composerDrafts.get(id) || "";
     selectedId = id;
     const thread = threads.find((item) => item.id === id);
-    if (thread) markRead(thread);
     layout.classList.add("show-thread");
     renderConversations();
     renderThread();
+    if (thread) requestAnimationFrame(() => { if (selectedId === id) markRead(thread); });
     messageInput.focus({ preventScroll: true });
   };
 
   const chooseFolder = (folder, preferredId = null) => {
+    editing = null;
     if (selectedId) composerDrafts.set(selectedId, messageInput.value);
     currentFolder = folder;
     selectedId = null;
@@ -456,6 +694,7 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
   document.getElementById("newMessageButton").addEventListener("click", openCompose);
   document.getElementById("emptyComposeButton").addEventListener("click", openCompose);
   document.getElementById("backToConversations").addEventListener("click", () => {
+    closeMessageMenu();
     layout.classList.remove("show-thread");
     conversationSearch.focus();
   });
@@ -531,7 +770,7 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
     messageInput.style.height = `${Math.min(messageInput.scrollHeight, 130)}px`;
   });
   messageInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
       messageForm.requestSubmit();
     }
@@ -544,11 +783,14 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
   });
 
   function markRead(thread) {
+    if (document.hidden || !document.hasFocus() || thread.deleted || threadPanel.hidden
+      || (window.matchMedia("(max-width: 780px)").matches && !layout.classList.contains("show-thread"))
+      || threadMessages.scrollHeight - threadMessages.scrollTop - threadMessages.clientHeight >= 48) return;
     const newest = Math.max(0, ...thread.messages.filter((message) => message.from === "them").map((message) => message.sentAt));
     if (!newest || thread.unread === 0 || (readWrites.get(thread.id) || 0) >= newest) return;
     readWrites.set(thread.id, newest);
     const version = accountVersion;
-    updateMessagePreferences(thread.id, { readAt: newest }).catch((error) => {
+    markConversationRead(thread.id, newest).catch((error) => {
       if (version !== accountVersion) return;
       readWrites.delete(thread.id);
       showError(error);
@@ -565,6 +807,15 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
       drafts.clear();
       composerDrafts.clear();
       readWrites.clear();
+      renderedThread = null;
+      renderedMessages = "";
+      editing = null;
+      closeMessageMenu();
+      deleteTarget = null;
+      deletingMessage = false;
+      deleteMessageDialog.close();
+      confirmMessageDelete.disabled = false;
+      document.getElementById("cancelMessageDelete").disabled = false;
       sending = false;
       connectionBusy = false;
       messageInput.value = "";
@@ -594,12 +845,13 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
       const messages = Object.entries(snapshot.messages[id] || {})
         .map(([messageId, message]) => ({
           id: messageId, text: message.text, sentAt: Number(message.sentAt) || 0,
+          editedAt: Number(message.editedAt) || 0, deletedAt: Number(message.deletedAt) || 0,
           time: formatTime(message.sentAt),
           from: message.senderId === currentUid ? "me" : "them"
         }))
         .sort((left, right) => left.sentAt - right.sentAt || left.id.localeCompare(right.id));
       return {
-        id, messages, pinned: false, favorite: preference.favorite === true,
+        id, messages, readAt: Number(snapshot.receipts?.[id]?.readAt) || 0, pinned: false, favorite: preference.favorite === true,
         archived: preference.archived === true, deleted: preference.deleted === true,
         unread: messages.filter((message) => message.from === "them" && message.sentAt > (preference.readAt || 0)).length,
         time: messages.length ? formatTime(messages.at(-1).sentAt) : contacts[id]?.updatedAt ? formatTime(contacts[id].updatedAt) : "",
@@ -611,8 +863,9 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
     status.textContent = connectionError || (loading ? "Loading your conversations..." : currentUid && !snapshot.connected
       ? "Connection lost. Messages will sync when you reconnect."
       : currentUid
-      ? "Messages update live. Only you and the recipient can read your conversation."
+      ? ""
       : "Sign in to access your messages.");
+    status.hidden = !status.textContent;
     document.getElementById("newMessageButton").disabled = !currentUid || loading;
     document.getElementById("emptyComposeButton").disabled = !currentUid || loading;
     renderConversations();
@@ -630,6 +883,10 @@ import { subscribeMessaging, sendMessage, updateMessagePreferences, requestConne
     if (!document.hidden) refreshMessageDayLabels();
     const active = threads.find((thread) => thread.id === selectedId);
     if (active && !document.hidden) markRead(active);
+  });
+  window.addEventListener("focus", () => {
+    const active = threads.find((thread) => thread.id === selectedId);
+    if (active) markRead(active);
   });
   function refreshMessageDayLabels() {
     threadMessages.querySelectorAll(".day-divider[data-timestamp]").forEach((divider) => {

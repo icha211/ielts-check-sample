@@ -10,14 +10,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
     <link rel="stylesheet" href="site-navbar.css?v=20261030b">
-    <link rel="stylesheet" href="message.css?v=20261030d">
+    <link rel="stylesheet" href="message.css?v=20261030e">
 </head>
 <body>
     <main class="messages-page">
         <header class="page-heading">
             <div>
                 <h1>Messages</h1>
-                <p>Connect with real learners in the TOEFL community.</p>
             </div>
             <button class="primary-button" id="newMessageButton" type="button">
                 <i class="ti ti-edit" aria-hidden="true"></i>
@@ -91,10 +90,7 @@
                     <form class="composer" id="messageForm">
                         <label class="visually-hidden" for="messageInput">Write a message</label>
                         <textarea id="messageInput" rows="1" placeholder="Write a message..." maxlength="2000"></textarea>
-                        <div class="composer-footer">
-                            <span class="composer-hint" id="composerHint">Enter to send, Shift + Enter for a new line</span>
-                            <button class="send-button" id="sendButton" type="submit" aria-label="Send message"><i class="ti ti-send" aria-hidden="true"></i></button>
-                        </div>
+                        <button class="send-button" id="sendButton" type="submit" aria-label="Send message" title="Send message"><i class="ti ti-send" aria-hidden="true"></i></button>
                         <p class="form-error" id="messageError" role="alert" hidden></p>
                     </form>
                 </section>
@@ -109,6 +105,20 @@
             <p class="live-status visually-hidden" id="liveStatus" aria-live="polite"></p>
         </section>
     </main>
+
+    <div class="message-menu" id="messageMenu" role="menu" aria-label="Message actions" hidden>
+        <button type="button" role="menuitem" data-message-action="edit"><i class="ti ti-pencil" aria-hidden="true"></i>Edit message</button>
+        <button type="button" role="menuitem" data-message-action="delete"><i class="ti ti-trash" aria-hidden="true"></i>Delete for everyone</button>
+    </div>
+    <dialog class="delete-message-dialog" id="deleteMessageDialog" aria-labelledby="deleteMessageTitle" aria-describedby="deleteMessageDescription">
+        <h2 id="deleteMessageTitle">Delete this message?</h2>
+        <p id="deleteMessageDescription">Both people will see “Message deleted” instead. This cannot be undone.</p>
+        <p class="form-error" id="deleteMessageError" role="alert" hidden></p>
+        <div class="connection-actions">
+            <button type="button" class="connection-button secondary" id="cancelMessageDelete">Cancel</button>
+            <button type="button" class="connection-button danger" id="confirmMessageDelete">Delete for everyone</button>
+        </div>
+    </dialog>
 
     <dialog class="compose-dialog" id="composeDialog" aria-labelledby="composeTitle">
         <form method="dialog" class="dialog-topbar">
@@ -126,7 +136,7 @@
     </dialog>
 
     <script src="site-navbar.js?v=20261030b"></script>
-    <script type="module" src="message.js?v=20261030d"></script>
+    <script type="module" src="message.js?v=20261030e"></script>
     <script src="site-footer.js" defer></script>
 </body>
 </html>

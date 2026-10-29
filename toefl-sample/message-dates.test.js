@@ -33,18 +33,25 @@ test("messages are grouped by day with semantic timestamps inside each bubble", 
     function element(tag) {
         return {
             tag, children: [], dataset: {}, textContent: "",
+            classList: { add() {} },
+            setAttribute(key, value) { this[key] = value; },
+            addEventListener() {},
+            prepend(value) { this.textContent = value + this.textContent; },
             append(...children) { this.children.push(...children); },
             replaceChildren() { this.children = []; }
         };
     }
     const threadMessages = element("div");
-    const context = vm.createContext({ document: { createElement: element }, threadMessages });
-    const render = source.slice(source.indexOf("  const renderMessages ="), source.indexOf("  const selectThread ="));
+    const context = vm.createContext({
+        document: { createElement: element }, threadMessages,
+        renderedThread: null, renderedMessages: "", editing: null, closeMessageMenu() {}
+    });
+    const render = source.slice(source.indexOf("  const renderMessages ="), source.indexOf("  function closeMessageMenu"));
     vm.runInContext(`${helpers}${render}
         globalThis.render = renderMessages;`, context);
-    context.render({ messages: [
+    context.render({ id: "peer", messages: [
         { sentAt: localDate(20), text: "Older message", from: "them" },
-        { sentAt: localDate(20, 13), text: "Same day\nwith a new line", from: "me" },
+        { sentAt: localDate(20, 13), text: "Same day\nwith a new line", from: "me", editedAt: localDate(20, 14) },
         { sentAt: localDate(29), text: "New day", from: "them" }
     ] });
     const dividers = threadMessages.children.filter((node) => node.className === "day-divider");
@@ -53,11 +60,26 @@ test("messages are grouped by day with semantic timestamps inside each bubble", 
     const rows = threadMessages.children.filter((node) => node.className.startsWith("message-row"));
     assert.equal(rows.length, 3);
     rows.forEach((row) => {
-        assert.equal(row.children.length, 1, "no timestamp below the bubble");
+        assert.ok(row.children.slice(1).every((node) => node.tag === "button"), "no timestamp below the bubble");
         const [text, time] = row.children[0].children;
         assert.equal(text.className, "message-text");
         assert.equal(time.tag, "time");
         assert.ok(time.dateTime);
     });
     assert.equal(rows[1].children[0].children[0].textContent, "Same day\nwith a new line");
+    assert.match(rows[1].children[0].children[1].textContent, /^Edited/);
+    assert.equal(rows[1].children[0].children[1].children[0]["aria-label"], "Sent, not yet read");
+    threadMessages.scrollHeight = 1000;
+    threadMessages.scrollTop = 100;
+    threadMessages.clientHeight = 300;
+    context.render({ id: "peer", messages: [
+        { sentAt: localDate(29), text: "Read this", from: "me" },
+        { sentAt: localDate(29), text: "Original text", from: "me", deletedAt: localDate(29) }
+    ], readAt: localDate(29) });
+    const outgoing = threadMessages.children.filter((node) => node.className.startsWith("message-row"));
+    assert.equal(outgoing[0].children[0].children[1].children[0]["aria-label"], "Read");
+    assert.match(outgoing[0].children[0].children[1].children[0].className, /is-read/);
+    assert.equal(outgoing[1].children[0].children[0].textContent, "Message deleted");
+    assert.equal(outgoing[1].children.length, 1, "deleted messages have no edit/delete actions");
+    assert.equal(threadMessages.scrollTop, 100, "live updates preserve the reader's scroll position");
 });

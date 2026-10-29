@@ -50,7 +50,7 @@ function fixture() {
     };
 }
 
-test("send atomically delivers identical immutable records to sender and recipient", async () => {
+test("send atomically delivers identical records to sender and recipient", async () => {
     const app = fixture();
     app.auth.currentUser = { uid: "sender" };
     await app.context.sendMessage("recipient", "  Hello learner  ");
@@ -94,10 +94,13 @@ test("real-time subscriptions clear account data and reject stale callbacks afte
     app.emit("message_preferences/one", { peer: { favorite: true } });
     assert.equal(snapshots.at(-1).loading, true, "waits for message contacts");
     app.emit("message_contacts/one", { peer: { status: "incoming", updatedAt: 1 } });
+    assert.equal(snapshots.at(-1).loading, true, "waits for read receipts");
+    app.emit("message_receipts/one", { peer: { readAt: 100 } });
     app.emit(".info/connected", true);
     assert.equal(snapshots.at(-1).loading, false);
     assert.equal(snapshots.at(-1).contacts.peer.status, "incoming");
     assert.equal(snapshots.at(-1).connected, true);
+    assert.equal(snapshots.at(-1).receipts.peer.readAt, 100);
     app.signIn("two");
     assert.deepEqual(snapshots.at(-1).messages, {});
     assert.equal(snapshots.at(-1).uid, "two");
@@ -109,6 +112,52 @@ test("real-time subscriptions clear account data and reject stale callbacks afte
     assert.equal(snapshots.at(-1).uid, null);
     assert.equal(errors.length, 0);
     stop();
+});
+
+test("edits and deletions atomically update both copies without changing identity or send time", async () => {
+    const app = fixture();
+    app.auth.currentUser = { uid: "me" };
+    await app.context.editMessage("peer", "m1", "  Revised text  ");
+    await app.context.deleteMessage("peer", "m1");
+    const [edited, deleted] = app.writes.map((write) => write.value);
+    assert.deepEqual(edited, {
+        "user_messages/me/peer/m1/text": "Revised text",
+        "user_messages/peer/me/m1/text": "Revised text",
+        "user_messages/me/peer/m1/editedAt": { ".sv": "timestamp" },
+        "user_messages/peer/me/m1/editedAt": { ".sv": "timestamp" }
+    });
+    assert.deepEqual(deleted, {
+        "user_messages/me/peer/m1/text": "Message deleted",
+        "user_messages/peer/me/m1/text": "Message deleted",
+        "user_messages/me/peer/m1/deletedAt": { ".sv": "timestamp" },
+        "user_messages/peer/me/m1/deletedAt": { ".sv": "timestamp" }
+    });
+    for (const id of ["", "bad/id"]) {
+        await assert.rejects(app.context.editMessage("peer", id, "text"));
+        await assert.rejects(app.context.deleteMessage("peer", id));
+    }
+    for (const text of [" ", "x".repeat(2001)]) {
+        await assert.rejects(app.context.editMessage("peer", "m1", text));
+    }
+    assert.equal(app.writes.length, 2);
+});
+
+test("read receipts update private unread state and the sender's receipt atomically", async () => {
+    const app = fixture();
+    app.auth.currentUser = { uid: "reader" };
+    await app.context.markConversationRead("sender", 123);
+    assert.deepEqual(app.writes[0].value, {
+        "message_preferences/reader/sender/readAt": 123,
+        "message_receipts/sender/reader/readAt": 123
+    });
+    for (const value of [0, -1, NaN, Infinity, "123"]) {
+        await assert.rejects(app.context.markConversationRead("sender", value));
+    }
+    assert.equal(app.writes.length, 1);
+    app.fail(new Error("write-failed"));
+    await assert.rejects(app.context.markConversationRead("sender", 124), /write-failed/);
+    await assert.rejects(app.context.editMessage("sender", "m1", "edit"), /write-failed/);
+    await assert.rejects(app.context.deleteMessage("sender", "m1"), /write-failed/);
 });
 
 test("message requests, accepts and removals write both sides atomically", async () => {

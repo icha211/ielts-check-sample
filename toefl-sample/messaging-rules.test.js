@@ -112,6 +112,55 @@ test("Realtime Database messaging rules enforce participant-only reads and authe
     assert.equal((await request("message_preferences/alice/bob", {
         uid: "alice", method: "PATCH", data: { role: "admin" }
     })).status, 401);
+    const sentAt = received.data.alice.m1.sentAt;
+    const edit = {
+        "user_messages/alice/bob/m1/text": "Revised",
+        "user_messages/bob/alice/m1/text": "Revised",
+        "user_messages/alice/bob/m1/editedAt": { ".sv": "timestamp" },
+        "user_messages/bob/alice/m1/editedAt": { ".sv": "timestamp" }
+    };
+    for (const uid of ["bob", "mallory"]) {
+        assert.equal((await request("", { uid, method: "PATCH", data: edit })).status, 401, "only sender edits");
+    }
+    assert.equal((await request("user_messages/alice/bob/m1", {
+        uid: "alice", method: "PATCH", data: { text: "One sided", editedAt: { ".sv": "timestamp" } }
+    })).status, 401, "edit must be mirrored");
+    assert.equal((await request("", { uid: "alice", method: "PATCH", data: {
+        ...edit, "user_messages/bob/alice/m1/text": "Different"
+    } })).status, 401, "copies must match");
+    assert.equal((await request("", { uid: "alice", method: "PATCH", data: {
+        ...edit, "user_messages/alice/bob/m1/sentAt": 1, "user_messages/bob/alice/m1/sentAt": 1
+    } })).status, 401, "send time is immutable");
+    assert.equal((await request("", { uid: "alice", method: "PATCH", data: edit })).status, 200);
+    const edited = (await request("user_messages/bob/alice/m1", { uid: "bob" })).data;
+    assert.equal(edited.text, "Revised");
+    assert.equal(edited.sentAt, sentAt);
+    assert.equal(typeof edited.editedAt, "number");
+    const receipt = { readAt: sentAt };
+    assert.equal((await request("message_receipts/alice/bob", { uid: "alice", method: "PUT", data: receipt })).status, 401, "sender cannot mark their own message read");
+    assert.equal((await request("message_receipts/alice/bob", { uid: "mallory", method: "PUT", data: receipt })).status, 401);
+    assert.equal((await request("message_receipts/alice/bob", { uid: "bob", method: "PUT", data: receipt })).status, 200);
+    assert.equal((await request("message_receipts/alice", { uid: "alice" })).data.bob.readAt, sentAt);
+    assert.equal((await request("message_receipts/alice", { uid: "mallory" })).status, 401);
+    assert.equal((await request("message_receipts/alice", { uid: "bob" })).status, 401);
+    for (const data of [{ readAt: sentAt - 1 }, { readAt: Date.now() + 86400000 }, { ...receipt, extra: true }]) {
+        assert.equal((await request("message_receipts/alice/bob", { uid: "bob", method: "PUT", data })).status, 401);
+    }
+    assert.equal((await request("message_receipts/alice/bob", { uid: "bob", method: "DELETE" })).status, 401);
+    const deletion = {
+        "user_messages/alice/bob/m1/text": "Message deleted",
+        "user_messages/bob/alice/m1/text": "Message deleted",
+        "user_messages/alice/bob/m1/deletedAt": { ".sv": "timestamp" },
+        "user_messages/bob/alice/m1/deletedAt": { ".sv": "timestamp" }
+    };
+    assert.equal((await request("", { uid: "bob", method: "PATCH", data: deletion })).status, 401, "recipient cannot delete for sender");
+    assert.equal((await request("user_messages/alice/bob/m1", { uid: "alice", method: "DELETE" })).status, 401, "no hard deletion");
+    assert.equal((await request("", { uid: "alice", method: "PATCH", data: deletion })).status, 200);
+    assert.equal((await request("user_messages/bob/alice/m1", { uid: "bob" })).data.text, "Message deleted");
+    assert.equal((await request("", { uid: "alice", method: "PATCH", data: edit })).status, 401, "deleted messages cannot be edited");
+    assert.equal((await request("", { uid: "alice", method: "PATCH", data: {
+        "user_messages/alice/bob/m1/deletedAt": null, "user_messages/bob/alice/m1/deletedAt": null
+    } })).status, 401, "cannot restore a deleted message");
     assert.equal((await request("user_messages/alice/missing/m1", {
         uid: "alice", method: "PUT", data: { ...message, recipientId: "missing" }
     })).status, 401);
