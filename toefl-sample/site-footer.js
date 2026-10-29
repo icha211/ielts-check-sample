@@ -20,7 +20,7 @@
         <div class="qcsite-footer__payments">
           <h2 id="qcsite-footer-payments-title">Payment Support</h2>
           <ul class="qcsite-footer__payment-list" aria-labelledby="qcsite-footer-payments-title">
-            <li class="qcsite-footer__payment"><img src="../asset/icon/payment/Logo_QRIS.svg.webp" alt="QRIS" decoding="async"></li>
+            <li class="qcsite-footer__payment qcsite-footer__payment--wide"><img src="../asset/icon/payment/Logo_QRIS.svg.webp" alt="QRIS" decoding="async"></li>
             <li class="qcsite-footer__payment"><img src="../asset/icon/payment/Paypal_2014_logo.png" alt="PayPal" decoding="async"></li>
             <li class="qcsite-footer__payment"><img src="../asset/icon/payment/Mastercard-logo.svg.webp" alt="Mastercard" decoding="async"></li>
             <li class="qcsite-footer__payment"><img src="../asset/icon/payment/American_Express_logo_(2018).svg" alt="American Express" decoding="async"></li>
