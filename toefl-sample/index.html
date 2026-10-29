@@ -5782,6 +5782,13 @@ body {
                 return;
             }
 
+            const usesPasswordLogin = user.providerData.some((provider) => provider.providerId === "password");
+            if (usesPasswordLogin && !user.emailVerified) {
+                await signOut(auth);
+                window.location.replace("signup.html?verify=required");
+                return;
+            }
+
             if (user) {
                 // User is logged in
                 console.log("Logged in user:", user.email);

@@ -5,6 +5,7 @@ import {
     sendPasswordResetEmail,
     signInWithEmailAndPassword,
     signInWithPopup,
+    signOut,
     updateProfile
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
@@ -41,7 +42,7 @@ function showMessage(message, type = "error") {
 }
 
 function getErrorMessage(error) {
-    if (error.code === "developer/email-not-verified") {
+    if (error.code === "developer/email-not-verified" || error.code === "auth/email-not-verified") {
         return error.message;
     }
 
@@ -61,6 +62,7 @@ function getErrorMessage(error) {
         "auth/popup-closed-by-user": "The Google sign-in window was closed before sign-in finished.",
         "auth/user-not-found": "No account was found for this email. Check the address or create an account.",
         "auth/wrong-password": "The password is incorrect. Use Forgot password to reset it.",
+        "auth/too-many-requests": "Too many attempts. Please wait a few minutes and try again.",
         "auth/weak-password": "Choose a password with at least 6 characters."
     };
     return messages[error.code] || error.message || "Sign-up failed. Please try again.";
@@ -109,6 +111,22 @@ async function saveDeveloperSession(user, password) {
     localStorage.setItem("toefl_firebase_refresh_token", session.refreshToken);
     localStorage.setItem("toefl_firebase_auth_email", DEVELOPER_EMAIL);
     localStorage.setItem("toefl_firebase_auth_mode", "developer");
+}
+
+async function requireVerifiedEmail(user) {
+    if (user.emailVerified) return;
+
+    try {
+        await sendEmailVerification(user);
+    } catch (error) {
+        // Firebase rate-limits resends; the earlier link still works.
+        console.warn("Could not resend verification email:", error);
+    }
+    await signOut(auth);
+    throw Object.assign(
+        new Error(`Your email is not verified yet. We sent a new verification link to ${user.email}. Open it, then sign in again.`),
+        { code: "auth/email-not-verified" }
+    );
 }
 
 async function saveUserProfile(user, profile = {}) {
@@ -176,14 +194,26 @@ export async function handleEmailAuth(event) {
             const displayName = `${firstName} ${lastName}`.trim();
             await updateProfile(user, { displayName });
             await saveUserProfile(user, { firstName, lastName, nationality, phone });
+            // The account stays locked until the user proves the inbox exists by opening the link.
+            await sendEmailVerification(user);
+            await signOut(auth);
+            setAuthMode(false);
+            emailInput.value = email;
+            passwordInput.value = "";
+            showMessage(`We sent a verification link to ${email}. Open it to activate your account, then sign in. Check your spam folder if you don't see it.`, "info");
+            setSubmitting(false);
+            return;
         } else {
             showMessage("Signing in...", "info");
             const credential = await signInWithEmailAndPassword(auth, email, passwordInput.value);
             user = credential.user;
-            await saveUserProfile(user);
             if (user.email?.toLowerCase() === DEVELOPER_EMAIL) {
+                await saveUserProfile(user);
                 showMessage("Preparing developer access...", "info");
                 await saveDeveloperSession(user, passwordInput.value);
+            } else {
+                await requireVerifiedEmail(user);
+                await saveUserProfile(user);
             }
         }
         window.location.assign("index.html");
@@ -208,6 +238,12 @@ export async function handleGoogleSignIn() {
         showMessage(getErrorMessage(error));
         setSubmitting(false);
     }
+}
+
+if (new URLSearchParams(window.location.search).get("verify") === "required") {
+    setAuthMode(false);
+    emailInput.value = "";
+    showMessage("Please verify your email address before continuing. Sign in to receive a new verification link.", "error");
 }
 
 authForm.addEventListener("submit", handleEmailAuth);
