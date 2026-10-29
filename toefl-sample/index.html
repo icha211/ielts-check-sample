@@ -374,7 +374,7 @@
             letter-spacing: 0.12em;
             font-size: 12px;
             text-transform: uppercase;
-            color: #badfff;
+            color: #7A8FA6;
             font-weight: 600;
         }
 
@@ -2107,6 +2107,42 @@ body {
             grid-column: 1;
             grid-row: 1;
         }
+
+        .calendar-heading-label { display: flex; align-items: center; gap: 6px; }
+        .calendar-heading-label .eyebrow { margin: 0; }
+        .calendar-guide-trigger { display: inline-grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #d1dce8; cursor: pointer; }
+        .calendar-guide-trigger svg { width: 17px; height: 17px; }
+        .calendar-guide-trigger:hover, .calendar-guide-trigger[aria-expanded="true"] { background: #edf8f5; color: #0d9488; }
+        .calendar-guide-trigger:focus-visible { outline: 2px solid #0d9488; outline-offset: 2px; }
+        .calendar-guide { position: fixed; inset: auto; width: 233px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); margin: 0; padding: 24px; overflow-y: auto; overscroll-behavior: contain; border: 0; border-radius: 24px; background: #fff; color: #40536a; box-shadow: 0 8px 36px rgba(6, 34, 61, .16); font: 400 11px/1.3 "Plus Jakarta Sans", sans-serif; text-align: left; }
+        .calendar-guide:focus-visible { outline: 2px solid #0d9488; outline-offset: 2px; }
+        .calendar-guide h2 { margin: 0; color: #000; font-size: 12px; font-weight: 600; line-height: 16px; }
+        .calendar-guide-intro { margin: 8px 0 10px; color: #7a8fa6; font-size: 12px; line-height: 15px; }
+        .calendar-guide-section { padding-top: 12px; border-top: 1px solid #d1dce8; }
+        .calendar-guide-section + .calendar-guide-section { margin-top: 12px; }
+        .calendar-guide h3 { margin: 0 0 14px; font-size: 12px; line-height: 16px; font-weight: 600; }
+        .calendar-guide-row { display: grid; grid-template-columns: 16px minmax(0, 1fr); align-items: center; gap: 12px; }
+        .calendar-guide-row + .calendar-guide-row { margin-top: 8px; }
+        .calendar-guide-row strong { display: block; font-size: 11px; line-height: 15px; font-weight: 600; }
+        .calendar-guide-row p { margin: 2px 0 0; color: #7a8fa6; font-size: 10px; line-height: 13px; }
+        .calendar-guide-practices .calendar-guide-row { grid-template-columns: 60px minmax(0, 1fr); }
+        .calendar-guide-practices .calendar-guide-row + .calendar-guide-row { margin-top: 6px; }
+        .calendar-guide-practices .calendar-guide-row > img { display: block; width: 60px; height: 44px; object-fit: contain; }
+        .calendar-guide-section:not(.calendar-guide-practices):not(.calendar-guide-flow) .calendar-guide-row + .calendar-guide-row { margin-top: 6px; }
+        .calendar-guide-practices .calendar-guide-row strong { font-size: 12px; line-height: 15px; }
+        .calendar-guide-levels { background: linear-gradient(180deg, #ddcf76, #f3ba60 55%, #c35c76); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .calendar-guide-symbol { display: grid; width: 16px; height: 16px; place-items: center; }
+        .calendar-guide-symbol svg { width: 16px; height: 16px; stroke-width: 1.5; }
+        .calendar-guide-mock { border-radius: 50%; background: linear-gradient(135deg, #009b9d 25%, #9bce47); }
+        .calendar-guide-practice { border-radius: 50%; background: linear-gradient(135deg, #00cfaa, #2589ff 60%, #ad73ff); color: #fff; box-shadow: 0 1px 3px #8fbec9; }
+        .calendar-guide-practice svg { width: 12px; height: 12px; }
+        .calendar-guide-locked { color: #242424; }
+        .calendar-guide-completed { color: #00c995; }
+        .calendar-guide-step { display: grid; width: 20px; height: 20px; place-items: center; border-radius: 50%; color: #fff; font-size: 12px; }
+        .calendar-guide-step-one { background: linear-gradient(135deg, #009f9b, #bce874); }
+        .calendar-guide-step-two { background: linear-gradient(135deg, #00babc, #3584ff 60%, #d17aff); }
+        .calendar-guide-step-three { background: #b9b9b9; }
+        .calendar-guide-flow .calendar-guide-row { grid-template-columns: 20px minmax(0, 1fr); gap: 8px; }
 
         .calendar-legend {
             grid-column: 1;
@@ -4223,7 +4259,10 @@ body {
                     <div class="calendar-head" aria-label="Calendar navigation">
                         <div>
                             <div class="calendar-head-title">
-                                <div class="eyebrow">MONTHLY STUDY PLAN</div>
+                                <div class="calendar-heading-label">
+                                    <div class="eyebrow">MONTHLY STUDY PLAN</div>
+                                    <button class="calendar-guide-trigger" id="calendarGuideTrigger" type="button" popovertarget="calendarGuide" aria-label="Open calendar guide" aria-haspopup="dialog" aria-controls="calendarGuide" aria-expanded="false"><i data-lucide="info" aria-hidden="true"></i></button>
+                                </div>
                                 <h2 id="monthPlannerHeading">This month</h2>
                                 <p>Mock test every 4th day · Practice on the following 3 days</p>
                             </div>
@@ -4320,6 +4359,30 @@ body {
     <div class="modal" id="modal"></div>
     <div class="toast" id="toast"></div>
 
+    <aside class="calendar-guide" id="calendarGuide" popover="auto" role="dialog" aria-labelledby="calendarGuideTitle" tabindex="-1">
+        <h2 id="calendarGuideTitle">Calendar Guide</h2>
+        <p class="calendar-guide-intro">Understand the icons, colors,<br>and flow</p>
+        <section class="calendar-guide-section calendar-guide-practices">
+            <h3>What the icons mean</h3>
+            <div class="calendar-guide-row"><img src="../asset/figma/mock-listening.png" alt=""><div><strong>Listening Practice</strong><p>(Part A / B / C)</p></div></div>
+            <div class="calendar-guide-row"><img src="../asset/figma/mock-structure.png" alt=""><div><strong>Structure<br>Practice</strong><p><span class="calendar-guide-levels">(Beginner/<br>Intermediate/<br>Advance)</span></p></div></div>
+            <div class="calendar-guide-row"><img src="../asset/figma/mock-reading.png" alt=""><div><strong>Reading Practice</strong><p><span class="calendar-guide-levels">(Beginner/<br>Intermediate)</span></p></div></div>
+        </section>
+        <section class="calendar-guide-section">
+            <h3>What the icons mean</h3>
+            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-mock" aria-hidden="true"></span><div><strong>Mock Test</strong><p>Full Test (3 Section) to track your progress</p></div></div>
+            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-practice" aria-hidden="true"><i data-lucide="sparkles"></i></span><div><strong>Practice Test</strong><p>AI suggests practice based on your results</p></div></div>
+            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-locked" aria-hidden="true"><i data-lucide="lock-keyhole"></i></span><div><strong>Locked</strong><p>AI suggests practice based on your results</p></div></div>
+            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-completed" aria-hidden="true"><i data-lucide="circle-check"></i></span><div><strong>Completed</strong><p>AI suggests practice based on your results</p></div></div>
+        </section>
+        <section class="calendar-guide-section calendar-guide-flow">
+            <h3>Your Study Flow</h3>
+            <div class="calendar-guide-row"><span class="calendar-guide-step calendar-guide-step-one" aria-hidden="true">1</span><div><strong>Day 1 - Mock Test</strong><p>Establish baseline &amp; generate AI schedule</p></div></div>
+            <div class="calendar-guide-row"><span class="calendar-guide-step calendar-guide-step-two" aria-hidden="true">2</span><div><strong>Day 2–4 - Practice Test</strong><p>Establish baseline &amp; generate AI schedule</p></div></div>
+            <div class="calendar-guide-row"><span class="calendar-guide-step calendar-guide-step-three" aria-hidden="true">3</span><div><strong>Day 5+ - Subscription</strong><p>Establish baseline &amp; generate AI schedule</p></div></div>
+        </section>
+    </aside>
+
     <div class="toefl-101-modal" id="toefl101Modal" aria-hidden="true">
         <article class="toefl-101-dialog" role="dialog" aria-modal="true" aria-labelledby="toefl101Title">
             <header class="toefl-101-dialog__header"><div><p class="toefl-101-dialog__eyebrow">QuickCheck Learning Guide</p><h2 id="toefl101Title">TOEFL ITP 101</h2></div><button class="toefl-101-close" id="closeToefl101" type="button" aria-label="Close TOEFL ITP 101"><i class="ti ti-x" aria-hidden="true"></i></button></header>
@@ -4343,6 +4406,38 @@ body {
     <script src="toefl-developer-auth.js?v=20260918b"></script>
     <script>
         lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
+        const calendarGuide = document.getElementById("calendarGuide");
+        const calendarGuideTrigger = document.getElementById("calendarGuideTrigger");
+        function positionCalendarGuide() {
+            const anchor = calendarGuideTrigger.getBoundingClientRect();
+            const width = calendarGuide.offsetWidth;
+            const height = calendarGuide.offsetHeight;
+            const left = Math.max(12, Math.min(anchor.right + 8, document.documentElement.clientWidth - width - 12));
+            const top = Math.max(12, Math.min(anchor.top, window.innerHeight - height - 12));
+            calendarGuide.style.left = `${left}px`;
+            calendarGuide.style.top = `${top}px`;
+        }
+        calendarGuide.addEventListener("toggle", () => {
+            const open = calendarGuide.matches(":popover-open");
+            calendarGuideTrigger.setAttribute("aria-expanded", String(open));
+            if (open) {
+                positionCalendarGuide();
+                calendarGuide.focus({ preventScroll: true });
+            }
+        });
+        calendarGuide.addEventListener("keydown", (event) => {
+            if (event.key === "Escape") {
+                event.preventDefault();
+                calendarGuide.hidePopover();
+                calendarGuideTrigger.focus({ preventScroll: true });
+            }
+        });
+        window.addEventListener("resize", () => {
+            if (calendarGuide.matches(":popover-open")) positionCalendarGuide();
+        });
+        window.addEventListener("scroll", () => {
+            if (calendarGuide.matches(":popover-open")) positionCalendarGuide();
+        }, true);
         const MONTH_PICKER_YEAR = 2026;
         const STORAGE_KEY = "toefl_schedule_v3";
         const MONTH_LABELS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];

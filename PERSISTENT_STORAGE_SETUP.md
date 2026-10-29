@@ -220,6 +220,8 @@ Both contact records also store `requesterId`, the UID of the learner who sent t
 
 ### Calendar activity visibility
 
+The info button beside **MONTHLY STUDY PLAN** opens the Calendar Guide: practice section illustrations, status/color meanings, and the three-step study flow. The guide uses a native light-dismiss popover above clipped calendar containers. Click outside, click the info button again, or press Escape to close it. It stays within the viewport and scrolls internally on shorter screens.
+
 The dashboard calendar initially shows the three section icons only on days 1–4 of each month. Later dates retain their dates, mock-test labels/colors, and navigation, but no section icons. A completed `full-mock` history entry (all three sections in the same mock session) reveals the three calendar days after its scheduled `setDate`, using its submission date when no scheduled date exists. Partial mocks and standalone section results do not unlock days. Unlocks accumulate, can cross month/year boundaries, and refresh with account-scoped history updates. Adjacent-month placeholder cells never show section icons. This is a display rule, not an access restriction on tests.
 
 ### Accepted-request notifications
