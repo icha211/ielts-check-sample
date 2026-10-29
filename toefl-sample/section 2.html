@@ -446,6 +446,62 @@
         flex: 0 0 auto;
     }
 
+    .qc-core__guide {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        padding: 9px;
+        background: #dcdcff;
+    }
+
+    .qc-core__guide[hidden] { display: none; }
+
+    .qc-core__guide-card {
+        min-width: 0;
+        padding: 12px;
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .qc-core__guide-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 8px;
+        color: #6366f1;
+        font: 600 14px/1.3 "Plus Jakarta Sans", Arial, sans-serif;
+    }
+
+    .qc-core__guide-letter {
+        display: inline-flex;
+        width: 32px;
+        height: 32px;
+        flex: 0 0 32px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #5558d8;
+        color: #fff;
+        font-size: 15px;
+    }
+
+    .qc-core__guide-note {
+        display: block;
+        color: #6971b7;
+        font-size: 9px;
+        font-style: italic;
+        font-weight: 400;
+        letter-spacing: .02em;
+    }
+
+    .qc-core__guide-card p {
+        margin: 0;
+        color: #7185a5;
+        font: 400 12px/1.4 "Plus Jakarta Sans", Arial, sans-serif;
+        letter-spacing: .04em;
+        text-align: justify;
+    }
+
     .qc-core__toggle {
         display: inline-flex;
         flex: 0 0 auto;
@@ -770,6 +826,7 @@
         .qc-core__head { gap: 10px; padding: 10px 12px; }
         .qc-core__heading { font-size: 15px; }
         .qc-core__toggle { min-height: 36px; padding: 0 10px; font-size: 11px; }
+        .qc-core__guide { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .qc-core__item { grid-template-columns: 1fr; }
         .qc-core__row { grid-template-columns: 1fr; }
     }
@@ -777,6 +834,7 @@
     @media (max-width: 460px) {
         .qc-core__head { align-items: flex-start; flex-direction: column; }
         .qc-core__toggle { align-self: flex-end; }
+        .qc-core__guide { grid-template-columns: 1fr; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -3373,7 +3431,7 @@
             const explanationSource = source || buildQcCoreMarkdown(questionNumber, question, correct);
 
             const parsed = parseQcCoreExplanation(explanationSource);
-            const bodyId = `qc-core-body-${String(uid).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+            const guideId = `qc-core-guide-${String(uid).replace(/[^a-zA-Z0-9_-]/g, "-")}`;
             const buildQcCoreHeader = (expandLabel, collapseLabel) => `
                 <div class="qc-core__head">
                     <div class="qc-core__heading">
@@ -3382,9 +3440,9 @@
                     </div>
                     <button class="qc-core__toggle" type="button" data-qc-core-toggle
                         data-expand-label="${expandLabel}" data-collapse-label="${collapseLabel}"
-                        aria-controls="${bodyId}" aria-expanded="true">
-                        <span data-qc-core-toggle-label>${collapseLabel}</span>
-                        <i class="ph ph-caret-up" aria-hidden="true"></i>
+                        aria-controls="${guideId}" aria-expanded="false">
+                        <span data-qc-core-toggle-label>${expandLabel}</span>
+                        <i class="ph ph-caret-down" aria-hidden="true"></i>
                     </button>
                 </div>`;
             if (parsed.isEmpty) {
@@ -3436,7 +3494,25 @@
                 <section class="instant-panel">
                     <div class="qc-core">
                         ${buildQcCoreHeader("What is C.O.R.E Analysis?", "Hide C.O.R.E Analysis?")}
-                        <div class="qc-core__body" id="${bodyId}">
+                        <div class="qc-core__guide" id="${guideId}" hidden>
+                            <article class="qc-core__guide-card">
+                                <h3 class="qc-core__guide-title"><span class="qc-core__guide-letter">C</span>Concept</h3>
+                                <p>Menentukan topik grammar atau materi yang sedang diuji.</p>
+                            </article>
+                            <article class="qc-core__guide-card">
+                                <h3 class="qc-core__guide-title"><span class="qc-core__guide-letter">O</span><span>Observe S-V-C<span class="qc-core__guide-note">(Subject-Verb-Complement)</span></span></h3>
+                                <p>Mengidentifikasi S-V-C, lalu mencari bagian yang sudah ada dan yang hilang di kalimat.</p>
+                            </article>
+                            <article class="qc-core__guide-card">
+                                <h3 class="qc-core__guide-title"><span class="qc-core__guide-letter">R</span>Requirement</h3>
+                                <p>Menarik kesimpulan tentang kebutuhan kalimat dan menentukan apa yang harus dicari di pilihan ganda.</p>
+                            </article>
+                            <article class="qc-core__guide-card">
+                                <h3 class="qc-core__guide-title"><span class="qc-core__guide-letter">E</span>Eliminate</h3>
+                                <p>Mengeliminasi opsi A, B, C, dan D dengan alasan berdasarkan S-V-C.</p>
+                            </article>
+                        </div>
+                        <div class="qc-core__body">
                             ${parsed.concept ? `<div class="qc-core__block qc-core__concept">
                                 <div class="qc-core__label">C – Concept :</div>
                                 <div class="qc-core__text"><strong>${escapeHtml(parsed.concept)}</strong></div>
