@@ -56,7 +56,7 @@
   <a class="qcnav-brand" href="index.html" aria-label="Quick Check dashboard"><img src="../asset/icon/logo.png" alt="Quick Check"></a>
   <nav class="qcnav-links" aria-label="Main navigation">
     <a class="qcnav-link${cls("dashboard")}" href="index.html"${cur("dashboard")}><i data-lucide="house"></i>TOEFL ITP Dashboard</a>
-    <a class="qcnav-link" href="developer.html"><i data-lucide="book-bookmark"></i>English Materials</a>
+    <a class="qcnav-link" href="developer.html" data-developer-only hidden><i data-lucide="book-bookmark"></i>English Materials</a>
   </nav>
   <div class="qcnav-actions">
     <a class="qcnav-upgrade" href="index.html#upgrade">Upgrade</a>
@@ -87,8 +87,8 @@
   <a class="qcnav-item${cls("message")}" href="message.html" data-message-link="Message"${cur("message")}><span class="qcnav-ico"><i data-lucide="message-circle"></i><span class="qcnav-badge" data-message-badge aria-hidden="true" hidden></span></span><span class="qcnav-text">Message</span></a>
   <a class="qcnav-item" href="social.html#community"><span class="qcnav-ico"><i data-lucide="users"></i></span><span class="qcnav-text">Community</span></a>
   <div class="qcnav-divider"></div>
-  <div class="qcnav-label">Admin</div>
-  <a class="qcnav-item" href="developer.html"><span class="qcnav-ico"><i data-lucide="book-open"></i></span><span class="qcnav-text">Developer</span></a>
+  <div class="qcnav-label" data-developer-only hidden>Admin</div>
+  <a class="qcnav-item" href="developer.html" data-developer-only hidden><span class="qcnav-ico"><i data-lucide="book-open"></i></span><span class="qcnav-text">Developer</span></a>
   <a class="qcnav-item" href="../index.html"><span class="qcnav-ico"><i data-lucide="undo-2"></i></span><span class="qcnav-text">Back to IELTS</span></a>
   <div class="qcnav-spacer"></div>
   <div class="qcnav-account">
@@ -122,6 +122,13 @@
 
   ensureIcons();
 
+  import("./js/developer-access.js").then(({ watchDeveloperAccess }) => {
+    watchDeveloperAccess((isDeveloper) => {
+      doc.querySelectorAll("[data-developer-only]").forEach((el) => { el.hidden = !isDeveloper; });
+    });
+  }).catch((error) => {
+    console.error("[DeveloperAccess] Could not check developer access:", error);
+  });
   const setCollapsed = (value) => {
     body.classList.toggle("qcnav-collapsed", value);
     const btn = doc.getElementById("qcnavCollapse");

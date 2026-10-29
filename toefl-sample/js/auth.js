@@ -183,7 +183,6 @@ function setAuthMode(signUp) {
     isSignUp = signUp;
     isCompletingSignUp = false;
     emailInput.readOnly = false;
-    if (!isSignUp) emailInput.value = DEVELOPER_EMAIL;
     authCard.classList.toggle("signin-mode", !isSignUp);
     authHeading.textContent = isSignUp ? "Master Your TOEFL ITP Journey" : "Welcome Back";
     submitButton.textContent = isSignUp ? "Send Activation Link" : "Sign In";
