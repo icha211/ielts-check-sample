@@ -175,7 +175,7 @@ test("a stale connection callback cannot publish after an account switch", async
     assert.equal(app.writes.length, 1);
 });
 
-test("dashboard prioritizes online partners, excludes the viewer and hides the directory count", () => {
+test("dashboard shows only online partners, excludes the viewer and updates presence live", () => {
     const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
     const start = html.indexOf("        window.updateToeflPartnerDirectory =");
     const end = html.indexOf("\n        window.setToeflPartnerDirectoryState", start);
@@ -183,22 +183,38 @@ test("dashboard prioritizes online partners, excludes the viewer and hides the d
     const context = vm.createContext({
         window: {}, partnerDirectoryAuthenticated: true,
         partnerCountryInfo: (code) => ({ name: code, flag: code === "ID" ? "ID" : "" }),
-        partnerProfiles: [], partnerOffset: 0, selectedPartnerId: null,
+        partnerProfiles: [], partnerDirectoryProfiles: [], partnerOffset: 0, selectedPartnerId: null,
         renderPartnerNetwork() {}, renderPartnerOrbit() {},
+        resetSelectedPartner() { context.selectedPartnerId = null; },
         partnerSearch: { value: "" }, document: { getElementById: () => status }
     });
     vm.runInContext(html.slice(start, end), context);
     context.window.updateToeflPartnerDirectory({
         viewer: { displayName: "Viewer" },
         offline: { displayName: "A", nationality: "ID" },
+        disconnected: { displayName: "B", presence: { device: false } },
         online: { displayName: "Z", nationality: "ID", photoURL: "photo.png", presence: { device: true } }
     }, "viewer");
-    assert.equal(context.partnerProfiles.length, 2);
+    assert.equal(context.partnerProfiles.length, 1);
+    assert.equal(context.partnerDirectoryProfiles.length, 3, "offline learners remain available to the connections panel");
     assert.equal(context.partnerProfiles[0].id, "online");
     assert.equal(context.partnerProfiles[0].photo, "photo.png");
     assert.equal(context.partnerProfiles[0].flag, "ID");
     assert.equal(status.parentElement.hidden, true);
     assert.doesNotMatch(status.textContent, /online \/|learners$/);
+    context.selectedPartnerId = "online";
+    context.window.updateToeflPartnerDirectory({
+        viewer: { displayName: "Viewer", presence: { device: true } },
+        online: { displayName: "Z", presence: { first: false, second: false } }
+    }, "viewer");
+    assert.equal(context.partnerProfiles.length, 0);
+    assert.equal(context.selectedPartnerId, null);
+    assert.equal(status.parentElement.hidden, false);
+    assert.match(status.textContent, /No other learners online/);
+    context.window.updateToeflPartnerDirectory({
+        online: { displayName: "Z", presence: { first: false, second: true } }
+    }, "viewer");
+    assert.equal(context.partnerProfiles.length, 1, "any active device makes the learner online");
 });
 
 test("network statistics and members include only accepted connections and refresh on contact changes", () => {
@@ -213,7 +229,7 @@ test("network statistics and members include only accepted connections and refre
     const nodes = {};
     const node = (id) => nodes[id] || (nodes[id] = element());
     const context = vm.createContext({
-        window: {}, partnerContacts: {}, partnerProfiles: [
+        window: {}, partnerContacts: {}, partnerProfiles: [], partnerDirectoryProfiles: [
             { id: "accepted", name: "Dara", level: "B2", country: "Indonesia", flag: "ID" },
             { id: "incoming", name: "Lina", level: "C1", country: "Australia" },
             { id: "outgoing", name: "Sam", level: "A1", country: "Japan" },
@@ -245,4 +261,54 @@ test("network statistics and members include only accepted connections and refre
     context.window.setToeflPartnerContacts({});
     assert.equal(node("partnerConnectionCount").textContent, "0");
     assert.match(node("partnerConnectionGrid").children[0].textContent, /No connections yet/);
+});
+
+test("carousel controls stay constant-sized for 1,000 online learners and arrows wrap", () => {
+    const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+    function element() {
+        return {
+            children: [], textContent: "", attributes: {}, handlers: {},
+            style: { setProperty() {} },
+            setAttribute(key, value) { this.attributes[key] = value; },
+            removeAttribute(key) { delete this.attributes[key]; },
+            append(...children) { this.children.push(...children); },
+            replaceChildren() { this.children = []; },
+            addEventListener(event, callback) { this.handlers[event] = callback; }
+        };
+    }
+    const controls = element();
+    const context = vm.createContext({
+        document: { createElement: element, querySelector: () => controls },
+        partnerProfiles: Array.from({ length: 1000 }, (_, id) => ({ id: String(id) })),
+        partnerOffset: 0, partnerDirectoryAuthenticated: true,
+        partnerOrbit: element(), partnerPagination: element(),
+        previousPartnerButton: element(), nextPartnerButton: element(),
+        partnerSearch: element(),
+        createPartnerAvatar: () => element()
+    });
+    const start = html.indexOf("        function renderPartnerOrbit()");
+    vm.runInContext(html.slice(start, html.indexOf("        function renderSelectedPartner", start)), context);
+    const eventsStart = html.indexOf('        partnerSearch.addEventListener("input"');
+    vm.runInContext(html.slice(eventsStart, html.indexOf('        partnerMatchButton.addEventListener', eventsStart)), context);
+    context.renderPartnerOrbit();
+    const total = vm.runInContext("(1000).toLocaleString()", context);
+    assert.equal(context.partnerPagination.textContent, `1 / ${total}`);
+    assert.equal(context.partnerPagination.children.length, 0, "does not create one dot per learner");
+    assert.equal(context.partnerOrbit.children[0].children.length, 6, "only five avatars plus their motion style are mounted");
+    assert.equal(context.previousPartnerButton.disabled, false);
+    context.previousPartnerButton.handlers.click();
+    assert.equal(context.partnerOffset, 999);
+    assert.equal(context.partnerPagination.textContent, `${total} / ${total}`);
+    context.nextPartnerButton.handlers.click();
+    assert.equal(context.partnerOffset, 0);
+    context.partnerProfiles = [{ id: "one" }];
+    context.renderPartnerOrbit();
+    assert.equal(context.partnerPagination.textContent, "1 / 1");
+    assert.equal(context.previousPartnerButton.disabled, true);
+    assert.equal(context.nextPartnerButton.disabled, true);
+    context.partnerProfiles = [];
+    context.renderPartnerOrbit();
+    assert.equal(controls.hidden, true);
+    assert.equal(context.partnerPagination.textContent, "");
+    assert.match(context.partnerOrbit.children[0].textContent, /No other learners online/);
 });

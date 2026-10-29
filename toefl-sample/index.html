@@ -3060,11 +3060,10 @@ body {
         .partner-avatar:focus-visible, .partner-arrow:focus-visible, .partner-match:focus-visible, .partner-search input:focus-visible, .partner-search-option:focus-visible { outline: 3px solid #0d9488; outline-offset: 3px; }
         .nationality-badge { position: absolute; right: -3px; bottom: -2px; display: grid; width: 22px; height: 22px; place-items: center; border: 2px solid #fff; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px #163f5230; font-size: 13px; line-height: 1; }
         .partner-controls { display: flex; min-height: 27px; align-items: center; justify-content: center; gap: 12px; margin: 0 0 4px; }
-        .partner-arrow { display: grid; width: 26px; height: 26px; place-items: center; border: 1px solid #d7e9ee; border-radius: 50%; background: #fff; color: #0b897e; cursor: pointer; transition: background 160ms ease, border-color 160ms ease, transform 160ms ease; }
+        .partner-arrow { display: grid; width: 44px; height: 44px; flex: 0 0 44px; place-items: center; border: 1px solid #d7e9ee; border-radius: 50%; background: #fff; color: #0b897e; cursor: pointer; transition: background 160ms ease, border-color 160ms ease, transform 160ms ease; }
         .partner-arrow:hover { transform: translateY(-1px); border-color: #75d3c4; background: #edfbf8; }
-        .partner-pagination { display: flex; align-items: center; gap: 5px; }
-        .partner-pagination i { display: block; width: 5px; height: 5px; border-radius: 6px; background: #c9dce2; }
-        .partner-pagination i.active { width: 17px; background: #0b9c8b; }
+        .partner-pagination { min-width: 0; width: 12ch; overflow: hidden; color: #315c70; font: 600 11px/1.4 "Plus Jakarta Sans", sans-serif; font-variant-numeric: tabular-nums; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+        .partner-arrow:disabled { opacity: .4; cursor: not-allowed; transform: none; }
         .partner-selected { display: flex; min-height: 42px; max-width: 270px; align-items: center; justify-content: flex-start; gap: 9px; margin: 0 auto 5px; padding: 6px 10px; border-radius: 12px; background: #f1faf8; color: #315c70; text-align: left; }
         .partner-selected-icon { display: grid; width: 27px; height: 27px; flex: 0 0 27px; place-items: center; border-radius: 9px; background: #dff8f2; color: #079b8f; font-size: 17px; }
         .partner-selected-copy { min-width: 0; }
@@ -3880,8 +3879,7 @@ body {
             color: #fff;
         }
         .partner-card .partner-arrow:hover { border-color: rgba(255, 255, 255, .65); background: rgba(255, 255, 255, .24); }
-        .partner-card .partner-pagination i { background: rgba(255, 255, 255, .4); }
-        .partner-card .partner-pagination i.active { background: #fff; }
+        .partner-card .partner-pagination { color: rgba(255, 255, 255, .9); }
 
         .partner-card .partner-selected {
             max-width: none;
@@ -4171,10 +4169,10 @@ body {
                                 <p class="partner-directory-message" id="partnerDirectoryMessage" role="status" aria-live="polite" hidden></p>
                                 <div class="partner-carousel">
                                     <div class="partner-discovery">
-                                        <div class="partner-orbit" id="partnerOrbit" role="group" aria-label="Suggested study partners"></div>
+                                        <div class="partner-orbit" id="partnerOrbit" role="group" aria-label="Online study partners"></div>
                                         <div class="partner-controls">
                                             <button class="partner-arrow" id="previousPartner" type="button" aria-label="Previous suggested partners"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
-                                            <span class="partner-pagination" id="partnerPagination" aria-hidden="true"></span>
+                                            <span class="partner-pagination" id="partnerPagination" role="status" aria-live="polite" aria-atomic="true"></span>
                                             <button class="partner-arrow" id="nextPartner" type="button" aria-label="Next suggested partners"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
                                         </div>
                                         <div class="partner-selected" id="partnerSelected" aria-live="polite">
@@ -4187,7 +4185,7 @@ body {
                                 <div class="partner-search-wrap">
                                     <label class="partner-search">
                                         <i class="ti ti-search" aria-hidden="true"></i>
-                                        <input id="partnerSearch" type="search" placeholder="Search name, country or level" autocomplete="off" aria-label="Search study partners">
+                                        <input id="partnerSearch" type="search" placeholder="Search online learners" autocomplete="off" aria-label="Search online study partners by name, country or level">
                                         <i class="ti ti-arrow-right" aria-hidden="true"></i>
                                     </label>
                                     <div class="partner-search-result" id="partnerSearchResult" aria-live="polite"></div>
@@ -4399,6 +4397,7 @@ body {
         const nextPartnerButton = document.getElementById("nextPartner");
 
         let partnerProfiles = [];
+        let partnerDirectoryProfiles = [];
         let partnerOffset = 0;
         let selectedPartnerId = null;
         let partnerContacts = {};
@@ -4453,7 +4452,7 @@ body {
         }
 
         function renderPartnerNetwork() {
-            const profiles = partnerProfiles.filter((profile) => partnerContacts[profile.id]?.status === "connected");
+            const profiles = partnerDirectoryProfiles.filter((profile) => partnerContacts[profile.id]?.status === "connected");
             const levelCounts = new Map(["A1", "A2", "B1", "B2", "C1", "C2"].map((level) => [level, 0]));
             const countryCounts = new Map();
             profiles.forEach((profile) => {
@@ -4556,10 +4555,12 @@ body {
                     isOnline: Boolean(isOnline)
                 };
             });
-            const currentProfile = profiles.find((profile) => profile.id === currentUid);
-            partnerProfiles = profiles.filter((profile) => profile.id !== currentUid)
-                .sort((left, right) => Number(right.isOnline) - Number(left.isOnline) || left.name.localeCompare(right.name));
-            partnerOffset = Math.min(partnerOffset, Math.max(0, partnerProfiles.length - 1));
+            const previousFirstId = partnerProfiles[partnerOffset]?.id;
+            partnerDirectoryProfiles = profiles.filter((profile) => profile.id !== currentUid)
+                .sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
+            partnerProfiles = partnerDirectoryProfiles.filter((profile) => profile.isOnline);
+            const previousFirstIndex = partnerProfiles.findIndex((profile) => profile.id === previousFirstId);
+            partnerOffset = previousFirstIndex >= 0 ? previousFirstIndex : Math.min(partnerOffset, Math.max(0, partnerProfiles.length - 1));
             renderPartnerNetwork();
             renderPartnerOrbit();
 
@@ -4574,9 +4575,7 @@ body {
                 status.parentElement.hidden = partnerDirectoryAuthenticated && partnerProfiles.length > 0;
                 status.textContent = !partnerDirectoryAuthenticated
                     ? "Sign in to find study partners"
-                    : currentProfile
-                        ? "You are listed. Waiting for other learners."
-                        : "No other learners yet.";
+                    : "No other learners online right now.";
             }
             if (partnerSearch.value.trim()) renderPartnerSearch(partnerSearch.value);
         };
@@ -4645,10 +4644,11 @@ body {
                 const emptyMessage = document.createElement("p");
                 emptyMessage.className = "partner-directory-empty";
                 emptyMessage.textContent = partnerDirectoryAuthenticated
-                    ? "No other learners yet. They will appear here when they sign in."
+                    ? "No other learners online right now. Check back soon."
                     : "Sign in to see study partners.";
                 partnerOrbit.append(emptyMessage);
-                partnerPagination.replaceChildren();
+                partnerPagination.textContent = "";
+                partnerPagination.removeAttribute("aria-label");
                 previousPartnerButton.disabled = true;
                 nextPartnerButton.disabled = true;
                 if (partnerControls) partnerControls.hidden = true;
@@ -4659,7 +4659,7 @@ body {
             nextPartnerButton.disabled = partnerProfiles.length < 2;
             const track = document.createElement("div");
             track.className = `partner-track${partnerProfiles.length > 1 ? " is-moving" : ""}`;
-            const cycleSlots = Math.max(5, partnerProfiles.length);
+            const cycleSlots = 5;
             track.style.setProperty("--partner-loop-duration", `${cycleSlots * 4}s`);
             const motionStyle = document.createElement("style");
             const stops = [
@@ -4675,7 +4675,7 @@ body {
                 `${step / cycleSlots * 100}% { transform: translateX(${x}cqw) translateY(${y}px) scale(${scale}); opacity: ${opacity}; z-index: ${depth}; }`
             ).join("")}${cycleSlots > 5 ? "100% { transform: translateX(60cqw) translateY(22px) scale(.55); opacity: 0; z-index: 1; }" : ""}}`;
             track.append(motionStyle);
-            const visibleProfiles = Array.from({ length: partnerProfiles.length }, (_, slot) => {
+            const visibleProfiles = Array.from({ length: Math.min(5, partnerProfiles.length) }, (_, slot) => {
                 return partnerProfiles[(partnerOffset + slot) % partnerProfiles.length];
             });
             visibleProfiles.forEach((profile, index) => {
@@ -4690,12 +4690,8 @@ body {
             });
             partnerOrbit.append(track);
 
-            partnerPagination.replaceChildren();
-            partnerProfiles.forEach((_, index) => {
-                const dot = document.createElement("i");
-                if (index === partnerOffset) dot.classList.add("active");
-                partnerPagination.append(dot);
-            });
+            partnerPagination.textContent = `${(partnerOffset + 1).toLocaleString()} / ${partnerProfiles.length.toLocaleString()}`;
+            partnerPagination.setAttribute("aria-label", `Starting at learner ${partnerOffset + 1} of ${partnerProfiles.length} online learners`);
         }
 
         function renderSelectedPartner(profile) {
@@ -4795,7 +4791,7 @@ body {
             if (matches.length === 0) {
                 const emptyMessage = document.createElement("p");
                 emptyMessage.className = "partner-search-empty";
-                emptyMessage.textContent = "No learners match that search.";
+                emptyMessage.textContent = "No online learners match that search.";
                 partnerSearchResult.append(emptyMessage);
             } else {
                 matches.forEach((profile) => {
