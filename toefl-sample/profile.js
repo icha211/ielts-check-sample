@@ -1,5 +1,5 @@
 import { auth, db } from "./js/firebase-config.js";
-import { signOutAndRedirect, resolveDisplayName } from "./js/account-menu.js?v=20261031-account";
+import { signOutAndRedirect, resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { compressImageToLimit } from "./js/image-compress.js?v=20261031-compress";
 import {
     deleteUser,

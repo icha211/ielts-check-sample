@@ -70,6 +70,13 @@ export function initAccountMenu() {
         signOutAndRedirect();
     });
 
+    let planLabel = "Free";
+    const paintPlan = () => {
+        if (els.plan) els.plan.textContent = window.QCPrefs ? window.QCPrefs.t(planLabel) : planLabel;
+    };
+    paintPlan();
+    window.addEventListener("qc:langchange", paintPlan);
+
     let version = 0;
     onAuthStateChanged(auth, async (user) => {
         const current = ++version;
@@ -98,7 +105,8 @@ export function initAccountMenu() {
         paintAvatar(els.menuAvatar, name, photo);
         if (els.name) els.name.textContent = name;
         if (els.email) els.email.textContent = user.email || "";
-        if (els.plan) els.plan.textContent = resolvePlanLabel(subscription);
+        planLabel = resolvePlanLabel(subscription);
+        paintPlan();
         avatarBtn.setAttribute("aria-label", `Account menu for ${name}`);
     });
 }

@@ -4123,6 +4123,23 @@ body {
         }
 
         .dashboard-widget .user-avatar-wrap .avatar { width: 100%; height: 100%; }
+        .user-avatar-button {
+            display: block;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: none;
+            cursor: zoom-in;
+            transition: transform 160ms ease, box-shadow 160ms ease;
+        }
+        .user-avatar-button:hover { transform: scale(1.05); box-shadow: 0 0 0 3px rgba(8, 126, 119, .18); }
+        .user-avatar-button:active { transform: scale(.97); }
+        .user-avatar-button:focus-visible { outline: 3px solid #087e77; outline-offset: 3px; }
+        @media (prefers-reduced-motion: reduce) {
+            .user-avatar-button { transition: none; }
+        }
 
         .user-country-flag {
             position: absolute;
@@ -4182,45 +4199,180 @@ body {
         }
     </style>
     <link rel="stylesheet" href="toefl-navigation.css?v=20260918b">
-    <link rel="stylesheet" href="site-navbar.css?v=20261031-sidebar">
+    <script src="qc-preferences.js?v=20261030-prefs"></script>
+    <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
     <link rel="stylesheet" href="card-calendar.css"/>
     <link rel="stylesheet" href="card-strike.css"/>
     <script src="card-calendar.js" defer></script>
     <script src="card-strike.js" defer></script>
+
+    <style id="qc-dashboard-dark">
+        html[data-theme="dark"] { --text: #e3eef0; --muted: #93a9b0; --text-muted: #93a9b0; --blue-900: #e3eef0; --bg-widget: #0f1a1d; background: #0c1517; }
+        html[data-theme="dark"] body,
+        html[data-theme="dark"] .page-content { background: #0c1517; color: #e3eef0; }
+        html[data-theme="dark"] .hero { background: transparent; }
+        html[data-theme="dark"] .shell * { border-color: #22343a; }
+        html[data-theme="dark"] :is(.month-panel, .score-panel, .daily-calendar-block, .month-selector-block,
+            .dashboard-widget > .widget-summary, .dashboard-widget .score-summary, .dashboard-widget .strike-card,
+            .agenda-panel, .agenda-panel.is-zero-state, .agenda-panel.is-generated, .stat-card) { background: #0f1a1d; border-color: #22343a; box-shadow: none; }
+        html[data-theme="dark"] :is(.daily-calendar-block, .month-selector-block)::before { background: none; }
+        html[data-theme="dark"] .dashboard-summary > .dashboard-widget { background: transparent; }
+        html[data-theme="dark"] :is(.welcome-title, .dashboard-widget .welcome-title, .dashboard-widget .preview-content strong,
+            .score-summary__heading h2, .dashboard-widget .strike-card .title, .agenda-zero-title,
+            .agenda-panel .agenda-zero-header h3, .agenda-zero-test-copy strong, .agenda-recommendation-content h4,
+            .score-panel h3, .daily-task-card, .progress-title, .progress-subtext strong, .stat-value) { color: #e3eef0; }
+        html[data-theme="dark"] :is(.dashboard-widget .subtitle, .dashboard-widget .preview-content span,
+            .score-summary__date, .score-goal, .score-summary strong small, .strike-card .header-right,
+            .calendar-legend, .calendar-layout-shell .calendar-head-title p, .agenda-zero-description,
+            .agenda-zero-step p, .agenda-zero-test-copy span, .agenda-zero-note, .agenda-zero-badge,
+            .agenda-generated-summary, .agenda-recommendation-stats, .score-hint, .stat-label,
+            .progress-subtext, .strike-empty, .score-panel p, .eyebrow) { color: #93a9b0; }
+        html[data-theme="dark"] :is(.calendar-layout-shell .calendar-head-title h2, .agenda-zero-title span,
+            .score-goal__delta, .strike-card .header-icon, .agenda-zero-mark, .agenda-zero-step-number,
+            .agenda-zero-test-count, .calendar-guide-trigger, .calendar-guide-completed) { color: #5fd4c4; }
+        html[data-theme="dark"] .score-summary__value { color: #5fd4c4 !important; }
+        html[data-theme="dark"] .dashboard-widget .score-summary__value small { color: #93a9b0 !important; }
+        html[data-theme="dark"] :is(.score-goal div, .score-goal__track, .progress-card__track) { background: #22343a; }
+        html[data-theme="dark"] .score-goal__fill { background: linear-gradient(90deg, #087e77, #5fd4c4); }
+        html[data-theme="dark"] .score-summary__bars span { background: #277e77; }
+        html[data-theme="dark"] .score-summary__bars span:last-child { background: #5fd4c4; }
+        html[data-theme="dark"] .dashboard-widget .widget-user-test > div > i { background: #18292d; color: #7dc8ed; }
+        html[data-theme="dark"] .dashboard-widget .preview-practice-test > i { background: #16302f !important; color: #5fd4c4 !important; }
+        html[data-theme="dark"] .dashboard-widget .preview-total-activity > i { background: #242440 !important; color: #b7b6ff !important; }
+        html[data-theme="dark"] .dashboard-widget .preview-study-time > i { background: #332c1b !important; color: #e8ca76 !important; }
+        html[data-theme="dark"] :is(.dropdown-btn, .calendar-picker, .month-picker-popover, .month-picker-option,
+            .calendar-date-badge, .calendar-toolbar, .calendar-nav, .daily-calendar-block > .calendar-head > button,
+            .daily-calendar-block > .calendar-head > #dashboardMonthTitle, .calendar-layout-shell .filter-btn,
+            .partner-popover, .modal-content, .toast, input, select, textarea) { background: #18292d; color: #e3eef0; border-color: #22343a; }
+        html[data-theme="dark"] :is(input, textarea)::placeholder { color: #93a9b0; opacity: 1; }
+        html[data-theme="dark"] :is(.title-btn, .nav-btn, .grid-item, .grid-item.active, .month-picker-label,
+            .month-picker-option .ti-chevron-right, .daily-calendar-block > .calendar-head > button .ti) { color: #e3eef0; }
+        html[data-theme="dark"] :is(.grid-item.active, .month-picker-option.active, .calendar-date-badge-month,
+            .score-summary__details, .agenda-zero-badge, .agenda-zero-count, .agenda-zero-step-number,
+            .agenda-zero-mark, .agenda-zero-test-count, .action-btn) { background: #16302f; color: #5fd4c4; }
+        html[data-theme="dark"] :is(.calendar-header, .month-picker-option, .calendar-date-badge, .calendar-guide-section) { border-color: #22343a; }
+        html[data-theme="dark"] :is(.dropdown-btn, .nav-btn, .grid-item, .month-picker-option, .score-summary__details,
+            .daily-calendar-block > .calendar-head > button, .calendar-layout-shell .filter-btn, .calendar-guide-trigger):hover { background: #16302f; color: #5fd4c4; }
+        html[data-theme="dark"] .calendar-period-current { background: none; color: #5fd4c4; -webkit-text-fill-color: currentColor; }
+        html[data-theme="dark"] :is(.calendar-weekdays, .dashboard-calendar-grid) { background: transparent; }
+        html[data-theme="dark"] .calendar-weekdays span { background: #16302f; color: #e3eef0; }
+        html[data-theme="dark"] .dashboard-day { background: #132124; color: #e3eef0; border-color: #22343a; box-shadow: none; }
+        html[data-theme="dark"] .dashboard-day.selected { background: #16302f; border-color: #5fd4c4; }
+        html[data-theme="dark"] .dashboard-day:hover { background: #16302f; }
+        html[data-theme="dark"] .dashboard-day.mock-test-day { background: linear-gradient(129deg, #08635d, #3c521e); border-color: #36584b; }
+        html[data-theme="dark"] .dashboard-day.mock-test-day:hover { background: linear-gradient(129deg, #087e77, #405c22); }
+        html[data-theme="dark"] .dashboard-day-number { color: #e3eef0; }
+        html[data-theme="dark"] .dashboard-day-label { background: none; color: #bcb7ff; -webkit-text-fill-color: currentColor; }
+        html[data-theme="dark"] .dashboard-day-label.label-mock { background: none; color: #e3eef0; }
+        html[data-theme="dark"] .dashboard-day-label .label-sparkle { color: #bcb7ff; }
+        html[data-theme="dark"] .dashboard-day.placeholder { opacity: .65; }
+        html[data-theme="dark"] :is(.task-token, .task-token.done, .task-status-badge, .daily-task-card,
+            .day-item, .goal-tile, .icon-badge, .agenda-item, .agenda-zero-test-image) { background: #18292d; border-color: #22343a; }
+        html[data-theme="dark"] .task-token::after { color: #e3eef0; }
+        html[data-theme="dark"] :is(.daily-task-card.done, .day-item.completed, .goal-tile.completed) { background: #16302f; color: #5fd4c4; }
+        html[data-theme="dark"] .day-item.missed { background: #38252a; }
+        html[data-theme="dark"] :is(.day-card-strike.card-inactive, .strike-card .status-empty) { background: #18292d; }
+        html[data-theme="dark"] :is(.day-card-strike.card-active, .strike-card .status-completed) { background: #16302f; }
+        html[data-theme="dark"] .day-card-strike.is-today { border-color: #5fd4c4; }
+        html[data-theme="dark"] :is(.card-inactive .day-text, .card-inactive .date-text, .status-empty) { color: #93a9b0; }
+        html[data-theme="dark"] :is(.card-active .day-text, .card-active .date-text, .status-completed) { color: #5fd4c4; }
+        html[data-theme="dark"] :is(.strike-number-text.text-inactive, .flame-inactive) { fill: #18292d; stroke: #93a9b0; }
+        html[data-theme="dark"] :is(.strike-number-text.text-active, .flame-active) { fill: #5fd4c4; stroke: #277e77; }
+        html[data-theme="dark"] :is(.agenda-zero-test-card, .agenda-recommendation-card, .agenda-progress) { background: #132124; color: #e3eef0; border-color: #22343a; }
+        html[data-theme="dark"] .agenda-recommendation-priority { background: #18292d; color: #5fd4c4; border-color: #277e77; }
+        html[data-theme="dark"] .agenda-recommendation-card:not(.is-priority-one) :is(.agenda-recommendation-rank, .agenda-recommendation-start) { background: #16302f; color: #5fd4c4; border-color: #22343a; }
+        html[data-theme="dark"] .agenda-panel.is-generated .agenda-zero-count { background: #242440; color: #bcb7ff; }
+        html[data-theme="dark"] :is(.btn-score, .drilldown-link, .agenda-zero-test-link,
+            .agenda-recommendation-card.is-priority-one .agenda-recommendation-start, .planner-toefl-action .toefl-101-trigger,
+            .daily-calendar-block .toefl-101-trigger, .partner-profile-popover__request) { background: #087e77; color: #fff; border-color: #277e77; }
+        html[data-theme="dark"] .agenda-state-error { color: #ffabae; }
+        html[data-theme="dark"] .promo-banner { background: #132124; }
+        html[data-theme="dark"] .promo-banner video { filter: brightness(.78); }
+        html[data-theme="dark"] .dashboard-summary > .partner-card { background: linear-gradient(145deg, #332665, #303167 62%, #243b60); }
+        html[data-theme="dark"] :is(.partner-card-front, .partner-card-back) { background: linear-gradient(150deg, rgba(89, 70, 155, .25), rgba(36, 59, 96, .2)); color: #e3eef0; }
+        html[data-theme="dark"] :is(.partner-card-front, .partner-card-back)::before,
+        html[data-theme="dark"] :is(.partner-card-front, .partner-card-back)::after { opacity: .3; }
+        html[data-theme="dark"] .partner-card :is(h2, h3, h4, .partner-selected-copy b, .partner-selected-copy small,
+            .partner-card-intro, .partner-status, .partner-directory-optin, .partner-directory-empty,
+            .partner-network-empty, .partner-presence, .network-view-all, .network-card-total strong,
+            .network-insights h4 small, .partner-discord-link) { color: #e3eef0; }
+        html[data-theme="dark"] .partner-card :is(.partner-selected, .network-insights, .network-connections,
+            .network-person, .network-level, .network-back-button, .you-have-50-connection-parent) { background: rgba(15, 26, 29, .45); color: #e3eef0; border-color: #68608d; }
+        html[data-theme="dark"] .partner-card :is(.partner-avatar, .partner-avatar img, .partner-selected-icon,
+            .partner-search-initials, .network-person > .ti) { background: #18292d; color: #e3eef0; border-color: #68608d; }
+        html[data-theme="dark"] .partner-avatar--fallback::before { color: #e3eef0; }
+        html[data-theme="dark"] :is(.nationality-badge, .user-country-flag) { background: #18292d; border-color: #22343a; }
+        html[data-theme="dark"] .partner-card .partner-match { background: #087e77; color: #fff; border-color: #5fd4c4; }
+        html[data-theme="dark"] .partner-card .partner-match:hover:not(:disabled) { background: #096b65; }
+        html[data-theme="dark"] .partner-card .partner-match:disabled { background: #18292d; color: #b7b2d0; border-color: #68608d; }
+        html[data-theme="dark"] .partner-card .partner-search,
+        html[data-theme="dark"] .partner-search-result { background: #18292d; color: #93a9b0; border-color: #68608d; }
+        html[data-theme="dark"] .partner-search input { background: transparent; color: #e3eef0; }
+        html[data-theme="dark"] .partner-search-option { color: #e3eef0; }
+        html[data-theme="dark"] :is(.partner-search-option small, .partner-search-empty, .partner-popover small) { color: #93a9b0; }
+        html[data-theme="dark"] :is(.partner-search-option, .network-back-button):hover { background: #16302f; }
+        html[data-theme="dark"] :is(.partner-profile-popover__name, .partner-profile-popover__level, .partner-profile-popover__connections strong) { color: #e3eef0; }
+        html[data-theme="dark"] :is(.calendar-guide, .calendar-guide-header, .toefl-101-dialog,
+            .toefl-101-dialog__header, .modal, .modal-card, dialog:not(.partner-photo-viewer)) { background: #18292d; color: #e3eef0; border-color: #22343a; }
+        html[data-theme="dark"] :is(.calendar-guide h2, .calendar-guide h3, .calendar-guide details > summary,
+            .calendar-guide-row strong, .calendar-guide-flow strong, .toefl-101-dialog h2,
+            .toefl-101-section h3, .toefl-101-dialog__body) { color: #e3eef0; }
+        html[data-theme="dark"] :is(.calendar-guide-intro, .calendar-guide-row p, .calendar-guide-flow li, .toefl-101-intro) { color: #93a9b0; }
+        html[data-theme="dark"] :is(.calendar-guide-note, .calendar-guide-close, .toefl-101-close, .toefl-101-table th) { background: #132124; color: #e3eef0; }
+        html[data-theme="dark"] :is(.toefl-101-table th, .toefl-101-table td, .toefl-101-dialog__header, .calendar-guide-header) { border-color: #22343a; }
+        html[data-theme="dark"] :is(.calendar-guide-close, .toefl-101-close):hover { background: #16302f; }
+        html[data-theme="dark"] .toefl-101-dialog__eyebrow { color: #5fd4c4; }
+        html[data-theme="dark"] .toefl-101-modal { background: rgba(12, 21, 23, .86); }
+        html[data-theme="dark"] #partnerPhotoViewer { background: transparent; color: #e3eef0; }
+        html[data-theme="dark"] #partnerPhotoViewer::backdrop { background: rgba(12, 21, 23, .9); }
+        html[data-theme="dark"] .partner-photo-viewer__media { background: #332665; }
+        html[data-theme="dark"] .partner-photo-viewer__caption { color: #e3eef0; }
+        html[data-theme="dark"] .partner-photo-viewer__caption small { color: #93a9b0; }
+        html[data-theme="dark"] .partner-photo-viewer__close { background: #18292d; color: #e3eef0; border-color: #22343a; }
+        html[data-theme="dark"] .partner-photo-viewer__close:hover { background: #16302f; }
+        html[data-theme="dark"] :is([role="tooltip"], .tooltip, .task-token::before) { background: #18292d; color: #e3eef0; border-color: #22343a; }
+        html[data-theme="dark"] :is(.skeleton, [class*="skeleton-"]) { background: linear-gradient(90deg, #132124, #22343a, #132124); }
+        html[data-theme="dark"] * { scrollbar-color: #38535a #0f1a1d; }
+        html[data-theme="dark"] *::-webkit-scrollbar-track { background: #0f1a1d; }
+        html[data-theme="dark"] *::-webkit-scrollbar-thumb { background: #38535a; border: 2px solid #0f1a1d; }
+        html[data-theme="dark"] :is(button, a, input, select, textarea):focus-visible { outline-color: #5fd4c4; }
+    </style>
 </head>
 <body>
-    <script src="site-navbar.js?v=20261031-sidebar"></script>
+    <script src="site-navbar.js?v=20261030-prefs"></script>
     <div class="shell">
         <div class="page-content">
         <header class="hero">
             <div class="hero-inner">
-                <section class="dashboard-summary" aria-label="Study progress overview">
-                    <article class="promo-banner" aria-label="Study promotion"><video src="../asst/icon/banner promo.mp4" autoplay muted loop playsinline></video></article>
+                <section class="dashboard-summary" aria-label="Study progress overview" data-i18n-attr="aria-label">
+                    <article class="promo-banner" aria-label="Study promotion" data-i18n-attr="aria-label"><video src="../asst/icon/banner promo.mp4" autoplay muted loop playsinline></video></article>
                     <div class="dashboard-widget">
                         <div class="widget-summary">
                             <header class="widget-header">
                                 <div class="user-info">
                                     <span class="user-avatar-wrap">
-                                        <img id="userProfileImage" src="../asset/figma/sidebar-avatar.jpeg" alt="Profile photo" class="avatar">
+                                        <button class="user-avatar-button" id="userProfilePhotoButton" type="button" aria-label="View your profile photo" aria-haspopup="dialog" data-i18n-attr="aria-label">
+                                            <img id="userProfileImage" src="../asset/figma/sidebar-avatar.jpeg" alt="Profile photo" class="avatar" data-i18n-attr="alt">
+                                        </button>
                                         <span class="user-country-flag" id="userCountryFlag" hidden></span>
                                     </span>
                                     <div class="user-text">
-                                        <h2 class="welcome-title" id="welcomeHeading">Welcome <span class="wave-emoji" aria-hidden="true">👋</span><span id="welcomeUserName">Student</span></h2>
-                                        <p class="subtitle">Keep going! You're making progress</p>
+                                        <h2 class="welcome-title" id="welcomeHeading"><span data-i18n>Welcome</span> <span class="wave-emoji" aria-hidden="true">👋</span><span id="welcomeUserName">Student</span></h2>
+                                        <p class="subtitle" data-i18n>Keep going! You're making progress</p>
                                     </div>
                                 </div>
-                                <div class="widget-user-test" aria-label="Your study activity">
+                                <div class="widget-user-test" aria-label="Your study activity" data-i18n-attr="aria-label">
                                     <div class="preview-mock-test">
                                         <i class="ti ti-file-text" aria-hidden="true"></i>
-                                        <div class="preview-content"><strong data-dashboard-stat="mock-count">0</strong><span>Mock tests</span></div>
+                                        <div class="preview-content"><strong data-dashboard-stat="mock-count">0</strong><span data-i18n>Mock tests</span></div>
                                     </div>
                                     <div class="preview-practice-test">
                                         <i class="ti ti-target-arrow" aria-hidden="true"></i>
-                                        <div class="preview-content"><strong data-dashboard-stat="practice-count">0</strong><span>Practice tests</span></div>
+                                        <div class="preview-content"><strong data-dashboard-stat="practice-count">0</strong><span data-i18n>Practice tests</span></div>
                                     </div>
                                     <div class="preview-total-activity">
                                         <i class="ti ti-star" aria-hidden="true"></i>
-                                        <div class="preview-content"><strong data-dashboard-stat="activity-count">0</strong><span>Total activities</span></div>
+                                        <div class="preview-content"><strong data-dashboard-stat="activity-count">0</strong><span data-i18n>Total activities</span></div>
                                     </div>
                                     <div class="preview-study-time">
                                         <i class="ti ti-clock" aria-hidden="true"></i>
@@ -4234,25 +4386,25 @@ body {
                                             <path d="M6 9l6 6 6-6"/>
                                         </svg>
                                     </button>
-                                    <div id="calendar-picker" class="calendar-picker hidden" role="dialog" aria-label="Select month">
+                                    <div id="calendar-picker" class="calendar-picker hidden" role="dialog" aria-label="Select month" data-i18n-attr="aria-label">
                                         <div class="calendar-header">
-                                            <button id="prev-btn" class="nav-btn" type="button" aria-label="Previous year">&#8249;</button>
+                                            <button id="prev-btn" class="nav-btn" type="button" aria-label="Previous year" data-i18n-attr="aria-label">&#8249;</button>
                                             <button id="view-toggle-btn" class="title-btn" type="button">
                                                 <span id="header-label"></span>
                                                 <svg id="toggle-chevron" class="chevron-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
                                             </button>
-                                            <button id="next-btn" class="nav-btn" type="button" aria-label="Next year">&#8250;</button>
+                                            <button id="next-btn" class="nav-btn" type="button" aria-label="Next year" data-i18n-attr="aria-label">&#8250;</button>
                                         </div>
                                         <div id="grid-container" class="grid-container"></div>
                                     </div>
                                 </div>
                             </header>
-                            <article class="score-summary" aria-label="TOEFL ITP score and CEFR level">
+                            <article class="score-summary" aria-label="TOEFL ITP score and CEFR level" data-i18n-attr="aria-label">
                                 <div class="score-summary__heading">
                                     <img class="score-summary__icon" src="../asset/icon/current-score.png" alt="" aria-hidden="true">
-                                    <h2>Score/CEFR Level</h2>
+                                    <h2 data-i18n>Score/CEFR Level</h2>
                                 </div>
-                                <a class="score-summary__details" href="MyProgress.html">View details <i class="ti ti-chevron-right" aria-hidden="true"></i></a>
+                                <a class="score-summary__details" href="MyProgress.html"><span data-i18n>View details</span> <i class="ti ti-chevron-right" aria-hidden="true"></i></a>
                                 <div class="score-summary__result">
                                     <strong class="score-summary__value"><span id="scoreText">--</span><small id="cefrText"></small></strong>
                                     <p class="score-summary__date" id="scoreTestDate">Complete a test to see your score.</p>
@@ -4261,58 +4413,58 @@ body {
                                     <span></span><span></span><span></span><span></span>
                                 </div>
                                 <div class="score-goal">
-                                    <span>Goal 550</span>
-                                    <div class="score-goal__track" role="progressbar" aria-label="Progress toward TOEFL ITP goal" aria-valuemin="310" aria-valuemax="677" aria-valuenow="310">
+                                    <span data-i18n>Goal 550</span>
+                                    <div class="score-goal__track" role="progressbar" aria-label="Progress toward TOEFL ITP goal" aria-valuemin="310" aria-valuemax="677" aria-valuenow="310" data-i18n-attr="aria-label">
                                         <span class="score-goal__fill"></span><span class="score-goal__marker" aria-hidden="true"></span>
                                     </div>
                                     <span class="score-goal__delta" id="scoreGoalDelta">No score yet</span>
                                 </div>
                             </article>
 
-                            <section class="strike-card" aria-label="Daily study streak">
+                            <section class="strike-card" aria-label="Daily study streak" data-i18n-attr="aria-label">
                                 <div class="card-header">
                                     <div class="header-left">
                                         <div class="header-icon">
                                             <i class="ti ti-target-arrow" aria-hidden="true"></i>
                                         </div>
-                                        <h2 class="title">Daily Strike</h2>
+                                        <h2 class="title" data-i18n>Daily Strike</h2>
                                     </div>
                                     <div class="header-right"><i class="ti ti-flame" aria-hidden="true"></i><span id="strike-progress">0/3</span></div>
                                 </div>
                                 <div class="days-grid" id="strike-days" aria-live="polite">
-                                    <p class="strike-empty">Loading your weekly activity…</p>
+                                    <p class="strike-empty" data-i18n>Loading your weekly activity…</p>
                                 </div>
                             </section>
                         </div>
                     </div>
-                        <article class="summary-card partner-card" id="partnerCard" aria-label="Find your English partner">
+                        <article class="summary-card partner-card" id="partnerCard" aria-label="Find your English partner" data-i18n-attr="aria-label">
                             <div class="partner-card__inner">
                             <div class="partner-card__face partner-card-front" id="partnerCardFront">
                             <div class="partner-content">
-                                <h2>Find your English partner</h2>
-                                <p class="partner-card-intro">Practice English with friendly faces around the world.</p>
+                                <h2 data-i18n>Find your English partner</h2>
+                                <p class="partner-card-intro" data-i18n>Practice English with friendly faces around the world.</p>
                                 <div class="partner-status-row">
                                     <p class="partner-status"><span class="status-dot"></span><span id="partnerDirectoryStatus">Loading member directory…</span></p>
-                                    <button class="you-have-50-connection-parent" id="showPartnerNetwork" type="button" aria-label="View learner network" aria-expanded="false" aria-controls="partnerCardBack">
-                                        <span class="you-have-50-container"><span class="connection"><span class="connection2">Explore network</span></span></span>
+                                    <button class="you-have-50-connection-parent" id="showPartnerNetwork" type="button" aria-label="View learner network" aria-expanded="false" aria-controls="partnerCardBack" data-i18n-attr="aria-label">
+                                        <span class="you-have-50-container"><span class="connection"><span class="connection2" data-i18n>Explore network</span></span></span>
                                         <i class="ti ti-arrow-right arrow-right-icon" aria-hidden="true"></i>
                                     </button>
                                 </div>
                                 <label class="partner-directory-optin" id="partnerDirectorySetting" hidden>
                                     <input id="partnerDirectoryOptIn" type="checkbox">
-                                    <span>Show my name, country, level and photo to signed-in learners. Listed automatically; uncheck to hide my profile.</span>
+                                    <span data-i18n>Show my name, country, level and photo to signed-in learners. Listed automatically; uncheck to hide my profile.</span>
                                 </label>
                                 <p class="partner-directory-message" id="partnerDirectoryMessage" role="status" aria-live="polite" hidden></p>
                                 <div class="partner-carousel">
                                     <div class="partner-discovery">
                                         <div class="partner-controls">
-                                            <button class="partner-arrow" id="previousPartner" type="button" aria-label="Previous suggested partners"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
-                                            <div class="partner-orbit" id="partnerOrbit" role="group" aria-label="Online study partners"></div>
-                                            <button class="partner-arrow" id="nextPartner" type="button" aria-label="Next suggested partners"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+                                            <button class="partner-arrow" id="previousPartner" type="button" aria-label="Previous suggested partners" data-i18n-attr="aria-label"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
+                                            <div class="partner-orbit" id="partnerOrbit" role="group" aria-label="Online study partners" data-i18n-attr="aria-label"></div>
+                                            <button class="partner-arrow" id="nextPartner" type="button" aria-label="Next suggested partners" data-i18n-attr="aria-label"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
                                         </div>
                                         <div class="partner-selected" id="partnerSelected" aria-live="polite">
                                             <span class="partner-selected-icon" aria-hidden="true">✦</span>
-                                            <span class="partner-selected-copy"><b>Choose a study partner</b><small>Members choose what to share</small></span>
+                                            <span class="partner-selected-copy"><b data-i18n>Choose a study partner</b><small data-i18n>Members choose what to share</small></span>
                                         </div>
                                     </div>
                                 </div>
@@ -4320,31 +4472,31 @@ body {
                                 <div class="partner-search-wrap">
                                     <label class="partner-search">
                                         <i class="ti ti-search" aria-hidden="true"></i>
-                                        <input id="partnerSearch" type="search" placeholder="Search online learners" autocomplete="off" aria-label="Search online study partners by name, country or level">
+                                        <input id="partnerSearch" type="search" placeholder="Search online learners" autocomplete="off" aria-label="Search online study partners by name, country or level" data-i18n-attr="placeholder,aria-label">
                                         <i class="ti ti-arrow-right" aria-hidden="true"></i>
                                     </label>
                                     <div class="partner-search-result" id="partnerSearchResult" aria-live="polite"></div>
                                 </div>
                             </div>
                             <a class="partner-discord-link" href="https://discord.gg/APnzhYPFT8" target="_blank" rel="noopener noreferrer">
-                                <span>Talk with Your Friends Here</span>
-                                <img src="../asset/icon/discord.png" alt="Join Discord">
+                                <span data-i18n>Talk with Your Friends Here</span>
+                                <img src="../asset/icon/discord.png" alt="Join Discord" data-i18n-attr="alt">
                             </a>
                             </div>
-                            <section class="partner-card__face partner-card-back" id="partnerCardBack" aria-label="Your global network" aria-hidden="true" inert>
+                            <section class="partner-card__face partner-card-back" id="partnerCardBack" aria-label="Your global network" aria-hidden="true" inert data-i18n-attr="aria-label">
                                 <div class="network-card-heading">
-                                    <h3 class="network-card-title">Your global network</h3>
-                                    <div class="network-card-total"><span class="network-card-total__count"><i class="ti ti-users" aria-hidden="true"></i><span id="partnerConnectionCount">0</span></span><strong>CONNECTIONS</strong></div>
+                                    <h3 class="network-card-title" data-i18n>Your global network</h3>
+                                    <div class="network-card-total"><span class="network-card-total__count"><i class="ti ti-users" aria-hidden="true"></i><span id="partnerConnectionCount">0</span></span><strong data-i18n>CONNECTIONS</strong></div>
                                 </div>
                                 <div class="network-card-body">
                                     <div class="network-insights">
-                                        <section><h4>Member levels <small>(CEFR)</small></h4><div class="network-bars"><span class="network-bar"><strong id="partnerLevelA1Count">0</strong><i id="partnerLevelA1Bar" style="--bar-height:4px"></i><span>A1</span></span><span class="network-bar"><strong id="partnerLevelA2Count">0</strong><i id="partnerLevelA2Bar" style="--bar-height:4px"></i><span>A2</span></span><span class="network-bar"><strong id="partnerLevelB1Count">0</strong><i id="partnerLevelB1Bar" style="--bar-height:4px"></i><span>B1</span></span><span class="network-bar"><strong id="partnerLevelB2Count">0</strong><i id="partnerLevelB2Bar" style="--bar-height:4px"></i><span>B2</span></span><span class="network-bar"><strong id="partnerLevelC1Count">0</strong><i id="partnerLevelC1Bar" style="--bar-height:4px"></i><span>C1</span></span><span class="network-bar"><strong id="partnerLevelC2Count">0</strong><i id="partnerLevelC2Bar" style="--bar-height:4px"></i><span>C2</span></span></div></section>
+                                        <section><h4><span data-i18n>Member levels</span> <small>(CEFR)</small></h4><div class="network-bars"><span class="network-bar"><strong id="partnerLevelA1Count">0</strong><i id="partnerLevelA1Bar" style="--bar-height:4px"></i><span>A1</span></span><span class="network-bar"><strong id="partnerLevelA2Count">0</strong><i id="partnerLevelA2Bar" style="--bar-height:4px"></i><span>A2</span></span><span class="network-bar"><strong id="partnerLevelB1Count">0</strong><i id="partnerLevelB1Bar" style="--bar-height:4px"></i><span>B1</span></span><span class="network-bar"><strong id="partnerLevelB2Count">0</strong><i id="partnerLevelB2Bar" style="--bar-height:4px"></i><span>B2</span></span><span class="network-bar"><strong id="partnerLevelC1Count">0</strong><i id="partnerLevelC1Bar" style="--bar-height:4px"></i><span>C1</span></span><span class="network-bar"><strong id="partnerLevelC2Count">0</strong><i id="partnerLevelC2Bar" style="--bar-height:4px"></i><span>C2</span></span></div></section>
                                         <span class="network-divider" aria-hidden="true"></span>
-                                        <section class="network-countries"><h4>Top countries</h4><div id="partnerTopCountries"><p class="partner-network-empty">No country data yet.</p></div></section>
+                                        <section class="network-countries"><h4 data-i18n>Top countries</h4><div id="partnerTopCountries"><p class="partner-network-empty" data-i18n>No country data yet.</p></div></section>
                                     </div>
-                                    <section class="network-connections"><h4>Your connections</h4><div class="network-connection-grid" id="partnerConnectionGrid"><p class="partner-network-empty">No connections yet. Send a request in matchmaking to get started.</p></div><span class="network-view-all" id="partnerDirectoryMemberCount">0 connections</span></section>
+                                    <section class="network-connections"><h4 data-i18n>Your connections</h4><div class="network-connection-grid" id="partnerConnectionGrid"><p class="partner-network-empty" data-i18n>No connections yet. Send a request in matchmaking to get started.</p></div><span class="network-view-all" id="partnerDirectoryMemberCount">0 connections</span></section>
                                 </div>
-                                <button class="network-back-button" id="hidePartnerNetwork" type="button"><span>Go Back to Matchmaking</span><i class="ti ti-arrow-right" aria-hidden="true"></i></button>
+                                <button class="network-back-button" id="hidePartnerNetwork" type="button"><span data-i18n>Go Back to Matchmaking</span><i class="ti ti-arrow-right" aria-hidden="true"></i></button>
                             </section>
                             </div>
                         </article>
@@ -4355,97 +4507,97 @@ body {
         <main>
             <section class="month-panel" aria-labelledby="monthPlannerHeading">
                 <div class="calendar-layout-shell">
-                    <div class="calendar-head" aria-label="Calendar navigation">
+                    <div class="calendar-head" aria-label="Calendar navigation" data-i18n-attr="aria-label">
                         <div>
                             <div class="calendar-head-title">
                                 <div class="calendar-heading-label">
-                                    <div class="eyebrow">MONTHLY STUDY PLAN</div>
-                                    <button class="calendar-guide-trigger" id="calendarGuideTrigger" type="button" popovertarget="calendarGuide" aria-label="Open calendar guide" aria-haspopup="dialog" aria-controls="calendarGuide" aria-expanded="false"><i data-lucide="info" aria-hidden="true"></i></button>
+                                    <div class="eyebrow" data-i18n>MONTHLY STUDY PLAN</div>
+                                    <button class="calendar-guide-trigger" id="calendarGuideTrigger" type="button" popovertarget="calendarGuide" aria-label="Open calendar guide" aria-haspopup="dialog" aria-controls="calendarGuide" aria-expanded="false" data-i18n-attr="aria-label"><i data-lucide="info" aria-hidden="true"></i></button>
                                 </div>
                                 <h2 id="monthPlannerHeading">This month</h2>
-                                <p>Mock test every 4th day · Practice on the following 3 days</p>
+                                <p data-i18n>Mock test every 4th day · Practice on the following 3 days</p>
                             </div>
-                            <div class="calendar-legend" aria-label="Study plan legend">
-                                <span><i class="calendar-legend__mock" aria-hidden="true"></i>Mock test</span>
-                                <span><i class="calendar-legend__recommended" aria-hidden="true"></i>Recommended study plan</span>
+                            <div class="calendar-legend" aria-label="Study plan legend" data-i18n-attr="aria-label">
+                                <span><i class="calendar-legend__mock" aria-hidden="true"></i><span data-i18n>Mock test</span></span>
+                                <span><i class="calendar-legend__recommended" aria-hidden="true"></i><span data-i18n>Recommended study plan</span></span>
                             </div>
                             <div class="planner-toefl-action">
-                                <button class="toefl-101-trigger" type="button" data-open-toefl101 aria-haspopup="dialog" aria-controls="toefl101Modal" aria-expanded="false"><i icon-lucide="info" aria-hidden="true"></i>What is TOEFL 101?</button>
+                                <button class="toefl-101-trigger" type="button" data-open-toefl101 aria-haspopup="dialog" aria-controls="toefl101Modal" aria-expanded="false"><i icon-lucide="info" aria-hidden="true"></i><span data-i18n>What is TOEFL 101?</span></button>
                             </div>
                         </div>
                     </div>
                     <div class="calendar-main-layout">
-                        <aside class="agenda-panel is-zero-state" id="agendaPanel" aria-label="Recommended plan">
+                        <aside class="agenda-panel is-zero-state" id="agendaPanel" aria-label="Recommended plan" data-i18n-attr="aria-label">
                             <header class="agenda-zero-header">
                                 <span class="agenda-zero-mark" aria-hidden="true"><i class="ti ti-sparkles"></i></span>
                                 <div class="agenda-zero-header-copy">
-                                    <h3>RECOMMENDED PLAN</h3>
-                                    <span class="agenda-zero-badge" id="agendaZeroBadge">No plan generated yet</span>
-                                    <span class="agenda-generated-summary" id="agendaGeneratedSummary" hidden>Based on your latest mock test result</span>
+                                    <h3 data-i18n>RECOMMENDED PLAN</h3>
+                                    <span class="agenda-zero-badge" id="agendaZeroBadge" data-i18n>No plan generated yet</span>
+                                    <span class="agenda-generated-summary" id="agendaGeneratedSummary" hidden data-i18n>Based on your latest mock test result</span>
                                 </div>
-                                <span class="agenda-zero-count" id="agendaMockProgress" aria-label="Mock test sections completed">0/3</span>
+                                <span class="agenda-zero-count" id="agendaMockProgress" aria-label="Mock test sections completed" data-i18n-attr="aria-label">0/3</span>
                             </header>
                             <section class="agenda-zero-content" id="agendaZeroState" aria-labelledby="agendaZeroTitle">
-                                <h4 class="agenda-zero-title" id="agendaZeroTitle">Your <span>Study Plan</span><br><span>Starts</span> Here</h4>
-                                <p class="agenda-zero-description">Complete a mock test to find your strongest opportunities to improve.</p>
-                                <img class="agenda-zero-illustration" src="../asset/icon/zerostate-recomendcard.png" alt="Checklist illustration for your personalized study plan" width="240" height="176">
-                                <div class="agenda-zero-steps" aria-label="How your study plan is created">
-                                    <div class="agenda-zero-step"><span class="agenda-zero-step-number">1</span><p>Take a mock test</p></div>
+                                <h4 class="agenda-zero-title" id="agendaZeroTitle"><span data-i18n>Your Study Plan</span><br><span data-i18n>Starts Here</span></h4>
+                                <p class="agenda-zero-description" data-i18n>Complete a mock test to find your strongest opportunities to improve.</p>
+                                <img class="agenda-zero-illustration" src="../asset/icon/zerostate-recomendcard.png" alt="Checklist illustration for your personalized study plan" width="240" height="176" data-i18n-attr="alt">
+                                <div class="agenda-zero-steps" aria-label="How your study plan is created" data-i18n-attr="aria-label">
+                                    <div class="agenda-zero-step"><span class="agenda-zero-step-number">1</span><p data-i18n>Take a mock test</p></div>
                                     <span class="agenda-zero-step-arrow" aria-hidden="true">→</span>
-                                    <div class="agenda-zero-step"><span class="agenda-zero-step-number">2</span><p>We find your focus areas</p></div>
+                                    <div class="agenda-zero-step"><span class="agenda-zero-step-number">2</span><p data-i18n>We find your focus areas</p></div>
                                     <span class="agenda-zero-step-arrow" aria-hidden="true">→</span>
-                                    <div class="agenda-zero-step"><span class="agenda-zero-step-number">3</span><p>Get practice recommendations</p></div>
+                                    <div class="agenda-zero-step"><span class="agenda-zero-step-number">3</span><p data-i18n>Get practice recommendations</p></div>
                                 </div>
-                                <article class="agenda-zero-test-card" aria-label="TOEFL mock test">
-                                    <div class="agenda-zero-test-count"><strong>3</strong><span>sections</span></div>
+                                <article class="agenda-zero-test-card" aria-label="TOEFL mock test" data-i18n-attr="aria-label">
+                                    <div class="agenda-zero-test-count"><strong>3</strong><span data-i18n>sections</span></div>
                                     <img class="agenda-zero-test-image" src="../asset/figma/mock-structure.png" alt="" width="42" height="42">
                                     <div class="agenda-zero-test-copy">
-                                        <strong>TOEFL Mock Test</strong>
+                                        <strong data-i18n>TOEFL Mock Test</strong>
                                         <span>Listening, Structure &amp; Writing, Reading</span>
-                                        <span>140 questions · 115 minutes</span>
+                                        <span data-i18n>140 questions · 115 minutes</span>
                                     </div>
-                                    <a class="agenda-zero-test-link" href="study-plan.html">Open Study Plan <i class="ti ti-arrow-narrow-right" aria-hidden="true"></i></a>
+                                    <a class="agenda-zero-test-link" href="study-plan.html"><span data-i18n>Open Study Plan</span> <i class="ti ti-arrow-narrow-right" aria-hidden="true"></i></a>
                                 </article>
-                                <p class="agenda-zero-note">Your recommendations will be based on your test results.</p>
+                                <p class="agenda-zero-note" data-i18n>Your recommendations will be based on your test results.</p>
                             </section>
                             <p class="agenda-state-error" id="agendaStateError" role="alert" hidden>Study plan history could not be loaded. Reload the page to try again.</p>
                             <div class="agenda-list" id="agendaList" aria-live="polite" hidden></div>
                         </aside>
-                        <div class="daily-calendar-block" aria-label="Daily calendar">
+                        <div class="daily-calendar-block" aria-label="Daily calendar" data-i18n-attr="aria-label">
                             <div class="calendar-head">
-                                <button type="button" id="prevDashboardMonth" aria-label="Previous month"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
+                                <button type="button" id="prevDashboardMonth" aria-label="Previous month" data-i18n-attr="aria-label"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
                                 <h2 class="calendar-period-current" id="dashboardMonthTitle"><i class="ti ti-calendar month-title-icon" aria-hidden="true"></i><span id="dashboardMonthLabel">AGUSTUS 2026</span></h2>
-                                <button type="button" id="nextDashboardMonth" aria-label="Next month"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+                                <button type="button" id="nextDashboardMonth" aria-label="Next month" data-i18n-attr="aria-label"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
                             </div>
-                            <div class="calendar-weekdays"><span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span></div>
+                            <div class="calendar-weekdays"><span data-i18n>SUN</span><span data-i18n>MON</span><span data-i18n>TUE</span><span data-i18n>WED</span><span data-i18n>THU</span><span data-i18n>FRI</span><span data-i18n>SAT</span></div>
                             <div class="dashboard-calendar-grid" id="dashboardCalendarGrid"></div>
                             <div class="daily-drilldown" id="dailyDrilldown"></div>
                         </div>
                     </div>
                 </div>
             </section>
-            <section class="score-panel" aria-label="TOEFL score calculator">
-                <h3>Estimate your TOEFL ITP total score</h3>
-                <p>Keep the score estimator below the planner so the page stays month-first while still letting students calculate a rough total score any time.</p>
+            <section class="score-panel" aria-label="TOEFL score calculator" data-i18n-attr="aria-label">
+                <h3 data-i18n>Estimate your TOEFL ITP total score</h3>
+                <p data-i18n>Keep the score estimator below the planner so the page stays month-first while still letting students calculate a rough total score any time.</p>
 
                 <div class="score-grid">
                     <div class="field">
-                        <label for="score1">Section 1 Listening</label>
-                        <input type="number" id="score1" min="31" max="68" placeholder="e.g. 50">
+                        <label for="score1" data-i18n>Section 1 Listening</label>
+                        <input type="number" id="score1" min="31" max="68" placeholder="e.g. 50" data-i18n-attr="placeholder">
                     </div>
                     <div class="field">
-                        <label for="score2">Section 2 Structure</label>
-                        <input type="number" id="score2" min="31" max="68" placeholder="e.g. 54">
+                        <label for="score2" data-i18n>Section 2 Structure</label>
+                        <input type="number" id="score2" min="31" max="68" placeholder="e.g. 54" data-i18n-attr="placeholder">
                     </div>
                     <div class="field">
-                        <label for="score3">Section 3 Reading</label>
-                        <input type="number" id="score3" min="31" max="67" placeholder="e.g. 48">
+                        <label for="score3" data-i18n>Section 3 Reading</label>
+                        <input type="number" id="score3" min="31" max="67" placeholder="e.g. 48" data-i18n-attr="placeholder">
                     </div>
                 </div>
 
                 <div class="score-actions">
-                    <button class="btn-score" type="button" onclick="calculateFinalScore()">Calculate Score</button>
-                    <span class="score-hint">Formula: ((S1 + S2 + S3) * 10) / 3</span>
+                    <button class="btn-score" type="button" onclick="calculateFinalScore()" data-i18n>Calculate Score</button>
+                    <span class="score-hint" data-i18n>Formula: ((S1 + S2 + S3) * 10) / 3</span>
                 </div>
 
                 <div class="result" id="final-score-result" aria-live="polite"></div>
@@ -4460,39 +4612,39 @@ body {
 
     <aside class="calendar-guide" id="calendarGuide" popover="auto" role="dialog" aria-labelledby="calendarGuideTitle" tabindex="-1">
         <header class="calendar-guide-header">
-            <h2 id="calendarGuideTitle">How your calendar works</h2>
-            <button class="calendar-guide-close" id="closeCalendarGuide" type="button" aria-label="Close calendar guide"><i data-lucide="x" aria-hidden="true"></i></button>
+            <h2 id="calendarGuideTitle" data-i18n>How your calendar works</h2>
+            <button class="calendar-guide-close" id="closeCalendarGuide" type="button" aria-label="Close calendar guide" data-i18n-attr="aria-label"><i data-lucide="x" aria-hidden="true"></i></button>
         </header>
-        <div class="calendar-guide-body" role="region" aria-label="Calendar guide details" tabindex="0">
-        <p class="calendar-guide-intro">Days 1–4 show your starting activities. Complete a full mock test to reveal the next three practice days.</p>
+        <div class="calendar-guide-body" role="region" aria-label="Calendar guide details" tabindex="0" data-i18n-attr="aria-label">
+        <p class="calendar-guide-intro" data-i18n>Days 1 to 4 show your starting activities. Complete a full mock test to reveal the next three practice days.</p>
         <section class="calendar-guide-section calendar-guide-symbols">
-            <h3>Calendar symbols</h3>
-            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-mock" aria-hidden="true"></span><div><strong>Mock test</strong><p>Three sections to check your progress.</p></div></div>
-            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-practice" aria-hidden="true"><i data-lucide="sparkles"></i></span><div><strong>Recommended practice</strong><p>Based on your results.</p></div></div>
-            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-locked" aria-hidden="true"><i data-lucide="lock-keyhole"></i></span><div><strong>Icons not shown yet</strong><p>Complete a full mock to reveal practice.</p></div></div>
-            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-completed" aria-hidden="true"><i data-lucide="circle-check"></i></span><div><strong>Completed</strong><p>You finished this section.</p></div></div>
+            <h3 data-i18n>Calendar symbols</h3>
+            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-mock" aria-hidden="true"></span><div><strong data-i18n>Mock test</strong><p data-i18n>Three sections to check your progress.</p></div></div>
+            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-practice" aria-hidden="true"><i data-lucide="sparkles"></i></span><div><strong data-i18n>Recommended practice</strong><p data-i18n>Based on your results.</p></div></div>
+            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-locked" aria-hidden="true"><i data-lucide="lock-keyhole"></i></span><div><strong data-i18n>Icons not shown yet</strong><p data-i18n>Complete a full mock to reveal practice.</p></div></div>
+            <div class="calendar-guide-row"><span class="calendar-guide-symbol calendar-guide-completed" aria-hidden="true"><i data-lucide="circle-check"></i></span><div><strong data-i18n>Completed</strong><p data-i18n>You finished this section.</p></div></div>
         </section>
         <details class="calendar-guide-section calendar-guide-practices">
-            <summary>Test sections</summary>
-            <div class="calendar-guide-row"><img src="../asset/figma/mock-listening.png" alt=""><div><strong>Listening</strong><p>Conversations and talks · Parts A, B &amp; C</p></div></div>
-            <div class="calendar-guide-row"><img src="../asset/figma/mock-structure.png" alt=""><div><strong>Structure &amp; written expression</strong><p>Grammar and sentence structure</p></div></div>
-            <div class="calendar-guide-row"><img src="../asset/figma/mock-reading.png" alt=""><div><strong>Reading</strong><p>Passages, vocabulary and comprehension</p></div></div>
+            <summary data-i18n>Test sections</summary>
+            <div class="calendar-guide-row"><img src="../asset/figma/mock-listening.png" alt=""><div><strong>Listening</strong><p data-i18n>Conversations and talks · Parts A, B &amp; C</p></div></div>
+            <div class="calendar-guide-row"><img src="../asset/figma/mock-structure.png" alt=""><div><strong>Structure &amp; written expression</strong><p data-i18n>Grammar and sentence structure</p></div></div>
+            <div class="calendar-guide-row"><img src="../asset/figma/mock-reading.png" alt=""><div><strong>Reading</strong><p data-i18n>Passages, vocabulary and comprehension</p></div></div>
         </details>
         <details class="calendar-guide-section calendar-guide-flow">
-            <summary>How practice unlocks</summary>
+            <summary data-i18n>How practice unlocks</summary>
             <ol>
-                <li><strong>Start with days 1–4.</strong> Take the first mock test, then follow the three practice days.</li>
-                <li><strong>Complete another full mock.</strong> Finish Listening, Structure and Reading in the same test session.</li>
-                <li><strong>See the next three days.</strong> A full mock for day 5 reveals practice icons on days 6–8.</li>
+                <li><strong data-i18n>Start with days 1 to 4.</strong> <span data-i18n>Take the first mock test, then follow the three practice days.</span></li>
+                <li><strong data-i18n>Complete another full mock.</strong> <span data-i18n>Finish Listening, Structure and Reading in the same test session.</span></li>
+                <li><strong data-i18n>See the next three days.</strong> <span data-i18n>A full mock for day 5 reveals practice icons on days 6 to 8.</span></li>
             </ol>
-            <p class="calendar-guide-note">Hidden icons do not block access to tests. You can still select a date to open its study plan.</p>
+            <p class="calendar-guide-note" data-i18n>Hidden icons do not block access to tests. You can still select a date to open its study plan.</p>
         </details>
         </div>
     </aside>
 
     <div class="toefl-101-modal" id="toefl101Modal" aria-hidden="true">
         <article class="toefl-101-dialog" role="dialog" aria-modal="true" aria-labelledby="toefl101Title">
-            <header class="toefl-101-dialog__header"><div><p class="toefl-101-dialog__eyebrow">QuickCheck Learning Guide</p><h2 id="toefl101Title">TOEFL ITP 101</h2></div><button class="toefl-101-close" id="closeToefl101" type="button" aria-label="Close TOEFL ITP 101"><i class="ti ti-x" aria-hidden="true"></i></button></header>
+            <header class="toefl-101-dialog__header"><div><p class="toefl-101-dialog__eyebrow">QuickCheck Learning Guide</p><h2 id="toefl101Title">TOEFL ITP 101</h2></div><button class="toefl-101-close" id="closeToefl101" type="button" aria-label="Close TOEFL ITP 101" data-i18n-attr="aria-label"><i class="ti ti-x" aria-hidden="true"></i></button></header>
             <div class="toefl-101-dialog__body">
                 <p class="toefl-101-intro">The TOEFL ITP (Level 1) evaluates the English proficiency of non-native speakers in academic contexts. It is a 115-minute, multiple-choice exam consisting of 140 questions.</p>
                 <section class="toefl-101-section"><h3>1. Test Structure and Format</h3><p>The test is entirely paper-based and does not include speaking or essay-writing components. It is divided into three distinct, strictly timed sections:</p><div class="toefl-101-table-wrap"><table class="toefl-101-table"><thead><tr><th>Section</th><th>Focus</th><th>Time Limit</th><th>Questions</th><th>Score Range</th></tr></thead><tbody><tr><td>1. Listening Comprehension</td><td>Spoken academic English</td><td>35 minutes</td><td>50</td><td>31-68</td></tr><tr><td>2. Structure &amp; Written Expression</td><td>Grammar and syntax</td><td>25 minutes</td><td>40</td><td>31-68</td></tr><tr><td>3. Reading Comprehension</td><td>Academic reading material</td><td>55 minutes</td><td>50</td><td>31-67</td></tr><tr><td><strong>Total</strong></td><td>All sections</td><td>115 minutes</td><td>140</td><td>310-677</td></tr></tbody></table></div><h4>Section Breakdown</h4><ul class="toefl-101-list"><li><strong>Listening Comprehension:</strong> Tests your ability to understand spoken English in college settings. It features short conversations between two people (30 questions), longer conversations (8 questions), and short academic lectures (12 questions).</li><li><strong>Structure and Written Expression:</strong> Tests your recognition of correct grammar and sentence structure. It includes 15 sentence-completion questions and 25 error-identification questions.</li><li><strong>Reading Comprehension:</strong> Tests your ability to read and understand academic texts, including main ideas, specific details, vocabulary in context, and implied meanings.</li></ul><p><strong>Sentence-completion example:</strong> The American bald eagle, ____________ on the endangered species list, has made a remarkable recovery in recent decades.</p><ul class="toefl-101-list"><li>(A) which once</li><li><strong>(B) once placed</strong></li><li>(C) it was once</li><li>(D) was once</li></ul><p><strong>Error-identification example:</strong> The [A] <strong>rapidly</strong> development [B] <strong>of</strong> solar technology has [C] <strong>made</strong> renewable energy more [D] <strong>accessible</strong> than ever before.</p><ul class="toefl-101-list"><li><strong>(A) rapidly</strong></li><li>(B) of</li><li>(C) made</li><li>(D) accessible</li></ul></section>
@@ -4512,6 +4664,198 @@ body {
     <script src="toefl-navigation.js?v=20260918b"></script>
     <script src="toefl-developer-auth.js?v=20260918b"></script>
     <script>
+        const qcT = (s, v) => window.QCPrefs ? window.QCPrefs.t(s, v) : s.replace(/\{(\w+)\}/g, (m, k) => v && k in v ? v[k] : m);
+        const qcLocale = () => window.QCPrefs ? QCPrefs.locale() : "en-US";
+        const qcMonth = (month, short = false) => new Intl.DateTimeFormat(qcLocale(), { month: short ? "short" : "long" }).format(new Date(2026, month, 1));
+        window.QCPrefs && QCPrefs.addTranslations("id", {
+            "Welcome": "Selamat datang",
+            "Keep going! You're making progress": "Teruskan! Anda makin maju",
+            "Mock tests": "Tes simulasi",
+            "Practice tests": "Tes latihan",
+            "Total activities": "Total aktivitas",
+            "Time not tracked": "Waktu belum tercatat",
+            "This month": "Bulan ini",
+            "Select month": "Pilih bulan",
+            "Previous year": "Tahun sebelumnya",
+            "Next year": "Tahun berikutnya",
+            "Score/CEFR Level": "Skor/Level CEFR",
+            "View details": "Lihat detail",
+            "Complete a test to see your score.": "Selesaikan tes untuk melihat skor Anda.",
+            "Goal 550": "Target 550",
+            "No score yet": "Belum ada skor",
+            "Daily Strike": "Rutinitas Harian",
+            "Loading your weekly activity…": "Memuat aktivitas mingguan Anda…",
+            "Find your English partner": "Temukan teman berbahasa Inggris",
+            "Practice English with friendly faces around the world.": "Latih bahasa Inggris bersama teman dari seluruh dunia.",
+            "Loading member directory…": "Memuat direktori anggota…",
+            "Explore network": "Jelajahi jaringan",
+            "Show my name, country, level and photo to signed-in learners. Listed automatically; uncheck to hide my profile.": "Tampilkan nama, negara, level, dan foto saya kepada pengguna yang masuk. Terdaftar otomatis; hapus centang untuk menyembunyikan profil.",
+            "Choose a study partner": "Pilih teman belajar",
+            "Members choose what to share": "Anggota memilih informasi yang dibagikan",
+            "Choose a partner": "Pilih teman",
+            "Search online learners": "Cari pengguna daring",
+            "Talk with Your Friends Here": "Mengobrol dengan Teman di Sini",
+            "Join Discord": "Bergabung di Discord",
+            "Your global network": "Jaringan global Anda",
+            "CONNECTIONS": "KONEKSI",
+            "Member levels": "Level anggota",
+            "Top countries": "Negara terbanyak",
+            "Your connections": "Koneksi Anda",
+            "No country data yet.": "Belum ada data negara.",
+            "No connections yet. Send a request in matchmaking to get started.": "Belum ada koneksi. Kirim permintaan untuk mulai terhubung.",
+            "Go Back to Matchmaking": "Kembali Mencari Teman",
+            "MONTHLY STUDY PLAN": "RENCANA BELAJAR BULANAN",
+            "Mock test every 4th day · Practice on the following 3 days": "Tes simulasi tiap 4 hari · Latihan selama 3 hari berikutnya",
+            "Mock test": "Tes simulasi",
+            "Mock Test": "Tes Simulasi",
+            "Recommended study plan": "Rencana belajar yang disarankan",
+            "Recomended Study Plan": "Rencana Belajar",
+            "What is TOEFL 101?": "Apa itu TOEFL 101?",
+            "RECOMMENDED PLAN": "RENCANA YANG DISARANKAN",
+            "No plan generated yet": "Belum ada rencana",
+            "Based on your latest mock test result": "Berdasarkan hasil tes simulasi terakhir Anda",
+            "Your Study Plan": "Rencana Belajar Anda",
+            "Starts Here": "Dimulai di Sini",
+            "Complete a mock test to find your strongest opportunities to improve.": "Selesaikan tes simulasi untuk mengetahui area yang paling perlu Anda tingkatkan.",
+            "Take a mock test": "Ikuti tes simulasi",
+            "We find your focus areas": "Kami temukan fokus belajar Anda",
+            "Get practice recommendations": "Dapatkan rekomendasi latihan",
+            "sections": "bagian",
+            "TOEFL Mock Test": "Tes Simulasi TOEFL",
+            "140 questions · 115 minutes": "140 soal · 115 menit",
+            "Open Study Plan": "Buka Rencana Belajar",
+            "Your recommendations will be based on your test results.": "Rekomendasi Anda akan disesuaikan dengan hasil tes Anda.",
+            "Study plan history could not be loaded. Reload the page to try again.": "Riwayat rencana belajar gagal dimuat. Muat ulang halaman untuk mencoba lagi.",
+            "SUN": "MIN",
+            "MON": "SEN",
+            "TUE": "SEL",
+            "WED": "RAB",
+            "THU": "KAM",
+            "FRI": "JUM",
+            "SAT": "SAB",
+            "Estimate your TOEFL ITP total score": "Perkirakan skor total TOEFL ITP Anda",
+            "Keep the score estimator below the planner so the page stays month-first while still letting students calculate a rough total score any time.": "Gunakan kalkulator di bawah rencana belajar untuk memperkirakan skor total Anda kapan saja.",
+            "Section 1 Listening": "Bagian 1 Listening",
+            "Section 2 Structure": "Bagian 2 Structure",
+            "Section 3 Reading": "Bagian 3 Reading",
+            "e.g. 50": "mis. 50",
+            "e.g. 54": "mis. 54",
+            "e.g. 48": "mis. 48",
+            "Calculate Score": "Hitung Skor",
+            "Formula: ((S1 + S2 + S3) * 10) / 3": "Rumus: ((S1 + S2 + S3) * 10) / 3",
+            "How your calendar works": "Cara kerja kalender Anda",
+            "Days 1 to 4 show your starting activities. Complete a full mock test to reveal the next three practice days.": "Tanggal 1 sampai 4 menampilkan aktivitas awal Anda. Selesaikan tes simulasi lengkap untuk membuka tiga hari latihan berikutnya.",
+            "Calendar symbols": "Simbol kalender",
+            "Three sections to check your progress.": "Tiga bagian untuk melihat progres Anda.",
+            "Recommended practice": "Latihan yang disarankan",
+            "Based on your results.": "Berdasarkan hasil Anda.",
+            "Icons not shown yet": "Ikon belum ditampilkan",
+            "Complete a full mock to reveal practice.": "Selesaikan tes simulasi lengkap untuk membuka latihan.",
+            "Completed": "Selesai",
+            "You finished this section.": "Anda telah menyelesaikan bagian ini.",
+            "Test sections": "Bagian tes",
+            "Conversations and talks · Parts A, B & C": "Percakapan dan ceramah · Bagian A, B & C",
+            "Grammar and sentence structure": "Tata bahasa dan struktur kalimat",
+            "Passages, vocabulary and comprehension": "Teks, kosakata, dan pemahaman",
+            "How practice unlocks": "Cara membuka latihan",
+            "Start with days 1 to 4.": "Mulai dari tanggal 1 sampai 4.",
+            "Complete another full mock.": "Selesaikan tes simulasi lengkap berikutnya.",
+            "See the next three days.": "Lihat tiga hari berikutnya.",
+            "Take the first mock test, then follow the three practice days.": "Ikuti tes simulasi pertama, lalu lanjutkan tiga hari latihan.",
+            "Finish Listening, Structure and Reading in the same test session.": "Selesaikan Listening, Structure, dan Reading dalam satu sesi tes.",
+            "A full mock for day 5 reveals practice icons on days 6 to 8.": "Tes simulasi lengkap untuk tanggal 5 membuka ikon latihan tanggal 6 sampai 8.",
+            "Hidden icons do not block access to tests. You can still select a date to open its study plan.": "Ikon tersembunyi tidak membatasi akses tes. Anda tetap dapat memilih tanggal untuk membuka rencana belajarnya.",
+            "Study progress overview": "Ringkasan progres belajar",
+            "Study promotion": "Promosi belajar",
+            "View your profile photo": "Lihat foto profil Anda",
+            "Profile photo": "Foto profil",
+            "Your study activity": "Aktivitas belajar Anda",
+            "TOEFL ITP score and CEFR level": "Skor TOEFL ITP dan level CEFR",
+            "Progress toward TOEFL ITP goal": "Progres menuju target TOEFL ITP",
+            "Daily study streak": "Rutinitas belajar harian",
+            "View learner network": "Lihat jaringan pengguna",
+            "Previous suggested partners": "Saran teman sebelumnya",
+            "Next suggested partners": "Saran teman berikutnya",
+            "Online study partners": "Teman belajar daring",
+            "Search online study partners by name, country or level": "Cari teman belajar daring berdasarkan nama, negara, atau level",
+            "Calendar navigation": "Navigasi kalender",
+            "Open calendar guide": "Buka panduan kalender",
+            "Study plan legend": "Keterangan rencana belajar",
+            "Recommended plan": "Rencana yang disarankan",
+            "Mock test sections completed": "Bagian tes simulasi yang selesai",
+            "Checklist illustration for your personalized study plan": "Ilustrasi daftar rencana belajar pribadi Anda",
+            "How your study plan is created": "Cara membuat rencana belajar Anda",
+            "TOEFL mock test": "Tes simulasi TOEFL",
+            "Daily calendar": "Kalender harian",
+            "Previous month": "Bulan sebelumnya",
+            "Next month": "Bulan berikutnya",
+            "TOEFL score calculator": "Kalkulator skor TOEFL",
+            "Close calendar guide": "Tutup panduan kalender",
+            "Calendar guide details": "Detail panduan kalender",
+            "Close TOEFL ITP 101": "Tutup TOEFL ITP 101",
+            "Close photo": "Tutup foto",
+            "No other learners online right now. Check back soon.": "Belum ada pengguna lain yang daring. Coba lagi nanti.",
+            "Sign in to see study partners.": "Masuk untuk melihat teman belajar.",
+            "Sign in to find study partners": "Masuk untuk mencari teman belajar",
+            "No other learners online right now.": "Belum ada pengguna lain yang daring.",
+            "Online": "Daring",
+            "Offline": "Luring",
+            "Presence unavailable": "Status tidak tersedia",
+            "Send request": "Kirim permintaan",
+            "Request sent": "Permintaan terkirim",
+            "Accept request": "Terima permintaan",
+            "Send message": "Kirim pesan",
+            "Updating...": "Memperbarui...",
+            "Waiting for this learner to accept your request": "Menunggu pengguna ini menerima permintaan Anda",
+            "No online learners match that search.": "Tidak ada pengguna daring yang cocok dengan pencarian Anda.",
+            "Country not shared": "Negara tidak dibagikan",
+            "Learner": "Pengguna",
+            "Not set": "Belum diatur",
+            "{n} connection": "{n} koneksi",
+            "{n} connections": "{n} koneksi",
+            "View {name}'s profile photo": "Lihat foto profil {name}",
+            "{name}'s profile photo": "Foto profil {name}",
+            "Select {name}, {country}, {level} English level{status}": "Pilih {name}, {country}, level bahasa Inggris {level}{status}",
+            "Select {name} from {country}, {level} English level": "Pilih {name} dari {country}, level bahasa Inggris {level}",
+            "Priority {n}": "Prioritas {n}",
+            "Highest Priority": "Prioritas Utama",
+            "Medium Priority": "Prioritas Menengah",
+            "Low Priority": "Prioritas Rendah",
+            "High Gap": "Kesenjangan Besar",
+            "Medium Gap": "Kesenjangan Sedang",
+            "Low Gap": "Kesenjangan Kecil",
+            "Accuracy {n}%": "Akurasi {n}%",
+            "Scheduled for {date} (Day {n})": "Dijadwalkan {date} (Hari {n})",
+            "Practice Again": "Latihan Lagi",
+            "Start Test": "Mulai Tes",
+            "{n} of {total} recommended practices completed": "{n} dari {total} latihan yang disarankan selesai",
+            "{n} of 3 mock test sections completed": "{n} dari 3 bagian tes simulasi selesai",
+            "Done": "Selesai",
+            "Pending": "Belum selesai",
+            "None": "Belum",
+            "Open daily schedule": "Buka jadwal harian",
+            "No strike today": "Belum ada aktivitas hari ini",
+            "Completed strikes today": "Aktivitas selesai hari ini",
+            "{date}: {n} strikes": "{date}: {n} aktivitas",
+            "Study history could not be loaded. Reload to show unlocked calendar activities.": "Riwayat belajar gagal dimuat. Muat ulang untuk melihat aktivitas kalender yang terbuka.",
+            "Please enter all three section scores.": "Masukkan skor ketiga bagian.",
+            "Please use valid section scores (31-68, with Reading max 67 for this setup).": "Gunakan skor bagian yang valid (31-68, dengan Reading maksimal 67).",
+            "Estimated level:": "Perkiraan level:",
+            "Elementary": "Dasar",
+            "Advanced": "Mahir",
+            "High Intermediate": "Menengah Atas",
+            "Low Intermediate": "Menengah Bawah",
+            "At your goal": "Target tercapai",
+            "{n} pts above": "{n} poin di atas target",
+            "{n} pts to goal": "{n} poin menuju target",
+            "Based on {n} section score": "Berdasarkan {n} skor bagian",
+            "Estimated from {n} section score": "Perkiraan dari {n} skor bagian",
+            "Based on {n} section scores": "Berdasarkan {n} skor bagian",
+            "Estimated from {n} section scores": "Perkiraan dari {n} skor bagian",
+            "Country flag: {country}": "Bendera negara: {country}",
+            "Welcome, {name}": "Selamat datang, {name}",
+            "Sign Out": "Keluar"
+});
         lucide.createIcons({ attrs: { "stroke-width": 1.5 } });
         const calendarGuide = document.getElementById("calendarGuide");
         const calendarGuideTrigger = document.getElementById("calendarGuideTrigger");
@@ -4568,8 +4912,6 @@ body {
         }, true);
         const MONTH_PICKER_YEAR = 2026;
         const STORAGE_KEY = "toefl_schedule_v3";
-        const MONTH_LABELS = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
-        const MONTH_LABELS_SHORT = ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AUG", "SEP", "OKT", "NOV", "DES"];
         const dashboardGrid = document.getElementById("dashboardCalendarGrid");
         const dashboardMonthLabel = document.getElementById("dashboardMonthLabel");
         const monthPlannerHeading = document.getElementById("monthPlannerHeading");
@@ -4585,7 +4927,6 @@ body {
         const openToefl101Buttons = [...document.querySelectorAll("[data-open-toefl101]")];
         const closeToefl101Button = document.getElementById("closeToefl101");
         let toefl101ReturnFocus = openToefl101Buttons[0];
-        const MONTH_PICKER_LABELS = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MEI", "JUNE", "JULI", "AUGUSTUS", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
         const dashboardSync = typeof StudyPlanFirestoreSync === "function"
             ? new StudyPlanFirestoreSync({ projectId: "quickcheck-25590" })
             : null;
@@ -4625,6 +4966,7 @@ body {
         let partnerContacts = {};
         let partnerActionBusy = false;
         let partnerDirectoryAuthenticated = false;
+        document.getElementById("partnerDirectoryStatus").textContent = qcT("Loading member directory…");
 
         const partnerCountryNames = {
             AU: ["Australia", "🇦🇺"],
@@ -4670,7 +5012,7 @@ body {
             const flag = /^[A-Z]{2}$/.test(code) && code !== "OTHER"
                 ? String.fromCodePoint(...[...code].map((letter) => 127397 + letter.charCodeAt(0)))
                 : "";
-            return { name: country || "Country not shared", flag };
+            return { name: country || qcT("Country not shared"), flag };
         }
 
         function renderPartnerNetwork() {
@@ -4700,7 +5042,7 @@ body {
                 if (!topCountries.length) {
                     const empty = document.createElement("p");
                     empty.className = "partner-network-empty";
-                    empty.textContent = "No country data yet.";
+                    empty.textContent = qcT("No country data yet.");
                     countriesNode.append(empty);
                 } else {
                     topCountries.forEach(([country, count]) => {
@@ -4746,20 +5088,20 @@ body {
                 if (!profiles.length) {
                     const empty = document.createElement("p");
                     empty.className = "partner-network-empty";
-                    empty.textContent = "No connections yet. Send a request in matchmaking to get started.";
+                    empty.textContent = qcT("No connections yet. Send a request in matchmaking to get started.");
                     connectionGrid.append(empty);
                 }
             }
 
             const memberCount = document.getElementById("partnerDirectoryMemberCount");
-            if (memberCount) memberCount.textContent = `${profiles.length} connection${profiles.length === 1 ? "" : "s"}`;
+            if (memberCount) memberCount.textContent = qcT(profiles.length === 1 ? "{n} connection" : "{n} connections", { n: profiles.length });
         }
 
         function resetSelectedPartner() {
             selectedPartnerId = null;
-            partnerSelected.innerHTML = '<span class="partner-selected-icon" aria-hidden="true">✦</span><span class="partner-selected-copy"><b>Choose a study partner</b><small>Members choose what to share</small></span>';
+            partnerSelected.innerHTML = `<span class="partner-selected-icon" aria-hidden="true">✦</span><span class="partner-selected-copy"><b>${qcT("Choose a study partner")}</b><small>${qcT("Members choose what to share")}</small></span>`;
             partnerMatchButton.disabled = true;
-            partnerMatchButton.textContent = "Choose a partner";
+            partnerMatchButton.textContent = qcT("Choose a partner");
         }
 
         window.updateToeflPartnerDirectory = (directory, currentUid) => {
@@ -4769,11 +5111,11 @@ body {
                 const isOnline = connections && Object.values(connections).some((connected) => connected === true);
                 return {
                     id,
-                    name: typeof data.displayName === "string" && data.displayName.trim() ? data.displayName.trim() : "Learner",
+                    name: typeof data.displayName === "string" && data.displayName.trim() ? data.displayName.trim() : qcT("Learner"),
                     country: country.name,
                     flag: country.flag,
                     photo: typeof data.photoURL === "string" ? data.photoURL : "",
-                    level: typeof data.level === "string" && data.level.trim() ? data.level.trim() : "Not set",
+                    level: typeof data.level === "string" && data.level.trim() ? data.level.trim() : qcT("Not set"),
                     isOnline: Boolean(isOnline)
                 };
             });
@@ -4796,8 +5138,8 @@ body {
             if (status) {
                 status.parentElement.hidden = partnerDirectoryAuthenticated && partnerProfiles.length > 0;
                 status.textContent = !partnerDirectoryAuthenticated
-                    ? "Sign in to find study partners"
-                    : "No other learners online right now.";
+                    ? qcT("Sign in to find study partners")
+                    : qcT("No other learners online right now.");
             }
             if (partnerSearch.value.trim()) renderPartnerSearch(partnerSearch.value);
         };
@@ -4808,7 +5150,7 @@ body {
             const setting = document.getElementById("partnerDirectorySetting");
             if (setting) setting.hidden = !isAuthenticated;
             if (!isAuthenticated) {
-                if (status) status.textContent = "Sign in to find study partners";
+                if (status) status.textContent = qcT("Sign in to find study partners");
                 window.updateToeflPartnerDirectory({}, null);
             }
         };
@@ -4820,9 +5162,9 @@ body {
             button.dataset.profileId = profile.id;
             button.dataset.initials = profile.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2);
             const statusText = typeof profile.isOnline === "boolean"
-                ? (profile.isOnline ? "Online" : "Offline")
+                ? (profile.isOnline ? qcT("Online") : qcT("Offline"))
                 : "";
-            button.setAttribute("aria-label", `Select ${profile.name}, ${profile.country}, ${profile.level} English level${statusText ? `, ${statusText}` : ""}`);
+            button.setAttribute("aria-label", qcT("Select {name}, {country}, {level} English level{status}", { name: profile.name, country: profile.country, level: profile.level, status: statusText ? `, ${statusText}` : "" }));
             button.setAttribute("aria-pressed", String(profile.id === selectedPartnerId));
             button.title = `${profile.flag} ${profile.country} · ${profile.level}`;
             if (profile.id === selectedPartnerId) button.classList.add("is-selected");
@@ -4831,7 +5173,7 @@ body {
             image.alt = "";
             if (profile.photo) {
                 image.src = profile.photo;
-                image.alt = `${profile.name}'s profile photo`;
+                image.alt = qcT("{name}'s profile photo", { name: profile.name });
                 image.loading = "lazy";
                 image.addEventListener("error", () => {
                     image.remove();
@@ -4867,8 +5209,8 @@ body {
                 const emptyMessage = document.createElement("p");
                 emptyMessage.className = "partner-directory-empty";
                 emptyMessage.textContent = partnerDirectoryAuthenticated
-                    ? "No other learners online right now. Check back soon."
-                    : "Sign in to see study partners.";
+                    ? qcT("No other learners online right now. Check back soon.")
+                    : qcT("Sign in to see study partners.");
                 partnerOrbit.append(emptyMessage);
                 previousPartnerButton.disabled = true;
                 nextPartnerButton.disabled = true;
@@ -4925,6 +5267,7 @@ body {
                     ? partnerPhotoViewerTrigger
                     : document.querySelector("#partnerSelected button.partner-selected-icon");
                 target?.focus();
+                requestAnimationFrame(() => { if (target?.isConnected && document.activeElement !== target) target.focus(); });
                 partnerPhotoViewerTrigger = null;
             });
         }
@@ -4941,7 +5284,7 @@ body {
             if (profile.photo) {
                 const image = document.createElement("img");
                 image.src = profile.photo;
-                image.alt = `${profile.name}'s profile photo`;
+                image.alt = qcT("{name}'s profile photo", { name: profile.name });
                 image.addEventListener("error", () => {
                     image.remove();
                     media.classList.add("is-fallback");
@@ -4951,8 +5294,9 @@ body {
                 media.classList.add("is-fallback");
             }
             viewer.querySelector("#partnerPhotoViewerName").textContent = profile.name;
+            const detailText = [profile.country, profile.level].filter(Boolean).join(" · ");
             viewer.querySelector("#partnerPhotoViewerDetails").textContent =
-                `${profile.flag ? `${profile.flag} ` : ""}${profile.country} · ${profile.level}`;
+                `${profile.flag && detailText ? `${profile.flag} ` : ""}${detailText}`;
             partnerPhotoViewerTrigger = trigger || null;
             viewer.showModal();
         }
@@ -4967,8 +5311,8 @@ body {
             const presence = document.createElement("span");
             presence.className = "partner-presence";
             const presenceText = typeof profile.isOnline === "boolean"
-                ? (profile.isOnline ? "Online" : "Offline")
-                : "Presence unavailable";
+                ? (profile.isOnline ? qcT("Online") : qcT("Offline"))
+                : qcT("Presence unavailable");
             if (typeof profile.isOnline === "boolean") {
                 presence.classList.add(profile.isOnline ? "is-online" : "is-offline");
             }
@@ -4984,7 +5328,7 @@ body {
             selectedAvatar.type = "button";
             selectedAvatar.className = "partner-selected-icon";
             selectedAvatar.dataset.initials = profile.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2);
-            selectedAvatar.setAttribute("aria-label", `View ${profile.name}'s profile photo`);
+            selectedAvatar.setAttribute("aria-label", qcT("View {name}'s profile photo", { name: profile.name }));
             selectedAvatar.setAttribute("aria-haspopup", "dialog");
             selectedAvatar.addEventListener("click", () => openPartnerPhotoViewer(profile, selectedAvatar));
             if (profile.photo) {
@@ -5012,14 +5356,14 @@ body {
             if (!selectedPartnerId) return;
             const status = partnerContactStatus(selectedPartnerId);
             const labels = {
-                none: "Send request",
-                outgoing: "Request sent",
-                incoming: "Accept request",
-                connected: "Send message"
+                none: qcT("Send request"),
+                outgoing: qcT("Request sent"),
+                incoming: qcT("Accept request"),
+                connected: qcT("Send message")
             };
-            partnerMatchButton.textContent = partnerActionBusy ? "Updating..." : labels[status] || labels.none;
+            partnerMatchButton.textContent = partnerActionBusy ? qcT("Updating...") : labels[status] || labels.none;
             partnerMatchButton.disabled = partnerActionBusy || status === "outgoing" || !partnerDirectoryAuthenticated;
-            partnerMatchButton.title = status === "outgoing" ? "Waiting for this learner to accept your request" : "";
+            partnerMatchButton.title = status === "outgoing" ? qcT("Waiting for this learner to accept your request") : "";
         }
 
         window.setToeflPartnerContacts = (contacts) => {
@@ -5057,14 +5401,14 @@ body {
             if (matches.length === 0) {
                 const emptyMessage = document.createElement("p");
                 emptyMessage.className = "partner-search-empty";
-                emptyMessage.textContent = "No online learners match that search.";
+                emptyMessage.textContent = qcT("No online learners match that search.");
                 partnerSearchResult.append(emptyMessage);
             } else {
                 matches.forEach((profile) => {
                     const option = document.createElement("button");
                     option.type = "button";
                     option.className = "partner-search-option";
-                    option.setAttribute("aria-label", `Select ${profile.name} from ${profile.country}, ${profile.level} English level`);
+                    option.setAttribute("aria-label", qcT("Select {name} from {country}, {level} English level", { name: profile.name, country: profile.country, level: profile.level }));
 
                     let avatar;
                     if (profile.photo) {
@@ -5174,6 +5518,7 @@ body {
             const generatedSummary = document.getElementById("agendaGeneratedSummary");
             if (!panel || !zeroState || !agendaList || !errorMessage || !progress || !zeroBadge || !generatedSummary) return;
 
+            errorMessage.textContent = qcT("Study plan history could not be loaded. Reload the page to try again.");
             const showHistoryError = (error) => {
                 console.error("[Dashboard] Could not load mock test history for the recommended plan:", error);
                 panel.classList.remove("is-zero-state");
@@ -5258,10 +5603,10 @@ body {
                     : "structure";
                 const accuracy = Math.max(0, Math.min(100, Number(recommendation.accuracy) || 0));
                 const level = accuracy < 50 ? "Beginner" : accuracy < 75 ? "Intermediate" : "Advanced";
-                const gap = accuracy < 50 ? "High Gap" : accuracy < 75 ? "Medium Gap" : "Low Gap";
-                const priorityLabel = index === 0 ? "Highest Priority" : index === 1 ? "Medium Priority" : "Low Priority";
+                const gap = accuracy < 50 ? qcT("High Gap") : accuracy < 75 ? qcT("Medium Gap") : qcT("Low Gap");
+                const priorityLabel = index === 0 ? qcT("Highest Priority") : index === 1 ? qcT("Medium Priority") : qcT("Low Priority");
                 const dayDate = scheduledDates[index] || new Date(baseDate);
-                const scheduledLabel = dayDate.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+                const scheduledLabel = dayDate.toLocaleDateString(qcLocale(), { day: "numeric", month: "short" });
                 const practiceDay = index + 2;
                 const focusLabel = sectionId === "listening"
                     ? `${recommendation.sectionName} ${String(recommendation.focus).match(/Part [A-C]/)?.[0] || "Practice"}`
@@ -5280,19 +5625,19 @@ body {
                 const theme = recommendationTheme[sectionId];
                 return `
                     <article class="agenda-recommendation-card ${theme}${index === 0 ? " is-priority-one" : ""}${isComplete ? " is-complete" : ""}">
-                        <span class="agenda-recommendation-rank" aria-label="Priority ${index + 1}">${index + 1}</span>
+                        <span class="agenda-recommendation-rank" aria-label="${qcT("Priority {n}", { n: index + 1 })}">${index + 1}</span>
                         <img class="agenda-recommendation-image" src="${recommendationImages[sectionId]}" alt="" width="58" height="54">
                         <div class="agenda-recommendation-content">
                             <h4>${escapeHtml(focusLabel)}</h4>
                             <span class="agenda-recommendation-priority">${priorityLabel}</span>
                         </div>
                         <div class="agenda-recommendation-stats">
-                            <span>Accuracy ${accuracy}%</span><span aria-hidden="true">|</span>
+                            <span>${qcT("Accuracy {n}%", { n: accuracy })}</span><span aria-hidden="true">|</span>
                             <span>${gap}</span><span aria-hidden="true">|</span>
-                            <span><i class="ti ti-calendar-event" aria-hidden="true"></i> Scheduled for ${scheduledLabel} (Day ${practiceDay})</span>
+                            <span><i class="ti ti-calendar-event" aria-hidden="true"></i> ${qcT("Scheduled for {date} (Day {n})", { date: scheduledLabel, n: practiceDay })}</span>
                         </div>
                         <a class="agenda-recommendation-start" href="study-plan.html?${params.toString()}">
-                            ${isComplete ? "Practice Again" : "Start Test"} <i class="ti ti-arrow-narrow-right" aria-hidden="true"></i>
+                            ${isComplete ? qcT("Practice Again") : qcT("Start Test")} <i class="ti ti-arrow-narrow-right" aria-hidden="true"></i>
                         </a>
                     </article>
                 `;
@@ -5305,8 +5650,8 @@ body {
             progress.setAttribute(
                 "aria-label",
                 hasRecommendations
-                    ? `${completedCount} of ${recommendations.length} recommended practices completed`
-                    : `${zeroStateProgress} of 3 mock test sections completed`
+                    ? qcT("{n} of {total} recommended practices completed", { n: completedCount, total: recommendations.length })
+                    : qcT("{n} of 3 mock test sections completed", { n: zeroStateProgress })
             );
             zeroState.hidden = hasRecommendations;
             agendaList.hidden = !hasRecommendations;
@@ -5350,8 +5695,9 @@ body {
         }
 
         function renderMonthPicker() {
+            if (!monthPickerYearLabel || !monthPickerGrid) return;
             monthPickerYearLabel.textContent = String(monthPickerYear);
-            monthPickerGrid.innerHTML = MONTH_PICKER_LABELS.map((label, monthIndex) => `
+            monthPickerGrid.innerHTML = Array.from({ length: 12 }, (_, i) => qcMonth(i)).map((label, monthIndex) => `
                 <button class="month-picker-option${monthPickerYear === dashboardYear && monthIndex === dashboardMonth ? " active" : ""}" type="button" data-month-index="${monthIndex}">
                     <span>${label}</span><i class="ti ti-chevron-right" aria-hidden="true"></i>
                 </button>
@@ -5388,14 +5734,14 @@ body {
                 { id: "reading", label: "📖 Reading" }
             ];
             dailyDrilldown.innerHTML = `
-                <h4>${MONTH_LABELS[dashboardMonth]} ${selectedDashboardDay}, ${dashboardYear}</h4>
+                <h4>${new Intl.DateTimeFormat(qcLocale(), { dateStyle: "long" }).format(new Date(dashboardYear, dashboardMonth, selectedDashboardDay))}</h4>
                 <div class="daily-task-grid">
                     ${tasks.map((task) => {
                         const done = Boolean(dayData.sections && dayData.sections[task.id] && dayData.sections[task.id].completed);
-                        return `<div class="daily-task-card ${done ? "done" : ""}"><span>${task.label}</span><strong>${done ? "Done" : "Pending"}</strong></div>`;
+                        return `<div class="daily-task-card ${done ? "done" : ""}"><span>${task.label}</span><strong>${done ? qcT("Done") : qcT("Pending")}</strong></div>`;
                     }).join("")}
                 </div>
-                <button class="drilldown-link" type="button" id="openDrilldownBtn">Open daily schedule</button>
+                <button class="drilldown-link" type="button" id="openDrilldownBtn">${qcT("Open daily schedule")}</button>
             `;
             const openButton = document.getElementById("openDrilldownBtn");
             openButton.addEventListener("click", () => {
@@ -5428,7 +5774,7 @@ body {
         function renderDailyGoalStrip() {
             const stripHost = document.getElementById("goalDaysStrip");
             if (!stripHost) return;
-            const dayLabels = ["Mon", "Tue", "Wed", "Thr", "Fri", "Sat", "Sun"];
+            const dayLabels = Array.from({ length: 7 }, (_, i) => new Intl.DateTimeFormat(qcLocale(), { weekday: "short" }).format(new Date(2026, 0, 5 + i)));
             const today = new Date();
             const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
             const mondayOffset = (startOfToday.getDay() + 6) % 7;
@@ -5522,9 +5868,9 @@ body {
         function renderDayLabel(dayOfMonth) {
             const isMockTest = isMockTestDay(dayOfMonth);
             if (isMockTest) {
-                return `<span class="dashboard-day-label label-mock"><span>Mock Test</span></span>`;
+                return `<span class="dashboard-day-label label-mock"><span>${qcT("Mock Test")}</span></span>`;
             }
-            return `<span class="dashboard-day-label label-recommended"><i data-lucide="sparkles" class="label-sparkle" aria-hidden="true"></i><span>Recomended Study Plan</span></span>`;
+            return `<span class="dashboard-day-label label-recommended"><i data-lucide="sparkles" class="label-sparkle" aria-hidden="true"></i><span>${qcT("Recomended Study Plan")}</span></span>`;
         }
 
         function renderDashboardCalendar() {
@@ -5535,7 +5881,7 @@ body {
             } catch (error) {
                 console.error("[Dashboard] Could not load calendar unlocks:", error);
                 const historyError = document.getElementById("agendaStateError");
-                historyError.textContent = "Study history could not be loaded. Reload to show unlocked calendar activities.";
+                historyError.textContent = qcT("Study history could not be loaded. Reload to show unlocked calendar activities.");
                 historyError.hidden = false;
                 return;
             }
@@ -5546,7 +5892,7 @@ body {
             const previousMonth = new Date(dashboardYear, dashboardMonth - 1, 1);
             const nextMonth = new Date(dashboardYear, dashboardMonth + 1, 1);
             const formatMonthLabel = (monthIndex) => {
-                const label = MONTH_LABELS[monthIndex].toLowerCase();
+                const label = qcMonth(monthIndex);
                 return label.charAt(0).toUpperCase() + label.slice(1);
             };
             if (selectedDashboardDay > daysInMonth) selectedDashboardDay = daysInMonth;
@@ -5555,9 +5901,9 @@ body {
             dashboardMonthLabel.textContent = `${monthLabel} ${dashboardYear}`;
             monthPlannerHeading.textContent = `${monthLabel} ${dashboardYear}`;
             if (dashboardMonthRange) {
-                dashboardMonthRange.textContent = `1 ${MONTH_LABELS[dashboardMonth]} ${dashboardYear} - ${daysInMonth} ${MONTH_LABELS[dashboardMonth]} ${dashboardYear}`;
+                dashboardMonthRange.textContent = `1 ${qcMonth(dashboardMonth)} ${dashboardYear} - ${daysInMonth} ${qcMonth(dashboardMonth)} ${dashboardYear}`;
             }
-            if (dashboardBadgeMonth) dashboardBadgeMonth.textContent = MONTH_LABELS_SHORT[dashboardMonth];
+            if (dashboardBadgeMonth) dashboardBadgeMonth.textContent = qcMonth(dashboardMonth, true);
             if (dashboardBadgeDay) dashboardBadgeDay.textContent = String(selectedDashboardDay);
             dashboardGrid.innerHTML = "";
 
@@ -5718,31 +6064,125 @@ body {
         renderDailyGoalStrip();
         if (window.cardStrike) window.cardStrike.render();
 
+
+        // These shared widgets render English copy internally; keep their adapters scoped here.
+        const qcExternalCopy = new WeakMap();
+        function localizeScoreCopy() {
+            ["scoreTestDate", "scoreGoalDelta"].forEach((id) => {
+                const node = document.getElementById(id);
+                if (!node) return;
+                const previous = qcExternalCopy.get(node);
+                const source = previous && node.textContent === previous.output ? previous.source : node.textContent;
+                let output = qcT(source);
+                const delta = /^(\d+) pts (above|to goal)$/.exec(source);
+                if (delta) output = qcT(`{n} pts ${delta[2]}`, { n: delta[1] });
+                const basis = /^(Based on|Estimated from) (\d+) section scores?(?: · (.+))?$/.exec(source);
+                if (basis) {
+                    output = qcT(`${basis[1]} {n} section score${basis[2] === "1" ? "" : "s"}`, { n: basis[2] });
+                    if (basis[3]) {
+                        let date = new Date(basis[3]);
+                        try {
+                            const history = window.toeflTestHistory;
+                            const mock = history?.readHistoryEntries().find((entry) => entry.entryKind === "full-mock" && entry.status === "completed");
+                            const attempts = mock ? mock.sectionAttempts : history?.readAttempts() || [];
+                            const results = ["listening", "structure", "reading"].map((section) => attempts.find((attempt) => attempt.sectionKey === section))
+                                .filter((attempt) => attempt && ((Number.isFinite(Number(attempt.scaledScore)) && Number(attempt.scaledScore) > 0)
+                                    || (attempt.rawScore != null && Number.isFinite(Number(attempt.rawScore)))))
+                                .sort((a, b) => Date.parse(b.submittedAt || b.setDate || 0) - Date.parse(a.submittedAt || a.setDate || 0));
+                            if (results[0]) date = new Date(results[0].submittedAt || results[0].setDate);
+                        } catch { /* Retain the rendered date if history is unavailable. */ }
+                        output += ` · ${Number.isNaN(date.getTime()) ? basis[3] : new Intl.DateTimeFormat(qcLocale(), { day: "numeric", month: "short", year: "numeric" }).format(date)}`;
+                    }
+                }
+                qcExternalCopy.set(node, { source, output });
+                if (node.textContent !== output) node.textContent = output;
+            });
+            const note = document.querySelector('[data-dashboard-stat="study-time-note"]');
+            if (note && ["Time not tracked", "Waktu belum tercatat"].includes(note.textContent)) note.textContent = qcT("Time not tracked");
+        }
+
+        function localizeStrikeCopy() {
+            const today = new Date();
+            const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (today.getDay() + 6) % 7);
+            const setText = (node, text) => { if (node && node.textContent !== text) node.textContent = text; };
+            document.querySelectorAll("#strike-days .day-card-strike").forEach((card, index) => {
+                const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index);
+                const count = Number(card.querySelector(".strike-number-text")?.textContent) || 0;
+                setText(card.querySelector(".day-text"), new Intl.DateTimeFormat(qcLocale(), { weekday: "short" }).format(date));
+                setText(card.querySelector(".date-text"), new Intl.DateTimeFormat(qcLocale(), { day: "numeric", month: "short" }).format(date));
+                const label = qcT("{date}: {n} strikes", { date: new Intl.DateTimeFormat(qcLocale(), { weekday: "short", day: "numeric", month: "short" }).format(date), n: count });
+                if (card.getAttribute("aria-label") !== label) card.setAttribute("aria-label", label);
+                const status = card.querySelector(".strike-status");
+                setText(status, qcT(count > 0 ? "Done" : "None"));
+                if (status) status.title = qcT(count > 0 ? "Completed strikes today" : "No strike today");
+            });
+        }
+
+        function localizeWidgetCalendar() {
+            const calendar = window.cardCalendar;
+            const filter = document.getElementById("selected-filter-text");
+            if (!calendar || !filter) return;
+            const defaultFilter = ["This month", "Bulan ini"].includes(filter.textContent);
+            calendar.months = Array.from({ length: 12 }, (_, i) => qcMonth(i));
+            calendar.renderView();
+            filter.textContent = defaultFilter ? qcT("This month") : `${qcMonth(calendar.selectedMonthIndex)} ${calendar.selectedYear}`;
+        }
+
+        function refreshDashboardLanguage() {
+            renderAgendaPanel();
+            renderDashboardCalendar();
+            renderDailyGoalStrip();
+            renderMonthPicker();
+            renderPartnerNetwork();
+            renderPartnerOrbit();
+            const selected = partnerProfiles.find((profile) => profile.id === selectedPartnerId);
+            if (selected) renderSelectedPartner(selected);
+            else resetSelectedPartner();
+            renderPartnerSearch(partnerSearch.value);
+            const status = document.getElementById("partnerDirectoryStatus");
+            if (status) status.textContent = qcT(!partnerDirectoryAuthenticated ? "Sign in to find study partners" : "No other learners online right now.");
+            localizeWidgetCalendar();
+            localizeScoreCopy();
+            localizeStrikeCopy();
+            if (document.getElementById("final-score-result").style.display === "block") calculateFinalScore();
+        }
+        window.addEventListener("qc:langchange", refreshDashboardLanguage);
+        document.addEventListener("DOMContentLoaded", () => {
+            setTimeout(localizeWidgetCalendar, 0);
+            renderPartnerNetwork();
+            if (!selectedPartnerId) resetSelectedPartner();
+            localizeScoreCopy();
+            localizeStrikeCopy();
+            const scoreObserver = new MutationObserver(localizeScoreCopy);
+            ["scoreTestDate", "scoreGoalDelta"].forEach((id) => scoreObserver.observe(document.getElementById(id), { childList: true, characterData: true, subtree: true }));
+            new MutationObserver(localizeStrikeCopy).observe(document.getElementById("strike-days"), { childList: true, characterData: true, subtree: true });
+        }, { once: true });
+
         function calculateFinalScore() {
             const s1 = parseInt(document.getElementById("score1").value, 10);
             const s2 = parseInt(document.getElementById("score2").value, 10);
             const s3 = parseInt(document.getElementById("score3").value, 10);
 
             if (Number.isNaN(s1) || Number.isNaN(s2) || Number.isNaN(s3)) {
-                alert("Please enter all three section scores.");
+                alert(qcT("Please enter all three section scores."));
                 return;
             }
 
             if (s1 < 31 || s1 > 68 || s2 < 31 || s2 > 68 || s3 < 31 || s3 > 67) {
-                alert("Please use valid section scores (31-68, with Reading max 67 for this setup).");
+                alert(qcT("Please use valid section scores (31-68, with Reading max 67 for this setup)."));
                 return;
             }
 
             const finalScore = Math.round(((s1 + s2 + s3) * 10) / 3);
-            let level = "Elementary";
-            if (finalScore >= 600) level = "Advanced";
-            else if (finalScore >= 500) level = "High Intermediate";
-            else if (finalScore >= 400) level = "Low Intermediate";
+            let level = qcT("Elementary");
+            if (finalScore >= 600) level = qcT("Advanced");
+            else if (finalScore >= 500) level = qcT("High Intermediate");
+            else if (finalScore >= 400) level = qcT("Low Intermediate");
 
             const resultDiv = document.getElementById("final-score-result");
             resultDiv.innerHTML = `
                 <p class="result-score">${finalScore}</p>
-                <p class="result-level">Estimated level: <strong>${level}</strong></p>
+                <p class="result-level">${qcT("Estimated level:")} <strong>${level}</strong></p>
             `;
             resultDiv.style.display = "block";
         }
@@ -5760,6 +6200,8 @@ body {
             ref
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+        const qcT = (s, v) => window.QCPrefs ? window.QCPrefs.t(s, v) : s.replace(/\{(\w+)\}/g, (m, k) => v && k in v ? v[k] : m);
+
         // DOM Elements
         const welcomeHeading = document.getElementById("welcomeHeading");
         const welcomeUserName = document.getElementById("welcomeUserName");
@@ -5768,6 +6210,13 @@ body {
         const userNavAvatar = document.getElementById("userNavAvatar");
         const userProfileImage = document.getElementById("userProfileImage");
         const userCountryFlag = document.getElementById("userCountryFlag");
+        const userProfilePhotoButton = document.getElementById("userProfilePhotoButton");
+        let dashboardViewerProfile = { name: "Student", country: "", flag: "" };
+        userProfilePhotoButton?.addEventListener("click", () => {
+            const name = welcomeUserName?.textContent.trim() || dashboardViewerProfile.name;
+            const photo = userProfileImage?.getAttribute("src") || "";
+            window.openPartnerPhotoViewer?.({ ...dashboardViewerProfile, name, photo }, userProfilePhotoButton);
+        });
         const authActionButton = document.getElementById("authActionButton");
         const partnerDirectorySetting = document.getElementById("partnerDirectorySetting");
         const partnerDirectoryOptIn = document.getElementById("partnerDirectoryOptIn");
@@ -5942,9 +6391,10 @@ body {
                         const firstName = data.first_name || data.firstName;
                         const lastName = data.last_name || data.lastName || "";
                         const flag = countryFlag(data.nationality || data.country);
+                        dashboardViewerProfile = { name: nameToDisplay, country: data.nationality || data.country || "", flag: flag || "" };
                         if (userCountryFlag && flag) {
                             userCountryFlag.textContent = flag;
-                            userCountryFlag.setAttribute("aria-label", `Country flag: ${data.nationality || data.country}`);
+                            userCountryFlag.setAttribute("aria-label", qcT("Country flag: {country}", { country: data.nationality || data.country }));
                             userCountryFlag.title = data.nationality || data.country;
                             userCountryFlag.hidden = false;
                         }
@@ -5955,7 +6405,7 @@ body {
 
                     // Update UI with user information
                     if (welcomeUserName) welcomeUserName.textContent = nameToDisplay;
-                    else if (welcomeHeading) welcomeHeading.textContent = `Welcome, ${nameToDisplay}`;
+                    else if (welcomeHeading) welcomeHeading.textContent = qcT("Welcome, {name}", { name: nameToDisplay });
                     if (userDisplayName) userDisplayName.textContent = nameToDisplay;
                     if (userNavName) userNavName.textContent = nameToDisplay;
 
@@ -5976,7 +6426,7 @@ body {
 
                 // Configure sign-out click handler
                 if (authActionButton) {
-                    authActionButton.setAttribute("title", "Sign Out");
+                    authActionButton.setAttribute("title", qcT("Sign Out"));
                     authActionButton.addEventListener("click", async (e) => {
                         e.preventDefault();
                         await signOut(auth);
@@ -5995,7 +6445,7 @@ body {
         });
     </script>
     <dialog class="partner-photo-viewer" id="partnerPhotoViewer" aria-labelledby="partnerPhotoViewerName">
-        <button class="partner-photo-viewer__close" type="button" aria-label="Close photo"><i class="ti ti-x" aria-hidden="true"></i></button>
+        <button class="partner-photo-viewer__close" type="button" aria-label="Close photo" data-i18n-attr="aria-label"><i class="ti ti-x" aria-hidden="true"></i></button>
         <figure class="partner-photo-viewer__figure">
             <div class="partner-photo-viewer__media"></div>
             <figcaption class="partner-photo-viewer__caption">
