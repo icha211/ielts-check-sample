@@ -1,10 +1,11 @@
 (function () {
   const pageName = window.location.pathname.split("/").pop().toLowerCase();
-  if (pageName !== "index.html" || document.querySelector(".qcsite-footer")) return;
+  const isDashboard = pageName === "" || pageName === "index.html";
+  if (!isDashboard || document.querySelector(".qcsite-footer")) return;
 
   const stylesheet = document.createElement("link");
   stylesheet.rel = "stylesheet";
-  stylesheet.href = "site-footer.css";
+  stylesheet.href = "site-footer.css?v=20261029-pse";
   document.head.appendChild(stylesheet);
 
   const footer = document.createElement("footer");
@@ -17,15 +18,6 @@
         </a>
         <p>PT CEKCEPAT GUNANSA EDUKASI</p>
         <a class="qcsite-footer__contact" href="mailto:support@quickcheck.id">support@quickcheck.id</a>
-        <div class="qcsite-footer__payments">
-          <h2 id="qcsite-footer-payments-title">Payment Support</h2>
-          <ul class="qcsite-footer__payment-list" aria-labelledby="qcsite-footer-payments-title">
-            <li class="qcsite-footer__payment qcsite-footer__payment--wide"><img src="../asset/icon/payment/Logo_QRIS.svg.webp" alt="QRIS" decoding="async"></li>
-            <li class="qcsite-footer__payment"><img src="../asset/icon/payment/Paypal_2014_logo.png" alt="PayPal" decoding="async"></li>
-            <li class="qcsite-footer__payment"><img src="../asset/icon/payment/Mastercard-logo.svg.webp" alt="Mastercard" decoding="async"></li>
-            <li class="qcsite-footer__payment"><img src="../asset/icon/payment/American_Express_logo_(2018).svg" alt="American Express" decoding="async"></li>
-          </ul>
-        </div>
       </section>
 
       <nav class="qcsite-footer__links" aria-label="Quick Check links">
@@ -53,13 +45,29 @@
 
       <section class="qcsite-footer__legal" aria-labelledby="qcsite-footer-legal-title">
         <h2 id="qcsite-footer-legal-title">Legal &amp; Compliance</h2>
-        <p>For privacy, terms, and payment questions, contact the Quick Check team.</p>
-        <a href="mailto:support@quickcheck.id?subject=Legal%20and%20privacy%20inquiry">Legal inquiries</a>
+        <ul class="qcsite-footer__legal-links">
+          <li><a href="mailto:support@quickcheck.id?subject=Terms%20of%20Service"><i data-lucide="shield-check" aria-hidden="true"></i>Terms of Service</a></li>
+          <li><a href="mailto:support@quickcheck.id?subject=Privacy%20Policy"><i data-lucide="file-lock-2" aria-hidden="true"></i>Privacy Policy</a></li>
+          <li><a href="mailto:support@quickcheck.id?subject=Refund%20and%20Cancellation%20Policy"><i data-lucide="hand-coins" aria-hidden="true"></i>Refund &amp; Cancellation Policy</a></li>
+          <li><a href="#qcsite-footer-disclaimer"><i data-lucide="file-text" aria-hidden="true"></i>Trademark Disclaimer</a></li>
+        </ul>
+        <ul class="qcsite-footer__badges" aria-label="Security certifications">
+          <li><img src="../asset/icon/legal/Payment%20security%20certification.png" alt="PCI-DSS compliant payment processing" width="285" height="72" decoding="async"></li>
+          <li><img src="../asset/icon/legal/Secure%20checkout%20certification.png" alt="SSL secured checkout" width="201" height="72" decoding="async"></li>
+          <li><img src="../asset/icon/legal/Encryption%20badge.png" alt="256-bit encryption" width="285" height="72" decoding="async"></li>
+        </ul>
+        <img class="qcsite-footer__pse" src="../asset/icon/legal/PSE%20registration.png" alt="Terdaftar PSE, Komunikasi dan Digital RI" width="504" height="126" decoding="async">
       </section>
     </div>
 
     <div class="qcsite-footer__bottom">
-      <p class="qcsite-footer__disclaimer">TOEFL is a registered trademark of ETS. Quick Check is not affiliated with or endorsed by ETS.</p>
+      <ul class="qcsite-footer__payment-list" aria-label="Accepted payment methods">
+        <li class="qcsite-footer__payment qcsite-footer__payment--wide"><img src="../asset/icon/payment/Logo_QRIS.svg.webp" alt="QRIS" decoding="async"></li>
+        <li class="qcsite-footer__payment"><img src="../asset/icon/payment/Paypal_2014_logo.png" alt="PayPal" decoding="async"></li>
+        <li class="qcsite-footer__payment"><img src="../asset/icon/payment/Mastercard-logo.svg.webp" alt="Mastercard" decoding="async"></li>
+        <li class="qcsite-footer__payment"><img src="../asset/icon/payment/American_Express_logo_(2018).svg" alt="American Express" decoding="async"></li>
+      </ul>
+      <p class="qcsite-footer__disclaimer" id="qcsite-footer-disclaimer">TOEFL&reg; and IELTS&reg; are registered trademarks of their respective owners. Quick Check is not affiliated with, approved by, or endorsed by ETS or Cambridge Assessment.</p>
       <p class="qcsite-footer__copyright">&copy; <span data-qc-footer-year></span> Quick Check. All rights reserved.</p>
     </div>
   `;
@@ -72,4 +80,5 @@
   }
   footer.classList.add("qcsite-footer--dashboard");
   mount.appendChild(footer);
+  window.lucide?.createIcons({ attrs: { "stroke-width": 1.5 } });
 })();
