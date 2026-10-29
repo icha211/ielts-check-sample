@@ -5,7 +5,7 @@
 
   const stylesheet = document.createElement("link");
   stylesheet.rel = "stylesheet";
-  stylesheet.href = "site-footer.css?v=20261029-badges";
+  stylesheet.href = "site-footer.css?v=20261029-social";
   document.head.appendChild(stylesheet);
 
   const footer = document.createElement("footer");
@@ -17,7 +17,16 @@
           <img src="../asset/icon/logo.png" alt="Quick Check">
         </a>
         <p>PT CEKCEPAT GUNANSA EDUKASI</p>
-        <a class="qcsite-footer__contact" href="mailto:support@quickcheck.id">support@quickcheck.id</a>
+        <h2 class="qcsite-footer__contact-title">Contact Support:</h2>
+        <p class="qcsite-footer__contact-line">
+          <a class="qcsite-footer__contact" href="mailto:support@quickcheck.id">support@quickcheck.id</a>
+          <a class="qcsite-footer__contact" href="tel:+622112345678">+62 21 1234 5678</a>
+        </p>
+        <ul class="qcsite-footer__social" aria-label="Social media">
+          <li><span role="img" aria-label="LinkedIn"><i data-lucide="linkedin" aria-hidden="true"></i></span></li>
+          <li><span role="img" aria-label="Instagram"><i data-lucide="instagram" aria-hidden="true"></i></span></li>
+          <li><span role="img" aria-label="Facebook"><i data-lucide="facebook" aria-hidden="true"></i></span></li>
+        </ul>
       </section>
 
       <nav class="qcsite-footer__links" aria-label="Quick Check links">
