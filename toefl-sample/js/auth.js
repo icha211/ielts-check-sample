@@ -1,11 +1,15 @@
 import { auth, db, googleProvider } from "./firebase-config.js";
 import {
-    createUserWithEmailAndPassword,
+    getAdditionalUserInfo,
+    isSignInWithEmailLink,
     sendEmailVerification,
     sendPasswordResetEmail,
+    sendSignInLinkToEmail,
     signInWithEmailAndPassword,
+    signInWithEmailLink,
     signInWithPopup,
     signOut,
+    updatePassword,
     updateProfile
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
@@ -34,7 +38,20 @@ const nationalityInput = document.getElementById("nationality");
 const emailInput = document.getElementById("email");
 const termsInput = document.getElementById("terms");
 const passwordInput = document.getElementById("password");
+const passwordGroup = document.getElementById("passwordGroup");
+const phoneInput = document.getElementById("phone");
+const PENDING_SIGNUP_KEY = "toefl_pending_signup";
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
+const DISPOSABLE_EMAIL_DOMAINS = new Set([
+    "10minutemail.com", "20minutemail.com", "dispostable.com", "emailondeck.com", "fakeinbox.com",
+    "getnada.com", "guerrillamail.com", "guerrillamail.net", "maildrop.cc", "mailinator.com",
+    "mailnesia.com", "mintemail.com", "mohmal.com", "sharklasers.com", "spamgourmet.com",
+    "temp-mail.org", "tempmail.com", "tempmail.dev", "tempmailo.com", "throwawaymail.com",
+    "trashmail.com", "yopmail.com"
+]);
 let isSignUp = true;
+let isCompletingSignUp = false;
+let activatedUser = null;
 
 function showMessage(message, type = "error") {
     messageEl.textContent = message;
@@ -58,11 +75,16 @@ function getErrorMessage(error) {
         "auth/email-already-in-use": "An account with this email already exists. Sign in instead.",
         "auth/invalid-email": "Enter a valid email address.",
         "auth/invalid-credential": "The email or password is incorrect. For the developer account, use Forgot password to reset its Firebase password.",
-        "auth/operation-not-allowed": "Email and password sign-up is not enabled in Firebase Authentication.",
+        "auth/operation-not-allowed": "Email sign-up is not enabled. In Firebase Console, open Authentication > Sign-in method > Email/Password and turn on Email link (passwordless sign-in).",
         "auth/popup-closed-by-user": "The Google sign-in window was closed before sign-in finished.",
         "auth/user-not-found": "No account was found for this email. Check the address or create an account.",
         "auth/wrong-password": "The password is incorrect. Use Forgot password to reset it.",
         "auth/too-many-requests": "Too many attempts. Please wait a few minutes and try again.",
+        "auth/disposable-email": "Temporary or disposable email addresses are not allowed. Use an email you can access long term.",
+        "auth/email-domain-unreachable": "This email domain cannot receive mail. Check the address for typos.",
+        "auth/invalid-action-code": "This activation link is invalid or was already used. Sign up again to get a new link.",
+        "auth/expired-action-code": "This activation link has expired. Sign up again to get a new link.",
+        "auth/unauthorized-continue-uri": `Activation links are blocked for "${window.location.hostname}". Add this hostname in Firebase Console under Authentication > Settings > Authorized domains.`,
         "auth/weak-password": "Choose a password with at least 6 characters."
     };
     return messages[error.code] || error.message || "Sign-up failed. Please try again.";
@@ -159,12 +181,17 @@ function setSubmitting(isSubmitting) {
 
 function setAuthMode(signUp) {
     isSignUp = signUp;
+    isCompletingSignUp = false;
+    emailInput.readOnly = false;
     if (!isSignUp) emailInput.value = DEVELOPER_EMAIL;
     authCard.classList.toggle("signin-mode", !isSignUp);
     authHeading.textContent = isSignUp ? "Master Your TOEFL ITP Journey" : "Welcome Back";
-    submitButton.textContent = isSignUp ? "Sign Up" : "Sign In";
-    passwordInput.autocomplete = isSignUp ? "new-password" : "current-password";
-    passwordInput.minLength = isSignUp ? 6 : 0;
+    submitButton.textContent = isSignUp ? "Send Activation Link" : "Sign In";
+    // During sign-up the password is created after the inbox is confirmed.
+    passwordGroup.style.display = isSignUp ? "none" : "";
+    passwordInput.required = !isSignUp;
+    passwordInput.autocomplete = "current-password";
+    passwordInput.minLength = 0;
     firstNameInput.required = isSignUp;
     lastNameInput.required = isSignUp;
     nationalityInput.required = isSignUp;
@@ -175,6 +202,116 @@ function setAuthMode(signUp) {
     messageEl.textContent = "";
 }
 
+function readPendingSignUp() {
+    try {
+        return JSON.parse(localStorage.getItem(PENDING_SIGNUP_KEY) || "null");
+    } catch {
+        return null;
+    }
+}
+
+function clearActivationLink() {
+    window.history.replaceState(null, "", window.location.pathname);
+}
+
+function enterActivationMode() {
+    setAuthMode(true);
+    isCompletingSignUp = true;
+    const pending = readPendingSignUp();
+    if (pending) {
+        firstNameInput.value = pending.firstName || "";
+        lastNameInput.value = pending.lastName || "";
+        nationalityInput.value = pending.nationality || "";
+        phoneInput.value = pending.phone || "";
+        emailInput.value = pending.email || "";
+        emailInput.readOnly = Boolean(pending.email);
+    }
+    authHeading.textContent = "Activate Your Account";
+    submitButton.textContent = "Activate Account";
+    passwordGroup.style.display = "";
+    passwordInput.required = true;
+    passwordInput.autocomplete = "new-password";
+    passwordInput.minLength = 6;
+    showMessage(pending?.email
+        ? "Your activation link is ready. Create a password to finish setting up your account."
+        : "Enter the email address you signed up with, your details, and a new password to activate your account.", "info");
+}
+
+async function validateSignUpEmail(email) {
+    if (!EMAIL_PATTERN.test(email)) {
+        throw Object.assign(new Error("Enter a valid email address."), { code: "auth/invalid-email" });
+    }
+
+    const domain = email.split("@").pop().toLowerCase();
+    if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+        throw Object.assign(new Error("Disposable email"), { code: "auth/disposable-email" });
+    }
+
+    let response;
+    try {
+        response = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=MX`);
+    } catch (error) {
+        // If the DNS check is unreachable, the activation link is still the real proof of ownership.
+        console.warn("Email domain check skipped:", error);
+        return;
+    }
+    if (!response.ok) return;
+
+    const result = await response.json();
+    const mailServers = (result.Answer || []).filter((answer) => answer.type === 15 && answer.data.trim() !== "0 .");
+    if (result.Status !== 0 || !mailServers.length) {
+        throw Object.assign(new Error("Unreachable email domain"), { code: "auth/email-domain-unreachable" });
+    }
+}
+
+async function sendActivationLink(email) {
+    showMessage("Checking your email address...", "info");
+    await validateSignUpEmail(email);
+
+    const pending = {
+        email,
+        firstName: firstNameInput.value.trim(),
+        lastName: lastNameInput.value.trim(),
+        nationality: nationalityInput.value,
+        phone: phoneInput.value.trim()
+    };
+    await sendSignInLinkToEmail(auth, email, {
+        url: new URL("signup.html", window.location.href).href,
+        handleCodeInApp: true
+    });
+    localStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify(pending));
+    showMessage(`We sent an activation link to ${email}. Open it to finish creating your account. Your account is only created after you open that link. Check your spam folder if you don't see it.`, "info");
+}
+
+async function completeActivation(email) {
+    showMessage("Activating your account...", "info");
+    if (!activatedUser) {
+        const result = await signInWithEmailLink(auth, email, window.location.href);
+        if (!getAdditionalUserInfo(result)?.isNewUser) {
+            await signOut(auth);
+            localStorage.removeItem(PENDING_SIGNUP_KEY);
+            clearActivationLink();
+            setAuthMode(false);
+            emailInput.value = email;
+            throw Object.assign(new Error("Account exists"), { code: "auth/email-already-in-use" });
+        }
+        activatedUser = result.user;
+        clearActivationLink();
+    }
+
+    const firstName = firstNameInput.value.trim();
+    const lastName = lastNameInput.value.trim();
+    await updatePassword(activatedUser, passwordInput.value);
+    await updateProfile(activatedUser, { displayName: `${firstName} ${lastName}`.trim() });
+    await saveUserProfile(activatedUser, {
+        firstName,
+        lastName,
+        nationality: nationalityInput.value,
+        phone: phoneInput.value.trim()
+    });
+    localStorage.removeItem(PENDING_SIGNUP_KEY);
+}
+
 export async function handleEmailAuth(event) {
     event.preventDefault();
     setSubmitting(true);
@@ -183,24 +320,10 @@ export async function handleEmailAuth(event) {
 
     try {
         let user;
-        if (isSignUp) {
-            showMessage("Creating your account...", "info");
-            const firstName = firstNameInput.value.trim();
-            const lastName = lastNameInput.value.trim();
-            const nationality = nationalityInput.value;
-            const phone = document.getElementById("phone").value.trim();
-            const credential = await createUserWithEmailAndPassword(auth, email, passwordInput.value);
-            user = credential.user;
-            const displayName = `${firstName} ${lastName}`.trim();
-            await updateProfile(user, { displayName });
-            await saveUserProfile(user, { firstName, lastName, nationality, phone });
-            // The account stays locked until the user proves the inbox exists by opening the link.
-            await sendEmailVerification(user);
-            await signOut(auth);
-            setAuthMode(false);
-            emailInput.value = email;
-            passwordInput.value = "";
-            showMessage(`We sent a verification link to ${email}. Open it to activate your account, then sign in. Check your spam folder if you don't see it.`, "info");
+        if (isCompletingSignUp) {
+            await completeActivation(email);
+        } else if (isSignUp) {
+            await sendActivationLink(email);
             setSubmitting(false);
             return;
         } else {
@@ -219,6 +342,10 @@ export async function handleEmailAuth(event) {
         window.location.assign("index.html");
     } catch (error) {
         console.error(isSignUp ? "Sign-up error:" : "Sign-in error:", error);
+        if (isCompletingSignUp && !activatedUser && ["auth/invalid-action-code", "auth/expired-action-code"].includes(error.code)) {
+            clearActivationLink();
+            setAuthMode(true);
+        }
         showMessage(getErrorMessage(error));
         setSubmitting(false);
     }
@@ -240,10 +367,14 @@ export async function handleGoogleSignIn() {
     }
 }
 
-if (new URLSearchParams(window.location.search).get("verify") === "required") {
+if (isSignInWithEmailLink(auth, window.location.href)) {
+    enterActivationMode();
+} else if (new URLSearchParams(window.location.search).get("verify") === "required") {
     setAuthMode(false);
     emailInput.value = "";
     showMessage("Please verify your email address before continuing. Sign in to receive a new verification link.", "error");
+} else {
+    setAuthMode(true);
 }
 
 authForm.addEventListener("submit", handleEmailAuth);
