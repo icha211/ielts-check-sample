@@ -19,8 +19,8 @@
         <p>PT CEKCEPAT GUNANSA EDUKASI</p>
         <h2 class="qcsite-footer__contact-title">Contact Support:</h2>
         <p class="qcsite-footer__contact-line">
-          <a class="qcsite-footer__contact" href="mailto:support@quickcheck.id">support@quickcheck.id</a>
-          <a class="qcsite-footer__contact" href="tel:+622112345678">+62 21 1234 5678</a>
+          <a class="qcsite-footer__contact" href="mailto:pt.cekcepatgunansa@gmail.com">pt.cekcepatgunansa@gmail.com</a>
+          <a class="qcsite-footer__contact" href="tel:+6282341717452">+62 82341717452</a>
         </p>
         <ul class="qcsite-footer__social" aria-label="Social media">
           <li><span role="img" aria-label="LinkedIn"><i data-lucide="linkedin" aria-hidden="true"></i></span></li>
