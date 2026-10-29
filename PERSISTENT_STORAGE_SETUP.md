@@ -218,6 +218,10 @@ Rules allow each learner to read only their own `message_contacts/{uid}`. They a
 
 Both contact records also store `requesterId`, the UID of the learner who sent the request. Rules require it to match the requester when the request is created and keep it unchanged when it is accepted, so nobody can forge who asked first.
 
+### Calendar activity visibility
+
+The dashboard calendar initially shows the three section icons only on days 1–4 of each month. Later dates retain their dates, mock-test labels/colors, and navigation, but no section icons. A completed `full-mock` history entry (all three sections in the same mock session) reveals the three calendar days after its scheduled `setDate`, using its submission date when no scheduled date exists. Partial mocks and standalone section results do not unlock days. Unlocks accumulate, can cross month/year boundaries, and refresh with account-scoped history updates. Adjacent-month placeholder cells never show section icons. This is a display rule, not an access restriction on tests.
+
 ### Accepted-request notifications
 
 Message threads group messages by the viewer's local calendar day, with centered separators: Today, Yesterday, weekday names for two through six days ago, and a full date for seven or more days ago. Labels refresh every minute and on returning to the tab without rebuilding the conversation or changing its scroll position. Each bubble contains a compact time in its lower-right corner, with a full timestamp available on hover and a machine-readable `time` element. Multiline text and long words wrap without overlapping the time.

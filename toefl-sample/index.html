@@ -5205,7 +5205,33 @@ body {
             }).join("");
         }
 
-        function renderTaskQueue(data, setDate, isRealDate) {
+        function getUnlockedCalendarDates(entries) {
+            const dates = new Set();
+            entries.filter((entry) => entry.entryKind === "full-mock" && entry.status === "completed").forEach((entry) => {
+                const scheduledDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(entry.setDate || "");
+                const baseDate = scheduledDate
+                    ? new Date(Number(scheduledDate[1]), Number(scheduledDate[2]) - 1, Number(scheduledDate[3]))
+                    : new Date(entry.submittedAt || entry.recordedAt);
+                if (!Number.isFinite(baseDate.getTime())) {
+                    throw new Error("A completed mock test has no valid calendar date.");
+                }
+                for (let offset = 1; offset <= 3; offset += 1) {
+                    const date = new Date(baseDate);
+                    date.setDate(date.getDate() + offset);
+                    dates.add(formatDateKey(date.getFullYear(), date.getMonth(), date.getDate()));
+                }
+            });
+            return dates;
+        }
+
+        function shouldShowCalendarTasks(setDate, isRealDate, unlockedDates) {
+            if (!isRealDate) return false;
+            const day = Number(setDate.slice(-2));
+            return day >= 1 && day <= 4 || unlockedDates.has(setDate);
+        }
+
+        function renderTaskQueue(data, setDate, isRealDate, unlockedDates) {
+            if (!shouldShowCalendarTasks(setDate, isRealDate, unlockedDates)) return "";
             const sections = [
                 { id: "listening", label: "Listening", icon: "mock-listening.png" },
                 { id: "structure", label: "Structure & Writing", icon: "mock-structure.png" },
@@ -5236,6 +5262,17 @@ body {
         }
 
         function renderDashboardCalendar() {
+            let unlockedDates;
+            try {
+                if (!window.toeflTestHistory?.readHistoryEntries) throw new Error("Test history is unavailable.");
+                unlockedDates = getUnlockedCalendarDates(window.toeflTestHistory.readHistoryEntries());
+            } catch (error) {
+                console.error("[Dashboard] Could not load calendar unlocks:", error);
+                const historyError = document.getElementById("agendaStateError");
+                historyError.textContent = "Study history could not be loaded. Reload to show unlocked calendar activities.";
+                historyError.hidden = false;
+                return;
+            }
             const daysInMonth = new Date(dashboardYear, dashboardMonth + 1, 0).getDate();
             const firstWeekday = new Date(dashboardYear, dashboardMonth, 1).getDay();
             const prevMonthDate = new Date(dashboardYear, dashboardMonth, 0);
@@ -5268,7 +5305,7 @@ body {
                 cell.innerHTML = `
                     <span class="dashboard-day-number">${adjDay}</span>
                     ${renderDayLabel(adjDay)}
-                    ${renderTaskQueue(data, formatDateKey(adjYear, adjMonth, adjDay), false)}
+                    ${renderTaskQueue(data, formatDateKey(adjYear, adjMonth, adjDay), false, unlockedDates)}
                 `;
                 dashboardGrid.appendChild(cell);
             }
@@ -5281,7 +5318,7 @@ body {
                 tile.innerHTML = `
                     <span class="dashboard-day-number">${day}</span>
                     ${renderDayLabel(day)}
-                    ${renderTaskQueue(data, formatDateKey(dashboardYear, dashboardMonth, day), true)}
+                    ${renderTaskQueue(data, formatDateKey(dashboardYear, dashboardMonth, day), true, unlockedDates)}
                 `;
                 tile.addEventListener("click", () => {
                     selectedDashboardDay = day;
@@ -5302,7 +5339,7 @@ body {
                 cell.innerHTML = `
                     <span class="dashboard-day-number">${day}</span>
                     ${renderDayLabel(day)}
-                    ${renderTaskQueue(data, formatDateKey(adjYear, adjMonth, day), false)}
+                    ${renderTaskQueue(data, formatDateKey(adjYear, adjMonth, day), false, unlockedDates)}
                 `;
                 dashboardGrid.appendChild(cell);
             }
@@ -5407,7 +5444,10 @@ body {
             dashboardSync.start();
         }
         renderAgendaPanel();
-        if (window.toeflTestHistory) window.toeflTestHistory.subscribe(renderAgendaPanel);
+        if (window.toeflTestHistory) window.toeflTestHistory.subscribe(() => {
+            renderAgendaPanel();
+            renderDashboardCalendar();
+        });
         renderDashboardCalendar();
         renderDailyGoalStrip();
         if (window.cardStrike) window.cardStrike.render();
