@@ -5,7 +5,7 @@
 
   const stylesheet = document.createElement("link");
   stylesheet.rel = "stylesheet";
-  stylesheet.href = "site-footer.css?v=20261029-pse";
+  stylesheet.href = "site-footer.css?v=20261029-badges";
   document.head.appendChild(stylesheet);
 
   const footer = document.createElement("footer");
