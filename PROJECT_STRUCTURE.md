@@ -27,6 +27,35 @@ These files are still the active website/runtime surface. Do not move them until
 - `docs/architecture/`
   - Architecture and migration notes.
 
+## Community page
+
+`toefl-sample/social.html` uses `social.css` and `social.js` without a build step.
+It shares the existing Firebase Auth account, opt-in `partnerDirectory` profiles
+and presence, and `message.html?to=<uid>` messaging flow. Study-buddy matches rank
+the learner's saved CEFR level; missing levels are not replaced by invented scores.
+
+Shared Realtime Database data lives in `community_posts`, `community_likes`,
+`community_comments`, and `community_members`. Feeds and comment lists load the
+latest 100 records. Group counts are actual memberships. Only authors can edit
+posts; authors and verified developers can remove posts/comments. Announcements
+are developer-only. Removed posts are retained but hidden and cannot receive new
+comments or likes.
+
+Attachments are limited to 20 MB (PNG, JPEG, WebP, MP4, WebM), stored at
+`community/<uid>/<postId>/attachment`. Post edits preserve existing attachments.
+Uploads that fail to publish are cleaned up. Publish **both database and Storage
+rules before using the new page**:
+
+```powershell
+firebase deploy --only database,storage
+node --test toefl-sample\community.test.js
+```
+
+`community-rules.test.js` additionally runs when
+`FIREBASE_DATABASE_EMULATOR_HOST` is set; use the `demo-toefl-messaging` emulator
+project to run it alongside the existing messaging-rule tests. No production
+data is seeded and no sample users or activity counts are displayed.
+
 ## Migration Guardrails
 
 1. Do not relocate existing HTML, JS, or Python runtime files during scaffold setup.

@@ -36,5 +36,13 @@ service firebase.storage {
         && request.resource.size <= 2 * 1024 * 1024
         && request.resource.contentType.matches('image/(png|jpeg|gif)');
     }
+
+    match /community/{uid}/{postId}/attachment {
+      allow read: if isSignedIn();
+      allow delete: if isOwner(uid) || isDeveloper();
+      allow create: if isOwner(uid)
+        && request.resource.size <= 20 * 1024 * 1024
+        && request.resource.contentType.matches('(image/(png|jpeg|webp)|video/(mp4|webm))');
+    }
   }
 }

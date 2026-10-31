@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f7faff">
+    <title>Community | Quick Check</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
+    <script src="qc-preferences.js?v=20261030-prefs"></script>
+    <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
+    <link rel="stylesheet" href="social.css?v=20261031">
+</head>
+<body>
+    <script src="site-navbar.js?v=20261030-prefs"></script>
+    <main class="community-page" id="community">
+        <div class="community-layout">
+            <section class="main-column" aria-label="Community feed">
+                <header class="welcome">
+                    <div class="welcome-copy">
+                        <h1 id="welcomeTitle">Welcome to Quick Check Community!</h1>
+                        <p id="welcomeCopy">Connect, share, and grow together with other English learners. Ask questions, get tips, and find your study buddies!</p>
+                    </div>
+                    <img class="welcome-art" src="community-welcome.png" width="294" height="137" alt="" fetchpriority="high">
+                    <div class="welcome-actions">
+                        <button type="button" data-shortcut="questions"><i class="ti ti-message-circle-filled" aria-hidden="true"></i>Ask &amp; Answer</button>
+                        <button type="button" data-shortcut="tips"><i class="ti ti-bulb-filled" aria-hidden="true"></i>Share Tips</button>
+                        <button type="button" data-shortcut="buddies"><i class="ti ti-users" aria-hidden="true"></i>Find Study Buddies</button>
+                        <button type="button" data-shortcut="groups"><i class="ti ti-hash" aria-hidden="true"></i>Join Discussions</button>
+                    </div>
+                </header>
+
+                <p id="communityStatus" class="sync-status" role="status">Connecting to your community...</p>
+                <form id="postForm" class="card post-composer">
+                    <div class="composer-row">
+                        <span id="composerAvatar" class="avatar" aria-hidden="true">QC</span>
+                        <div class="composer-fields">
+                            <label class="sr-only" for="postBody">Share something with the community</label>
+                            <textarea id="postBody" rows="2" maxlength="4000" placeholder="Share something with the community..." required></textarea>
+                            <div id="composerDetails" hidden>
+                                <label for="postTitle">Post title</label>
+                                <input id="postTitle" maxlength="120" placeholder="Give your post a title">
+                                <div class="composer-options">
+                                    <label>Category<select id="postCategory">
+                                        <option value="tips">Tips &amp; Resources</option>
+                                        <option value="questions">Questions</option>
+                                        <option value="buddies">Study Buddies</option>
+                                        <option value="announcements" id="announcementOption" hidden disabled>Announcements</option>
+                                    </select></label>
+                                    <label>Community group<select id="postGroup"><option value="">Everyone</option></select></label>
+                                </div>
+                            </div>
+                            <div id="mediaPreview" class="media-preview" hidden></div>
+                        </div>
+                    </div>
+                    <div class="composer-toolbar">
+                        <div class="composer-tools">
+                            <button type="button" id="attachButton"><i class="ti ti-photo" aria-hidden="true"></i>Photo/Video</button>
+                            <button type="button" data-compose="questions"><i class="ti ti-help-circle" aria-hidden="true"></i>Ask a Question</button>
+                            <button type="button" data-compose="tips"><i class="ti ti-edit" aria-hidden="true"></i>Create a Post</button>
+                        </div>
+                        <button class="primary-button" id="publishButton" type="submit" disabled>Post</button>
+                    </div>
+                    <input id="mediaInput" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm" hidden>
+                    <p class="form-error" id="composerError" role="alert" hidden></p>
+                    <p id="editingHint" class="helper" hidden>Editing your post. <button type="button" id="cancelEdit" class="text-button">Cancel</button></p>
+                </form>
+
+                <div class="feed-toolbar">
+                    <nav class="feed-tabs" aria-label="Post categories">
+                        <button type="button" data-filter="all" aria-pressed="true">All Posts</button>
+                        <button type="button" data-filter="questions" aria-pressed="false">Questions</button>
+                        <button type="button" data-filter="tips" aria-pressed="false">Tips &amp; Resources</button>
+                        <button type="button" data-filter="buddies" aria-pressed="false">Study Buddies</button>
+                        <button type="button" data-filter="announcements" aria-pressed="false">Announcements</button>
+                    </nav>
+                    <label class="sort-label"><span class="sr-only">Sort posts</span><select id="postSort"><option value="latest">Latest</option><option value="popular">Most liked</option><option value="oldest">Oldest</option></select></label>
+                </div>
+                <div id="groupFilter" class="group-filter" hidden><span id="groupFilterLabel"></span><button class="text-button" id="clearGroup" type="button">Show all groups</button></div>
+                <div id="postFeed" class="post-feed" aria-busy="true">
+                    <div class="card skeleton" aria-hidden="true"></div>
+                    <div class="card skeleton" aria-hidden="true"></div>
+                </div>
+                <p class="helper feed-limit">Showing the latest 100 community posts.</p>
+            </section>
+
+            <aside class="community-sidebar" aria-label="Community connections">
+                <section class="card sidebar-card" id="groupsSection">
+                    <div class="card-heading"><h2>Community Groups</h2><button class="text-button" id="viewGroups" type="button">View All</button></div>
+                    <div id="groupList" class="group-list"></div>
+                </section>
+                <section class="card sidebar-card">
+                    <div class="card-heading"><h2>People Online</h2><button class="text-button" id="viewPeople" type="button">View All</button></div>
+                    <div id="onlineList" class="people-list"><p class="helper">Loading online learners...</p></div>
+                </section>
+                <section class="card buddy-card">
+                    <i class="ti ti-users-group buddy-symbol" aria-hidden="true"></i>
+                    <div><h2>Study Buddy Match</h2><p id="buddyCopy">Find the perfect study buddy based on your goals and learning level.</p><button type="button" class="secondary-button" id="findBuddy">Find Study Buddy</button></div>
+                </section>
+            </aside>
+        </div>
+    </main>
+    <dialog id="peopleDialog" aria-labelledby="peopleTitle">
+        <div class="card-heading"><h2 id="peopleTitle">Find Study Buddies</h2><button class="icon-button" type="button" data-close-dialog aria-label="Close"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+        <p id="peopleDescription" class="helper">Message a learner to connect and plan your next practice session.</p>
+        <label for="peopleSearch">Search learners</label>
+        <input type="search" id="peopleSearch" placeholder="Name, country, or learning level">
+        <div id="peopleResults" class="people-results"></div>
+    </dialog>
+    <dialog id="deleteDialog" aria-labelledby="deleteTitle">
+        <h2 id="deleteTitle">Remove this post?</h2>
+        <p class="helper">It will no longer appear in the community feed. This cannot be undone.</p>
+        <p id="deleteError" class="form-error" role="alert" hidden></p>
+        <div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog>Cancel</button><button class="primary-button" type="button" id="confirmDelete">Remove post</button></div>
+    </dialog>
+    <p id="liveStatus" class="sr-only" aria-live="polite"></p>
+    <script type="module" src="social.js?v=20261031"></script>
+</body>
+</html>
