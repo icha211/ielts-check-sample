@@ -597,12 +597,6 @@ document.querySelectorAll("[data-filter]").forEach((node) => node.addEventListen
     renderFeed();
 }));
 document.querySelectorAll("[data-compose]").forEach((node) => node.addEventListener("click", () => startComposer(node.dataset.compose)));
-document.querySelectorAll("[data-shortcut]").forEach((node) => node.addEventListener("click", () => {
-    const value = node.dataset.shortcut;
-    if (value === "buddies") openPeople("buddies");
-    else if (value === "groups") { startComposer("tips"); if (state.uid) $("postGroup").focus(); }
-    else startComposer(value);
-}));
 $("postBody").addEventListener("focus", () => { $("composerDetails").hidden = false; updateComposerUI(); });
 $("postBody").addEventListener("input", updateComposerUI);
 $("postGroup").addEventListener("change", updateComposerUI);
