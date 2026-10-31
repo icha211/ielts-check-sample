@@ -42,7 +42,10 @@ disabled button. The promotion fills the sidebar width and its desktop bottom
 tracks the post composer using ResizeObserver, growing if needed to keep text
 visible. On smaller screens it uses natural height.
 Only the decorative tutor illustration is an image.
-Group selection remains available in the post composer. Only authors can edit
+Group selection remains available in the post composer.
+The composer has a borderless writing area, live character count and an
+audience shortcut that focuses the existing group selector. Groups organize
+posts without restricting their visibility or replies. Only authors can edit
 posts; authors and verified developers can remove posts/comments. Announcements
 are developer-only. Removed posts are retained but hidden and cannot receive new
 comments or likes.

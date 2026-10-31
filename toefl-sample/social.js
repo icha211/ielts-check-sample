@@ -3,6 +3,9 @@ import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTi
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 
 window.QCPrefs?.addTranslations("id", {
+    "Posting to everyone": "Posting untuk semua orang",
+    "Posting to {group}": "Posting ke {group}",
+    "Groups organize posts, not who can see or reply to them.": "Grup mengatur postingan, bukan siapa yang dapat melihat atau membalasnya.",
     "Become a Tutor": "Jadi Tutor",
     "Share Your Knowledge, Earn Income": "Bagikan Pengetahuan, Dapatkan Penghasilan",
     "Join our platform and start teaching what you love.": "Bergabunglah dan mulai mengajar bidang yang Anda sukai.",
@@ -236,6 +239,7 @@ function chooseGroup(id) {
     groupId = id;
     category = "all";
     $("postGroup").value = id;
+    updateComposerUI();
     renderFilters();
     renderFeed();
     $("postFeed").scrollIntoView({ block: "start", behavior: "instant" });
@@ -462,6 +466,15 @@ function clearPreview() {
     $("mediaPreview").replaceChildren();
     $("mediaPreview").hidden = true;
 }
+function updateComposerUI() {
+    const body = $("postBody");
+    $("composerCount").textContent = `${body.value.length} / ${body.maxLength}`;
+    $("composerCount").dataset.limit = body.value.length >= body.maxLength * .9 ? "near" : "";
+    const group = GROUPS.find((item) => item.id === $("postGroup").value);
+    $("composerAudienceLabel").textContent = group ? tr("Posting to {group}", { group: tr(group.name) }) : tr("Posting to everyone");
+    $("composerAudience").setAttribute("aria-expanded", String(!$("composerDetails").hidden));
+    $("composerAudience").disabled = !state.uid || publishing;
+}
 function resetComposer() {
     $("postForm").reset();
     editingId = null;
@@ -472,6 +485,7 @@ function resetComposer() {
     $("publishButton").textContent = tr("Post");
     $("postGroup").value = groupId;
     $("attachButton").disabled = !state.uid;
+    updateComposerUI();
 }
 function editPost(post) {
     if (publishing) return;
@@ -485,6 +499,7 @@ function editPost(post) {
     $("attachButton").disabled = true;
     $("publishButton").textContent = tr("Save changes");
     startComposer(post.category);
+    updateComposerUI();
     $("postForm").scrollIntoView({ block: "center", behavior: "instant" });
 }
 const subscriptions = new Map();
@@ -501,6 +516,7 @@ function renderIdentity() {
         ? tr("Find learners at level {level} and plan your next practice session together.", { level })
         : tr("Find the perfect study buddy based on your goals and learning level.");
     if (!publishing) $("publishButton").textContent = tr(editingId ? "Save changes" : "Post");
+    updateComposerUI();
     if (!syncError) {
         $("communityStatus").textContent = tr(!state.uid ? "Sign in to take part in the community." : state.loading ? "Loading your community..." : state.connected ? "You're connected to the community." : "You are offline. Reconnect before making changes.");
         $("communityStatus").dataset.state = state.connected || !state.uid ? "" : "error";
@@ -587,9 +603,17 @@ document.querySelectorAll("[data-shortcut]").forEach((node) => node.addEventList
     else if (value === "groups") { startComposer("tips"); if (state.uid) $("postGroup").focus(); }
     else startComposer(value);
 }));
-$("postBody").addEventListener("focus", () => { $("composerDetails").hidden = false; });
+$("postBody").addEventListener("focus", () => { $("composerDetails").hidden = false; updateComposerUI(); });
+$("postBody").addEventListener("input", updateComposerUI);
+$("postGroup").addEventListener("change", updateComposerUI);
+$("composerAudience").addEventListener("click", () => {
+    if (publishing || !state.uid) return;
+    $("composerDetails").hidden = false;
+    updateComposerUI();
+    $("postGroup").focus();
+});
 $("postSort").addEventListener("change", renderFeed);
-$("clearGroup").addEventListener("click", () => { groupId = ""; $("postGroup").value = ""; renderFilters(); renderFeed(); });
+$("clearGroup").addEventListener("click", () => { groupId = ""; $("postGroup").value = ""; updateComposerUI(); renderFilters(); renderFeed(); });
 $("viewPeople").addEventListener("click", () => openPeople("online"));
 $("findBuddy").addEventListener("click", () => openPeople("buddies"));
 $("peopleSearch").addEventListener("input", renderPeopleResults);
@@ -644,6 +668,7 @@ $("postForm").addEventListener("submit", async (event) => {
         $("attachButton").disabled = !state.uid || Boolean(editingId);
         submit.disabled = !state.uid || !state.connected;
         submit.textContent = tr(editingId ? "Save changes" : "Post");
+        updateComposerUI();
     }
 });
 $("confirmDelete").addEventListener("click", async () => {
