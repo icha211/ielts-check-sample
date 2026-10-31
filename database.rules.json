@@ -97,7 +97,7 @@
     },
 
     "community_posts": {
-      ".read": "auth != null",
+      ".read": true,
       ".indexOn": ["createdAt"],
       "$post": {
         ".write": "auth != null && newData.exists() && ((!data.exists() && newData.child('authorId').val() === auth.uid && !newData.child('deletedAt').exists() && !newData.child('updatedAt').exists()) || (data.exists() && !data.child('deletedAt').exists() && (data.child('authorId').val() === auth.uid || (auth.token.role === 'developer' && auth.token.email === 'quickcheck.edu@gmail.com' && auth.token.email_verified === true && newData.child('deletedAt').val() === now && newData.child('title').val() === data.child('title').val() && newData.child('body').val() === data.child('body').val() && newData.child('category').val() === data.child('category').val() && newData.child('groupId').val() === data.child('groupId').val() && newData.child('updatedAt').val() === data.child('updatedAt').val()))))",
@@ -107,6 +107,9 @@
         "body": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 4000" },
         "category": { ".validate": "newData.isString() && (newData.val() === 'questions' || newData.val() === 'tips' || newData.val() === 'buddies' || (newData.val() === 'announcements' && ((data.exists() && newData.val() === data.val()) || (auth.token.role === 'developer' && auth.token.email === 'quickcheck.edu@gmail.com' && auth.token.email_verified === true))))" },
         "groupId": { ".validate": "newData.isString() && (newData.val() === '' || newData.val() === 'general' || newData.val() === 'speaking' || newData.val() === 'writing' || newData.val() === 'listening' || newData.val() === 'reading')" },
+        "visibility": { ".validate": "newData.val() === 'public'" },
+        "mediaKey": { ".validate": "newData.val() === ''" },
+        "mediaIV": { ".validate": "newData.val() === ''" },
         "createdAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
         "updatedAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() || newData.val() === now : newData.val() === now)" },
         "deletedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
@@ -119,7 +122,7 @@
 
     "community_likes": {
       "$post": {
-        ".read": "auth != null",
+        ".read": true,
         "$uid": {
           ".write": "auth != null && auth.uid === $uid && root.child('community_posts').child($post).exists() && !root.child('community_posts').child($post).child('deletedAt').exists()",
           ".validate": "newData.isBoolean() && newData.val() === true"
@@ -129,7 +132,7 @@
 
     "community_comments": {
       "$post": {
-        ".read": "auth != null",
+        ".read": true,
         ".indexOn": ["createdAt"],
         "$comment": {
           ".write": "auth != null && ((!data.exists() && newData.exists() && newData.child('authorId').val() === auth.uid && root.child('community_posts').child($post).exists() && !root.child('community_posts').child($post).child('deletedAt').exists()) || (data.exists() && !newData.exists() && (data.child('authorId').val() === auth.uid || (auth.token.role === 'developer' && auth.token.email === 'quickcheck.edu@gmail.com' && auth.token.email_verified === true))))",
@@ -142,6 +145,59 @@
       }
     },
 
+    "community_private_posts": {
+      "$author": {
+        ".read": "auth != null && (auth.uid === $author || (root.child('message_contacts').child($author).child(auth.uid).child('status').val() === 'connected' && root.child('message_contacts').child(auth.uid).child($author).child('status').val() === 'connected'))",
+        ".indexOn": ["createdAt"],
+        "$post": {
+          ".write": "auth != null && auth.uid === $author && newData.exists() && (!data.exists() || !data.child('deletedAt').exists())",
+          ".validate": "newData.hasChildren(['authorId', 'title', 'body', 'category', 'groupId', 'visibility', 'createdAt', 'mediaURL', 'mediaPath', 'mediaType', 'mediaKey', 'mediaIV', 'mediaMime']) && newData.child('visibility').val() === 'friends' && ((newData.child('mediaType').val() === '' && newData.child('mediaURL').val() === '' && newData.child('mediaPath').val() === '' && newData.child('mediaKey').val() === '' && newData.child('mediaIV').val() === '' && newData.child('mediaMime').val() === '') || (newData.child('mediaType').val() !== '' && newData.child('mediaKey').val().length === 44 && newData.child('mediaIV').val().length === 16 && newData.child('mediaPath').val() === 'community-private/' + $author + '/' + $post + '/attachment' && newData.child('mediaURL').val().beginsWith('https://firebasestorage.googleapis.com/')))",
+          "authorId": { ".validate": "newData.val() === $author" },
+          "title": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+          "body": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 4000" },
+          "category": { ".validate": "newData.val() === 'questions' || newData.val() === 'tips' || newData.val() === 'buddies' || (newData.val() === 'announcements' && ((data.exists() && data.val() === newData.val()) || (auth.token.role === 'developer' && auth.token.email === 'quickcheck.edu@gmail.com' && auth.token.email_verified === true)))" },
+          "groupId": { ".validate": "newData.isString() && (newData.val() === '' || newData.val() === 'general' || newData.val() === 'speaking' || newData.val() === 'writing' || newData.val() === 'listening' || newData.val() === 'reading')" },
+          "visibility": { ".validate": "newData.val() === 'friends'" },
+          "createdAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
+          "updatedAt": { ".validate": "data.parent().exists() && newData.isNumber() && newData.val() === now" },
+          "deletedAt": { ".validate": "data.parent().exists() && newData.isNumber() && newData.val() === now" },
+          "mediaURL": { ".validate": "newData.isString() && newData.val().length <= 2048 && (!data.exists() || data.val() === newData.val())" },
+          "mediaPath": { ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())" },
+          "mediaType": { ".validate": "(newData.val() === '' || newData.val() === 'image' || newData.val() === 'video') && (!data.exists() || data.val() === newData.val())" },
+          "mediaKey": { ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())" },
+          "mediaIV": { ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())" },
+          "mediaMime": { ".validate": "(newData.val() === '' || newData.val() === 'image/png' || newData.val() === 'image/jpeg' || newData.val() === 'image/webp' || newData.val() === 'video/mp4' || newData.val() === 'video/webm') && (!data.exists() || data.val() === newData.val())" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+    "community_private_likes": {
+      "$author": {
+        "$post": {
+          ".read": "auth != null && (auth.uid === $author || (root.child('message_contacts').child($author).child(auth.uid).child('status').val() === 'connected' && root.child('message_contacts').child(auth.uid).child($author).child('status').val() === 'connected'))",
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('community_private_posts').child($author).child($post).exists() && !root.child('community_private_posts').child($author).child($post).child('deletedAt').exists() && (auth.uid === $author || (root.child('message_contacts').child($author).child(auth.uid).child('status').val() === 'connected' && root.child('message_contacts').child(auth.uid).child($author).child('status').val() === 'connected'))",
+            ".validate": "newData.val() === true"
+          }
+        }
+      }
+    },
+    "community_private_comments": {
+      "$author": {
+        "$post": {
+          ".read": "auth != null && (auth.uid === $author || (root.child('message_contacts').child($author).child(auth.uid).child('status').val() === 'connected' && root.child('message_contacts').child(auth.uid).child($author).child('status').val() === 'connected'))",
+          ".indexOn": ["createdAt"],
+          "$comment": {
+            ".write": "auth != null && (auth.uid === $author || (root.child('message_contacts').child($author).child(auth.uid).child('status').val() === 'connected' && root.child('message_contacts').child(auth.uid).child($author).child('status').val() === 'connected')) && ((!data.exists() && newData.child('authorId').val() === auth.uid && root.child('community_private_posts').child($author).child($post).exists() && !root.child('community_private_posts').child($author).child($post).child('deletedAt').exists()) || (data.exists() && !newData.exists() && (data.child('authorId').val() === auth.uid || auth.uid === $author)))",
+            ".validate": "newData.hasChildren(['authorId', 'body', 'createdAt'])",
+            "authorId": { ".validate": "newData.val() === auth.uid" },
+            "body": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 2000" },
+            "createdAt": { ".validate": "newData.val() === now" },
+            "$other": { ".validate": false }
+          }
+        }
+      }
+    },
     "community_members": {
       ".read": "auth != null",
       "$group": {

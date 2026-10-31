@@ -1,8 +1,14 @@
-import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment } from "./js/community.js";
+import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261031-post-privacy";
 import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime } from "./js/community-model.js";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 
 window.QCPrefs?.addTranslations("id", {
+    "Audience": "Audiens",
+    "Public": "Publik",
+    "Friends only": "Hanya teman",
+    "Anyone can read public posts, including signed-out visitors.": "Siapa pun dapat membaca postingan publik, termasuk pengunjung yang belum masuk.",
+    "Only you and friends with accepted message connections can read this post.": "Hanya Anda dan teman dengan koneksi pesan yang diterima dapat membaca postingan ini.",
+    "Audience cannot be changed after publishing. Create a new post instead.": "Audiens tidak dapat diubah setelah diterbitkan. Buat postingan baru.",
     "Posting to everyone": "Posting untuk semua orang",
     "Posting to {group}": "Posting ke {group}",
     "Groups organize posts, not who can see or reply to them.": "Grup mengatur postingan, bukan siapa yang dapat melihat atau membalasnya.",
@@ -112,6 +118,8 @@ let developer = false;
 let authVersion = 0;
 let category = "all";
 let groupId = "";
+let composerCategory = "tips";
+let composerGroupId = "";
 let peopleMode = "buddies";
 let editingId = null;
 let deleteId = null;
@@ -125,6 +133,14 @@ const openedComments = new Set();
 const commentDrafts = new Map();
 const expandedPosts = new Set();
 const pending = new Set();
+const privateMedia = new Map();
+function releasePrivateMedia(id) {
+    const entry = privateMedia.get(id);
+    if (!entry) return;
+    entry.controller.abort();
+    if (entry.url) URL.revokeObjectURL(entry.url);
+    privateMedia.delete(id);
+}
 
 for (const root of [document.querySelector(".community-page"), ...document.querySelectorAll("dialog")].filter(Boolean)) {
     root.querySelectorAll("button, label, h1, h2, p, option").forEach((node) => {
@@ -238,8 +254,6 @@ function openPeople(mode) {
 function chooseGroup(id) {
     groupId = id;
     category = "all";
-    $("postGroup").value = id;
-    updateComposerUI();
     renderFilters();
     renderFeed();
     $("postFeed").scrollIntoView({ block: "start", behavior: "instant" });
@@ -267,18 +281,13 @@ function renderFeed() {
         $("postFeed").setAttribute("aria-busy", "false");
         return;
     }
-    if (!state.uid) {
-        $("postFeed").replaceChildren(emptyFeed("Your community starts here", "Sign in to share posts, join groups, and find real study buddies."));
-        $("postFeed").setAttribute("aria-busy", "false");
-        return;
-    }
     if (state.loading && !Object.keys(state.posts).length) return;
     const likes = Object.fromEntries([...activity].map(([id, value]) => [id, value.likes]));
     const posts = selectPosts(state.posts, { category, groupId, sort: $("postSort").value, likes });
     $("postFeed").setAttribute("aria-busy", "false");
     $("postFeed").querySelectorAll(".skeleton, .empty-feed").forEach((node) => node.remove());
     const visible = new Set(posts.map((post) => post.id));
-    cards.forEach((entry, id) => { if (!visible.has(id)) entry.node.remove(); });
+    cards.forEach((entry, id) => { if (!visible.has(id)) { entry.node.remove(); releasePrivateMedia(id); cards.delete(id); } });
     if (!posts.length) {
         $("postFeed").append(emptyFeed("Start the conversation", "No posts here yet. Share a question, a useful tip, or your study goals."));
         return;
@@ -288,6 +297,7 @@ function renderFeed() {
         const signature = JSON.stringify([post, author.displayName, author.photoURL, author.level, developer, locale()]);
         let entry = cards.get(post.id);
         if (!entry || entry.signature !== signature) {
+            releasePrivateMedia(post.id);
             const node = makePost(post);
             if (entry) entry.node.replaceWith(node);
             entry = { node, signature };
@@ -310,8 +320,9 @@ function makePost(post) {
     if (Number.isFinite(post.createdAt)) time.dateTime = new Date(post.createdAt).toISOString();
     if (post.updatedAt) time.append(document.createTextNode(` (${tr("edited")})`));
     copy.append(authorName, time);
+    copy.append(element("span", "post-audience", tr(post.visibility === "friends" ? "Friends only" : "Public")));
     header.append(avatar(author), copy, element("span", `category-badge category-${post.category}`, tr(CATEGORIES[post.category] || "Post")));
-    if (post.authorId === state.uid || developer) {
+    if (post.authorId === state.uid || (developer && post.visibility !== "friends")) {
         const menu = element("details", "post-menu");
         const summary = element("summary");
         summary.setAttribute("aria-label", tr("Post actions"));
@@ -347,7 +358,19 @@ function makePost(post) {
     const url = safeMediaURL(post.mediaURL);
     if (url) {
         const media = element(post.mediaType === "video" ? "video" : "img", "post-media");
-        media.src = url;
+        if (post.visibility === "friends") {
+            const entry = { controller: new AbortController(), url: "" };
+            privateMedia.set(post.id, entry);
+            loadPrivateMedia(post, entry.controller.signal).then((blob) => {
+                if (privateMedia.get(post.id) !== entry) return;
+                entry.url = URL.createObjectURL(blob);
+                media.src = entry.url;
+            }).catch((error) => {
+                if (error.name === "AbortError") return;
+                media.replaceWith(element("p", "form-error", tr("This attachment could not load.")));
+                console.error("[Community] Private attachment failed:", error);
+            });
+        } else media.src = url;
         if (post.mediaType === "video") { media.controls = true; media.preload = "metadata"; }
         else { media.alt = tr("Community post attachment"); media.loading = "lazy"; }
         media.addEventListener("error", () => {
@@ -392,6 +415,7 @@ function makePost(post) {
     form.append(label, input, send, errorNode);
     form.addEventListener("submit", async (event) => {
         event.preventDefault();
+        if (!state.uid) return showError(new Error(tr("Sign in to take part in the community.")), errorNode);
         if (!state.connected || pending.has(post.id)) return showError(new Error(tr("You are offline or a reply is still sending.")), errorNode);
         pending.add(post.id);
         send.disabled = true;
@@ -455,7 +479,7 @@ function startComposer(value) {
     if (!state.uid) return showError(new Error(tr("Sign in to take part in the community.")));
     if (value === "announcements" && !developer) value = "tips";
     $("composerDetails").hidden = false;
-    $("postCategory").value = value;
+    if (!editingId) composerCategory = value;
     $("postBody").focus();
 }
 function clearPreview() {
@@ -470,10 +494,12 @@ function updateComposerUI() {
     const body = $("postBody");
     $("composerCount").textContent = `${body.value.length} / ${body.maxLength}`;
     $("composerCount").dataset.limit = body.value.length >= body.maxLength * .9 ? "near" : "";
-    const group = GROUPS.find((item) => item.id === $("postGroup").value);
-    $("composerAudienceLabel").textContent = group ? tr("Posting to {group}", { group: tr(group.name) }) : tr("Posting to everyone");
-    $("composerAudience").setAttribute("aria-expanded", String(!$("composerDetails").hidden));
-    $("composerAudience").disabled = !state.uid || publishing;
+    $("postVisibility").disabled = !state.uid || publishing || Boolean(editingId);
+    $("postVisibilityHint").textContent = tr(editingId
+        ? "Audience cannot be changed after publishing. Create a new post instead."
+        : $("postVisibility").value === "friends"
+            ? "Only you and friends with accepted message connections can read this post."
+            : "Anyone can read public posts, including signed-out visitors.");
 }
 function resetComposer() {
     $("postForm").reset();
@@ -483,7 +509,8 @@ function resetComposer() {
     $("composerDetails").hidden = true;
     $("composerError").hidden = true;
     $("publishButton").textContent = tr("Post");
-    $("postGroup").value = groupId;
+    composerCategory = "tips";
+    composerGroupId = "";
     $("attachButton").disabled = !state.uid;
     updateComposerUI();
 }
@@ -493,8 +520,9 @@ function editPost(post) {
     editingId = post.id;
     $("postBody").value = post.body;
     $("postTitle").value = post.title;
-    $("postCategory").value = post.category;
-    $("postGroup").value = post.groupId || "";
+    composerCategory = post.category;
+    composerGroupId = post.groupId || "";
+    $("postVisibility").value = post.visibility || "public";
     $("editingHint").hidden = false;
     $("attachButton").disabled = true;
     $("publishButton").textContent = tr("Save changes");
@@ -531,6 +559,7 @@ const unsubscribe = subscribeCommunity(async (next) => {
         subscriptions.forEach((stop) => stop());
         subscriptions.clear();
         activity.clear();
+        privateMedia.forEach((_, id) => releasePrivateMedia(id));
         cards.clear();
         $("postFeed").replaceChildren();
         openedComments.clear();
@@ -546,8 +575,6 @@ const unsubscribe = subscribeCommunity(async (next) => {
             } catch (error) { showError(error); }
         }
     }
-    $("announcementOption").hidden = !developer;
-    $("announcementOption").disabled = !developer;
     renderIdentity();
     $("publishButton").disabled = !state.uid || state.loading || !state.connected || publishing;
     $("postBody").disabled = !state.uid;
@@ -568,6 +595,7 @@ const unsubscribe = subscribeCommunity(async (next) => {
             subscriptions.delete(id);
             activity.delete(id);
             cards.get(id)?.node.remove();
+            releasePrivateMedia(id);
             cards.delete(id);
         }
     });
@@ -585,12 +613,6 @@ const unsubscribe = subscribeCommunity(async (next) => {
     renderFeed();
 });
 
-GROUPS.forEach((group) => {
-    const option = element("option", "", tr(group.name));
-    option.setAttribute("data-i18n", group.name);
-    option.value = group.id;
-    $("postGroup").append(option);
-});
 document.querySelectorAll("[data-filter]").forEach((node) => node.addEventListener("click", () => {
     category = node.dataset.filter;
     renderFilters();
@@ -599,15 +621,9 @@ document.querySelectorAll("[data-filter]").forEach((node) => node.addEventListen
 document.querySelectorAll("[data-compose]").forEach((node) => node.addEventListener("click", () => startComposer(node.dataset.compose)));
 $("postBody").addEventListener("focus", () => { $("composerDetails").hidden = false; updateComposerUI(); });
 $("postBody").addEventListener("input", updateComposerUI);
-$("postGroup").addEventListener("change", updateComposerUI);
-$("composerAudience").addEventListener("click", () => {
-    if (publishing || !state.uid) return;
-    $("composerDetails").hidden = false;
-    updateComposerUI();
-    $("postGroup").focus();
-});
+$("postVisibility").addEventListener("change", updateComposerUI);
 $("postSort").addEventListener("change", renderFeed);
-$("clearGroup").addEventListener("click", () => { groupId = ""; $("postGroup").value = ""; updateComposerUI(); renderFilters(); renderFeed(); });
+$("clearGroup").addEventListener("click", () => { groupId = ""; renderFilters(); renderFeed(); });
 $("viewPeople").addEventListener("click", () => openPeople("online"));
 $("findBuddy").addEventListener("click", () => openPeople("buddies"));
 $("peopleSearch").addEventListener("input", renderPeopleResults);
@@ -643,7 +659,7 @@ $("postForm").addEventListener("submit", async (event) => {
     $("composerError").hidden = true;
     const fields = [...$("postForm").querySelectorAll("input, textarea, select, button")];
     const disabled = fields.map((field) => field.disabled);
-    const input = { title: $("postTitle").value || $("postBody").value.trim().slice(0, 80).split("\n")[0], body: $("postBody").value, category: $("postCategory").value, groupId: $("postGroup").value };
+    const input = { title: $("postTitle").value || $("postBody").value.trim().slice(0, 80).split("\n")[0], body: $("postBody").value, category: composerCategory, groupId: composerGroupId, visibility: $("postVisibility").value };
     fields.forEach((field) => { field.disabled = true; });
     try {
         const id = await savePost(input, file, developer, editingId);
@@ -690,6 +706,7 @@ const clock = setInterval(() => {
 window.addEventListener("pagehide", (event) => {
     if (event.persisted) return;
     clearInterval(clock);
+    privateMedia.forEach((_, id) => releasePrivateMedia(id));
     unsubscribe();
     subscriptions.forEach((stop) => stop());
     clearPreview();

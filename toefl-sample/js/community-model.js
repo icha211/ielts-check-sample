@@ -7,8 +7,9 @@ export const GROUPS = [
 ];
 export const CATEGORIES = { questions: "Questions", tips: "Tips & Resources", buddies: "Study Buddies", announcements: "Announcements" };
 
-export function validatePost({ title, body, category, groupId = "" }, developer = false) {
-    const result = { title: String(title || "").trim(), body: String(body || "").trim(), category, groupId };
+export function validatePost({ title, body, category, groupId = "", visibility = "public" }, developer = false) {
+    const result = { title: String(title || "").trim(), body: String(body || "").trim(), category, groupId, visibility };
+    if (!["public", "friends"].includes(visibility)) throw new Error("Choose Public or Friends only.");
     if (!result.title || result.title.length > 120) throw new Error("Enter a post title of 1 to 120 characters.");
     if (!result.body || result.body.length > 4000) throw new Error("Write a post of 1 to 4,000 characters.");
     if (!Object.hasOwn(CATEGORIES, category)) throw new Error("Choose a post category.");

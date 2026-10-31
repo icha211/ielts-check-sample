@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { test } = require("node:test");
+const { webcrypto } = require("node:crypto");
 
 const source = fs.readFileSync(path.join(__dirname, "js", "community-model.js"), "utf8").replace(/^export /gm, "");
 const model = vm.createContext({ URL, Intl });
@@ -57,7 +58,8 @@ function serviceFixture() {
     let authCallback;
     const context = vm.createContext({
         auth: { currentUser: { uid: "alice", app: {} } }, db: {},
-        console, validatePost: model.validatePost, GROUPS: vm.runInContext("GROUPS", model),
+        console, crypto: webcrypto, Blob, btoa, atob, Uint8Array,
+        validatePost: model.validatePost, GROUPS: vm.runInContext("GROUPS", model),
         onAuthStateChanged(_, callback) { authCallback = callback; return () => {}; },
         ref: (_, key) => ({ key }),
         query: (target) => target, orderByChild: () => {}, limitToLast: () => {},
@@ -107,6 +109,48 @@ test("community subscriptions reset all private state on account changes and dis
     assert.equal(fixture.listeners.has("users/alice"), false);
     fixture.auth(null);
     assert.equal(states.at(-1).uid, null);
-    assert.equal(fixture.listeners.size, 0);
+    assert.equal(fixture.listeners.size, 1, "signed-out visitors retain only the public feed subscription");
     stop();
+    assert.equal(fixture.listeners.size, 0);
+});
+test("audiences are validated and private feeds only subscribe to connected friends", () => {
+    assert.equal(model.validatePost(post).visibility, "public");
+    assert.equal(model.validatePost({ ...post, visibility: "friends" }).visibility, "friends");
+    assert.throws(() => model.validatePost({ ...post, visibility: "anyone" }));
+    const fixture = serviceFixture();
+    const states = [];
+    fixture.context.subscribeCommunity((state) => states.push(state), assert.fail);
+    fixture.auth({ uid: "alice" });
+    fixture.emit("message_contacts/alice", { bob: { status: "connected" }, charlie: { status: "outgoing" } });
+    assert(fixture.listeners.has("community_private_posts/alice"));
+    assert(fixture.listeners.has("community_private_posts/bob"));
+    assert(!fixture.listeners.has("community_private_posts/charlie"));
+    fixture.emit("community_private_posts/bob", { secret: { ...post, visibility: "friends" } });
+    assert(states.at(-1).posts.secret);
+    fixture.emit("message_contacts/alice", {});
+    assert(!states.at(-1).posts.secret);
+    assert(!fixture.listeners.has("community_private_posts/bob"));
+});
+test("private attachments are encrypted and decrypted; private actions use protected paths", async () => {
+    const { context: service, writes } = serviceFixture();
+    let encrypted;
+    service.uploadBytes = async (_, data, metadata) => {
+        assert.equal(metadata.contentType, "application/octet-stream");
+        encrypted = await data.arrayBuffer();
+    };
+    const file = new Blob(["private image bytes"], { type: "image/png" });
+    await service.savePost({ ...post, visibility: "friends" }, file, false);
+    const saved = writes[0].value;
+    assert.equal(saved.visibility, "friends");
+    assert.equal(saved.mediaPath, "community-private/alice/post1/attachment");
+    assert.equal(saved.mediaKey.length, 44);
+    assert.notEqual(Buffer.from(encrypted).toString(), "private image bytes");
+    service.fetch = async () => ({ ok: true, arrayBuffer: async () => encrypted });
+    assert.equal(await (await service.loadPrivateMedia(saved)).text(), "private image bytes");
+    await assert.rejects(service.loadPrivateMedia({ ...saved, mediaKey: btoa("x".repeat(32)) }));
+    await service.setPostLike("post1", true);
+    assert.equal(writes[1].key, "community_private_likes/alice/post1/alice");
+    await service.savePost({ ...post, visibility: "friends" }, null, false, "post1");
+    assert.equal(writes[2].key, "community_private_posts/alice/post1");
+    await assert.rejects(service.savePost(post, null, false, "post1"), /Audience cannot/);
 });

@@ -42,10 +42,29 @@ disabled button. The promotion fills the sidebar width and its desktop bottom
 tracks the post composer using ResizeObserver, growing if needed to keep text
 visible. On smaller screens it uses natural height.
 Only the decorative tutor illustration is an image.
-Group selection remains available in the post composer.
-The composer has a borderless writing area, live character count and an
-audience shortcut that focuses the existing group selector. Groups organize
-posts without restricting their visibility or replies. Only authors can edit
+The composer has a borderless writing area and live character count, without
+category or group dropdowns. New posts use the general feed; the question action
+sets the category internally. Editing retains the original category and group.
+Audience offers Public (including signed-out readers) or Friends only.
+Friends are mutual `message_contacts` connections with status `connected`.
+Private posts are stored at `community_private_posts/<author>/<post>`; reactions
+and comments use `community_private_likes` and `community_private_comments`
+with the same author/post nesting. Firebase rules enforce access, and removing
+a connection removes those posts from the current feed. Existing posts are public.
+Audience is immutable after publishing; create a new post to choose a different
+audience. Signed-out visitors can read public posts but cannot post or react.
+
+Private attachments are encrypted in the browser with a fresh AES-256-GCM key
+and random 96-bit IV. Only ciphertext is uploaded to
+`community-private/<uid>/<post>/attachment`; the key, IV and original MIME type
+are stored in the friend-protected post. Download links alone cannot decrypt
+these attachments. Decrypted object URLs are revoked when posts leave the feed
+or the account changes. Friends can save or share content they already received;
+removing a friendship cannot erase their copies. This is not end-to-end
+encryption against the database operator. Deploy both database and Storage
+rules before using the new audience controls.
+
+Only authors can edit
 posts; authors and verified developers can remove posts/comments. Announcements
 are developer-only. Removed posts are retained but hidden and cannot receive new
 comments or likes.
