@@ -68,6 +68,23 @@ window.QCPrefs?.addTranslations("id", {
     "Sign in and connect before posting.": "Masuk dan hubungkan sebelum mengirim postingan."
 });
 const $ = (id) => document.getElementById(id);
+const tutorPromotion = document.querySelector(".tutor-promotion");
+const tutorCopy = document.querySelector(".tutor-promotion-copy");
+const welcome = document.querySelector(".welcome");
+const desktopLayout = window.matchMedia("(min-width: 1024px)");
+function alignTutorPromotion() {
+    if (!desktopLayout.matches) {
+        tutorPromotion.style.removeProperty("--tutor-promotion-height");
+        return;
+    }
+    const height = $("postForm").getBoundingClientRect().bottom - welcome.getBoundingClientRect().top;
+    tutorPromotion.style.setProperty("--tutor-promotion-height", `${Math.max(height, tutorCopy.offsetHeight + 123)}px`);
+}
+const tutorLayoutObserver = new ResizeObserver(alignTutorPromotion);
+[welcome, $("communityStatus"), $("postForm"), tutorCopy].forEach((node) => tutorLayoutObserver.observe(node));
+desktopLayout.addEventListener("change", alignTutorPromotion);
+window.addEventListener("resize", alignTutorPromotion);
+alignTutorPromotion();
 const tr = (text, vars) => window.QCPrefs?.t(text, vars) || text;
 const locale = () => window.QCPrefs?.locale() || "en";
 const element = (tag, className, text) => {
