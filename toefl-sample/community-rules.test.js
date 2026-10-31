@@ -69,6 +69,9 @@ test("friends-only posts and activity reject strangers, pending and removed conn
     const likes = "community_private_likes/privacy-author/privacy-post";
     const comments = "community_private_comments/privacy-author/privacy-post";
     assert.equal(await request(`${likes}/privacy-friend`, "privacy-friend", "PUT", true), 200);
+    assert.equal(await request(`${likes}/privacy-friend`, "privacy-friend", "PUT", stamp), 200);
+    assert.equal(await request(`${likes}/privacy-friend`, "privacy-friend", "PUT", 1), 401);
+    assert.equal(await request(`${likes}/privacy-friend`, "privacy-stranger", "PUT", stamp), 401);
     assert.equal(await request(`${likes}/privacy-stranger`, "privacy-stranger", "PUT", true), 401);
     assert.equal(await request(`${comments}/reply`, "privacy-friend", "PUT", { authorId: "privacy-friend", body: "Hi", createdAt: stamp }), 200);
     assert.equal(await request(comments, "privacy-stranger"), 401);
@@ -139,6 +142,8 @@ test("community rules enforce authenticated reads, authorship, limits, and singl
     await deny(put("community_likes/rules-post/alice", "alice", 12), "cannot invent like counts");
     assert.equal((await put("community_likes/rules-post/alice", "alice", true)).status, 200);
     assert.equal((await put("community_likes/rules-post/alice", "alice", true)).status, 200);
+    assert.equal((await put("community_likes/rules-post/alice", "alice", stamp)).status, 200);
+    await deny(put("community_likes/rules-post/alice", "alice", Date.now() + 60000), "cannot forge future reaction timestamps");
     assert.equal(Object.keys((await request("community_likes/rules-post", { uid: "bob" })).data).length, 1);
     assert.equal((await put("community_likes/rules-post/alice", "alice", null)).status, 200);
     await deny(put("community_likes/missing/alice", "alice", true), "post must exist");

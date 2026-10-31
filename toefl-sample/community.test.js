@@ -59,6 +59,7 @@ function serviceFixture() {
     const context = vm.createContext({
         auth: { currentUser: { uid: "alice", app: {} } }, db: {},
         console, crypto: webcrypto, Blob, btoa, atob, Uint8Array,
+        compressImageToLimit: async (file) => ({ blob: file }),
         validatePost: model.validatePost, GROUPS: vm.runInContext("GROUPS", model),
         onAuthStateChanged(_, callback) { authCallback = callback; return () => {}; },
         ref: (_, key) => ({ key }),
@@ -89,12 +90,91 @@ test("community service persists real author, membership, likes and comments", a
     assert.equal(writes[1].key, "community_members/reading/alice");
     await service.setPostLike("post1", true);
     assert.equal(writes[2].key, "community_likes/post1/alice");
+    assert.deepEqual(JSON.parse(JSON.stringify(writes[2].value)), { ".sv": "timestamp" });
     await service.addComment("post1", " Nice tip ");
     assert.equal(writes[3].value.body, "Nice tip");
     await assert.rejects(service.addComment("post1", "a".repeat(2001)));
     await assert.rejects(service.setGroupMembership("private", true));
-    await assert.rejects(service.savePost(post, { type: "image/png", size: 20 * 1024 * 1024 + 1 }, false));
+    await assert.rejects(service.savePost(post, { type: "image/png", size: 40 * 1024 * 1024 + 1 }, false));
     await assert.rejects(service.savePost(post, { type: "text/html", size: 1 }, false));
+});
+test("large pictures are compressed below 2 MB before public upload or private encryption", async () => {
+    for (const visibility of ["public", "friends"]) {
+        const { context: service, writes } = serviceFixture();
+        const original = new Blob([new Uint8Array(3 * 1024 * 1024)], { type: "image/png" });
+        const compressed = new Blob(["compressed jpeg"], { type: "image/jpeg" });
+        let uploaded;
+        let calls = 0;
+        service.compressImageToLimit = async (file, limit) => {
+            calls++;
+            assert.equal(file, original);
+            assert.equal(limit, 2 * 1024 * 1024);
+            return { blob: compressed, type: "image/jpeg", compressed: true };
+        };
+        service.uploadBytes = async (_, blob, metadata) => { uploaded = { blob, metadata }; };
+        await service.savePost({ ...post, visibility }, original, false);
+        assert.equal(calls, 1);
+        assert.ok(uploaded.blob.size <= 2 * 1024 * 1024);
+        if (visibility === "friends") {
+            assert.equal(uploaded.metadata.contentType, "application/octet-stream");
+            assert.equal(writes[0].value.mediaMime, "image/jpeg");
+            service.fetch = async () => ({ ok: true, arrayBuffer: () => uploaded.blob.arrayBuffer() });
+            const decrypted = await service.loadPrivateMedia(writes[0].value);
+            assert.equal(decrypted.type, "image/jpeg");
+            assert.equal(await decrypted.text(), await compressed.text());
+        } else {
+            assert.equal(uploaded.blob, compressed);
+            assert.equal(uploaded.metadata.contentType, "image/jpeg");
+        }
+    }
+});
+test("shared image compressor preserves the exact 2 MB boundary and retries encoding to meet it", async () => {
+    const limit = 2 * 1024 * 1024;
+    let decodes = 0;
+    let encodes = 0;
+    let closed = false;
+    const canvas = {
+        width: 0, height: 0,
+        getContext: () => ({ fillRect() {}, drawImage() {} }),
+        toBlob(callback, type) {
+            encodes++;
+            callback(new Blob([new Uint8Array(encodes === 1 ? limit + 1 : limit)], { type }));
+        }
+    };
+    const context = vm.createContext({
+        Blob,
+        createImageBitmap: async () => { decodes++; return { width: 3000, height: 2000, close() { closed = true; } }; },
+        document: { createElement: () => canvas }
+    });
+    const compressor = fs.readFileSync(path.join(__dirname, "js", "image-compress.js"), "utf8").replace(/^export /gm, "");
+    vm.runInContext(compressor, context);
+    const exact = new Blob([new Uint8Array(limit)], { type: "image/png" });
+    assert.equal((await context.compressImageToLimit(exact, limit)).blob, exact);
+    assert.equal(decodes, 0, "an image exactly at the limit is never decoded or re-encoded");
+    const result = await context.compressImageToLimit(new Blob([new Uint8Array(limit + 1)], { type: "image/png" }), limit);
+    assert.equal(result.blob.size, limit);
+    assert.equal(result.type, "image/jpeg");
+    assert.equal(result.width, 2048);
+    assert.equal(encodes, 2, "an oversized encoded result must be retried");
+    assert.ok(closed);
+});
+test("small images stay unchanged, videos are not compressed, and failed compression never uploads", async () => {
+    const { context: service, writes } = serviceFixture();
+    const photo = new Blob(["small photo"], { type: "image/webp" });
+    let uploaded;
+    service.uploadBytes = async (_, blob) => { uploaded = blob; };
+    await service.savePost(post, photo, false);
+    assert.equal(uploaded, photo);
+    service.compressImageToLimit = async () => { throw new Error("decode failed"); };
+    const video = new Blob(["video"], { type: "video/mp4" });
+    await service.savePost(post, video, false);
+    assert.equal(uploaded, video);
+    const before = writes.length;
+    uploaded = null;
+    await assert.rejects(service.savePost(post, photo, false), /could not be compressed/);
+    assert.equal(uploaded, null);
+    assert.equal(writes.length, before);
+    await assert.rejects(service.savePost(post, { type: "video/mp4", size: 20 * 1024 * 1024 + 1 }, false), /Videos must/);
 });
 test("community subscriptions reset all private state on account changes and dispose listeners", () => {
     const fixture = serviceFixture();
@@ -150,6 +230,7 @@ test("private attachments are encrypted and decrypted; private actions use prote
     await assert.rejects(service.loadPrivateMedia({ ...saved, mediaKey: btoa("x".repeat(32)) }));
     await service.setPostLike("post1", true);
     assert.equal(writes[1].key, "community_private_likes/alice/post1/alice");
+    assert.deepEqual(JSON.parse(JSON.stringify(writes[1].value)), { ".sv": "timestamp" });
     await service.savePost({ ...post, visibility: "friends" }, null, false, "post1");
     assert.equal(writes[2].key, "community_private_posts/alice/post1");
     await assert.rejects(service.savePost(post, null, false, "post1"), /Audience cannot/);

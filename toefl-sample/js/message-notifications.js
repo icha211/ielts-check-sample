@@ -28,6 +28,21 @@ export function friendPostNotifications(uid, contacts, posts, seenAt = 0) {
     }).sort((a, b) => b.acceptedAt - a.acceptedAt).slice(0, MAX_NOTIFICATIONS);
 }
 
+export function postActivityNotifications(uid, posts, activity, seenAt = 0) {
+    if (!uid) return [];
+    const items = [];
+    Object.entries(posts || {}).forEach(([postId, post]) => {
+        if (post?.authorId !== uid || post.deletedAt) return;
+        const add = (type, peerId, timestamp) => {
+            if (!peerId || peerId === uid || typeof timestamp !== "number" || !Number.isFinite(timestamp) || timestamp <= 0) return;
+            items.push({ type, peerId, postId, acceptedAt: timestamp, unread: timestamp > (Number(seenAt) || 0) });
+        };
+        Object.entries(activity.get(postId)?.likes || {}).forEach(([peerId, timestamp]) => add("like", peerId, timestamp));
+        Object.values(activity.get(postId)?.comments || {}).forEach((comment) => add("comment", comment?.authorId, comment?.createdAt));
+    });
+    return items.sort((a, b) => b.acceptedAt - a.acceptedAt).slice(0, MAX_NOTIFICATIONS);
+}
+
 function relativeTime(timestamp) {
     const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
     if (seconds < 60) return "Just now";
@@ -63,7 +78,7 @@ function renderNotifications(items, names, signedIn, highlightAfter, errorMessag
         const empty = document.createElement("p");
         empty.className = "qcnav-notify-empty";
         empty.textContent = signedIn
-            ? "No notifications yet. Friends' new posts and accepted message requests show up here."
+            ? "No notifications yet. Friends' posts, likes, comments and accepted requests show up here."
             : "Sign in to see notifications.";
         list.append(empty);
         return;
@@ -71,16 +86,17 @@ function renderNotifications(items, names, signedIn, highlightAfter, errorMessag
     items.forEach((item) => {
         const link = document.createElement("a");
         link.className = `qcnav-notify-item${item.acceptedAt > highlightAfter ? " is-new" : ""}`;
-        link.href = item.type === "post" ? `social.html#post-${encodeURIComponent(item.postId)}` : `message.html?to=${encodeURIComponent(item.peerId)}`;
+        link.href = item.postId ? `social.html#post-${encodeURIComponent(item.postId)}` : `message.html?to=${encodeURIComponent(item.peerId)}`;
         const icon = document.createElement("span");
         icon.className = "qcnav-notify-ico";
-        icon.innerHTML = item.type === "post" ? '<i data-lucide="pencil-line"></i>' : '<i data-lucide="user-check"></i>';
+        const icons = { post: "pencil-line", like: "thumbs-up", comment: "message-circle" };
+        icon.innerHTML = `<i data-lucide="${icons[item.type] || "user-check"}"></i>`;
         const copy = document.createElement("span");
         copy.className = "qcnav-notify-copy";
         const text = document.createElement("span");
         const name = document.createElement("b");
         name.textContent = names.get(item.peerId) || "A learner";
-        text.append(name, item.type === "post"
+        text.append(name, item.type === "like" ? " liked your post." : item.type === "comment" ? " commented on your post." : item.type === "post"
             ? (item.visibility === "friends" ? " shared a friends-only post." : " shared a new post.")
             : " accepted your message request. You can start chatting now.");
         const time = document.createElement("small");
@@ -127,9 +143,13 @@ export function startMessageNotifications() {
     let notify;
     const privateStops = new Map();
     const privatePosts = new Map();
+    const activityStops = new Map();
+    const activity = new Map();
+    const ownPosts = () => Object.assign({}, notify.posts, notify.ownPrivatePosts);
     const allItems = () => [
         ...acceptedRequestNotifications(notify.uid, notify.contacts, notify.seenAt),
-        ...friendPostNotifications(notify.uid, notify.contacts, Object.assign({}, notify.posts, ...privatePosts.values()), notify.seenAt)
+        ...friendPostNotifications(notify.uid, notify.contacts, Object.assign({}, notify.posts, ...privatePosts.values()), notify.seenAt),
+        ...postActivityNotifications(notify.uid, ownPosts(), activity, notify.seenAt)
     ].sort((a, b) => b.acceptedAt - a.acceptedAt).slice(0, MAX_NOTIFICATIONS);
     const panelOpen = () => document.getElementById("qcnavNotifyPanel")?.hidden === false;
     const refreshNotifications = () => {
@@ -177,9 +197,12 @@ export function startMessageNotifications() {
         privateStops.forEach((stop) => stop());
         privateStops.clear();
         privatePosts.clear();
+        activityStops.forEach((stop) => stop());
+        activityStops.clear();
+        activity.clear();
     };
     const resetNotifications = (uid = null) => {
-        notify = { uid, contacts: {}, posts: {}, error: "", seenAt: 0, openedSeenAt: null, names: new Map() };
+        notify = { uid, contacts: {}, posts: {}, ownPrivatePosts: {}, error: "", seenAt: 0, openedSeenAt: null, names: new Map() };
         refreshNotifications();
     };
     renderBadges(0);
@@ -200,10 +223,49 @@ export function startMessageNotifications() {
             notify.error = "Notifications could not sync. Refresh to retry.";
             refreshNotifications();
         };
+        const syncActivity = () => {
+            const owned = Object.fromEntries(Object.entries(ownPosts()).filter(([, post]) => post?.authorId === user.uid && !post.deletedAt));
+            activityStops.forEach((stop, id) => {
+                if (!owned[id]) { stop(); activityStops.delete(id); activity.delete(id); }
+            });
+            Object.entries(owned).forEach(([id, post]) => {
+                if (activityStops.has(id)) return;
+                let active = true;
+                const data = { likes: {}, comments: {} };
+                const stops = ["likes", "comments"].map((kind) => {
+                    const path = post.visibility === "friends" ? `community_private_${kind}/${user.uid}/${id}` : `community_${kind}/${id}`;
+                    const target = kind === "comments" ? query(ref(db, path), orderByChild("createdAt"), limitToLast(MAX_NOTIFICATIONS)) : ref(db, path);
+                    return onValue(target, (snapshot) => {
+                        if (!active || version !== generation) return;
+                        data[kind] = snapshot.val() || {};
+                        activity.set(id, data);
+                        loadNames(version, refreshNotifications());
+                    }, (error) => {
+                        if (!active || version !== generation) return;
+                        data[kind] = {};
+                        activity.set(id, data);
+                        fail(error);
+                    });
+                });
+                activityStops.set(id, () => { active = false; stops.forEach((stop) => stop()); });
+            });
+        };
         listeners.push(
+            onValue(query(ref(db, `community_private_posts/${user.uid}`), orderByChild("createdAt"), limitToLast(100)), (snapshot) => {
+                if (version !== generation) return;
+                notify.ownPrivatePosts = snapshot.val() || {};
+                syncActivity();
+                loadNames(version, refreshNotifications());
+            }, (error) => {
+                if (version !== generation) return;
+                notify.ownPrivatePosts = {};
+                syncActivity();
+                fail(error);
+            }),
             onValue(query(ref(db, "community_posts"), orderByChild("createdAt"), limitToLast(100)), (snapshot) => {
                 if (version !== generation) return;
                 notify.posts = snapshot.val() || {};
+                syncActivity();
                 loadNames(version, refreshNotifications());
             }, fail),
             onValue(ref(db, `user_messages/${user.uid}`), (snapshot) => {

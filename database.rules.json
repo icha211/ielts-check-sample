@@ -146,7 +146,7 @@
         ".read": true,
         "$uid": {
           ".write": "auth != null && auth.uid === $uid && root.child('community_posts').child($post).exists() && !root.child('community_posts').child($post).child('deletedAt').exists()",
-          ".validate": "newData.isBoolean() && newData.val() === true"
+          ".validate": "newData.val() === true || (newData.isNumber() && newData.val() > 0 && (newData.val() === now || newData.val() === data.val()))"
         }
       }
     },
@@ -198,7 +198,7 @@
           ".read": "auth != null && (auth.uid === $author || (root.child('message_contacts').child($author).child(auth.uid).child('status').val() === 'connected' && root.child('message_contacts').child(auth.uid).child($author).child('status').val() === 'connected'))",
           "$uid": {
             ".write": "auth != null && auth.uid === $uid && root.child('community_private_posts').child($author).child($post).exists() && !root.child('community_private_posts').child($author).child($post).child('deletedAt').exists() && (auth.uid === $author || (root.child('message_contacts').child($author).child(auth.uid).child('status').val() === 'connected' && root.child('message_contacts').child(auth.uid).child($author).child('status').val() === 'connected'))",
-            ".validate": "newData.val() === true"
+            ".validate": "newData.val() === true || (newData.isNumber() && newData.val() > 0 && (newData.val() === now || newData.val() === data.val()))"
           }
         }
       }

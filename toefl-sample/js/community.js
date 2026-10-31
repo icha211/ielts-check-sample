@@ -3,6 +3,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/fi
 import { onValue, ref, query, orderByChild, limitToLast, push, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { validatePost, GROUPS } from "./community-model.js";
+import { compressImageToLimit } from "./image-compress.js?v=20261031-compress";
 
 const postLocations = new Map();
 function postPath(id) {
@@ -132,13 +133,27 @@ export async function savePost(input, file, developer, editingId = null) {
         await update(ref(db, location), { ...post, updatedAt: serverTimestamp() });
         return editingId;
     }
+    if (file) {
+        if (!["image/png", "image/jpeg", "image/webp", "video/mp4", "video/webm"].includes(file.type)) throw new Error("Choose a PNG, JPEG, WebP, MP4, or WebM file.");
+        if (file.type.startsWith("image/")) {
+            if (file.size > 40 * 1024 * 1024) throw new Error("Pictures must be 40 MB or smaller before compression.");
+            try {
+                const result = await compressImageToLimit(file, 2 * 1024 * 1024);
+                file = result.blob;
+            } catch (error) {
+                throw new Error("This picture could not be compressed. Choose another picture and try again.", { cause: error });
+            }
+            if (file.size > 2 * 1024 * 1024) throw new Error("The compressed picture must be 2 MB or smaller.");
+        } else if (file.size > 20 * 1024 * 1024) {
+            throw new Error("Videos must be 20 MB or smaller.");
+        }
+        if (auth.currentUser?.uid !== user.uid) throw new Error("Your account changed. Sign in again before posting.");
+    }
     const collection = post.visibility === "friends" ? `community_private_posts/${user.uid}` : "community_posts";
     const target = push(ref(db, collection));
     let uploaded = null;
     const media = { mediaURL: "", mediaPath: "", mediaType: "", mediaKey: "", mediaIV: "", ...(post.visibility === "friends" ? { mediaMime: file?.type || "" } : {}) };
     if (file) {
-        if (!["image/png", "image/jpeg", "image/webp", "video/mp4", "video/webm"].includes(file.type)) throw new Error("Choose a PNG, JPEG, WebP, MP4, or WebM file.");
-        if (file.size > 20 * 1024 * 1024) throw new Error("Media must be 20 MB or smaller.");
         media.mediaPath = `${post.visibility === "friends" ? "community-private" : "community"}/${user.uid}/${target.key}/attachment`;
         uploaded = storageRef(getStorage(auth.app), media.mediaPath);
         if (post.visibility === "friends") {
@@ -176,7 +191,7 @@ export async function removePost(id) {
 export async function setPostLike(id, liked) {
     const user = requireUser();
     requireId(id);
-    await set(ref(db, `${activityPath(id, "likes")}/${user.uid}`), liked ? true : null);
+    await set(ref(db, `${activityPath(id, "likes")}/${user.uid}`), liked ? serverTimestamp() : null);
 }
 export async function addComment(id, text) {
     const user = requireUser();

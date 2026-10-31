@@ -1,4 +1,4 @@
-import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261031-post-privacy";
+import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261031-post-activity";
 import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime } from "./js/community-model.js";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 
@@ -73,7 +73,10 @@ window.QCPrefs?.addTranslations("id", {
     "Post link shared.": "Tautan postingan dibagikan.", "Remove attachment": "Hapus lampiran",
     "Community post attachment": "Lampiran postingan komunitas", "Attachment preview": "Pratinjau lampiran",
     "This attachment could not load.": "Lampiran tidak dapat dimuat.",
-    "Choose a PNG, JPEG, WebP, MP4, or WebM file of 20 MB or smaller.": "Pilih file PNG, JPEG, WebP, MP4, atau WebM berukuran maksimal 20 MB.",
+    "Choose a PNG, JPEG or WebP picture up to 40 MB, or an MP4 or WebM video up to 20 MB.": "Pilih gambar PNG, JPEG atau WebP maksimal 40 MB, atau video MP4 atau WebM maksimal 20 MB.",
+    "Pictures over 2 MB are automatically compressed before upload. Videos: up to 20 MB.": "Gambar di atas 2 MB dikompresi otomatis sebelum diunggah. Video: maksimal 20 MB.",
+    "Compressing picture...": "Mengompresi gambar...",
+    "This picture could not be compressed. Choose another picture and try again.": "Gambar ini tidak dapat dikompresi. Pilih gambar lain dan coba lagi.",
     "Sign in and connect before posting.": "Masuk dan hubungkan sebelum mengirim postingan."
 });
 const $ = (id) => document.getElementById(id);
@@ -458,7 +461,7 @@ function paintActivity(id) {
     if (!entry) return;
     const data = activity.get(id) || { likes: {}, comments: {} };
     const like = entry.node.querySelector("[data-like]");
-    const liked = data.likes[state.uid] === true;
+    const liked = Boolean(data.likes[state.uid]);
     like.replaceChildren(icon(liked ? "thumb-up-filled" : "thumb-up"), document.createTextNode(String(Object.keys(data.likes).length)));
     like.setAttribute("aria-pressed", String(liked));
     like.setAttribute("aria-label", tr(liked ? "Unlike post" : "Like post"));
@@ -662,8 +665,9 @@ $("mediaInput").addEventListener("change", () => {
     const selected = $("mediaInput").files[0];
     if (!selected) return;
     clearPreview();
-    if (!["image/png", "image/jpeg", "image/webp", "video/mp4", "video/webm"].includes(selected.type) || selected.size > 20 * 1024 * 1024) {
-        showError(new Error(tr("Choose a PNG, JPEG, WebP, MP4, or WebM file of 20 MB or smaller.")), $("composerError"));
+    const maxBytes = (selected.type.startsWith("image/") ? 40 : 20) * 1024 * 1024;
+    if (!["image/png", "image/jpeg", "image/webp", "video/mp4", "video/webm"].includes(selected.type) || selected.size > maxBytes) {
+        showError(new Error(tr("Choose a PNG, JPEG or WebP picture up to 40 MB, or an MP4 or WebM video up to 20 MB.")), $("composerError"));
         return;
     }
     file = selected;
@@ -684,7 +688,7 @@ $("postForm").addEventListener("submit", async (event) => {
     const version = authVersion;
     const submit = $("publishButton");
     submit.disabled = true;
-    submit.textContent = tr("Saving...");
+    submit.textContent = tr(file?.type.startsWith("image/") && file.size > 2 * 1024 * 1024 ? "Compressing picture..." : "Saving...");
     $("composerError").hidden = true;
     const fields = [...$("postForm").querySelectorAll("input, textarea, select, button")];
     const disabled = fields.map((field) => field.disabled);

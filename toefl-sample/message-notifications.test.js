@@ -279,3 +279,47 @@ test("private notification sync errors clear protected posts and show an explici
     assert.ok(app.notifyBadges[0].hidden);
     assert.match(textOf(app.notifyList), /Notifications could not sync/);
 });
+
+test("post activity alerts exclude self, deleted posts, other authors and untimestamped legacy likes", () => {
+    const app = fixture();
+    const posts = { own: { authorId: "me" }, other: { authorId: "dara" }, deleted: { authorId: "me", deletedAt: 1 } };
+    const activity = new Map([
+        ["own", { likes: { me: 50, dara: 30, legacy: true }, comments: { c1: { authorId: "lina", createdAt: 40 }, c2: { authorId: "me", createdAt: 60 } } }],
+        ["other", { likes: { dara: 70 } }],
+        ["deleted", { likes: { dara: 80 } }]
+    ]);
+    const items = app.context.postActivityNotifications("me", posts, activity, 35);
+    assert.deepEqual(JSON.parse(JSON.stringify(items.map(item => [item.type, item.peerId, item.unread]))), [["comment", "lina", true], ["like", "dara", false]]);
+});
+
+test("own public and private post activity updates the bell and clears on removal and sign-out", () => {
+    const app = fixture();
+    app.context.startMessageNotifications();
+    app.signIn("me");
+    app.emit("community_posts", { public: { authorId: "me" }, other: { authorId: "dara" } });
+    assert.ok(![...app.listeners].some(listener => listener.target === "community_likes/other"));
+    app.emit("community_likes/public", { me: 10, dara: 20 });
+    assert.equal(app.notifyBadges[0].textContent, "1");
+    assert.match(textOf(app.notifyList), /liked your post/);
+    app.emit("community_comments/public", { c: { authorId: "lina", createdAt: 30 } });
+    assert.equal(app.notifyBadges[0].textContent, "2");
+    assert.equal(app.notifyList.children[0].href, "social.html#post-public");
+    assert.match(textOf(app.notifyList.children[0]), /commented on your post/);
+    app.emit("community_private_posts/me", { private: { authorId: "me", visibility: "friends" } });
+    app.emit("community_private_likes/me/private", { dara: 40 });
+    app.emit("community_private_comments/me/private", { c: { authorId: "sam", createdAt: 50 } });
+    assert.equal(app.notifyBadges[0].textContent, "4");
+    app.openPanel();
+    app.emit("notification_state/me", { acceptedSeenAt: 55 });
+    assert.ok(app.notifyBadges[0].hidden);
+    const stale = [...app.listeners].find(listener => listener.target === "community_likes/public");
+    app.emit("community_posts", { public: { authorId: "me", deletedAt: 60 } });
+    assert.ok(!app.listeners.has(stale));
+    stale.callback({ val: () => ({ dara: 70 }) });
+    assert.ok(app.notifyBadges[0].hidden);
+    app.signIn("other");
+    stale.callback({ val: () => ({ dara: 80 }) });
+    assert.ok(app.notifyBadges[0].hidden);
+    app.signIn(null);
+    assert.equal(app.listeners.size, 0);
+});

@@ -67,6 +67,20 @@ Opening the panel marks existing notifications seen; later arrivals stay unread.
 The existing owner-only `notification_state/<uid>/acceptedSeenAt` field is the
 shared bell watermark for both notification types, preserving deployed rules.
 This is an in-app feed, not an email or browser push notification service.
+The bell also watches likes and the latest 20 comments on the current user's
+posts in the loaded public/private feeds. Own reactions are excluded; removing
+a reaction, comment or post removes its alert. All bell items share the read
+watermark. New likes store server timestamps instead of booleans; existing
+boolean likes still count and can be removed, but cannot produce dated alerts.
+Deploy the updated database rules before publishing the timestamped-like client.
+
+Post pictures over 2 MB are compressed with the shared account-photo helper
+before uploading or encrypting private media. PNG/JPEG/WebP sources up to 40 MB
+are accepted; smaller pictures stay unchanged. Re-encoding produces JPEG, with
+transparent areas painted white. Videos retain their 20 MB limit and are not
+compressed. Compression failures stop publication and appear in the composer.
+Private-media download CORS failures are separate from upload size: the Storage
+bucket must allow the deployed site's origin to read encrypted attachment bytes.
 
 Shared Realtime Database data lives in `community_posts`, `community_likes`,
 `community_comments`, and `community_members`. Feeds and comment lists load the
