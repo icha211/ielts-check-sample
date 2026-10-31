@@ -43,7 +43,9 @@ tracks the post composer using ResizeObserver, growing if needed to keep text
 visible. On smaller screens it uses natural height.
 Only the decorative tutor illustration is an image.
 The composer has a borderless writing area and live character count, without
-category or group dropdowns. New posts use the general feed; the question action
+category or group dropdowns. Its icon-only tools retain localized accessible
+labels and hover/focus tooltips; audience uses a globe or lock icon.
+New posts use the general feed; the question action
 sets the category internally. Editing retains the original category and group.
 Audience offers Public (including signed-out readers) or Friends only.
 Friends are mutual `message_contacts` connections with status `connected`.

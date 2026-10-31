@@ -495,6 +495,10 @@ function updateComposerUI() {
     $("composerCount").textContent = `${body.value.length} / ${body.maxLength}`;
     $("composerCount").dataset.limit = body.value.length >= body.maxLength * .9 ? "near" : "";
     $("postVisibility").disabled = !state.uid || publishing || Boolean(editingId);
+    $("postVisibilityIcon").className = `ti ti-${$("postVisibility").value === "friends" ? "lock" : "world"}`;
+    document.querySelectorAll(".composer-tools button[data-tooltip]").forEach((tool) => {
+        tool.dataset.tooltip = tr(tool.querySelector("[data-i18n]").dataset.i18n);
+    });
     $("postVisibilityHint").textContent = tr(editingId
         ? "Audience cannot be changed after publishing. Create a new post instead."
         : $("postVisibility").value === "friends"
