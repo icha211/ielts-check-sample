@@ -30,6 +30,10 @@ These files are still the active website/runtime surface. Do not move them until
 ## Community page
 
 `toefl-sample/profile.html` retains all account controls and adds a social profile.
+Profile appears beneath Community in the shared sidebar; Community uses a globe
+icon. Owners open private account controls from the profile header in a responsive
+modal panel, not beneath the feed. Escape, the close button or the backdrop closes
+the panel; native dialog focus trapping keeps keyboard navigation inside it.
 Use `profile.html?uid=<uid>` to view another learner. The banner, tabs, recent
 activity, contribution milestones and connection requests use actual Firebase
 data. Recent-post counts reflect the latest 100 accessible community posts,

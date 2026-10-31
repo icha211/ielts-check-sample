@@ -17,7 +17,8 @@
     "history.html": "history",
     "full-test-summary.html": "history",
     "social.html": "social",
-    "message.html": "message"
+    "message.html": "message",
+    "profile.html": "profile"
   }[page] || "";
 
   const now = new Date();
@@ -49,7 +50,7 @@
     ] },
     social: { label: "Social", items: [
       { label: "Messages", icon: "message-circle", href: "message.html" },
-      { label: "Friends", icon: "users", href: "social.html#community" }
+      { label: "Community", icon: "globe", href: "social.html#community" }
     ] }
   };
   const R = 120;
@@ -130,7 +131,8 @@
   <div class="qcnav-divider"></div>
   <div class="qcnav-label" data-i18n>Social</div>
   <a class="qcnav-item${cls("message")}" href="message.html" data-message-link="Message"${cur("message")}><span class="qcnav-ico"><i data-lucide="message-circle"></i><span class="qcnav-badge" data-message-badge aria-hidden="true" hidden></span></span><span class="qcnav-text" data-i18n>Message</span></a>
-  <a class="qcnav-item" href="social.html#community"><span class="qcnav-ico"><i data-lucide="users"></i></span><span class="qcnav-text" data-i18n>Community</span></a>
+  <a class="qcnav-item${cls("social")}" href="social.html#community"${cur("social")}><span class="qcnav-ico"><i data-lucide="globe"></i></span><span class="qcnav-text" data-i18n>Community</span></a>
+  <a class="qcnav-item${cls("profile")}" href="profile.html"${cur("profile")}><span class="qcnav-ico"><i data-lucide="user-round"></i></span><span class="qcnav-text" data-i18n>Profile</span></a>
   <div class="qcnav-divider"></div>
   <div class="qcnav-label" data-developer-only hidden data-i18n>Admin</div>
   <a class="qcnav-item" href="developer.html" data-developer-only hidden><span class="qcnav-ico"><i data-lucide="book-open"></i></span><span class="qcnav-text">Developer</span></a>

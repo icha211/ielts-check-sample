@@ -15,6 +15,7 @@ window.QCPrefs?.addTranslations("id", {
     "Connections": "Koneksi", "Mutual connections": "Koneksi bersama", "Connect": "Hubungkan",
     "Connected": "Terhubung", "Request sent": "Permintaan terkirim", "Accept request": "Terima permintaan",
     "Message": "Pesan", "Account settings": "Pengaturan akun", "Community": "Komunitas",
+    "Private account": "Akun pribadi", "Close account settings": "Tutup pengaturan akun",
     "Posts": "Postingan", "About": "Tentang", "Activity": "Aktivitas", "Achievements": "Pencapaian",
     "Recent activity": "Aktivitas terbaru", "Community achievements": "Pencapaian komunitas",
     "Milestones based on posts and connections visible to you.": "Pencapaian berdasarkan postingan dan koneksi yang terlihat oleh Anda.",
@@ -152,6 +153,7 @@ function render() {
     $("profileSettings").hidden = !own;
     $("profileEditAbout").hidden = !own || !profileReady;
     $("acctPage").hidden = !own;
+    if (!own && $("acctSettingsDialog").open) closeAccountSettings();
     $("profileRequestsCard").hidden = !own;
     $("profileMessage").hidden = own || !state.uid;
     $("profileMessage").href = `message.html?to=${encodeURIComponent(targetUid)}`;
@@ -248,7 +250,33 @@ $("profileConnect").addEventListener("click", async () => {
     connectionBusy = true; render();
     try { await (contacts[targetUid]?.status === "incoming" ? acceptConnection(targetUid) : requestConnection(targetUid)); } catch (error) { report(error); } finally { connectionBusy = false; render(); }
 });
-$("profileSettings").addEventListener("click", () => $("acctPage").scrollIntoView({ block: "start", behavior: "instant" }));
+$("profileSettings").addEventListener("click", () => {
+    if (!state.uid || state.uid !== targetUid) return;
+    const dialog = $("acctSettingsDialog");
+    if (!dialog.open) {
+        dialog.showModal();
+        dialog.scrollTop = 0;
+        document.body.classList.add("account-settings-open");
+    }
+});
+function closeAccountSettings() {
+    $("acctSettingsDialog").close();
+    document.body.classList.remove("account-settings-open");
+    if (!$("profileSettings").hidden) $("profileSettings").focus({ preventScroll: true });
+}
+$("acctSettingsClose").addEventListener("click", closeAccountSettings);
+$("acctSettingsDialog").addEventListener("cancel", (event) => {
+    event.preventDefault();
+    closeAccountSettings();
+});
+$("acctSettingsDialog").addEventListener("close", () => {
+    if (!$("acctSettingsDialog").open) document.body.classList.remove("account-settings-open");
+});
+$("acctSettingsDialog").addEventListener("click", (event) => {
+    if (event.target !== event.currentTarget) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) closeAccountSettings();
+});
 $("profileViewConnections").addEventListener("click", () => showTab("profileConnections", true));
 const tabs = [...document.querySelectorAll("[data-profile-tab]")];
 tabs.forEach((tab, index) => {
