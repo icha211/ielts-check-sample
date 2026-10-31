@@ -36,7 +36,11 @@ the learner's saved CEFR level; missing levels are not replaced by invented scor
 
 Shared Realtime Database data lives in `community_posts`, `community_likes`,
 `community_comments`, and `community_members`. Feeds and comment lists load the
-latest 100 records. Group counts are actual memberships. Only authors can edit
+latest 100 records. The sidebar displays an HTML/CSS tutor promotion
+instead of the group membership panel, with selectable, localized text and a
+disabled button. The promotion is capped at 220px wide and shrinks on narrower
+screens. Only the decorative tutor illustration is an image.
+Group selection remains available in the post composer. Only authors can edit
 posts; authors and verified developers can remove posts/comments. Announcements
 are developer-only. Removed posts are retained but hidden and cannot receive new
 comments or likes.

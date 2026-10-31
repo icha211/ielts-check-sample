@@ -1,8 +1,12 @@
-import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, setGroupMembership } from "./js/community.js";
+import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment } from "./js/community.js";
 import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime } from "./js/community-model.js";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 
 window.QCPrefs?.addTranslations("id", {
+    "Become a Tutor": "Jadi Tutor",
+    "Share Your Knowledge, Earn Income": "Bagikan Pengetahuan, Dapatkan Penghasilan",
+    "Join our platform and start teaching what you love.": "Bergabunglah dan mulai mengajar bidang yang Anda sukai.",
+    "Tutor registration is not available yet.": "Pendaftaran tutor belum tersedia.",
     "Welcome to Quick Check Community!": "Selamat datang di Komunitas Quick Check!",
     "Welcome, {name}!": "Selamat datang, {name}!",
     "Share your progress, ask questions, and connect with learners on the same journey.": "Bagikan progres, ajukan pertanyaan, dan terhubung dengan sesama pelajar.",
@@ -89,7 +93,6 @@ let authVersion = 0;
 let category = "all";
 let groupId = "";
 let peopleMode = "buddies";
-let allGroups = false;
 let editingId = null;
 let deleteId = null;
 let file = null;
@@ -211,33 +214,6 @@ function openPeople(mode) {
     $("peopleSearch").value = "";
     renderPeopleResults();
     $("peopleDialog").showModal();
-}
-function renderGroups() {
-    $("groupList").replaceChildren();
-    GROUPS.forEach((group) => {
-        const row = element("div", "group-row");
-        const symbol = element("span", `group-symbol ${group.id}`);
-        symbol.append(icon(group.icon));
-        const copy = element("div", "group-copy");
-        copy.append(button(tr(group.name), "", () => chooseGroup(group.id)));
-        const count = Object.keys(state.members[group.id] || {}).length;
-        copy.append(element("small", "", state.uid
-            ? tr(count === 1 ? "{count} member" : "{count} members", { count: new Intl.NumberFormat(locale()).format(count) })
-            : tr("Sign in to join")));
-        const joined = state.members[group.id]?.[state.uid] === true;
-        const join = button(tr(joined ? "Joined" : "Join"), "join-button", () => perform(join, () => setGroupMembership(group.id, !joined), tr(joined ? "You left the group." : "You joined the group.")));
-        join.setAttribute("aria-pressed", String(joined));
-        join.setAttribute("aria-label", `${tr(joined ? "Leave" : "Join")} ${tr(group.name)}`);
-        join.disabled = !state.uid || state.loading;
-        row.append(symbol, copy, join);
-        if (allGroups) {
-            const description = element("small", "helper", tr("Open this group to read and share posts."));
-            copy.append(description);
-        }
-        $("groupList").append(row);
-    });
-    $("viewGroups").textContent = tr(allGroups ? "Show Less" : "View All");
-    $("viewGroups").setAttribute("aria-expanded", String(allGroups));
 }
 function chooseGroup(id) {
     groupId = id;
@@ -562,7 +538,6 @@ const unsubscribe = subscribeCommunity(async (next) => {
             cards.delete(id);
         }
     });
-    renderGroups();
     renderPeople();
     renderFeed();
     const linked = document.getElementById(location.hash.slice(1));
@@ -592,13 +567,12 @@ document.querySelectorAll("[data-compose]").forEach((node) => node.addEventListe
 document.querySelectorAll("[data-shortcut]").forEach((node) => node.addEventListener("click", () => {
     const value = node.dataset.shortcut;
     if (value === "buddies") openPeople("buddies");
-    else if (value === "groups") { allGroups = true; renderGroups(); $("groupsSection").scrollIntoView({ block: "center", behavior: "instant" }); }
+    else if (value === "groups") { startComposer("tips"); if (state.uid) $("postGroup").focus(); }
     else startComposer(value);
 }));
 $("postBody").addEventListener("focus", () => { $("composerDetails").hidden = false; });
 $("postSort").addEventListener("change", renderFeed);
 $("clearGroup").addEventListener("click", () => { groupId = ""; $("postGroup").value = ""; renderFilters(); renderFeed(); });
-$("viewGroups").addEventListener("click", () => { allGroups = !allGroups; renderGroups(); });
 $("viewPeople").addEventListener("click", () => openPeople("online"));
 $("findBuddy").addEventListener("click", () => openPeople("buddies"));
 $("peopleSearch").addEventListener("input", renderPeopleResults);
@@ -669,7 +643,7 @@ $("confirmDelete").addEventListener("click", async () => {
 });
 document.querySelectorAll("[data-close-dialog]").forEach((node) => node.addEventListener("click", () => node.closest("dialog").close()));
 window.addEventListener("toefl-partner-directory-error", (event) => showError(new Error(event.detail.message)));
-window.addEventListener("qc:langchange", () => { cards.clear(); $("postFeed").replaceChildren(); renderIdentity(); renderGroups(); renderPeople(); renderFeed(); });
+window.addEventListener("qc:langchange", () => { cards.clear(); $("postFeed").replaceChildren(); renderIdentity(); renderPeople(); renderFeed(); });
 const clock = setInterval(() => {
     document.querySelectorAll(".post-card").forEach((node) => {
         const post = state.posts[node.id.slice(5)];
