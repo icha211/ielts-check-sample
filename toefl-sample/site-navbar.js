@@ -6,7 +6,7 @@
       detail: { message: "Live partner updates could not start. Please reload this page." }
     }));
   });
-  import("./js/message-notifications.js?v=20261030b").catch((error) => {
+  import("./js/message-notifications.js?v=20261031-friend-posts").catch((error) => {
     console.error("[MessageNotifications] Could not start unread message updates:", error);
   });
   const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();

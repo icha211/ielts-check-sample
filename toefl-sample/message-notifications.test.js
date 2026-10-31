@@ -35,6 +35,9 @@ function fixture() {
     const context = vm.createContext({
         auth: {}, db: {}, console: { error() {} },
         ref: (_, value) => value,
+        query: (target) => target,
+        orderByChild: (key) => key,
+        limitToLast: (count) => count,
         serverTimestamp: () => "SERVER_TIME",
         set: async (target, value) => { writes.push({ target, value }); },
         get: async (target) => ({ val: () => names[target] ?? null }),
@@ -195,4 +198,84 @@ test("bell notifications clear on account switch and ignore stale listeners", ()
     assert.equal(app.notifyList.children.length, 1);
     app.signIn(null);
     assert.match(textOf(app.notifyList), /Sign in to see notifications/);
+});
+
+test("friend post notifications exclude self, strangers, requests, deleted and pre-connection posts", () => {
+    const app = fixture();
+    const items = app.context.friendPostNotifications("me", {
+        dara: { status: "connected", updatedAt: 20 }, lina: { status: "incoming" }
+    }, {
+        public: { authorId: "dara", createdAt: 30, visibility: "public" },
+        private: { authorId: "dara", createdAt: 40, visibility: "friends" },
+        old: { authorId: "dara", createdAt: 10 },
+        deleted: { authorId: "dara", createdAt: 50, deletedAt: 60 },
+        request: { authorId: "lina", createdAt: 70 },
+        stranger: { authorId: "sam", createdAt: 80 },
+        own: { authorId: "me", createdAt: 90 },
+        invalid: { authorId: "dara", createdAt: "invalid" }
+    }, 35);
+    assert.deepEqual(JSON.parse(JSON.stringify(items.map((item) => [item.postId, item.unread, item.visibility]))), [
+        ["private", true, "friends"], ["public", false, "public"]
+    ]);
+    assert.equal(app.context.friendPostNotifications(null, {}, {}).length, 0);
+    const many = Object.fromEntries(Array.from({ length: 25 }, (_, id) => [id, { authorId: "dara", createdAt: 100 + id }]));
+    assert.equal(app.context.friendPostNotifications("me", { dara: { status: "connected" } }, many).length, 20);
+});
+
+test("friends' public and private posts share the bell, read state and working post links", async () => {
+    const app = fixture();
+    app.context.startMessageNotifications();
+    app.signIn("me");
+    app.emit("notification_state/me", { acceptedSeenAt: 20 });
+    app.emit("community_posts", { p1: { authorId: "dara", createdAt: 30 } });
+    assert.ok(app.notifyBadges[0].hidden, "contacts must confirm the author is a friend");
+    app.emit("message_contacts/me", { dara: { status: "connected", requesterId: "dara", updatedAt: 10 } });
+    assert.equal(app.notifyBadges[0].textContent, "1");
+    app.emit("community_private_posts/dara", { p2: { authorId: "dara", createdAt: 40, visibility: "friends" } });
+    assert.equal(app.notifyBadges[0].textContent, "2");
+    assert.equal(app.notifyList.children[0].href, "social.html#post-p2");
+    assert.match(textOf(app.notifyList.children[0]), /friends-only post/);
+    assert.equal(app.notifyList.children[1].href, "social.html#post-p1");
+    app.openPanel();
+    assert.equal(app.writes[0].target, "notification_state/me");
+    app.emit("notification_state/me", { acceptedSeenAt: 45 });
+    assert.ok(app.notifyBadges[0].hidden);
+    app.emit("community_posts", { p3: { authorId: "dara", createdAt: 50 } });
+    assert.equal(app.notifyBadges[0].textContent, "1", "posts arriving after opening remain unread");
+    app.emit("community_posts", {});
+    assert.ok(app.notifyBadges[0].hidden, "removed posts stop notifying");
+});
+
+test("friend removal and account switches remove private notifications and reject stale events", () => {
+    const app = fixture();
+    app.context.startMessageNotifications();
+    app.signIn("me");
+    app.emit("message_contacts/me", { dara: { status: "connected", updatedAt: 10 } });
+    const stale = [...app.listeners].find((listener) => listener.target === "community_private_posts/dara");
+    app.emit("community_private_posts/dara", { p: { authorId: "dara", createdAt: 30, visibility: "friends" } });
+    assert.equal(app.notifyBadges[0].textContent, "1");
+    app.emit("message_contacts/me", {});
+    assert.ok(app.notifyBadges[0].hidden);
+    assert.ok(!app.listeners.has(stale));
+    stale.callback({ val: () => ({ p: { authorId: "dara", createdAt: 30 } }) });
+    assert.ok(app.notifyBadges[0].hidden);
+    app.emit("message_contacts/me", { dara: { status: "connected", updatedAt: 40 } });
+    stale.callback({ val: () => ({ p: { authorId: "dara", createdAt: 60 } }) });
+    assert.ok(app.notifyBadges[0].hidden, "reconnecting cannot revive a disposed private listener");
+    app.signIn("other");
+    stale.callback({ val: () => ({ p: { authorId: "dara", createdAt: 50 } }) });
+    assert.ok(app.notifyBadges[0].hidden);
+    app.signIn(null);
+    assert.equal(app.listeners.size, 0);
+});
+
+test("private notification sync errors clear protected posts and show an explicit error", () => {
+    const app = fixture();
+    app.context.startMessageNotifications();
+    app.signIn("me");
+    app.emit("message_contacts/me", { dara: { status: "connected", updatedAt: 10 } });
+    app.emit("community_private_posts/dara", { p: { authorId: "dara", createdAt: 30, visibility: "friends" } });
+    [...app.listeners].find((listener) => listener.target === "community_private_posts/dara").error(new Error("permission denied"));
+    assert.ok(app.notifyBadges[0].hidden);
+    assert.match(textOf(app.notifyList), /Notifications could not sync/);
 });

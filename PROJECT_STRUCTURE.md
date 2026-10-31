@@ -58,6 +58,16 @@ It shares the existing Firebase Auth account, opt-in `partnerDirectory` profiles
 and presence, and `message.html?to=<uid>` messaging flow. Study-buddy matches rank
 the learner's saved CEFR level; missing levels are not replaced by invented scores.
 
+The shared navbar bell combines accepted message requests and new posts from
+approved connections. It reads the latest 100 public posts and 20 private posts
+per friend, never subscribes to strangers' private feeds, and clears protected
+notifications when a connection is removed or the account changes. Post links
+open Explore at the post. Only posts created since connection acceptance appear.
+Opening the panel marks existing notifications seen; later arrivals stay unread.
+The existing owner-only `notification_state/<uid>/acceptedSeenAt` field is the
+shared bell watermark for both notification types, preserving deployed rules.
+This is an in-app feed, not an email or browser push notification service.
+
 Shared Realtime Database data lives in `community_posts`, `community_likes`,
 `community_comments`, and `community_members`. Feeds and comment lists load the
 latest 100 records. The sidebar displays an HTML/CSS tutor promotion
