@@ -126,6 +126,7 @@ function showTab(id, focus = false) {
         $(tab.dataset.profileTab).hidden = !selected;
         if (selected && focus) tab.focus();
     });
+    if (id === "profilePosts") sendTheme();
 }
 function render() {
     if (!targetUid) return;
@@ -215,7 +216,7 @@ const stopCommunity = subscribeCommunity((next) => {
         contactsReady = false; ownIndex = null; lastIndexAttempt = "";
         targetUid = requestedUid || next.uid || "";
         if (!targetUid) { report(new Error("Sign in to view your profile.")); return; }
-        const src = `social.html?profile=${encodeURIComponent(targetUid)}&embedded=1`;
+        const src = `social.html?profile=${encodeURIComponent(targetUid)}&embedded=1&v=20261031-profile-embed`;
         if ($("profileFeed").getAttribute("src") !== src) $("profileFeed").src = src;
         stopDetails = onValue(ref(db, `community_profiles/${targetUid}`), (snapshot) => {
             if (version !== generation) return;

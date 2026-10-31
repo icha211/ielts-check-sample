@@ -109,6 +109,7 @@ if (embeddedProfile) {
     window.addEventListener("message", (event) => {
         if (event.origin !== location.origin || event.source !== window.parent || event.data?.type !== "qc:profile-theme") return;
         if (["light", "dark"].includes(event.data.theme)) document.documentElement.dataset.theme = event.data.theme;
+        reportHeight();
     });
 }
 const element = (tag, className, text) => {
@@ -284,6 +285,7 @@ function emptyFeed(title, copy) {
     if (!state.uid) {
         const link = element("a", "primary-button", tr("Sign in"));
         link.href = "signup.html";
+        if (embeddedProfile) link.target = "_top";
         node.append(link);
     } else node.append(button(tr("Create a Post"), "secondary-button", () => startComposer(category === "all" ? "tips" : category)));
     return node;
@@ -481,7 +483,7 @@ function paintActivity(id) {
     });
 }
 async function sharePost(post, target) {
-    const url = new URL(location.href);
+    const url = new URL(embeddedProfile ? "social.html" : location.href, location.href);
     url.hash = `post-${post.id}`;
     try {
         if (navigator.share) await navigator.share({ title: post.title, url: url.href });

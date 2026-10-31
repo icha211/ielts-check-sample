@@ -98,6 +98,7 @@ onAuthStateChanged(auth, async (user) => {
         return;
     }
     currentUser = user;
+    page.hidden = false;
 
     let profile = {};
     try {
