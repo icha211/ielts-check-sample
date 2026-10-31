@@ -4,15 +4,73 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#f3f6fa">
-    <title>Account Settings | TOEFL ITP</title>
+    <title>Community Profile | Quick Check</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="qc-preferences.js?v=20261030-prefs"></script>
     <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
     <link rel="stylesheet" href="profile.css?v=20261031-compress">
+    <link rel="stylesheet" href="profile-community.css?v=20261031-social-profile">
 </head>
 <body>
+    <main class="profile-page" aria-label="Community profile">
+        <header class="profile-banner">
+            <div class="profile-portrait" id="profilePortrait" aria-hidden="true">QC</div>
+            <div class="profile-identity">
+                <div class="profile-name-row"><h1 id="profileDisplayName">Community profile</h1><span class="profile-tag" id="profileLevel">English learner</span></div>
+                <p class="profile-location"><i class="ti ti-map-pin" aria-hidden="true"></i><span id="profileLocation">Location not shared</span></p>
+                <p id="profileIntro">Loading profile...</p>
+                <div class="profile-stats">
+                    <div><strong id="profilePostCount">0</strong><span>Recent posts</span></div>
+                    <div><strong id="profileConnectionCount">0</strong><span>Connections</span></div>
+                    <div><strong id="profileMutualCount">0</strong><span>Mutual connections</span></div>
+                </div>
+            </div>
+            <div class="profile-actions">
+                <button class="profile-button profile-button-primary" id="profileConnect" type="button" hidden><i class="ti ti-user-plus" aria-hidden="true"></i><span>Connect</span></button>
+                <a class="profile-button" id="profileMessage" hidden><i class="ti ti-message-circle" aria-hidden="true"></i>Message</a>
+                <button class="profile-button" id="profileSettings" type="button" hidden><i class="ti ti-settings" aria-hidden="true"></i>Account settings</button>
+                <a class="profile-button" href="social.html"><i class="ti ti-arrow-left" aria-hidden="true"></i>Community</a>
+            </div>
+        </header>
+        <p id="profileSocialStatus" class="profile-status" role="status" aria-live="polite"></p>
+        <div class="profile-layout">
+            <div class="profile-main">
+                <div class="profile-tabs" role="tablist" aria-label="Profile sections">
+                    <button id="profileTabPosts" role="tab" aria-selected="true" aria-controls="profilePosts" tabindex="0" data-profile-tab="profilePosts">Posts</button>
+                    <button id="profileTabAbout" role="tab" aria-selected="false" aria-controls="profileAbout" tabindex="-1" data-profile-tab="profileAbout">About</button>
+                    <button id="profileTabActivity" role="tab" aria-selected="false" aria-controls="profileActivity" tabindex="-1" data-profile-tab="profileActivity">Activity</button>
+                    <button id="profileTabConnections" role="tab" aria-selected="false" aria-controls="profileConnections" tabindex="-1" data-profile-tab="profileConnections">Connections</button>
+                    <button id="profileTabAchievements" role="tab" aria-selected="false" aria-controls="profileAchievements" tabindex="-1" data-profile-tab="profileAchievements">Achievements</button>
+                </div>
+                <section id="profilePosts" role="tabpanel" aria-labelledby="profileTabPosts">
+                    <iframe id="profileFeed" class="profile-feed" title="Profile posts and composer"></iframe>
+                </section>
+                <section id="profileAbout" class="profile-card" role="tabpanel" aria-labelledby="profileTabAbout" hidden><h2>About</h2><p id="profileAboutText">No bio shared yet.</p><div id="profileAboutInterests" class="profile-tags"></div></section>
+                <section id="profileActivity" class="profile-card" role="tabpanel" aria-labelledby="profileTabActivity" hidden><h2>Recent activity</h2><div id="profileActivityList"></div></section>
+                <section id="profileConnections" class="profile-card" role="tabpanel" aria-labelledby="profileTabConnections" hidden><h2>Connections</h2><div id="profileConnectionList"></div></section>
+                <section id="profileAchievements" class="profile-card" role="tabpanel" aria-labelledby="profileTabAchievements" hidden><h2>Community achievements</h2><p class="profile-muted">Milestones based on posts and connections visible to you.</p><div id="profileAchievementList"></div></section>
+            </div>
+            <aside class="profile-sidebar" aria-label="Profile details and connections">
+                <section class="profile-card">
+                    <div class="profile-card-heading"><h2>About me</h2><button class="profile-button profile-button-small" id="profileEditAbout" type="button" hidden><i class="ti ti-pencil" aria-hidden="true"></i>Edit</button></div>
+                    <p id="profileBio">No bio shared yet.</p><div id="profileInterests" class="profile-tags"></div>
+                    <form id="profileBioForm" hidden>
+                        <label for="profileBioInput">Bio</label><textarea id="profileBioInput" maxlength="500" rows="4"></textarea>
+                        <label for="profileLocationInput">Location (optional)</label><input id="profileLocationInput" maxlength="100">
+                        <label for="profileInterestsInput">Interests (comma separated, up to 8)</label><input id="profileInterestsInput" maxlength="240">
+                        <label class="profile-checkbox"><input id="profileShareConnections" type="checkbox">Share my connections on my profile</label>
+                        <p class="profile-muted">These details are public. Do not include your email or other private information.</p>
+                        <div class="profile-actions"><button class="profile-button profile-button-primary" id="profileBioSave" type="submit">Save</button><button class="profile-button" id="profileBioCancel" type="button">Cancel</button></div>
+                    </form>
+                </section>
+                <section class="profile-card" id="profileRequestsCard" hidden><div class="profile-card-heading"><h2>Connection requests <span class="profile-tag" id="profileRequestCount">0</span></h2><a href="message.html">View all</a></div><div id="profileRequests"></div></section>
+                <section class="profile-card"><div class="profile-card-heading"><h2 id="profileMutualHeading">Mutual connections</h2><button class="profile-link" id="profileViewConnections" type="button">View all</button></div><div id="profileMutualList"></div></section>
+            </aside>
+        </div>
+    </main>
     <main class="acct-page" id="acctPage" aria-busy="true">
         <h1 class="acct-title">Account Settings</h1>
         <p class="acct-status" id="acctStatus" role="status" aria-live="polite"></p>
@@ -110,7 +168,8 @@
     </dialog>
 
     <script src="site-navbar.js?v=20261030-prefs"></script>
-    <script type="module" src="profile.js?v=20261031-compress"></script>
+    <script type="module" src="profile.js?v=20261031-social-profile"></script>
+    <script type="module" src="profile-community.js?v=20261031-social-profile"></script>
     <script src="site-footer.js" defer></script>
 </body>
 </html>

@@ -96,6 +96,21 @@ window.addEventListener("resize", alignTutorPromotion);
 alignTutorPromotion();
 const tr = (text, vars) => window.QCPrefs?.t(text, vars) || text;
 const locale = () => window.QCPrefs?.locale() || "en";
+const profileAuthor = new URLSearchParams(location.search).get("profile");
+const embeddedProfile = new URLSearchParams(location.search).get("embedded") === "1" && Boolean(profileAuthor);
+if (embeddedProfile) {
+    document.documentElement.classList.add("profile-embedded");
+    document.querySelector(".welcome").hidden = true;
+    document.querySelector(".community-sidebar").hidden = true;
+    document.querySelector(".feed-toolbar").hidden = true;
+    document.querySelector(".feed-limit").hidden = true;
+    const reportHeight = () => window.parent.postMessage({ type: "qc:profile-feed-height", height: document.querySelector(".community-page").getBoundingClientRect().height + 2 }, location.origin);
+    new ResizeObserver(reportHeight).observe(document.querySelector(".community-page"));
+    window.addEventListener("message", (event) => {
+        if (event.origin !== location.origin || event.source !== window.parent || event.data?.type !== "qc:profile-theme") return;
+        if (["light", "dark"].includes(event.data.theme)) document.documentElement.dataset.theme = event.data.theme;
+    });
+}
 const element = (tag, className, text) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -283,7 +298,7 @@ function renderFeed() {
     }
     if (state.loading && !Object.keys(state.posts).length) return;
     const likes = Object.fromEntries([...activity].map(([id, value]) => [id, value.likes]));
-    const posts = selectPosts(state.posts, { category, groupId, sort: $("postSort").value, likes });
+    const posts = selectPosts(state.posts, { category, groupId, sort: $("postSort").value, likes }).filter((post) => !profileAuthor || post.authorId === profileAuthor);
     $("postFeed").setAttribute("aria-busy", "false");
     $("postFeed").querySelectorAll(".skeleton, .empty-feed").forEach((node) => node.remove());
     const visible = new Set(posts.map((post) => post.id));
@@ -314,7 +329,11 @@ function makePost(post) {
     const header = element("header", "post-header");
     const author = person(post.authorId);
     const copy = element("div", "post-author");
-    const authorName = element("div", "post-author-name", author.displayName);
+    const authorName = element("div", "post-author-name");
+    const authorLink = element("a", "", author.displayName);
+    authorLink.href = `profile.html?uid=${encodeURIComponent(post.authorId)}`;
+    if (embeddedProfile) authorLink.target = "_top";
+    authorName.append(authorLink);
     authorName.append(element("span", "learner-badge", author.level ? tr("Level {level}", { level: author.level }) : tr("English learner")));
     const time = element("time", "post-time", relativeTime(post.createdAt, Date.now(), locale()));
     if (Number.isFinite(post.createdAt)) time.dateTime = new Date(post.createdAt).toISOString();
@@ -536,6 +555,10 @@ function editPost(post) {
 }
 const subscriptions = new Map();
 function renderIdentity() {
+    if (profileAuthor) {
+        $("postForm").hidden = state.uid !== profileAuthor;
+        if (embeddedProfile) $("communityStatus").hidden = true;
+    }
     const name = state.uid ? resolveDisplayName(state.user, state.profile) : "";
     $("welcomeTitle").textContent = name ? tr("Welcome, {name}!", { name }) : tr("Welcome to Quick Check Community!");
     $("welcomeCopy").textContent = state.uid

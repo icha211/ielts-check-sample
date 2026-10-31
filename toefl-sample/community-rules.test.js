@@ -3,6 +3,40 @@ const { test } = require("node:test");
 const host = process.env.FIREBASE_DATABASE_EMULATOR_HOST;
 const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST;
 const namespace = "demo-toefl-messaging-default-rtdb";
+test("social profiles protect editing and opt-in connection lists", { skip: !host }, async () => {
+    async function request(path, uid, method = "GET", data, admin = false) {
+        const url = new URL(`http://${host}/${path}.json`);
+        url.searchParams.set("ns", namespace);
+        if (uid) url.searchParams.set("auth", token(uid));
+        return fetch(url, { method, headers: { "Content-Type": "application/json", ...(admin ? { Authorization: "Bearer owner" } : {}) }, body: data === undefined ? undefined : JSON.stringify(data) });
+    }
+    const profile = { bio: "Learning English", location: "Jakarta", interests: "IELTS, Music", shareConnections: false };
+    assert.equal((await request("community_profiles/profile-alice", "profile-alice", "PUT", profile)).status, 200);
+    assert.equal((await request("community_profiles/profile-alice", null)).status, 200);
+    assert.equal((await request("community_profiles/profile-alice", "profile-bob", "PATCH", { bio: "Hacked" })).status, 401);
+    assert.equal((await request("community_profiles/profile-alice", "profile-alice", "PATCH", { email: "private" })).status, 401);
+    assert.equal((await request("community_profiles/profile-alice", "profile-alice", "PATCH", { bio: "a".repeat(501) })).status, 401);
+    assert.equal((await request("community_connections/profile-alice/profile-bob", "profile-alice", "PUT", true)).status, 401);
+    const contact = { status: "connected", requesterId: "profile-alice", updatedAt: { ".sv": "timestamp" } };
+    assert.equal((await request("", null, "PATCH", {
+        "message_contacts/profile-alice/profile-bob": contact,
+        "message_contacts/profile-bob/profile-alice": contact
+    }, true)).status, 200);
+    assert.equal((await request("community_connections/profile-alice/profile-bob", "profile-alice", "PUT", true)).status, 200);
+    assert.equal((await request("community_connections/profile-alice", "profile-bob")).status, 401);
+    assert.equal((await request("community_connections/profile-alice", "profile-alice")).status, 200);
+    assert.equal((await request("community_profiles/profile-alice", "profile-alice", "PATCH", { shareConnections: true })).status, 200);
+    assert.equal((await request("community_connections/profile-alice", "profile-bob")).status, 200);
+    assert.equal((await request("community_connections/profile-alice", null)).status, 401);
+    assert.equal((await request("community_connections/profile-alice/stranger", "profile-bob", "PUT", true)).status, 401);
+    assert.equal((await request("", "profile-bob", "PATCH", {
+        "message_contacts/profile-alice/profile-bob": null,
+        "message_contacts/profile-bob/profile-alice": null,
+        "community_connections/profile-alice/profile-bob": null,
+        "community_connections/profile-bob/profile-alice": null
+    })).status, 200);
+    assert.equal((await request("community_connections/profile-alice/profile-bob", "profile-alice", "PUT", true)).status, 401);
+});
 test("friends-only posts and activity reject strangers, pending and removed connections", { skip: !host }, async () => {
     async function request(path, uid, method = "GET", data, admin = false) {
         const url = new URL(`http://${host}/${path}.json`);

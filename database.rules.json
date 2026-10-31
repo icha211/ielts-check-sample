@@ -40,6 +40,27 @@
       }
     },
 
+    "community_profiles": {
+      "$uid": {
+        ".read": true,
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['bio', 'location', 'interests', 'shareConnections'])",
+        "bio": { ".validate": "newData.isString() && newData.val().length <= 500" },
+        "location": { ".validate": "newData.isString() && newData.val().length <= 100" },
+        "interests": { ".validate": "newData.isString() && newData.val().length <= 240" },
+        "shareConnections": { ".validate": "newData.isBoolean()" },
+        "$other": { ".validate": false }
+      }
+    },
+    "community_connections": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || root.child('community_profiles').child($uid).child('shareConnections').val() === true)",
+        "$peer": {
+          ".write": "auth != null && $uid !== $peer && (auth.uid === $uid || auth.uid === $peer) && (!newData.exists() || (newData.val() === true && newData.parent().parent().parent().child('message_contacts').child($uid).child($peer).child('status').val() === 'connected' && newData.parent().parent().parent().child('message_contacts').child($peer).child($uid).child('status').val() === 'connected'))",
+          ".validate": "newData.val() === true"
+        }
+      }
+    },
     "notification_state": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",

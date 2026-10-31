@@ -29,6 +29,25 @@ These files are still the active website/runtime surface. Do not move them until
 
 ## Community page
 
+`toefl-sample/profile.html` retains all account controls and adds a social profile.
+Use `profile.html?uid=<uid>` to view another learner. The banner, tabs, recent
+activity, contribution milestones and connection requests use actual Firebase
+data. Recent-post counts reflect the latest 100 accessible community posts,
+not lifetime totals; private posts remain restricted to approved friends.
+The Posts tab embeds the existing community page in an author-filtered mode,
+reusing the composer, reactions, comments, editing and encrypted-media handling
+without maintaining a second implementation. The same-origin embed auto-sizes
+and follows the parent theme; other-user profiles never show account controls.
+
+Public bio, location and interests live in `community_profiles/<uid>`, with
+owner-only writes. Sharing connections is opt-in (off by default).
+`community_connections/<uid>/<peer>` is an authenticated, rules-validated
+connection index; accept/remove operations update it alongside message contacts.
+Existing mutual connections are indexed when their owner visits a profile.
+Other learners' connections and mutual counts are shown only when shared.
+Profiles without shared details use explicit empty states, not sample identities.
+Deploy database rules before using the profile's bio and connection features.
+
 `toefl-sample/social.html` uses `social.css` and `social.js` without a build step.
 It shares the existing Firebase Auth account, opt-in `partnerDirectory` profiles
 and presence, and `message.html?to=<uid>` messaging flow. Study-buddy matches rank

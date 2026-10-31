@@ -83,6 +83,11 @@ function setBusy(button, busy, label) {
 }
 
 onAuthStateChanged(auth, async (user) => {
+    const viewedUser = new URLSearchParams(location.search).get("uid");
+    if (viewedUser && viewedUser !== user?.uid) {
+        page.hidden = true;
+        return;
+    }
     if (!user) {
         window.location.replace("signup.html");
         return;
@@ -272,6 +277,7 @@ deleteConfirmBtn.addEventListener("click", async () => {
         const uid = currentUser.uid;
         if (photoPath) await deleteObject(storageRef(storage, photoPath)).catch(() => {});
         await remove(ref(db, `users/${uid}`));
+        await remove(ref(db, `community_profiles/${uid}`));
         await deleteUser(currentUser);
         signOutAndRedirect();
     } catch (error) {

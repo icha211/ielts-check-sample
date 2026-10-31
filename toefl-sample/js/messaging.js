@@ -130,7 +130,9 @@ export async function acceptConnection(peerId) {
     const user = requirePeer(peerId);
     await update(ref(db), {
         [`message_contacts/${user.uid}/${peerId}`]: { status: "connected", requesterId: peerId, updatedAt: serverTimestamp() },
-        [`message_contacts/${peerId}/${user.uid}`]: { status: "connected", requesterId: peerId, updatedAt: serverTimestamp() }
+        [`message_contacts/${peerId}/${user.uid}`]: { status: "connected", requesterId: peerId, updatedAt: serverTimestamp() },
+        [`community_connections/${user.uid}/${peerId}`]: true,
+        [`community_connections/${peerId}/${user.uid}`]: true
     });
 }
 
@@ -138,7 +140,9 @@ export async function removeConnection(peerId) {
     const user = requirePeer(peerId);
     await update(ref(db), {
         [`message_contacts/${user.uid}/${peerId}`]: null,
-        [`message_contacts/${peerId}/${user.uid}`]: null
+        [`message_contacts/${peerId}/${user.uid}`]: null,
+        [`community_connections/${user.uid}/${peerId}`]: null,
+        [`community_connections/${peerId}/${user.uid}`]: null
     });
 }
 

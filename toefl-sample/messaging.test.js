@@ -182,7 +182,9 @@ test("message requests, accepts and removals write both sides atomically", async
     assert.equal(requested["message_contacts/peer/me"].requesterId, "me");
     assert.equal(accepted["message_contacts/me/peer"].requesterId, "peer", "accepting records the original requester");
     assert.equal(accepted["message_contacts/peer/me"].requesterId, "peer");
-    assert.deepEqual(removed, { "message_contacts/me/peer": null, "message_contacts/peer/me": null });
+    assert.equal(accepted["community_connections/me/peer"], true);
+    assert.equal(accepted["community_connections/peer/me"], true);
+    assert.deepEqual(removed, { "message_contacts/me/peer": null, "message_contacts/peer/me": null, "community_connections/me/peer": null, "community_connections/peer/me": null });
 });
 
 test("auth and database failures are surfaced, and authentication failure clears messages", async () => {
