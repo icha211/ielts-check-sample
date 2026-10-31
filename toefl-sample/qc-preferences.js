@@ -63,6 +63,7 @@
     "Message": "Pesan",
     "Messages": "Pesan",
     "Community": "Komunitas",
+    "Explore": "Jelajahi",
     "Friends": "Teman",
     "Admin": "Admin",
     "Developer": "Developer",

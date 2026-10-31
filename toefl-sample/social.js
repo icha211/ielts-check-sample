@@ -16,7 +16,7 @@ window.QCPrefs?.addTranslations("id", {
     "Share Your Knowledge, Earn Income": "Bagikan Pengetahuan, Dapatkan Penghasilan",
     "Join our platform and start teaching what you love.": "Bergabunglah dan mulai mengajar bidang yang Anda sukai.",
     "Tutor registration is not available yet.": "Pendaftaran tutor belum tersedia.",
-    "Welcome to Quick Check Community!": "Selamat datang di Komunitas Quick Check!",
+    "Welcome to Quick Check Explore!": "Selamat datang di Jelajahi Quick Check!",
     "Welcome, {name}!": "Selamat datang, {name}!",
     "Share your progress, ask questions, and connect with learners on the same journey.": "Bagikan progres, ajukan pertanyaan, dan terhubung dengan sesama pelajar.",
     "Connect, share, and grow together with other English learners. Ask questions, get tips, and find your study buddies!": "Terhubung, berbagi, dan berkembang bersama pelajar bahasa Inggris lainnya. Ajukan pertanyaan, dapatkan tips, dan temukan teman belajar!",
@@ -562,7 +562,7 @@ function renderIdentity() {
         if (embeddedProfile) $("communityStatus").hidden = true;
     }
     const name = state.uid ? resolveDisplayName(state.user, state.profile) : "";
-    $("welcomeTitle").textContent = name ? tr("Welcome, {name}!", { name }) : tr("Welcome to Quick Check Community!");
+    $("welcomeTitle").textContent = name ? tr("Welcome, {name}!", { name }) : tr("Welcome to Quick Check Explore!");
     $("welcomeCopy").textContent = state.uid
         ? tr("Share your progress, ask questions, and connect with learners on the same journey.")
         : tr("Connect, share, and grow together with other English learners. Ask questions, get tips, and find your study buddies!");

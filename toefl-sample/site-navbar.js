@@ -50,7 +50,7 @@
     ] },
     social: { label: "Social", items: [
       { label: "Messages", icon: "message-circle", href: "message.html" },
-      { label: "Community", icon: "globe", href: "social.html#community" }
+      { label: "Explore", icon: "globe", href: "social.html#community" }
     ] }
   };
   const R = 120;
@@ -59,8 +59,8 @@
   <button class="qcnav-icon-btn qcnav-menu-btn" id="qcnavMenuBtn" type="button" aria-label="Open menu" data-i18n-attr="aria-label"><i data-lucide="menu"></i></button>
   <a class="qcnav-brand" href="index.html" aria-label="Quick Check dashboard" data-i18n-attr="aria-label"><img src="../asset/icon/logo.png" alt="Quick Check"></a>
   <nav class="qcnav-links" aria-label="Main navigation" data-i18n-attr="aria-label">
-    <a class="qcnav-link${cls("dashboard")}" href="index.html"${cur("dashboard")}><i data-lucide="house"></i><span data-i18n>TOEFL ITP Dashboard</span></a>
-    <a class="qcnav-link" href="developer.html" data-developer-only hidden><i data-lucide="book-bookmark"></i><span data-i18n>English Materials</span></a>
+    <a class="qcnav-link${cls("dashboard")}" href="index.html"${cur("dashboard")}><i data-lucide="house"></i><span data-i18n>Home</span></a>
+    <a class="qcnav-link${cls("social")}" href="social.html#community"${cur("social")}><i data-lucide="globe"></i><span data-i18n>Explore</span></a>
   </nav>
   <div class="qcnav-actions">
     <a class="qcnav-upgrade" href="index.html#upgrade" data-i18n>Upgrade</a>
@@ -130,9 +130,9 @@
   <a class="qcnav-item${cls("history")}" href="history.html"${cur("history")}><span class="qcnav-ico"><i data-lucide="history"></i></span><span class="qcnav-text" data-i18n>Test History</span></a>
   <div class="qcnav-divider"></div>
   <div class="qcnav-label" data-i18n>Social</div>
-  <a class="qcnav-item${cls("message")}" href="message.html" data-message-link="Message"${cur("message")}><span class="qcnav-ico"><i data-lucide="message-circle"></i><span class="qcnav-badge" data-message-badge aria-hidden="true" hidden></span></span><span class="qcnav-text" data-i18n>Message</span></a>
-  <a class="qcnav-item${cls("social")}" href="social.html#community"${cur("social")}><span class="qcnav-ico"><i data-lucide="globe"></i></span><span class="qcnav-text" data-i18n>Community</span></a>
   <a class="qcnav-item${cls("profile")}" href="profile.html"${cur("profile")}><span class="qcnav-ico"><i data-lucide="user-round"></i></span><span class="qcnav-text" data-i18n>Profile</span></a>
+  <a class="qcnav-item${cls("message")}" href="message.html" data-message-link="Message"${cur("message")}><span class="qcnav-ico"><i data-lucide="message-circle"></i><span class="qcnav-badge" data-message-badge aria-hidden="true" hidden></span></span><span class="qcnav-text" data-i18n>Message</span></a>
+  <a class="qcnav-item${cls("social")}" href="social.html#community"${cur("social")}><span class="qcnav-ico"><i data-lucide="globe"></i></span><span class="qcnav-text" data-i18n>Explore</span></a>
   <div class="qcnav-divider"></div>
   <div class="qcnav-label" data-developer-only hidden data-i18n>Admin</div>
   <a class="qcnav-item" href="developer.html" data-developer-only hidden><span class="qcnav-ico"><i data-lucide="book-open"></i></span><span class="qcnav-text">Developer</span></a>

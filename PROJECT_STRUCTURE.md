@@ -30,8 +30,9 @@ These files are still the active website/runtime surface. Do not move them until
 ## Community page
 
 `toefl-sample/profile.html` retains all account controls and adds a social profile.
-Profile appears beneath Community in the shared sidebar; Community uses a globe
-icon. Owners open private account controls from the profile header in a responsive
+The shared sidebar's Social group is ordered Profile, Message, Explore. Explore
+uses a globe icon and opens `social.html`; the header links are Home and Explore.
+Owners open private account controls from the profile header in a responsive
 modal panel, not beneath the feed. Escape, the close button or the backdrop closes
 the panel; native dialog focus trapping keeps keyboard navigation inside it.
 Use `profile.html?uid=<uid>` to view another learner. The banner, tabs, recent
