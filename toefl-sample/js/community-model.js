@@ -18,9 +18,9 @@ export function imageDisplaySettings(settings = {}) {
     return { imageFormat: "landscape", imageFit: "cover", imageX: 50, imageY: settings.imageY ?? 50 };
 }
 
-export function imageFrameRatio(width, height) {
+export function imageFrameFit(width, height) {
     imageFeedFormat(width, height);
-    return Math.max(1080 / 566, width / height);
+    return width / height > 1080 / 566 ? "contain" : "cover";
 }
 
 export function validatePost({ title, body, category, groupId = "", visibility = "public", imageFormat = "auto", imageFit = "contain", imageX = 50, imageY = 50 }, developer = false) {

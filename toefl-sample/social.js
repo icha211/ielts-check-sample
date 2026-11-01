@@ -1,10 +1,11 @@
 import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261101-image-framing";
-import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameRatio, imageDisplaySettings } from "./js/community-model.js?v=20261101-width-crop";
+import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameFit, imageDisplaySettings } from "./js/community-model.js?v=20261101-height-padding";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { db } from "./js/firebase-config.js";
 import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 window.QCPrefs?.addTranslations("id", {
+    "Photos fill the width. Taller photos crop vertically; shorter photos have padding above and below.": "Foto memenuhi lebar. Foto yang lebih tinggi dipotong vertikal; foto yang lebih pendek memiliki ruang di atas dan bawah.",
     "Photos fill the width. Adjust the vertical position to choose what stays visible.": "Foto memenuhi lebar. Sesuaikan posisi vertikal untuk memilih bagian yang tetap terlihat.",
     "Upload information": "Informasi unggahan", "Photo and video uploads": "Unggahan foto dan video",
     "Public photos use a wide frame. Padding keeps the whole image visible when proportions differ.": "Foto publik menggunakan bingkai lebar. Ruang tambahan menjaga seluruh gambar terlihat jika proporsinya berbeda.",
@@ -756,7 +757,8 @@ function formatFeedImage(image, settings = {}) {
     image.style.objectFit = settings.imageFit;
     image.style.objectPosition = `50% ${settings.imageY}%`;
     const sizeFrame = () => {
-        image.style.aspectRatio = String(imageFrameRatio(image.naturalWidth, image.naturalHeight));
+        image.style.objectFit = imageFrameFit(image.naturalWidth, image.naturalHeight);
+        if (image.style.objectFit === "contain") image.style.objectPosition = "50% 50%";
     };
     image.addEventListener("load", sizeFrame);
     if (image.naturalWidth && image.naturalHeight) sizeFrame();
@@ -767,10 +769,10 @@ function framingSettings() {
 function updateImageFraming() {
     const settings = framingSettings();
     $("imageYValue").textContent = `${settings.imageY}%`;
-    $("imageFramingHint").textContent = tr("Photos fill the width. Adjust the vertical position to choose what stays visible.");
+    $("imageFramingHint").textContent = tr("Photos fill the width. Taller photos crop vertically; shorter photos have padding above and below.");
     const preview = $("mediaPreview").querySelector("img");
     if (!preview) return;
-    preview.style.objectPosition = `50% ${settings.imageY}%`;
+    preview.style.objectPosition = preview.style.objectFit === "contain" ? "50% 50%" : `50% ${settings.imageY}%`;
 }
 function resetImageFraming() {
     $("imageY").value = "50";
