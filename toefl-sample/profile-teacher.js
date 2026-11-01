@@ -113,9 +113,13 @@ export function createTeacherProfile(onChange) {
         if (course.originalPrice > course.price) price.append(node("del", "", rupiah(course.originalPrice)));
         const link = node("a", "profile-button", tr("View details →"));
         link.href = courseLink(course);
-        copy.append(node("h3", "", course.title), node("span", "teacher-course-rating", stats.count ? `★ ${stats.rating.toFixed(1)} (${stats.count})` : tr("Not yet rated")),
-            node("p", "profile-muted", TUTOR_TYPES[course.type]), price, link);
-        const save = node("button", "profile-button teacher-save", favorites[course.id] ? tr("Saved") : tr("Save"));
+        copy.append(node("h3", "", course.title), node("span", "teacher-course-rating", stats.count ? `★ ${stats.rating.toFixed(1)} · ${stats.count} ${tr(stats.count === 1 ? "review" : "reviews")}` : tr("Not yet rated")),
+            node("p", "profile-muted", TUTOR_TYPES[course.type]), price);
+        const actions = node("div", "teacher-course-actions");
+        const save = node("button", "profile-button teacher-save");
+        const saveIcon = node("i", `ti ti-${favorites[course.id] ? "heart-filled" : "heart"}`);
+        saveIcon.setAttribute("aria-hidden", "true");
+        save.append(saveIcon);
         save.dataset.course = course.id;
         save.type = "button";
         save.setAttribute("aria-label", `${favorites[course.id] ? "Unsave" : "Save"} ${course.title}`);
@@ -128,7 +132,8 @@ export function createTeacherProfile(onChange) {
             catch (err) { if (current === epoch) fail(err); }
             finally { save.disabled = false; }
         });
-        copy.append(save); article.append(cover, copy);
+        actions.append(link, save);
+        copy.append(actions); article.append(cover, copy);
         return article;
     }
     function render(next) {

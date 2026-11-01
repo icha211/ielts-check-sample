@@ -124,6 +124,10 @@ Teacher tabs expose live published courses, real learner reviews, self-reported
 experience/qualification and teaching approach. The existing bio editor,
 account settings, connection requests, messaging and community feed are reused.
 The study sidebar is hidden only for the teacher-specific layout.
+`tutor-brand.css` shares the navbar's teal accent, neutral surfaces and
+responsive card sizing between Tutor Check and teacher profiles, without
+restyling student profiles. Mobile teacher tabs wrap so all sections remain
+visible; enrollment sits after profile content rather than displacing it.
 `tutor_profiles/<uid>` holds public teaching details with teacher-only owner
 writes. Individual `tutor_roles/<uid>` values are public for profile routing;
 the whole role directory remains unreadable. No developer privileges change.

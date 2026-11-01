@@ -5,7 +5,7 @@ import { onValue, ref, update } from "https://www.gstatic.com/firebasejs/10.8.0/
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { safeMediaURL, relativeTime } from "./js/community-model.js";
 import { profileSummary, validateCommunityProfile } from "./js/profile-model.js";
-import { createTeacherProfile } from "./profile-teacher.js?v=20261101-teacher";
+import { createTeacherProfile } from "./profile-teacher.js?v=20261101-brand";
 
 const $ = (id) => document.getElementById(id);
 const requestedUid = new URLSearchParams(location.search).get("uid");
