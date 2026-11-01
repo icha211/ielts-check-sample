@@ -2,7 +2,7 @@ import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { onValue, ref, query, orderByChild, limitToLast, push, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-import { validatePost, GROUPS } from "./community-model.js";
+import { validatePost, GROUPS } from "./community-model.js?v=20261101-image-framing";
 import { compressImageToLimit } from "./image-compress.js?v=20261031-compress";
 
 const postLocations = new Map();

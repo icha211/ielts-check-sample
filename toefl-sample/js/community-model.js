@@ -14,8 +14,11 @@ export function imageFeedFormat(width, height) {
         .reduce((closest, format) => Math.abs(ratio - format[1]) < Math.abs(ratio - closest[1]) ? format : closest)[0];
 }
 
-export function validatePost({ title, body, category, groupId = "", visibility = "public" }, developer = false) {
+export function validatePost({ title, body, category, groupId = "", visibility = "public", imageFormat = "auto", imageFit = "contain", imageX = 50, imageY = 50 }, developer = false) {
     const result = { title: String(title || "").trim(), body: String(body || "").trim(), category, groupId, visibility };
+    if (!["auto", "portrait", "square", "landscape"].includes(imageFormat) || !["contain", "cover"].includes(imageFit) ||
+        ![imageX, imageY].every(value => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100)) throw new Error("Choose valid picture framing settings.");
+    Object.assign(result, { imageFormat, imageFit, imageX, imageY });
     if (!["public", "friends"].includes(visibility)) throw new Error("Choose Public or Friends only.");
     if (!result.title || result.title.length > 120) throw new Error("Enter a post title of 1 to 120 characters.");
     if (!result.body || result.body.length > 4000) throw new Error("Write a post of 1 to 4,000 characters.");

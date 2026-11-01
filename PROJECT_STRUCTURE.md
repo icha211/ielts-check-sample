@@ -88,9 +88,14 @@ Private-media download CORS failures are separate from upload size: the Storage
 bucket must allow the deployed site's origin to read encrypted attachment bytes.
 Post pictures and composer previews fill the content width using the closest
 reference aspect ratio: portrait 4:5 (1080x1350), square 1:1 (1080x1080), or
-landscape 1080:566 (about 1.91:1). CSS center-crops the display without distorting
-pixels or changing stored attachments. This also applies to older/private photos
-and embedded profile feeds; videos retain their existing sizing and controls.
+landscape 1080:566 (about 1.91:1). The composer includes live framing controls:
+automatic/manual format, Show whole picture (default), Fill frame, horizontal/
+vertical position and reset. Owners can also adjust framing through Edit post.
+`imageFormat`, `imageFit`, `imageX` and `imageY` are validated post metadata, not
+destructive image edits. Older photos default to showing the whole picture.
+Private photos and embedded profile feeds share the same display settings;
+videos retain their existing sizing and controls. Deploy framing rules before
+publishing the client.
 
 Shared Realtime Database data lives in `community_posts`, `community_likes`,
 `community_comments`, and `community_members`. Feeds and comment lists load the

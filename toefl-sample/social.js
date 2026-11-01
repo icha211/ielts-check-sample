@@ -1,10 +1,16 @@
-import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261031-post-activity";
-import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFeedFormat } from "./js/community-model.js?v=20261101-image-formats";
+import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261101-image-framing";
+import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFeedFormat } from "./js/community-model.js?v=20261101-image-framing";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { db } from "./js/firebase-config.js";
 import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 window.QCPrefs?.addTranslations("id", {
+    "Adjust picture": "Sesuaikan gambar", "Format": "Format", "Display": "Tampilan",
+    "Automatic": "Otomatis", "Portrait (4:5)": "Potret (4:5)", "Square (1:1)": "Persegi (1:1)",
+    "Landscape (1.91:1)": "Lanskap (1.91:1)", "Show whole picture": "Tampilkan seluruh gambar",
+    "Fill frame (crop)": "Isi bingkai (potong)", "Horizontal position": "Posisi horizontal",
+    "Vertical position": "Posisi vertikal", "Reset framing": "Atur ulang bingkai",
+    "Show whole picture keeps all details visible. Fill frame crops edges; adjust the position to keep your subject in view.": "Tampilkan seluruh gambar agar semua detail terlihat. Isi bingkai memotong tepi; sesuaikan posisi agar subjek tetap terlihat.",
     "Your profile": "Profil Anda", "View your profile": "Lihat profil Anda",
     "Sign in to connect with other learners.": "Masuk untuk terhubung dengan pelajar lain.",
     "Add a bio to introduce yourself.": "Tambahkan bio untuk memperkenalkan diri.",
@@ -151,7 +157,7 @@ function releasePrivateMedia(id) {
 }
 
 for (const root of [document.querySelector(".community-page"), ...document.querySelectorAll("dialog")].filter(Boolean)) {
-    root.querySelectorAll("button, label, h1, h2, p, option").forEach((node) => {
+    root.querySelectorAll("button, label, legend, h1, h2, p, option").forEach((node) => {
         if (node.tagName === "OPTION") {
             node.setAttribute("data-i18n", node.textContent.trim());
             return;
@@ -371,7 +377,7 @@ function makePost(post) {
     const url = safeMediaURL(post.mediaURL);
     if (url) {
         const media = element(post.mediaType === "video" ? "video" : "img", "post-media");
-        if (post.mediaType !== "video") formatFeedImage(media);
+        if (post.mediaType !== "video") formatFeedImage(media, post);
         if (post.visibility === "friends") {
             const entry = { controller: new AbortController(), url: "" };
             privateMedia.set(post.id, entry);
@@ -503,6 +509,8 @@ function clearPreview() {
     $("mediaInput").value = "";
     $("mediaPreview").replaceChildren();
     $("mediaPreview").hidden = true;
+    $("imageFraming").hidden = true;
+    resetImageFraming();
 }
 function updateComposerUI() {
     const body = $("postBody");
@@ -541,6 +549,28 @@ function editPost(post) {
     composerCategory = post.category;
     composerGroupId = post.groupId || "";
     $("postVisibility").value = post.visibility || "public";
+    if (post.mediaType === "image" && post.mediaURL) {
+        $("imageFormat").value = post.imageFormat || "auto";
+        $("imageFit").value = post.imageFit || "contain";
+        $("imageX").value = post.imageX ?? 50;
+        $("imageY").value = post.imageY ?? 50;
+        $("imageFraming").hidden = false;
+        const existing = document.getElementById(`post-${post.id}`)?.querySelector("img.post-media");
+        if (existing) {
+            const preview = element("img");
+            preview.alt = tr("Attachment preview");
+            formatFeedImage(preview, post);
+            const show = () => {
+                if (editingId !== post.id || !existing.getAttribute("src")) return;
+                preview.src = existing.src;
+                $("mediaPreview").replaceChildren(preview);
+                $("mediaPreview").hidden = false;
+            };
+            show();
+            existing.addEventListener("load", show, { once: true });
+        }
+        updateImageFraming();
+    }
     $("editingHint").hidden = false;
     $("attachButton").disabled = true;
     $("publishButton").textContent = tr("Save changes");
@@ -697,12 +727,38 @@ $("findBuddy").addEventListener("click", () => openPeople("buddies"));
 $("peopleSearch").addEventListener("input", renderPeopleResults);
 $("cancelEdit").addEventListener("click", resetComposer);
 $("attachButton").addEventListener("click", () => $("mediaInput").click());
-function formatFeedImage(image) {
-    image.dataset.feedFormat = "square";
+function formatFeedImage(image, settings = {}) {
+    image.dataset.requestedFormat = settings.imageFormat || "auto";
+    image.dataset.feedFormat = image.dataset.requestedFormat === "auto" ? "square" : image.dataset.requestedFormat;
+    image.style.objectFit = settings.imageFit || "contain";
+    image.style.objectPosition = `${settings.imageX ?? 50}% ${settings.imageY ?? 50}%`;
     image.addEventListener("load", () => {
-        image.dataset.feedFormat = imageFeedFormat(image.naturalWidth, image.naturalHeight);
+        image.dataset.feedFormat = image.dataset.requestedFormat === "auto" ? imageFeedFormat(image.naturalWidth, image.naturalHeight) : image.dataset.requestedFormat;
     });
 }
+function framingSettings() {
+    return { imageFormat: $("imageFormat").value, imageFit: $("imageFit").value, imageX: Number($("imageX").value), imageY: Number($("imageY").value) };
+}
+function updateImageFraming() {
+    const settings = framingSettings();
+    $("imagePosition").hidden = settings.imageFit !== "cover";
+    const preview = $("mediaPreview").querySelector("img");
+    if (!preview) return;
+    preview.dataset.requestedFormat = settings.imageFormat;
+    preview.dataset.feedFormat = settings.imageFormat === "auto"
+        ? (preview.naturalWidth ? imageFeedFormat(preview.naturalWidth, preview.naturalHeight) : "square")
+        : settings.imageFormat;
+    preview.style.objectFit = settings.imageFit;
+    preview.style.objectPosition = `${settings.imageX}% ${settings.imageY}%`;
+}
+function resetImageFraming() {
+    $("imageFormat").value = "auto";
+    $("imageFit").value = "contain";
+    $("imageX").value = $("imageY").value = "50";
+    updateImageFraming();
+}
+["imageFormat", "imageFit", "imageX", "imageY"].forEach(id => $(id).addEventListener("input", updateImageFraming));
+$("resetImageFraming").addEventListener("click", resetImageFraming);
 $("mediaInput").addEventListener("change", () => {
     const selected = $("mediaInput").files[0];
     if (!selected) return;
@@ -713,10 +769,12 @@ $("mediaInput").addEventListener("change", () => {
         return;
     }
     file = selected;
+    $("composerDetails").hidden = false;
     previewURL = URL.createObjectURL(selected);
     const preview = element(selected.type.startsWith("video/") ? "video" : "img");
     if (selected.type.startsWith("image/")) {
         formatFeedImage(preview);
+        $("imageFraming").hidden = false;
         preview.addEventListener("error", () => {
             clearPreview();
             showError(new Error(tr("This attachment could not load.")), $("composerError"));
@@ -741,7 +799,7 @@ $("postForm").addEventListener("submit", async (event) => {
     $("composerError").hidden = true;
     const fields = [...$("postForm").querySelectorAll("input, textarea, select, button")];
     const disabled = fields.map((field) => field.disabled);
-    const input = { title: $("postTitle").value || $("postBody").value.trim().slice(0, 80).split("\n")[0], body: $("postBody").value, category: composerCategory, groupId: composerGroupId, visibility: $("postVisibility").value };
+    const input = { title: $("postTitle").value || $("postBody").value.trim().slice(0, 80).split("\n")[0], body: $("postBody").value, category: composerCategory, groupId: composerGroupId, visibility: $("postVisibility").value, ...framingSettings() };
     fields.forEach((field) => { field.disabled = true; });
     try {
         const id = await savePost(input, file, developer, editingId);

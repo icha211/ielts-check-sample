@@ -18,6 +18,27 @@ test("feed pictures choose the closest portrait, square or landscape reference r
     for (const [width, height] of [[0, 100], [100, 0], [-1, 100], [NaN, 100], [100, Infinity]])
         assert.throws(() => model.imageFeedFormat(width, height), /invalid dimensions/);
 });
+test("picture framing defaults to preserving the full image and validates saved controls", () => {
+    const defaults = model.validatePost(post);
+    assert.equal(defaults.imageFit, "contain");
+    assert.equal(defaults.imageFormat, "auto");
+    assert.equal(defaults.imageX, 50);
+    const framed = model.validatePost({ ...post, imageFit: "cover", imageFormat: "portrait", imageX: 0, imageY: 100 });
+    assert.equal(framed.imageY, 100);
+    for (const change of [{ imageFit: "invalid" }, { imageFormat: "invalid" }, { imageX: -1 }, { imageY: 101 }, { imageX: "50" }, { imageY: NaN }])
+        assert.throws(() => model.validatePost({ ...post, ...change }), /framing/);
+});
+test("picture framing persists for public/private posts and later owner edits", async () => {
+    for (const visibility of ["public", "friends"]) {
+        const { context: service, writes } = serviceFixture();
+        await service.savePost({ ...post, visibility, imageFit: "cover", imageFormat: "square", imageX: 25, imageY: 75 }, null, false);
+        assert.equal(writes[0].value.imageFit, "cover");
+        assert.equal(writes[0].value.imageX, 25);
+        await service.savePost({ ...post, visibility, imageFit: "contain", imageFormat: "portrait", imageX: 50, imageY: 50 }, null, false, "post1");
+        assert.equal(writes[1].value.imageFit, "contain");
+        assert.equal(writes[1].value.imageFormat, "portrait");
+    }
+});
 test("community post validation trims content and enforces exact limits and categories", () => {
     assert.equal(model.validatePost(post).title, "Listening advice");
     assert.equal(model.validatePost(post).body, "Practice with real recordings.");

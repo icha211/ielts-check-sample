@@ -66,6 +66,9 @@ test("friends-only posts and activity reject strangers, pending and removed conn
     assert.equal(await request(path, "privacy-stranger", "PATCH", { body: "Hacked" }), 401);
     assert.equal(await request(path, "privacy-author", "PATCH", { visibility: "public" }), 401);
     assert.equal(await request(path, "privacy-author", "PATCH", { body: "Updated", updatedAt: stamp }), 200);
+    assert.equal(await request(path, "privacy-author", "PATCH", { imageFormat: "portrait", imageFit: "cover", imageX: 25, imageY: 75 }), 200);
+    assert.equal(await request(path, "privacy-author", "PATCH", { imageX: 101 }), 401);
+    assert.equal(await request(path, "privacy-friend", "PATCH", { imageFit: "contain" }), 401);
     const likes = "community_private_likes/privacy-author/privacy-post";
     const comments = "community_private_comments/privacy-author/privacy-post";
     assert.equal(await request(`${likes}/privacy-friend`, "privacy-friend", "PUT", true), 200);
