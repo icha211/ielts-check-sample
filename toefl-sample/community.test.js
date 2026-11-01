@@ -9,6 +9,15 @@ const source = fs.readFileSync(path.join(__dirname, "js", "community-model.js"),
 const model = vm.createContext({ URL, Intl });
 vm.runInContext(source, model);
 const post = { title: " Listening advice ", body: " Practice with real recordings. ", category: "tips", groupId: "listening" };
+test("feed pictures choose the closest portrait, square or landscape reference ratio", () => {
+    for (const [width, height, expected] of [
+        [1080, 1350, "portrait"], [1080, 1080, "square"], [1080, 566, "landscape"],
+        [600, 1800, "portrait"], [1000, 1020, "square"], [1600, 900, "landscape"],
+        [3000, 1000, "landscape"]
+    ]) assert.equal(model.imageFeedFormat(width, height), expected);
+    for (const [width, height] of [[0, 100], [100, 0], [-1, 100], [NaN, 100], [100, Infinity]])
+        assert.throws(() => model.imageFeedFormat(width, height), /invalid dimensions/);
+});
 test("community post validation trims content and enforces exact limits and categories", () => {
     assert.equal(model.validatePost(post).title, "Listening advice");
     assert.equal(model.validatePost(post).body, "Practice with real recordings.");

@@ -7,6 +7,13 @@ export const GROUPS = [
 ];
 export const CATEGORIES = { questions: "Questions", tips: "Tips & Resources", buddies: "Study Buddies", announcements: "Announcements" };
 
+export function imageFeedFormat(width, height) {
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) throw new Error("This picture has invalid dimensions.");
+    const ratio = width / height;
+    return [["portrait", 4 / 5], ["square", 1], ["landscape", 1080 / 566]]
+        .reduce((closest, format) => Math.abs(ratio - format[1]) < Math.abs(ratio - closest[1]) ? format : closest)[0];
+}
+
 export function validatePost({ title, body, category, groupId = "", visibility = "public" }, developer = false) {
     const result = { title: String(title || "").trim(), body: String(body || "").trim(), category, groupId, visibility };
     if (!["public", "friends"].includes(visibility)) throw new Error("Choose Public or Friends only.");

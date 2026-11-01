@@ -1,5 +1,5 @@
 import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261031-post-activity";
-import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime } from "./js/community-model.js";
+import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFeedFormat } from "./js/community-model.js?v=20261101-image-formats";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { db } from "./js/firebase-config.js";
 import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -371,6 +371,7 @@ function makePost(post) {
     const url = safeMediaURL(post.mediaURL);
     if (url) {
         const media = element(post.mediaType === "video" ? "video" : "img", "post-media");
+        if (post.mediaType !== "video") formatFeedImage(media);
         if (post.visibility === "friends") {
             const entry = { controller: new AbortController(), url: "" };
             privateMedia.set(post.id, entry);
@@ -696,6 +697,12 @@ $("findBuddy").addEventListener("click", () => openPeople("buddies"));
 $("peopleSearch").addEventListener("input", renderPeopleResults);
 $("cancelEdit").addEventListener("click", resetComposer);
 $("attachButton").addEventListener("click", () => $("mediaInput").click());
+function formatFeedImage(image) {
+    image.dataset.feedFormat = "square";
+    image.addEventListener("load", () => {
+        image.dataset.feedFormat = imageFeedFormat(image.naturalWidth, image.naturalHeight);
+    });
+}
 $("mediaInput").addEventListener("change", () => {
     const selected = $("mediaInput").files[0];
     if (!selected) return;
@@ -708,6 +715,13 @@ $("mediaInput").addEventListener("change", () => {
     file = selected;
     previewURL = URL.createObjectURL(selected);
     const preview = element(selected.type.startsWith("video/") ? "video" : "img");
+    if (selected.type.startsWith("image/")) {
+        formatFeedImage(preview);
+        preview.addEventListener("error", () => {
+            clearPreview();
+            showError(new Error(tr("This attachment could not load.")), $("composerError"));
+        }, { once: true });
+    }
     preview.src = previewURL;
     if (selected.type.startsWith("video/")) preview.controls = true;
     else preview.alt = tr("Attachment preview");
