@@ -91,9 +91,12 @@ Shared Realtime Database data lives in `community_posts`, `community_likes`,
 `community_comments`, and `community_members`. Feeds and comment lists load the
 latest 100 records. The sidebar displays an HTML/CSS tutor promotion
 instead of the group membership panel, with selectable, localized text and a
-disabled button. The promotion fills the sidebar width and its desktop bottom
-tracks the post composer using ResizeObserver, growing if needed to keep text
-visible. On smaller screens it uses natural height.
+disabled button. The promotion fills the sidebar width at natural content height,
+without stretching to match the composer. Explore uses a centered 1248px outer
+container, a feed capped at 640px, 24px column gaps and 15px/1.7 post body text.
+Side columns move below/before the feed at narrower breakpoints; mobile gutters
+are 12px. Compact welcome artwork and promotion sizing keep posts the primary
+content, while reaction controls retain at least 44px vertical touch targets.
 Only the decorative tutor illustration is an image.
 The composer has a borderless writing area and live character count, without
 category or group dropdowns. Its icon-only tools retain localized accessible
