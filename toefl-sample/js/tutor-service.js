@@ -1,6 +1,6 @@
 import { auth, db } from "./firebase-config.js";
 import { ref, get, set, update, push, onValue, query, orderByChild, equalTo, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-import { validateCourse, validateTeachingProfile } from "./tutor-model.js?v=20261101-teacher";
+import { validateCourse, validateTeachingProfile } from "./tutor-model.js?v=20261101-crud";
 
 function user() {
     if (!auth.currentUser) throw new Error("Sign in to continue.");
@@ -22,6 +22,21 @@ export async function saveTeachingProfile(input) {
     if ((await get(ref(db, `tutor_roles/${current.uid}`))).val() !== "teacher") throw new Error("Only teachers can edit a teaching profile.");
     await set(ref(db, `tutor_profiles/${current.uid}`), { ...validateTeachingProfile(input), updatedAt: serverTimestamp() });
 }
+export async function clearTeachingProfile() {
+    const current = user();
+    if ((await get(ref(db, `tutor_roles/${current.uid}`))).val() !== "teacher") throw new Error("Only teachers can clear a teaching profile.");
+    await set(ref(db, `tutor_profiles/${current.uid}`), null);
+}
+export async function setCourseState(id, state) {
+    if (!["published", "paused", "archived"].includes(state)) throw new Error("Invalid course state.");
+    const current = user();
+    if ((await get(ref(db, `tutor_roles/${current.uid}`))).val() !== "teacher") throw new Error("Only teachers can manage courses.");
+    const target = ref(db, `tutor_courses/${id}`);
+    const course = (await get(target)).val();
+    if (!course || course.teacherId !== current.uid) throw new Error("You can only manage your own courses.");
+    if (course.archived && state === "published") throw new Error("Restore this archived course before publishing.");
+    await update(target, { published: state === "published", archived: state === "archived", updatedAt: serverTimestamp() });
+}
 export function watchAccount(uid, callbacks, error) {
     const stops = [
         onValue(ref(db, `tutor_roles/${uid}`), snap => callbacks.role(snap.val() || "student"), error),
@@ -39,6 +54,7 @@ export async function saveCourse(input, id) {
         const target = ref(db, `tutor_courses/${id}`);
         const existing = (await get(target)).val();
         if (!existing || existing.teacherId !== current.uid) throw new Error("You can only edit your own courses.");
+        if (existing.archived) throw new Error("Restore this archived course before editing.");
         await update(target, { ...course, updatedAt: serverTimestamp() });
         return id;
     }
@@ -52,6 +68,7 @@ export async function toggleLibrary(kind, id, enabled) {
 }
 export async function requestEnrollment(course) {
     const current = user();
+    if (!course.published || course.archived) throw new Error("This course is no longer open for enrollment.");
     if (current.uid === course.teacherId) throw new Error("You cannot enroll in your own course.");
     const id = `${course.id}_${current.uid}`;
     const existing = (await get(query(ref(db, "tutor_requests"), orderByChild("studentId"), equalTo(current.uid)))).val() || {};

@@ -31,7 +31,7 @@ export function courseStats(reviews = {}, requests = {}) {
 }
 export function selectCourses(courses, filters = {}, stats = {}) {
     const search = String(filters.search || "").trim().toLocaleLowerCase();
-    return Object.entries(courses).map(([id, course]) => ({ ...course, id })).filter(course => course.published &&
+    return Object.entries(courses).map(([id, course]) => ({ ...course, id })).filter(course => course.published && !course.archived &&
         (!filters.teacher || course.teacherId === filters.teacher) &&
         (!filters.category || course.category === filters.category) && (!filters.type || course.type === filters.type) &&
         (!search || `${course.title} ${course.teacherName} ${course.summary}`.toLocaleLowerCase().includes(search)) &&
@@ -59,7 +59,7 @@ export function validateTeachingProfile(input) {
 }
 export function teachingSummary(courses, reviews, uid) {
     const owned = Object.entries(courses).filter(([, course]) => course.teacherId === uid);
-    const published = owned.filter(([, course]) => course.published).map(([id, course]) => ({ ...course, id })).sort((a, b) => b.createdAt - a.createdAt);
+    const published = owned.filter(([, course]) => course.published && !course.archived).map(([id, course]) => ({ ...course, id })).sort((a, b) => b.createdAt - a.createdAt);
     const rows = owned.flatMap(([courseId, course]) => Object.entries(reviews[courseId] || {}).filter(([, review]) => Number.isInteger(review.rating) && review.rating >= 1 && review.rating <= 5)
         .map(([studentId, review]) => ({ ...review, studentId, courseId, courseTitle: course.title }))).sort((a, b) => b.updatedAt - a.updatedAt);
     return { courses: published, reviews: rows, reviewers: new Set(rows.map(row => row.studentId)).size,

@@ -1,7 +1,7 @@
 import { auth } from "./js/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, rupiah } from "./js/tutor-model.js?v=20261101-teacher";
-import { watchCatalog, watchReviews, watchAccount, saveCourse, toggleLibrary, requestEnrollment, changeRequest, submitReview } from "./js/tutor-service.js?v=20261101-teacher";
+import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, rupiah } from "./js/tutor-model.js?v=20261101-crud";
+import { watchCatalog, watchReviews, watchAccount, saveCourse, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview } from "./js/tutor-service.js?v=20261101-crud";
 
 const $ = id => document.getElementById(id);
 let courses = {}, reviews = {}, library = {}, requests = {}, inbox = {};
@@ -12,6 +12,21 @@ const pageParams = new URLSearchParams(location.search);
 const teacherFilter = pageParams.get("teacher") || "";
 let initialCourse = pageParams.get("course") || "";
 let initialStudio = pageParams.get("studio") === "1";
+let archiveId = "";
+async function updateCourseState(id, state) {
+    const current = version;
+    await setCourseState(id, state);
+    if (current === version) $("marketStatus").textContent = `Course ${state}. Existing learner records are unchanged.`;
+}
+$("teacherEnrollmentFilter").addEventListener("change", renderStudio);
+$("archiveCancel").addEventListener("click", () => $("archiveDialog").close());
+$("archiveConfirm").addEventListener("click", async () => {
+    const current = version, id = archiveId;
+    $("archiveConfirm").disabled = true;
+    try { await updateCourseState(id, "archived"); if (current === version) $("archiveDialog").close(); }
+    catch (err) { if (current === version) error(err, $("archiveError")); }
+    finally { $("archiveConfirm").disabled = false; }
+});
 const el = (tag, className = "", text = "") => {
     const node = document.createElement(tag);
     node.className = className;
@@ -167,7 +182,7 @@ function renderCatalog() {
     $("resultCount").textContent = `${rows.length} ${favoritesOnly ? "saved " : ""}course${rows.length === 1 ? "" : "s"}`;
     if (!rows.length) {
         const empty = el("div", "empty-state");
-        const noCatalog = !Object.values(courses).some(course => course.published);
+        const noCatalog = !Object.values(courses).some(course => course.published && !course.archived);
         empty.append(icon("school"), el("h3", "", noCatalog ? "Your next course is on its way" : "No matching courses"),
             el("p", "muted", noCatalog ? "Teachers can publish their first course. New listings appear here automatically." : "Try another category, search or filter."));
         if (!noCatalog) {
@@ -189,7 +204,7 @@ function renderCatalog() {
     if (initialCourse) {
         const id = initialCourse;
         initialCourse = "";
-        if (courses[id]?.published && (!teacherFilter || courses[id].teacherId === teacherFilter)) showCourse(id);
+        if (courses[id]?.published && !courses[id].archived && (!teacherFilter || courses[id].teacherId === teacherFilter)) showCourse(id);
         else error("This course is no longer available for enrollment.");
     }
     if (initialStudio && role === "teacher") { initialStudio = false; $("teacherStudio").hidden = false; $("teacherStudio").scrollIntoView({ block: "start" }); }
@@ -207,7 +222,7 @@ function renderCart() {
     let total = 0, validCount = 0;
     Object.keys(library.cart || {}).forEach(id => {
         const course = courses[id];
-        const available = course?.published && course.teacherId !== uid;
+        const available = course?.published && !course.archived && course.teacherId !== uid;
         const node = row(course?.title || "Unavailable course", available ? rupiah(course.price) : "No longer open for enrollment");
         if (available) { total += course.price; validCount++; }
         node.append(action("Remove", "text-button", () => toggleLibrary("cart", id, false)));
@@ -239,14 +254,30 @@ function renderStudio() {
     const owned = $("ownCourses");
     owned.replaceChildren();
     Object.entries(courses).filter(([, course]) => course.teacherId === uid).forEach(([id, course]) => {
-        const node = row(course.title, `${course.published ? "Published" : "Paused"} | ${rupiah(course.price)}`);
-        node.append(action("Edit course", "text-button", () => openEditor(id)));
+        const node = row(course.title, `${course.archived ? "Archived" : course.published ? "Published" : "Paused"} | ${rupiah(course.price)}`);
+        const actions = el("div", "row-actions");
+        if (course.archived) actions.append(action("Restore as paused", "text-button", () => updateCourseState(id, "paused")));
+        else {
+            actions.append(action("Edit course", "text-button", () => openEditor(id)),
+                action(course.published ? "Pause" : "Publish", "text-button", () => updateCourseState(id, course.published ? "paused" : "published")),
+                action("Archive", "text-button", () => {
+                    archiveId = id; $("archiveCourseName").textContent = course.title; $("archiveError").hidden = true;
+                    openDialog("archiveDialog"); $("archiveCancel").focus();
+                }));
+        }
+        node.append(actions);
         owned.append(node);
     });
     if (!owned.children.length) owned.append(el("p", "muted", "Create your first course to appear in the marketplace."));
     const items = $("teacherInbox");
     items.replaceChildren();
+    const enrollmentLabels = { "": "All enrollments", pending: "Pending requests", accepted: "Accepted learners", declined: "Declined requests", cancelled: "Cancelled requests" };
+    for (const option of $("teacherEnrollmentFilter").options) {
+        const count = Object.values(inbox).filter(request => !option.value || request.status === option.value).length;
+        option.textContent = `${enrollmentLabels[option.value]} (${count})`;
+    }
     Object.entries(inbox).sort(([, a], [, b]) => b.createdAt - a.createdAt).forEach(([id, request]) => {
+        if ($("teacherEnrollmentFilter").value && request.status !== $("teacherEnrollmentFilter").value) return;
         const node = row(`${request.studentName} - ${courses[request.courseId]?.title || "Course"}`, `${request.status} | ${rupiah(request.price)}`);
         const buttons = el("div", "row-actions");
         if (request.status === "pending") {
@@ -255,10 +286,13 @@ function renderStudio() {
         const contact = el("a", "", "Learner profile");
         contact.href = `profile.html?uid=${encodeURIComponent(request.studentId)}`;
         buttons.append(contact);
+        const message = el("a", "", "Message learner");
+        message.href = `message.html?to=${encodeURIComponent(request.studentId)}`;
+        buttons.append(message);
         node.append(buttons);
         items.append(node);
     });
-    if (!items.children.length) items.append(el("p", "muted", "Enrollment requests will appear here in real time."));
+    if (!items.children.length) items.append(el("p", "muted", $("teacherEnrollmentFilter").value ? "No enrollments with this status." : "Enrollment requests will appear here in real time."));
 }
 function renderDetail() {
     const target = $("courseDetail"), course = courses[detailId];
@@ -276,9 +310,9 @@ function renderDetail() {
     link.href = `profile.html?uid=${encodeURIComponent(course.teacherId)}`;
     target.append(link);
     const add = action("Add to cart", "primary", async () => { if (requireLogin()) await toggleLibrary("cart", detailId, true); });
-    add.disabled = !course.published || course.teacherId === uid || Boolean(requests[`${detailId}_${uid}`]);
+    add.disabled = !course.published || course.archived || course.teacherId === uid || Boolean(requests[`${detailId}_${uid}`]);
     if (requests[`${detailId}_${uid}`]) add.textContent = "Already requested";
-    target.append(el("p", "muted", course.published ? "Enrollment is requested directly from the teacher. No payment is processed here." : "This listing is paused."), add, el("h3", "", "Learner reviews"));
+    target.append(el("p", "muted", course.archived ? "This listing is archived. Existing learner records and reviews remain available." : course.published ? "Enrollment is requested directly from the teacher. No payment is processed here." : "This listing is paused."), add, el("h3", "", "Learner reviews"));
     const courseReviews = reviews[detailId] || {};
     Object.values(courseReviews).forEach(review => {
         target.append(row(`${review.studentName} | ${review.rating}/5`, review.text));
@@ -354,7 +388,7 @@ $("checkoutButton").addEventListener("click", async () => {
     for (const id of ids) {
         if (current !== version) break;
         const course = courses[id];
-        if (!course?.published || course.teacherId === uid) { failures.push("An unavailable course was left in your cart."); continue; }
+        if (!course?.published || course.archived || course.teacherId === uid) { failures.push("An unavailable course was left in your cart."); continue; }
         try {
             if (!requests[`${id}_${uid}`]) { await requestEnrollment({ ...course, id }); sent++; }
             await toggleLibrary("cart", id, false);

@@ -13,7 +13,7 @@
     "tutor_profiles": {
       "$uid": {
         ".read": true,
-        ".write": "auth != null && auth.uid === $uid && root.child('tutor_roles').child(auth.uid).val() === 'teacher' && newData.exists()",
+        ".write": "auth != null && auth.uid === $uid && root.child('tutor_roles').child(auth.uid).val() === 'teacher'",
         ".validate": "newData.hasChildren(['experience','qualification','about','imageURL','updatedAt'])",
         "experience": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 80 && newData.val() % 1 === 0" },
         "qualification": { ".validate": "newData.isString() && newData.val().length <= 120" },
@@ -28,7 +28,7 @@
       ".indexOn": ["teacherId", "published"],
       "$course": {
         ".write": "auth != null && root.child('tutor_roles').child(auth.uid).val() === 'teacher' && newData.exists() && newData.child('teacherId').val() === auth.uid && (!data.exists() || data.child('teacherId').val() === auth.uid)",
-        ".validate": "newData.hasChildren(['teacherId','teacherName','title','summary','curriculum','schedule','category','type','price','originalPrice','coverURL','published','createdAt','updatedAt'])",
+        ".validate": "newData.hasChildren(['teacherId','teacherName','title','summary','curriculum','schedule','category','type','price','originalPrice','coverURL','published','createdAt','updatedAt']) && (newData.child('archived').val() !== true || newData.child('published').val() === false)",
         "teacherId": { ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())" },
         "teacherName": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
         "title": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
@@ -41,6 +41,7 @@
         "originalPrice": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() <= 100000000 && (newData.val() === 0 || newData.val() > newData.parent().child('price').val())" },
         "coverURL": { ".validate": "newData.isString() && newData.val().length <= 2000 && (newData.val() === '' || newData.val().beginsWith('https://'))" },
         "published": { ".validate": "newData.isBoolean()" },
+        "archived": { ".validate": "newData.isBoolean() && (newData.val() === false || newData.parent().child('published').val() === false)" },
         "createdAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
         "updatedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
         "$other": { ".validate": false }

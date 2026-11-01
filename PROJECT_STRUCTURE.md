@@ -138,6 +138,13 @@ Booking links to `tutor-check.html?teacher=<uid>` for course enrollment requests
 `course=<id>` opens a specific published course and `studio=1` opens the
 owner's teacher studio. No appointment calendar, hourly rate or payments
 are implied. Deploy the updated database rules before releasing these profiles.
+Owners can clear `tutor_profiles/<uid>` using a confirmation dialog and recreate
+it later; the account, community bio, courses and learner records are unaffected.
+Course deletion is archival: `archived: true` requires `published: false`.
+The studio supports publish/pause/archive and restoration as paused; archived
+courses cannot be edited until restored. Hard deletion remains forbidden.
+Enrollment status filters expose pending requests and accepted learners; direct
+learner messaging and profile links reuse the existing connection workflow.
 
 Sign-up, email activation, email sign-in and Google sign-in offer Student or
 Teacher. Self-service `tutor_roles/<uid>` is a marketplace capability only,

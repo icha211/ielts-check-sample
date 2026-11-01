@@ -1,7 +1,7 @@
 import { db } from "./js/firebase-config.js";
 import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-import { watchTeachingRole, watchTeachingProfile, watchCatalog, watchReviews, saveTeachingProfile, toggleLibrary } from "./js/tutor-service.js?v=20261101-teacher";
-import { teachingSummary, courseStats, TUTOR_CATEGORIES, TUTOR_TYPES, rupiah } from "./js/tutor-model.js?v=20261101-teacher";
+import { watchTeachingRole, watchTeachingProfile, watchCatalog, watchReviews, saveTeachingProfile, clearTeachingProfile, toggleLibrary } from "./js/tutor-service.js?v=20261101-crud";
+import { teachingSummary, courseStats, TUTOR_CATEGORIES, TUTOR_TYPES, rupiah } from "./js/tutor-model.js?v=20261101-crud";
 import { safeMediaURL } from "./js/community-model.js";
 
 const $ = id => document.getElementById(id);
@@ -16,6 +16,7 @@ window.QCPrefs?.addTranslations("id", {
     "Years exp.": "Tahun mengajar", "Rating": "Penilaian", "self-reported": "Dilaporkan sendiri",
     "Save": "Simpan", "Saved": "Tersimpan", "Courses from": "Harga kursus mulai dari",
     "Teaching profile saved.": "Profil pengajar disimpan.",
+    "Teaching details cleared. Your courses and learner records are unchanged.": "Detail mengajar dihapus. Kursus dan data peserta tetap tersimpan.",
     "Loading teacher information...": "Memuat informasi pengajar...",
     "No courses are available for booking right now.": "Belum ada kursus yang dapat dipesan.",
     "Experience not shared yet.": "Pengalaman belum dibagikan.",
@@ -72,6 +73,33 @@ export function createTeacherProfile(onChange) {
         form.elements.namedItem("experience").focus();
     });
     $("teacherCancel").addEventListener("click", () => { $("teacherForm").hidden = true; $("teacherEdit").focus(); });
+    const clearDialog = $("teacherClearDialog");
+    $("teacherClear").addEventListener("click", () => {
+        if (!isTeacher || uid !== viewer) return;
+        $("teacherClearError").hidden = true;
+        clearDialog.showModal();
+        $("teacherClearCancel").focus();
+    });
+    $("teacherClearCancel").addEventListener("click", () => clearDialog.close());
+    clearDialog.addEventListener("close", () => { if (!$("teacherClear").hidden) $("teacherClear").focus(); else $("teacherEdit").focus(); });
+    $("teacherClearConfirm").addEventListener("click", async () => {
+        if (!isTeacher || uid !== viewer) { fail(new Error("You can only clear your own teaching profile.")); return; }
+        const current = epoch;
+        $("teacherClearConfirm").disabled = true;
+        try {
+            await clearTeachingProfile();
+            if (current !== epoch) return;
+            $("teacherForm").hidden = true;
+            clearDialog.close();
+            $("teacherStatus").textContent = tr("Teaching details cleared. Your courses and learner records are unchanged.");
+        } catch (err) {
+            if (current === epoch) {
+                console.error("[TeacherProfile]", err);
+                $("teacherClearError").textContent = err.message;
+                $("teacherClearError").hidden = false;
+            }
+        } finally { $("teacherClearConfirm").disabled = false; }
+    });
     $("teacherForm").addEventListener("submit", async event => {
         event.preventDefault();
         const form = $("teacherForm"), current = epoch;
@@ -162,6 +190,7 @@ export function createTeacherProfile(onChange) {
         }
         $("teacherForm").hidden = $("teacherForm").hidden || !own;
         $("teacherEdit").hidden = !own;
+        $("teacherClear").hidden = !own || background.updatedAt === undefined;
         $("teacherEdit").disabled = !ready;
         $("teacherStudioLink").hidden = !own;
         $("profileLevel").textContent = tr("Teacher");
@@ -234,6 +263,7 @@ export function createTeacherProfile(onChange) {
         uid = target; viewer = currentViewer || ""; epoch++; isTeacher = false; ready = false;
         background = {}; courses = {}; reviews = {}; favorites = {}; selected = "teacherOverview";
         $("teacherForm").hidden = true;
+        if (clearDialog.open) clearDialog.close();
         $("teacherStatus").textContent = tr("Loading teacher information...");
         $("teacherStatus").dataset.error = "false";
         const current = epoch;
