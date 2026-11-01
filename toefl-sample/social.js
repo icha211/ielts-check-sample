@@ -1,5 +1,5 @@
 import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261101-image-framing";
-import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameFit, imageDisplaySettings } from "./js/community-model.js?v=20261101-height-padding";
+import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameFit, imageDisplaySettings } from "./js/community-model.js?v=20261101-portrait-frame";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { db } from "./js/firebase-config.js";
 import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -753,7 +753,7 @@ document.addEventListener("keydown", event => {
 });
 function formatFeedImage(image, settings = {}) {
     settings = imageDisplaySettings(settings);
-    image.dataset.feedFormat = "landscape";
+    image.dataset.feedFormat = settings.imageFormat;
     image.style.objectFit = settings.imageFit;
     image.style.objectPosition = `50% ${settings.imageY}%`;
     const sizeFrame = () => {

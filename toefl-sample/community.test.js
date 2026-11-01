@@ -12,23 +12,23 @@ const post = { title: " Listening advice ", body: " Practice with real recording
 test("all photos fill the width and retain only the vertical crop position", () => {
     for (const settings of [{}, { visibility: "public" }, { visibility: "friends", imageFormat: "portrait", imageFit: "contain", imageX: 0 }]) {
         assert.deepEqual(JSON.parse(JSON.stringify(model.imageDisplaySettings(settings))), {
-            imageFormat: "landscape", imageFit: "cover", imageX: 50, imageY: 50
+            imageFormat: "portrait", imageFit: "cover", imageX: 50, imageY: 50
         });
     }
     const privateSettings = { visibility: "friends", imageFormat: "square", imageFit: "cover", imageX: 20, imageY: 80 };
     assert.equal(model.imageDisplaySettings(privateSettings).imageFit, "cover");
-    assert.equal(model.imageDisplaySettings(privateSettings).imageFormat, "landscape");
+    assert.equal(model.imageDisplaySettings(privateSettings).imageFormat, "portrait");
     assert.equal(model.imageDisplaySettings(privateSettings).imageX, 50);
     assert.equal(model.imageDisplaySettings(privateSettings).imageY, 80);
 });
 test("fixed width-fitted frames crop taller photos and pad shorter photos vertically", () => {
-    for (const [width, height] of [[800, 1600], [1080, 1080], [1600, 900], [1080, 566], [3000, 1000]]) {
+    for (const [width, height] of [[800, 1600], [1080, 1350], [1080, 1080], [1600, 900], [1080, 566], [3000, 1000]]) {
         const frameWidth = 590;
-        const frameHeight = frameWidth * 566 / 1080;
+        const frameHeight = frameWidth * 5 / 4;
         const fit = model.imageFrameFit(width, height);
         const scale = (fit === "cover" ? Math.max : Math.min)(frameWidth / width, frameHeight / height);
         assert.ok(Math.abs(width * scale - frameWidth) < 0.00001);
-        if (width / height > 1080 / 566) {
+        if (width / height > 4 / 5) {
             assert.equal(fit, "contain");
             assert.ok(height * scale < frameHeight);
             const padding = (frameHeight - height * scale) / 2;

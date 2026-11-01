@@ -88,7 +88,7 @@ Private-media download CORS failures are separate from upload size: the Storage
 bucket must allow the deployed site's origin to read encrypted attachment bytes.
 All post photos, including existing public/friends-only posts and profile embeds,
 fill the content width without side cropping or side padding. Frames always use
-1080:566 (about 1.91:1). Taller photos crop only vertically; shorter photos are
+4:5 portrait (for example, 1080x1350). Taller photos crop only vertically; shorter photos are
 centered with equal padding above and below. The composer and owner
 Edit post share a vertical-position slider, percentage readout and Reset.
 The scaled preview uses the same crop as the feed without altering the original.
