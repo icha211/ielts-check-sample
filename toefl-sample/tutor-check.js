@@ -12,6 +12,7 @@ const pageParams = new URLSearchParams(location.search);
 const teacherFilter = pageParams.get("teacher") || "";
 let initialCourse = pageParams.get("course") || "";
 let initialStudio = pageParams.get("studio") === "1";
+let initialCreate = pageParams.get("create") === "1";
 let archiveId = "";
 async function updateCourseState(id, state) {
     const current = version;
@@ -208,6 +209,11 @@ function renderCatalog() {
         else error("This course is no longer available for enrollment.");
     }
     if (initialStudio && role === "teacher") { initialStudio = false; $("teacherStudio").hidden = false; $("teacherStudio").scrollIntoView({ block: "start" }); }
+    if (initialCreate && role === "teacher") {
+        initialCreate = false;
+        $("teacherStudio").hidden = false;
+        openEditor();
+    }
 }
 function row(title, description) {
     const node = el("div", "request-row");

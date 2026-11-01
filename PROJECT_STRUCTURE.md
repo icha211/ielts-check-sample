@@ -140,6 +140,9 @@ owner's teacher studio. No appointment calendar, hourly rate or payments
 are implied. Deploy the updated database rules before releasing these profiles.
 Owners can clear `tutor_profiles/<uid>` using a confirmation dialog and recreate
 it later; the account, community bio, courses and learner records are unaffected.
+Owner-only Add course widgets in the profile Overview and Courses tabs link to
+`tutor-check.html?studio=1&create=1`, opening the existing course editor once the
+teacher account and catalogue have loaded. Visitors and students do not see them.
 Course deletion is archival: `archived: true` requires `published: false`.
 The studio supports publish/pause/archive and restoration as paused; archived
 courses cannot be edited until restored. Hard deletion remains forbidden.

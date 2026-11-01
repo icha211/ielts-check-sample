@@ -16,6 +16,8 @@ window.QCPrefs?.addTranslations("id", {
     "Years exp.": "Tahun mengajar", "Rating": "Penilaian", "self-reported": "Dilaporkan sendiri",
     "Save": "Simpan", "Saved": "Tersimpan", "Courses from": "Harga kursus mulai dari",
     "Teaching profile saved.": "Profil pengajar disimpan.",
+    "Add course": "Tambah kursus",
+    "Share what you teach. Set your course details, price and schedule.": "Bagikan materi yang Anda ajarkan. Atur detail kursus, harga, dan jadwal.",
     "Teaching details cleared. Your courses and learner records are unchanged.": "Detail mengajar dihapus. Kursus dan data peserta tetap tersimpan.",
     "Loading teacher information...": "Memuat informasi pengajar...",
     "No courses are available for booking right now.": "Belum ada kursus yang dapat dipesan.",
@@ -124,6 +126,15 @@ export function createTeacherProfile(onChange) {
         } finally { fields.forEach(field => field.disabled = false); }
     });
     function courseLink(course) { return `tutor-check.html?teacher=${encodeURIComponent(uid)}&course=${encodeURIComponent(course.id)}`; }
+    function addCourseWidget() {
+        const link = node("a", "teacher-add-course");
+        link.href = "tutor-check.html?studio=1&create=1";
+        const icon = node("i", "ti ti-plus");
+        icon.setAttribute("aria-hidden", "true");
+        link.append(icon, node("strong", "", tr("Add course")),
+            node("span", "profile-muted", tr("Share what you teach. Set your course details, price and schedule.")));
+        return link;
+    }
     function courseCard(course) {
         const article = node("article", "profile-card teacher-course");
         const url = safeMediaURL(course.coverURL);
@@ -228,6 +239,10 @@ export function createTeacherProfile(onChange) {
         if (focusedCourse) [...focusedList.querySelectorAll(".teacher-save")].find(button => button.dataset.course === focusedCourse)?.focus();
         if (!summary.courses.length) {
             for (const target of [all, preview]) target.append(node("p", "teacher-empty", tr(own ? "No published courses yet. Create a course in your teacher studio." : "This teacher has no courses open for enrollment yet.")));
+        }
+        if (own) {
+            all.append(addCourseWidget());
+            preview.append(addCourseWidget());
         }
         const reviewList = $("teacherReviewList");
         reviewList.replaceChildren(...summary.reviews.map(review => {
