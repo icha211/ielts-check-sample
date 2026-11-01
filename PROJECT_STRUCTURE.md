@@ -104,6 +104,12 @@ Embedded profile feeds use the same audience-specific display policy;
 videos retain their existing sizing and controls. Deploy framing rules before
 publishing the client.
 
+The Explore composer uses a single post-body field without a separate title.
+A short body excerpt remains as required title metadata for storage and sharing;
+feed cards display the body without a duplicate heading. Upload-size guidance
+opens from the Lucide info button beside Photo/Video and closes on another click,
+an outside click or Escape.
+
 Shared Realtime Database data lives in `community_posts`, `community_likes`,
 `community_comments`, and `community_members`. Feeds and comment lists load the
 latest 100 records. The sidebar displays an HTML/CSS tutor promotion

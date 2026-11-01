@@ -5,6 +5,7 @@ import { db } from "./js/firebase-config.js";
 import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 window.QCPrefs?.addTranslations("id", {
+    "Upload information": "Informasi unggahan", "Photo and video uploads": "Unggahan foto dan video",
     "Public photos use a wide frame. Padding keeps the whole image visible when proportions differ.": "Foto publik menggunakan bingkai lebar. Ruang tambahan menjaga seluruh gambar terlihat jika proporsinya berbeda.",
     "Photo layout": "Tata letak foto", "Auto": "Otomatis", "Whole image": "Seluruh gambar",
     "Crop to fill": "Potong sesuai bingkai", "Reset": "Atur ulang",
@@ -362,7 +363,7 @@ function makePost(post) {
         menu.append(summary, actions);
         header.append(menu);
     }
-    node.append(header, element("h3", "", post.title));
+    node.append(header);
     const body = element("p", "post-body");
     const full = post.body || "";
     const expanded = expandedPosts.has(post.id);
@@ -504,7 +505,6 @@ function startComposer(value) {
     if (publishing) return;
     if (!state.uid) return showError(new Error(tr("Sign in to take part in the community.")));
     if (value === "announcements" && !developer) value = "tips";
-    $("composerDetails").hidden = false;
     if (!editingId) composerCategory = value;
     $("postBody").focus();
 }
@@ -538,7 +538,6 @@ function resetComposer() {
     editingId = null;
     clearPreview();
     $("editingHint").hidden = true;
-    $("composerDetails").hidden = true;
     $("composerError").hidden = true;
     $("publishButton").textContent = tr("Post");
     composerCategory = "tips";
@@ -551,7 +550,6 @@ function editPost(post) {
     resetComposer();
     editingId = post.id;
     $("postBody").value = post.body;
-    $("postTitle").value = post.title;
     composerCategory = post.category;
     composerGroupId = post.groupId || "";
     $("postVisibility").value = post.visibility || "public";
@@ -723,7 +721,7 @@ document.querySelectorAll("[data-filter]").forEach((node) => node.addEventListen
     renderFeed();
 }));
 document.querySelectorAll("[data-compose]").forEach((node) => node.addEventListener("click", () => startComposer(node.dataset.compose)));
-$("postBody").addEventListener("focus", () => { $("composerDetails").hidden = false; updateComposerUI(); });
+$("postBody").addEventListener("focus", updateComposerUI);
 $("postBody").addEventListener("input", updateComposerUI);
 $("postVisibility").addEventListener("change", () => {
     updateComposerUI();
@@ -736,6 +734,24 @@ $("findBuddy").addEventListener("click", () => openPeople("buddies"));
 $("peopleSearch").addEventListener("input", renderPeopleResults);
 $("cancelEdit").addEventListener("click", resetComposer);
 $("attachButton").addEventListener("click", () => $("mediaInput").click());
+function closeUploadInfo() {
+    $("uploadInfoPopup").hidden = true;
+    $("uploadInfoButton").setAttribute("aria-expanded", "false");
+}
+$("uploadInfoButton").addEventListener("click", () => {
+    const open = $("uploadInfoPopup").hidden;
+    $("uploadInfoPopup").hidden = !open;
+    $("uploadInfoButton").setAttribute("aria-expanded", String(open));
+});
+document.addEventListener("click", event => {
+    if (!event.target.closest(".upload-info")) closeUploadInfo();
+});
+document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !$("uploadInfoPopup").hidden) {
+        closeUploadInfo();
+        $("uploadInfoButton").focus();
+    }
+});
 function formatFeedImage(image, settings = {}) {
     settings = imageDisplaySettings(settings);
     image.dataset.requestedFormat = settings.imageFormat || "auto";
@@ -796,7 +812,6 @@ $("mediaInput").addEventListener("change", () => {
         return;
     }
     file = selected;
-    $("composerDetails").hidden = false;
     previewURL = URL.createObjectURL(selected);
     const preview = element(selected.type.startsWith("video/") ? "video" : "img");
     if (selected.type.startsWith("image/")) {
@@ -827,7 +842,8 @@ $("postForm").addEventListener("submit", async (event) => {
     $("composerError").hidden = true;
     const fields = [...$("postForm").querySelectorAll("input, textarea, select, button")];
     const disabled = fields.map((field) => field.disabled);
-    const input = { title: $("postTitle").value || $("postBody").value.trim().slice(0, 80).split("\n")[0], body: $("postBody").value, category: composerCategory, groupId: composerGroupId, visibility: $("postVisibility").value, ...framingSettings() };
+    const input = { title: $("postBody").value.trim().slice(0, 80).split("\n")[0], body: $("postBody").value, category: composerCategory, groupId: composerGroupId, visibility: $("postVisibility").value, ...framingSettings() };
+    closeUploadInfo();
     fields.forEach((field) => { field.disabled = true; });
     try {
         const id = await savePost(input, file, developer, editingId);
