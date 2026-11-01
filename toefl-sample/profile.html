@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
     <link rel="stylesheet" href="profile.css?v=20261031-compress">
     <link rel="stylesheet" href="profile-community.css?v=20261031-settings-panel">
+    <link rel="stylesheet" href="profile-teacher.css?v=20261101-teacher">
 </head>
 <body>
     <main class="profile-page" aria-label="Community profile">
@@ -22,21 +23,63 @@
                 <div class="profile-name-row"><h1 id="profileDisplayName">Community profile</h1><span class="profile-tag" id="profileLevel">English learner</span></div>
                 <p class="profile-location"><i class="ti ti-map-pin" aria-hidden="true"></i><span id="profileLocation">Location not shared</span></p>
                 <p id="profileIntro">Loading profile...</p>
-                <div class="profile-stats">
+                <div class="profile-stats" id="studentProfileStats">
                     <div><strong id="profilePostCount">0</strong><span>Recent posts</span></div>
                     <div><strong id="profileConnectionCount">0</strong><span>Connections</span></div>
                     <div><strong id="profileMutualCount">0</strong><span>Mutual connections</span></div>
                 </div>
+                <div id="teacherHeadline" hidden></div>
             </div>
             <div class="profile-actions">
                 <button class="profile-button profile-button-primary" id="profileConnect" type="button" hidden><i class="ti ti-user-plus" aria-hidden="true"></i><span>Connect</span></button>
                 <a class="profile-button" id="profileMessage" hidden><i class="ti ti-message-circle" aria-hidden="true"></i>Message</a>
                 <button class="profile-button" id="profileSettings" type="button" aria-haspopup="dialog" aria-controls="acctSettingsDialog" hidden><i class="ti ti-settings" aria-hidden="true"></i>Account settings</button>
-                <a class="profile-button" href="social.html"><i class="ti ti-arrow-left" aria-hidden="true"></i>Explore</a>
+                <a class="profile-button" id="profileBack" href="social.html"><i class="ti ti-arrow-left" aria-hidden="true"></i>Explore</a>
             </div>
+            <div id="teacherMetrics" class="teacher-metrics" hidden></div>
         </header>
         <p id="profileSocialStatus" class="profile-status" role="status" aria-live="polite"></p>
-        <div class="profile-layout">
+        <section id="teacherProfile" aria-label="Teacher profile" hidden>
+            <div class="teacher-tabs" role="tablist" aria-label="Teacher profile sections">
+                <button id="teacherTabOverview" role="tab" aria-selected="true" aria-controls="teacherOverview" data-teacher-tab="teacherOverview">Overview</button>
+                <button id="teacherTabCourses" role="tab" aria-selected="false" aria-controls="teacherCourses" tabindex="-1" data-teacher-tab="teacherCourses">Courses</button>
+                <button id="teacherTabReviews" role="tab" aria-selected="false" aria-controls="teacherReviews" tabindex="-1" data-teacher-tab="teacherReviews">Reviews</button>
+                <button id="teacherTabAbout" role="tab" aria-selected="false" aria-controls="teacherAbout" tabindex="-1" data-teacher-tab="teacherAbout">About</button>
+                <button id="teacherTabCommunity" role="tab" aria-selected="false" aria-controls="communityProfileLayout" tabindex="-1" data-teacher-tab="communityProfileLayout">Community</button>
+            </div>
+            <p id="teacherStatus" class="profile-status" role="status" aria-live="polite">Loading teacher information...</p>
+            <div class="teacher-layout" id="teacherContent">
+                <div class="teacher-main">
+                    <section id="teacherOverview" role="tabpanel" aria-labelledby="teacherTabOverview">
+                        <div id="teacherBioSlot"></div>
+                        <div class="profile-card teacher-introduction" id="teacherIntroduction"></div>
+                        <div class="profile-card-heading teacher-course-heading"><h2>My courses</h2><button id="teacherViewCourses" class="profile-link" type="button">View all courses →</button></div>
+                        <div id="teacherCoursePreview" class="teacher-course-grid"></div>
+                    </section>
+                    <section id="teacherCourses" role="tabpanel" aria-labelledby="teacherTabCourses" hidden><h2>Available courses</h2><div id="teacherCourseList" class="teacher-course-grid"></div></section>
+                    <section id="teacherReviews" class="profile-card" role="tabpanel" aria-labelledby="teacherTabReviews" hidden><h2>Learner reviews</h2><div id="teacherReviewList"></div></section>
+                    <section id="teacherAbout" class="profile-card" role="tabpanel" aria-labelledby="teacherTabAbout" hidden>
+                        <div class="profile-card-heading"><h2>Teaching background</h2><button id="teacherEdit" class="profile-button" type="button" hidden>Edit teaching profile</button></div>
+                        <div id="teacherBackground"></div>
+                        <form id="teacherForm" class="teacher-form" hidden>
+                            <label>Years of teaching experience<input name="experience" type="number" min="0" max="80" step="1" required></label>
+                            <label>Qualification (optional)<input name="qualification" maxlength="120" placeholder="For example: TESOL certificate"></label>
+                            <label>Teaching approach<textarea name="about" maxlength="3000" rows="6"></textarea></label>
+                            <label>Introduction image URL (optional)<input name="imageURL" type="url" maxlength="2000" placeholder="https://..."></label>
+                            <p class="profile-muted">These details are public and self-reported, not platform-verified. Use only images you have permission to share.</p>
+                            <p id="teacherFormError" class="profile-status" role="alert" hidden></p>
+                            <div class="profile-actions"><button class="profile-button profile-button-primary" type="submit">Save teaching profile</button><button id="teacherCancel" class="profile-button" type="button">Cancel</button></div>
+                        </form>
+                    </section>
+                </div>
+                <aside class="teacher-sidebar" aria-label="Teacher enrollment">
+                    <section class="profile-card"><h2 id="teacherBookingTitle">Book a class</h2><div id="teacherBooking"></div></section>
+                    <section class="profile-card"><h2>Learning with this teacher</h2><div id="teacherTrust"></div></section>
+                    <section class="profile-card"><h2>Teacher information</h2><p class="profile-muted">Teacher accounts are self-registered. Qualifications and experience are self-reported. Ratings are based on reviews from accepted learners.</p><a id="teacherStudioLink" class="profile-button" href="tutor-check.html?studio=1" hidden>Open teacher studio</a></section>
+                </aside>
+            </div>
+        </section>
+        <div class="profile-layout" id="communityProfileLayout">
             <div class="profile-main">
                 <div class="profile-tabs" role="tablist" aria-label="Profile sections">
                     <button id="profileTabPosts" role="tab" aria-selected="true" aria-controls="profilePosts" tabindex="0" data-profile-tab="profilePosts">Posts</button>
@@ -172,9 +215,9 @@
         </form>
     </dialog>
 
-    <script src="site-navbar.js?v=20261031-post-activity"></script>
+    <script src="site-navbar.js?v=20261101-tutor-check"></script>
     <script type="module" src="profile.js?v=20261031-settings-panel"></script>
-    <script type="module" src="profile-community.js?v=20261031-settings-panel"></script>
+    <script type="module" src="profile-community.js?v=20261101-teacher"></script>
     <script src="site-footer.js" defer></script>
 </body>
 </html>

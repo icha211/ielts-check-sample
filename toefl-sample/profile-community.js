@@ -5,6 +5,7 @@ import { onValue, ref, update } from "https://www.gstatic.com/firebasejs/10.8.0/
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { safeMediaURL, relativeTime } from "./js/community-model.js";
 import { profileSummary, validateCommunityProfile } from "./js/profile-model.js";
+import { createTeacherProfile } from "./profile-teacher.js?v=20261101-teacher";
 
 const $ = (id) => document.getElementById(id);
 const requestedUid = new URLSearchParams(location.search).get("uid");
@@ -77,6 +78,7 @@ const report = (error) => {
     $("profileSocialStatus").textContent = tr(error.message || "Profile could not load. Refresh to retry.");
     $("profileSocialStatus").dataset.error = "true";
 };
+const teacherProfile = createTeacherProfile(render);
 function text(id, value) { $(id).textContent = value; }
 function person(uid) {
     if (uid === state.uid) return { ...state.profiles[uid], displayName: resolveDisplayName(state.user, state.profile), photoURL: state.user?.photoURL || state.profile.photoURL || "" };
@@ -186,6 +188,7 @@ function render() {
         row.append(node("i", `ti ti-${achievement.icon}`), copy);
         return row;
     }) : [node("p", "profile-muted", tr("Share a post or make a connection to reach your first milestone."))]));
+    teacherProfile.render({ profile, details });
 }
 function listenConnections() {
     const allowed = state.uid && targetUid && targetUid !== state.uid && details.shareConnections === true;
@@ -218,6 +221,7 @@ const stopCommunity = subscribeCommunity((next) => {
         contactsReady = false; ownIndex = null; lastIndexAttempt = "";
         targetUid = requestedUid || next.uid || "";
         if (!targetUid) { report(new Error("Sign in to view your profile.")); return; }
+        teacherProfile.setTarget(targetUid, next.uid);
         const src = `social.html?profile=${encodeURIComponent(targetUid)}&embedded=1&v=20261031-profile-embed`;
         if ($("profileFeed").getAttribute("src") !== src) $("profileFeed").src = src;
         stopDetails = onValue(ref(db, `community_profiles/${targetUid}`), (snapshot) => {
@@ -323,5 +327,5 @@ window.addEventListener("qc:langchange", render);
 window.addEventListener("pagehide", (event) => {
     if (event.persisted) return;
     generation++;
-    stopCommunity(); stopDetails?.(); stopContacts?.(); stopConnections?.(); stopOwnIndex?.(); themeObserver.disconnect();
+    stopCommunity(); stopDetails?.(); stopContacts?.(); stopConnections?.(); stopOwnIndex?.(); teacherProfile.destroy(); themeObserver.disconnect();
 });

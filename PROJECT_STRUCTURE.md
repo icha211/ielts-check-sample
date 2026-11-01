@@ -117,6 +117,24 @@ clears all filters and sorting.
 The hero reuses existing tutor artwork; cover images come from teacher-provided
 HTTPS URLs. Teachers must have permission to use their images.
 
+Teacher accounts use a marketplace-specific layout on the existing
+`toefl-sample/profile.html`, implemented by `profile-teacher.js` and
+`profile-teacher.css`. Student profiles retain their community layout.
+Teacher tabs expose live published courses, real learner reviews, self-reported
+experience/qualification and teaching approach. The existing bio editor,
+account settings, connection requests, messaging and community feed are reused.
+The study sidebar is hidden only for the teacher-specific layout.
+`tutor_profiles/<uid>` holds public teaching details with teacher-only owner
+writes. Individual `tutor_roles/<uid>` values are public for profile routing;
+the whole role directory remains unreadable. No developer privileges change.
+Teacher ratings aggregate actual course reviews, including paused courses'
+existing reviews; reviewer counts are unique reviewers, not enrollment counts.
+No verified/certified badge or fabricated student total is displayed.
+Booking links to `tutor-check.html?teacher=<uid>` for course enrollment requests;
+`course=<id>` opens a specific published course and `studio=1` opens the
+owner's teacher studio. No appointment calendar, hourly rate or payments
+are implied. Deploy the updated database rules before releasing these profiles.
+
 Sign-up, email activation, email sign-in and Google sign-in offer Student or
 Teacher. Self-service `tutor_roles/<uid>` is a marketplace capability only,
 not a Firebase developer/custom-token role. Existing teacher accounts are not

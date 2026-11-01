@@ -32,6 +32,7 @@ export function courseStats(reviews = {}, requests = {}) {
 export function selectCourses(courses, filters = {}, stats = {}) {
     const search = String(filters.search || "").trim().toLocaleLowerCase();
     return Object.entries(courses).map(([id, course]) => ({ ...course, id })).filter(course => course.published &&
+        (!filters.teacher || course.teacherId === filters.teacher) &&
         (!filters.category || course.category === filters.category) && (!filters.type || course.type === filters.type) &&
         (!search || `${course.title} ${course.teacherName} ${course.summary}`.toLocaleLowerCase().includes(search)) &&
         (!filters.prices?.length || filters.prices.some(range => {
@@ -42,3 +43,25 @@ export function selectCourses(courses, filters = {}, stats = {}) {
             filters.sort === "rating" ? (stats[b.id]?.rating || 0) - (stats[a.id]?.rating || 0) : b.createdAt - a.createdAt);
 }
 export const rupiah = value => new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value);
+export function validateTeachingProfile(input) {
+    const result = { experience: input.experience };
+    if (!Number.isInteger(result.experience) || result.experience < 0 || result.experience > 80) throw new Error("Enter teaching experience as whole years, from 0 to 80.");
+    for (const [key, max] of [["qualification", 120], ["about", 3000], ["imageURL", 2000]]) {
+        result[key] = String(input[key] || "").trim();
+        if (result[key].length > max) throw new Error(`${key} must be ${max} characters or fewer.`);
+    }
+    if (result.imageURL) {
+        let url;
+        try { url = new URL(result.imageURL); } catch { throw new Error("Enter a valid HTTPS image URL."); }
+        if (url.protocol !== "https:") throw new Error("Images must use HTTPS.");
+    }
+    return result;
+}
+export function teachingSummary(courses, reviews, uid) {
+    const owned = Object.entries(courses).filter(([, course]) => course.teacherId === uid);
+    const published = owned.filter(([, course]) => course.published).map(([id, course]) => ({ ...course, id })).sort((a, b) => b.createdAt - a.createdAt);
+    const rows = owned.flatMap(([courseId, course]) => Object.entries(reviews[courseId] || {}).filter(([, review]) => Number.isInteger(review.rating) && review.rating >= 1 && review.rating <= 5)
+        .map(([studentId, review]) => ({ ...review, studentId, courseId, courseTitle: course.title }))).sort((a, b) => b.updatedAt - a.updatedAt);
+    return { courses: published, reviews: rows, reviewers: new Set(rows.map(row => row.studentId)).size,
+        rating: rows.length ? rows.reduce((sum, row) => sum + row.rating, 0) / rows.length : null };
+}

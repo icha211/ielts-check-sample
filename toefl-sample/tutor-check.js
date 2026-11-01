@@ -1,13 +1,17 @@
 import { auth } from "./js/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, rupiah } from "./js/tutor-model.js";
-import { watchCatalog, watchReviews, watchAccount, saveCourse, toggleLibrary, requestEnrollment, changeRequest, submitReview } from "./js/tutor-service.js";
+import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, rupiah } from "./js/tutor-model.js?v=20261101-teacher";
+import { watchCatalog, watchReviews, watchAccount, saveCourse, toggleLibrary, requestEnrollment, changeRequest, submitReview } from "./js/tutor-service.js?v=20261101-teacher";
 
 const $ = id => document.getElementById(id);
 let courses = {}, reviews = {}, library = {}, requests = {}, inbox = {};
 let uid = "", role = "student", version = 0, accountStop = () => {};
 let category = "", type = "", favoritesOnly = false, editingId = "", detailId = "";
 let catalogReady = false, reviewsReady = false, checkoutBusy = false;
+const pageParams = new URLSearchParams(location.search);
+const teacherFilter = pageParams.get("teacher") || "";
+let initialCourse = pageParams.get("course") || "";
+let initialStudio = pageParams.get("studio") === "1";
 const el = (tag, className = "", text = "") => {
     const node = document.createElement(tag);
     node.className = className;
@@ -120,6 +124,12 @@ function renderFilterState() {
         button.setAttribute("aria-label", `Remove filter: ${label}`);
         target.append(button);
     };
+    if (teacherFilter) {
+        const allTeachers = el("a", "profile-button", "All teachers ×");
+        allTeachers.href = "tutor-check.html";
+        allTeachers.setAttribute("aria-label", "Remove teacher filter: show all teachers");
+        target.append(allTeachers);
+    }
     if (category) add(TUTOR_CATEGORIES.find(([id]) => id === category)[1], () => category = "");
     if (type) add(TUTOR_TYPES[type], () => type = "");
     if ($("courseSearch").value.trim()) add(`Search: ${$("courseSearch").value.trim()}`, () => $("courseSearch").value = "");
@@ -146,7 +156,7 @@ function renderCatalog() {
     renderFilterState();
     if (!catalogReady || !reviewsReady) return;
     const statistics = stats();
-    const filters = { category, type, search: $("courseSearch").value, sort: $("courseSort").value,
+    const filters = { teacher: teacherFilter, category, type, search: $("courseSearch").value, sort: $("courseSort").value,
         rating: document.querySelector('[name="rating"]:checked').value,
         prices: [...document.querySelectorAll('[name="price"]:checked')].map(input => input.value) };
     let rows = selectCourses(courses, filters, statistics);
@@ -176,6 +186,13 @@ function renderCatalog() {
     renderCart();
     renderRequests();
     renderStudio();
+    if (initialCourse) {
+        const id = initialCourse;
+        initialCourse = "";
+        if (courses[id]?.published && (!teacherFilter || courses[id].teacherId === teacherFilter)) showCourse(id);
+        else error("This course is no longer available for enrollment.");
+    }
+    if (initialStudio && role === "teacher") { initialStudio = false; $("teacherStudio").hidden = false; $("teacherStudio").scrollIntoView({ block: "start" }); }
 }
 function row(title, description) {
     const node = el("div", "request-row");

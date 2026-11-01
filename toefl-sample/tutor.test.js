@@ -33,6 +33,7 @@ function fixture() {
     const context = vm.createContext({
         auth: { currentUser: { uid: "teacher", displayName: "Teacher" } }, db: {},
         validateCourse: model.validateCourse,
+        validateTeachingProfile: model.validateTeachingProfile,
         ref: (_, key) => ({ key }), query: (target, ...filters) => ({ ...target, filters }), orderByChild: value => value, equalTo: value => value,
         serverTimestamp: () => 123, push: target => ({ key: "new-course", path: target.key }),
         get: async target => ({ val: () => data[target.key], exists: () => data[target.key] !== undefined }),
@@ -44,6 +45,33 @@ function fixture() {
     vm.runInContext(source, context);
     return { context, data, writes };
 }
+    test("teaching profiles validate self-reported fields without accepting unsafe images", () => {
+        const profile = { experience: 8, qualification: "TESOL", about: "Speaking practice", imageURL: "" };
+        assert.equal(model.validateTeachingProfile(profile).experience, 8);
+        for (const change of [{ experience: -1 }, { experience: 1.5 }, { experience: 81 }, { qualification: "a".repeat(121) }, { about: "a".repeat(3001) }, { imageURL: "javascript:alert(1)" }]) {
+            assert.throws(() => model.validateTeachingProfile({ ...profile, ...change }));
+        }
+    });
+    test("teacher summary uses real owned courses and counts unique reviewers, not invented students", () => {
+        const catalog = { a: { ...course, teacherId: "one", published: true }, b: { ...course, teacherId: "one", published: false }, c: { ...course, teacherId: "other" } };
+        const reviews = { a: { student: { rating: 5 } }, b: { student: { rating: 3 }, second: { rating: 4 } }, c: { outsider: { rating: 1 } } };
+        const stats = model.teachingSummary(catalog, reviews, "one");
+        assert.equal(stats.courses.length, 1);
+        assert.equal(stats.reviews.length, 3);
+        assert.equal(stats.reviewers, 2);
+        assert.equal(stats.rating, 4);
+        assert.equal(model.teachingSummary({}, {}, "new").rating, null);
+        assert.equal(model.selectCourses(catalog, { teacher: "one" }).length, 1);
+    });
+    test("only teachers save their own teaching profile", async () => {
+        const { context, data, writes } = fixture();
+        const input = { experience: 2, qualification: "", about: "My approach", imageURL: "" };
+        await assert.rejects(context.saveTeachingProfile(input), /Only teachers/);
+        data["tutor_roles/teacher"] = "teacher";
+        await context.saveTeachingProfile(input);
+        assert.equal(writes[0][0], "tutor_profiles/teacher");
+        assert.equal(writes[0][1].updatedAt, 123);
+    });
 test("teacher role is self-service but separate from developer claims; existing teachers stay teachers", async () => {
     const { context, data, writes } = fixture();
     await context.registerMarketplaceRole("teacher");

@@ -5,9 +5,22 @@
 
     "tutor_roles": {
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
+        ".read": true,
         ".write": "auth != null && auth.uid === $uid && newData.exists()",
         ".validate": "newData.val() === 'student' || newData.val() === 'teacher'"
+      }
+    },
+    "tutor_profiles": {
+      "$uid": {
+        ".read": true,
+        ".write": "auth != null && auth.uid === $uid && root.child('tutor_roles').child(auth.uid).val() === 'teacher' && newData.exists()",
+        ".validate": "newData.hasChildren(['experience','qualification','about','imageURL','updatedAt'])",
+        "experience": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 80 && newData.val() % 1 === 0" },
+        "qualification": { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "about": { ".validate": "newData.isString() && newData.val().length <= 3000" },
+        "imageURL": { ".validate": "newData.isString() && newData.val().length <= 2000 && (newData.val() === '' || newData.val().beginsWith('https://'))" },
+        "updatedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
+        "$other": { ".validate": false }
       }
     },
     "tutor_courses": {

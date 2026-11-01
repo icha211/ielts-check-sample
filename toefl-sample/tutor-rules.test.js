@@ -15,6 +15,8 @@ async function request(path, uid, method = "GET", data, filters = {}) {
 }
 test("teacher self-registration cannot grant developer privileges; listing ownership is enforced", { skip: !host }, async () => {
     assert.equal((await request("tutor_roles/tutor-teacher", "tutor-teacher", "PUT", "teacher")).status, 200);
+    assert.equal((await request("tutor_roles/tutor-teacher", null)).status, 200);
+    assert.equal((await request("tutor_roles", null)).status, 401);
     assert.equal((await request("tutor_roles/tutor-teacher", "stranger", "PUT", "teacher")).status, 401);
     assert.equal((await request("tutor_roles/tutor-teacher", "tutor-teacher", "PUT", "developer")).status, 401);
     const course = { teacherId: "tutor-teacher", teacherName: "Teacher", title: "IELTS", summary: "Practice", curriculum: "Speaking", schedule: "Monday WIB", category: "ielts", type: "live", price: 100000, originalPrice: 0, coverURL: "", published: true, createdAt: stamp, updatedAt: stamp };
@@ -22,6 +24,16 @@ test("teacher self-registration cannot grant developer privileges; listing owner
     assert.equal((await request("tutor_courses/test-course", null)).status, 200);
     assert.equal((await request("tutor_courses/test-course", "stranger", "PATCH", { price: 0, updatedAt: stamp })).status, 401);
     assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PATCH", { price: -1, updatedAt: stamp })).status, 401);
+});
+test("public teaching backgrounds remain owner-written and require a teacher role", { skip: !host }, async () => {
+    const profile = { experience: 8, qualification: "TESOL (self-reported)", about: "My teaching approach", imageURL: "", updatedAt: stamp };
+    assert.equal((await request("tutor_profiles/profile-teacher", "profile-teacher", "PUT", profile)).status, 401);
+    await request("tutor_roles/profile-teacher", "profile-teacher", "PUT", "teacher");
+    assert.equal((await request("tutor_profiles/profile-teacher", "profile-teacher", "PUT", profile)).status, 200);
+    assert.equal((await request("tutor_profiles/profile-teacher", null)).status, 200);
+    assert.equal((await request("tutor_profiles/profile-teacher", "stranger", "PATCH", { about: "Changed", updatedAt: stamp })).status, 401);
+    assert.equal((await request("tutor_profiles/profile-teacher", "profile-teacher", "PATCH", { verified: true, updatedAt: stamp })).status, 401);
+    assert.equal((await request("tutor_profiles/profile-teacher", "profile-teacher", "PATCH", { experience: 81, updatedAt: stamp })).status, 401);
 });
 test("enrollment prices and transitions are protected, inboxes are private, only accepted learners review", { skip: !host }, async () => {
     const course = { teacherId: "enroll-teacher", teacherName: "Teacher", title: "Speaking", summary: "Practice", curriculum: "Speaking", schedule: "Monday WIB", category: "speaking", type: "live", price: 100000, originalPrice: 0, coverURL: "", published: true, createdAt: stamp, updatedAt: stamp };
