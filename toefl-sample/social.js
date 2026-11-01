@@ -5,6 +5,11 @@ import { db } from "./js/firebase-config.js";
 import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 window.QCPrefs?.addTranslations("id", {
+    "Photo layout": "Tata letak foto", "Auto": "Otomatis", "Whole image": "Seluruh gambar",
+    "Crop to fill": "Potong sesuai bingkai", "Reset": "Atur ulang",
+    "Portrait": "Potret", "Square": "Persegi", "Landscape": "Lanskap",
+    "All details visible. Your original stays unchanged.": "Semua detail terlihat. Gambar asli tidak berubah.",
+    "Edges are cropped. Use the sliders to position your subject.": "Tepi dipotong. Gunakan penggeser untuk mengatur posisi subjek.",
     "Adjust picture": "Sesuaikan gambar", "Format": "Format", "Display": "Tampilan",
     "Automatic": "Otomatis", "Portrait (4:5)": "Potret (4:5)", "Square (1:1)": "Persegi (1:1)",
     "Landscape (1.91:1)": "Lanskap (1.91:1)", "Show whole picture": "Tampilkan seluruh gambar",
@@ -741,7 +746,15 @@ function framingSettings() {
 }
 function updateImageFraming() {
     const settings = framingSettings();
+    document.querySelectorAll("[data-image-control]").forEach(button => {
+        button.setAttribute("aria-pressed", String(settings[button.dataset.imageControl] === button.dataset.value));
+    });
     $("imagePosition").hidden = settings.imageFit !== "cover";
+    $("imageXValue").textContent = `${settings.imageX}%`;
+    $("imageYValue").textContent = `${settings.imageY}%`;
+    $("imageFramingHint").textContent = tr(settings.imageFit === "cover"
+        ? "Edges are cropped. Use the sliders to position your subject."
+        : "All details visible. Your original stays unchanged.");
     const preview = $("mediaPreview").querySelector("img");
     if (!preview) return;
     preview.dataset.requestedFormat = settings.imageFormat;
@@ -758,6 +771,10 @@ function resetImageFraming() {
     updateImageFraming();
 }
 ["imageFormat", "imageFit", "imageX", "imageY"].forEach(id => $(id).addEventListener("input", updateImageFraming));
+document.querySelectorAll("[data-image-control]").forEach(button => button.addEventListener("click", () => {
+    $(button.dataset.imageControl).value = button.dataset.value;
+    updateImageFraming();
+}));
 $("resetImageFraming").addEventListener("click", resetImageFraming);
 $("mediaInput").addEventListener("change", () => {
     const selected = $("mediaInput").files[0];

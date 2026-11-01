@@ -91,6 +91,9 @@ reference aspect ratio: portrait 4:5 (1080x1350), square 1:1 (1080x1080), or
 landscape 1080:566 (about 1.91:1). The composer includes live framing controls:
 automatic/manual format, Show whole picture (default), Fill frame, horizontal/
 vertical position and reset. Owners can also adjust framing through Edit post.
+The editor uses visual format buttons and a Whole image/Crop to fill toggle.
+Its scaled preview is capped at 320px tall without changing the feed frame or
+saved settings; crop sliders and percentage readouts appear only in crop mode.
 `imageFormat`, `imageFit`, `imageX` and `imageY` are validated post metadata, not
 destructive image edits. Older photos default to showing the whole picture.
 Private photos and embedded profile feeds share the same display settings;

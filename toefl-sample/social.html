@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
     <script src="qc-preferences.js?v=20261031-explore"></script>
     <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
-    <link rel="stylesheet" href="social.css?v=20261101-image-framing">
+    <link rel="stylesheet" href="social.css?v=20261101-photo-editor">
 </head>
 <body class="explore-page">
     <script src="site-navbar.js?v=20261031-post-activity"></script>
@@ -70,17 +70,24 @@
                             </div>
                             <div id="mediaPreview" class="media-preview" hidden></div>
                             <fieldset id="imageFraming" class="image-framing" hidden>
-                                <legend>Adjust picture</legend>
-                                <div class="image-framing-options">
-                                    <label>Format<select id="imageFormat"><option value="auto">Automatic</option><option value="portrait">Portrait (4:5)</option><option value="square">Square (1:1)</option><option value="landscape">Landscape (1.91:1)</option></select></label>
-                                    <label>Display<select id="imageFit"><option value="contain">Show whole picture</option><option value="cover">Fill frame (crop)</option></select></label>
+                                <legend>Photo layout</legend>
+                                <div class="image-format-choices" role="group" aria-label="Picture format">
+                                    <button type="button" data-image-control="imageFormat" data-value="auto" aria-pressed="true"><i class="ti ti-sparkles" aria-hidden="true"></i><span data-i18n="Auto">Auto</span></button>
+                                    <button type="button" data-image-control="imageFormat" data-value="portrait" aria-pressed="false"><span class="format-outline format-portrait" aria-hidden="true"></span><span>4:5</span><span class="sr-only" data-i18n="Portrait">Portrait</span></button>
+                                    <button type="button" data-image-control="imageFormat" data-value="square" aria-pressed="false"><span class="format-outline format-square" aria-hidden="true"></span><span>1:1</span><span class="sr-only" data-i18n="Square">Square</span></button>
+                                    <button type="button" data-image-control="imageFormat" data-value="landscape" aria-pressed="false"><span class="format-outline format-landscape" aria-hidden="true"></span><span>1.91:1</span><span class="sr-only" data-i18n="Landscape">Landscape</span></button>
                                 </div>
+                                <div class="image-fit-choices" role="group" aria-label="Picture display">
+                                    <button type="button" data-image-control="imageFit" data-value="contain" aria-pressed="true"><i class="ti ti-photo" aria-hidden="true"></i><span data-i18n="Whole image">Whole image</span></button>
+                                    <button type="button" data-image-control="imageFit" data-value="cover" aria-pressed="false"><i class="ti ti-crop" aria-hidden="true"></i><span data-i18n="Crop to fill">Crop to fill</span></button>
+                                </div>
+                                <select id="imageFormat" hidden aria-label="Picture format"><option value="auto">Automatic</option><option value="portrait">Portrait (4:5)</option><option value="square">Square (1:1)</option><option value="landscape">Landscape (1.91:1)</option></select>
+                                <select id="imageFit" hidden aria-label="Picture display"><option value="contain">Show whole picture</option><option value="cover">Fill frame (crop)</option></select>
                                 <div id="imagePosition" hidden>
-                                    <label for="imageX">Horizontal position</label><input id="imageX" type="range" min="0" max="100" value="50">
-                                    <label for="imageY">Vertical position</label><input id="imageY" type="range" min="0" max="100" value="50">
+                                    <div><label for="imageX">Horizontal position <output id="imageXValue" for="imageX">50%</output></label><input id="imageX" type="range" min="0" max="100" value="50"></div>
+                                    <div><label for="imageY">Vertical position <output id="imageYValue" for="imageY">50%</output></label><input id="imageY" type="range" min="0" max="100" value="50"></div>
                                 </div>
-                                <p class="helper">Show whole picture keeps all details visible. Fill frame crops edges; adjust the position to keep your subject in view.</p>
-                                <button id="resetImageFraming" class="text-button" type="button">Reset framing</button>
+                                <div class="image-framing-footer"><p id="imageFramingHint" class="helper" role="status">All details visible. Your original stays unchanged.</p><button id="resetImageFraming" class="text-button" type="button">Reset</button></div>
                             </fieldset>
                         </div>
                     </div>
@@ -151,6 +158,6 @@
         <div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog>Cancel</button><button class="primary-button" type="button" id="confirmDelete">Remove post</button></div>
     </dialog>
     <p id="liveStatus" class="sr-only" aria-live="polite"></p>
-    <script type="module" src="social.js?v=20261101-image-framing"></script>
+    <script type="module" src="social.js?v=20261101-photo-editor"></script>
 </body>
 </html>
