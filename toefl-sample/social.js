@@ -1,10 +1,11 @@
 import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261101-image-framing";
-import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFeedFormat } from "./js/community-model.js?v=20261101-image-framing";
+import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFeedFormat, imageDisplaySettings } from "./js/community-model.js?v=20261101-public-frame";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { db } from "./js/firebase-config.js";
 import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 window.QCPrefs?.addTranslations("id", {
+    "Public photos use a wide frame. Padding keeps the whole image visible when proportions differ.": "Foto publik menggunakan bingkai lebar. Ruang tambahan menjaga seluruh gambar terlihat jika proporsinya berbeda.",
     "Photo layout": "Tata letak foto", "Auto": "Otomatis", "Whole image": "Seluruh gambar",
     "Crop to fill": "Potong sesuai bingkai", "Reset": "Atur ulang",
     "Portrait": "Potret", "Square": "Persegi", "Landscape": "Lanskap",
@@ -724,7 +725,10 @@ document.querySelectorAll("[data-filter]").forEach((node) => node.addEventListen
 document.querySelectorAll("[data-compose]").forEach((node) => node.addEventListener("click", () => startComposer(node.dataset.compose)));
 $("postBody").addEventListener("focus", () => { $("composerDetails").hidden = false; updateComposerUI(); });
 $("postBody").addEventListener("input", updateComposerUI);
-$("postVisibility").addEventListener("change", updateComposerUI);
+$("postVisibility").addEventListener("change", () => {
+    updateComposerUI();
+    updateImageFraming();
+});
 $("postSort").addEventListener("change", renderFeed);
 $("clearGroup").addEventListener("click", () => { groupId = ""; renderFilters(); renderFeed(); });
 $("viewPeople").addEventListener("click", () => openPeople("online"));
@@ -733,6 +737,7 @@ $("peopleSearch").addEventListener("input", renderPeopleResults);
 $("cancelEdit").addEventListener("click", resetComposer);
 $("attachButton").addEventListener("click", () => $("mediaInput").click());
 function formatFeedImage(image, settings = {}) {
+    settings = imageDisplaySettings(settings);
     image.dataset.requestedFormat = settings.imageFormat || "auto";
     image.dataset.feedFormat = image.dataset.requestedFormat === "auto" ? "square" : image.dataset.requestedFormat;
     image.style.objectFit = settings.imageFit || "contain";
@@ -742,17 +747,22 @@ function formatFeedImage(image, settings = {}) {
     });
 }
 function framingSettings() {
-    return { imageFormat: $("imageFormat").value, imageFit: $("imageFit").value, imageX: Number($("imageX").value), imageY: Number($("imageY").value) };
+    return imageDisplaySettings({ visibility: $("postVisibility").value, imageFormat: $("imageFormat").value, imageFit: $("imageFit").value, imageX: Number($("imageX").value), imageY: Number($("imageY").value) });
 }
 function updateImageFraming() {
     const settings = framingSettings();
+    const publicPhoto = $("postVisibility").value !== "friends";
+    document.querySelectorAll(".image-format-choices, .image-fit-choices").forEach(group => { group.hidden = publicPhoto; });
+    $("resetImageFraming").hidden = publicPhoto;
     document.querySelectorAll("[data-image-control]").forEach(button => {
         button.setAttribute("aria-pressed", String(settings[button.dataset.imageControl] === button.dataset.value));
     });
     $("imagePosition").hidden = settings.imageFit !== "cover";
     $("imageXValue").textContent = `${settings.imageX}%`;
     $("imageYValue").textContent = `${settings.imageY}%`;
-    $("imageFramingHint").textContent = tr(settings.imageFit === "cover"
+    $("imageFramingHint").textContent = tr(publicPhoto
+        ? "Public photos use a wide frame. Padding keeps the whole image visible when proportions differ."
+        : settings.imageFit === "cover"
         ? "Edges are cropped. Use the sliders to position your subject."
         : "All details visible. Your original stays unchanged.");
     const preview = $("mediaPreview").querySelector("img");
@@ -790,7 +800,7 @@ $("mediaInput").addEventListener("change", () => {
     previewURL = URL.createObjectURL(selected);
     const preview = element(selected.type.startsWith("video/") ? "video" : "img");
     if (selected.type.startsWith("image/")) {
-        formatFeedImage(preview);
+        formatFeedImage(preview, { visibility: $("postVisibility").value });
         $("imageFraming").hidden = false;
         preview.addEventListener("error", () => {
             clearPreview();
@@ -802,6 +812,7 @@ $("mediaInput").addEventListener("change", () => {
     else preview.alt = tr("Attachment preview");
     $("mediaPreview").append(preview, button(tr("Remove attachment"), "text-button", clearPreview));
     $("mediaPreview").hidden = false;
+    updateImageFraming();
     $("composerError").hidden = true;
 });
 $("postForm").addEventListener("submit", async (event) => {

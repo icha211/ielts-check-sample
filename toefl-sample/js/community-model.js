@@ -14,6 +14,16 @@ export function imageFeedFormat(width, height) {
         .reduce((closest, format) => Math.abs(ratio - format[1]) < Math.abs(ratio - closest[1]) ? format : closest)[0];
 }
 
+export function imageDisplaySettings(settings = {}) {
+    if (settings.visibility !== "friends") {
+        return { imageFormat: "landscape", imageFit: "contain", imageX: 50, imageY: 50 };
+    }
+    return {
+        imageFormat: settings.imageFormat || "auto", imageFit: settings.imageFit || "contain",
+        imageX: settings.imageX ?? 50, imageY: settings.imageY ?? 50
+    };
+}
+
 export function validatePost({ title, body, category, groupId = "", visibility = "public", imageFormat = "auto", imageFit = "contain", imageX = 50, imageY = 50 }, developer = false) {
     const result = { title: String(title || "").trim(), body: String(body || "").trim(), category, groupId, visibility };
     if (!["auto", "portrait", "square", "landscape"].includes(imageFormat) || !["contain", "cover"].includes(imageFit) ||

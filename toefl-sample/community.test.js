@@ -9,6 +9,17 @@ const source = fs.readFileSync(path.join(__dirname, "js", "community-model.js"),
 const model = vm.createContext({ URL, Intl });
 vm.runInContext(source, model);
 const post = { title: " Listening advice ", body: " Practice with real recordings. ", category: "tips", groupId: "listening" };
+test("public photos always preserve the whole image in a centered wide frame, including older posts", () => {
+    for (const settings of [{}, { visibility: "public" }, { visibility: "public", imageFormat: "portrait", imageFit: "cover", imageX: 0, imageY: 100 }]) {
+        assert.deepEqual(JSON.parse(JSON.stringify(model.imageDisplaySettings(settings))), {
+            imageFormat: "landscape", imageFit: "contain", imageX: 50, imageY: 50
+        });
+    }
+    const privateSettings = { visibility: "friends", imageFormat: "square", imageFit: "cover", imageX: 20, imageY: 80 };
+    assert.equal(model.imageDisplaySettings(privateSettings).imageFit, "cover");
+    assert.equal(model.imageDisplaySettings(privateSettings).imageFormat, "square");
+    assert.equal(model.imageDisplaySettings(privateSettings).imageX, 20);
+});
 test("feed pictures choose the closest portrait, square or landscape reference ratio", () => {
     for (const [width, height, expected] of [
         [1080, 1350, "portrait"], [1080, 1080, "square"], [1080, 566, "landscape"],
