@@ -1,8 +1,14 @@
 import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261031-post-activity";
 import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime } from "./js/community-model.js";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
+import { db } from "./js/firebase-config.js";
+import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 window.QCPrefs?.addTranslations("id", {
+    "Your profile": "Profil Anda", "View your profile": "Lihat profil Anda",
+    "Sign in to connect with other learners.": "Masuk untuk terhubung dengan pelajar lain.",
+    "Add a bio to introduce yourself.": "Tambahkan bio untuk memperkenalkan diri.",
+    "Your profile details could not load. Refresh to retry.": "Detail profil Anda tidak dapat dimuat. Muat ulang untuk mencoba lagi.",
     "Audience": "Audiens",
     "Public": "Publik",
     "Friends only": "Hanya teman",
@@ -559,7 +565,35 @@ function editPost(post) {
     $("postForm").scrollIntoView({ block: "center", behavior: "instant" });
 }
 const subscriptions = new Map();
+let stopProfileDetails;
+let profileDetails = {};
+function renderProfileCard() {
+    if (embeddedProfile) return;
+    const signedIn = Boolean(state.uid);
+    const profile = person(state.uid);
+    const name = signedIn ? resolveDisplayName(state.user, state.profile) : tr("Your profile");
+    const href = signedIn ? "profile.html" : "signup.html";
+    const portrait = $("exploreProfileAvatar");
+    portrait.replaceChildren(avatar(signedIn ? profile : { displayName: tr("Your profile"), photoURL: "" }));
+    portrait.href = href;
+    portrait.setAttribute("aria-label", tr(signedIn ? "View your profile" : "Sign in"));
+    const nameLink = $("exploreProfileName");
+    nameLink.textContent = name;
+    nameLink.title = name;
+    nameLink.href = href;
+    $("exploreProfileBio").textContent = signedIn ? profileDetails.bio || tr("Add a bio to introduce yourself.") : tr("Sign in to connect with other learners.");
+    const location = signedIn ? profileDetails.location || state.profiles[state.uid]?.nationality || "" : "";
+    $("exploreProfileLocation").textContent = location;
+    $("exploreProfileLocation").hidden = !location;
+    const level = $("exploreProfileLevel");
+    level.replaceChildren();
+    level.hidden = !signedIn || !profile.level;
+    if (!level.hidden) level.append(icon("school"), element("span", "", tr("Level {level}", { level: profile.level })));
+    $("exploreProfileLink").href = href;
+    $("exploreProfileLink").textContent = tr(signedIn ? "View your profile" : "Sign in");
+}
 function renderIdentity() {
+    renderProfileCard();
     if (profileAuthor) {
         $("postForm").hidden = state.uid !== profileAuthor;
         if (embeddedProfile) $("communityStatus").hidden = true;
@@ -588,6 +622,24 @@ const unsubscribe = subscribeCommunity(async (next) => {
     if (accountChanged) {
         syncError = false;
         const version = ++authVersion;
+        stopProfileDetails?.();
+        stopProfileDetails = null;
+        profileDetails = {};
+        $("exploreProfileError").hidden = true;
+        if (next.uid && !embeddedProfile) {
+            stopProfileDetails = onValue(ref(db, `community_profiles/${next.uid}`), (snapshot) => {
+                if (version !== authVersion) return;
+                profileDetails = snapshot.val() || {};
+                renderProfileCard();
+            }, (error) => {
+                if (version !== authVersion) return;
+                profileDetails = {};
+                console.error("[Community] Profile card could not sync:", error);
+                $("exploreProfileError").textContent = tr("Your profile details could not load. Refresh to retry.");
+                $("exploreProfileError").hidden = false;
+                renderProfileCard();
+            });
+        }
         subscriptions.forEach((stop) => stop());
         subscriptions.clear();
         activity.clear();
@@ -739,6 +791,7 @@ const clock = setInterval(() => {
 window.addEventListener("pagehide", (event) => {
     if (event.persisted) return;
     clearInterval(clock);
+    stopProfileDetails?.();
     privateMedia.forEach((_, id) => releasePrivateMedia(id));
     unsubscribe();
     subscriptions.forEach((stop) => stop());

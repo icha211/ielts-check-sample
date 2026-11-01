@@ -54,6 +54,11 @@ Profiles without shared details use explicit empty states, not sample identities
 Deploy database rules before using the profile's bio and connection features.
 
 `toefl-sample/social.html` uses `social.css` and `social.js` without a build step.
+Explore keeps the shared top header but hides the study-navigation sidebar and
+its layout gutter only on this page. A responsive left profile rail uses the
+current account photo/name, public community bio/location and saved learner
+level, with Profile/Message/Explore links and a signed-out invitation. It stacks
+above the feed on mobile and is hidden entirely in embedded profile feeds.
 It shares the existing Firebase Auth account, opt-in `partnerDirectory` profiles
 and presence, and `message.html?to=<uid>` messaging flow. Study-buddy matches rank
 the learner's saved CEFR level; missing levels are not replaced by invented scores.
