@@ -3,6 +3,78 @@
     ".read": false,
     ".write": false,
 
+    "tutor_roles": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".validate": "newData.val() === 'student' || newData.val() === 'teacher'"
+      }
+    },
+    "tutor_courses": {
+      ".read": true,
+      ".indexOn": ["teacherId", "published"],
+      "$course": {
+        ".write": "auth != null && root.child('tutor_roles').child(auth.uid).val() === 'teacher' && newData.exists() && newData.child('teacherId').val() === auth.uid && (!data.exists() || data.child('teacherId').val() === auth.uid)",
+        ".validate": "newData.hasChildren(['teacherId','teacherName','title','summary','curriculum','schedule','category','type','price','originalPrice','coverURL','published','createdAt','updatedAt'])",
+        "teacherId": { ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())" },
+        "teacherName": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+        "title": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
+        "summary": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500" },
+        "curriculum": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 5000" },
+        "schedule": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 300" },
+        "category": { ".validate": "newData.val() === 'ielts' || newData.val() === 'speaking' || newData.val() === 'listening' || newData.val() === 'reading' || newData.val() === 'writing' || newData.val() === 'general' || newData.val() === 'business' || newData.val() === 'others'" },
+        "type": { ".validate": "newData.val() === 'live' || newData.val() === 'self' || newData.val() === 'package'" },
+        "price": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000 && newData.val() % 1 === 0" },
+        "originalPrice": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() <= 100000000 && (newData.val() === 0 || newData.val() > newData.parent().child('price').val())" },
+        "coverURL": { ".validate": "newData.isString() && newData.val().length <= 2000 && (newData.val() === '' || newData.val().beginsWith('https://'))" },
+        "published": { ".validate": "newData.isBoolean()" },
+        "createdAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
+        "updatedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
+        "$other": { ".validate": false }
+      }
+    },
+    "tutor_library": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$kind": {
+          "$course": {
+            ".write": "auth != null && auth.uid === $uid && ($kind === 'cart' || $kind === 'favorites') && (!newData.exists() || root.child('tutor_courses').child($course).child('published').val() === true)",
+            ".validate": "newData.val() === true"
+          }
+        }
+      }
+    },
+    "tutor_requests": {
+      ".indexOn": ["studentId", "teacherId"],
+      ".read": "auth != null && ((query.orderByChild === 'studentId' && query.equalTo === auth.uid) || (query.orderByChild === 'teacherId' && query.equalTo === auth.uid))",
+      "$request": {
+        ".write": "auth != null && newData.exists() && ((!data.exists() && newData.child('studentId').val() === auth.uid && newData.child('teacherId').val() !== auth.uid && newData.child('status').val() === 'pending' && root.child('tutor_courses').child(newData.child('courseId').val()).child('published').val() === true && newData.child('teacherId').val() === root.child('tutor_courses').child(newData.child('courseId').val()).child('teacherId').val() && newData.child('price').val() === root.child('tutor_courses').child(newData.child('courseId').val()).child('price').val() && $request === newData.child('courseId').val() + '_' + auth.uid) || (data.child('status').val() === 'pending' && ((auth.uid === data.child('teacherId').val() && (newData.child('status').val() === 'accepted' || newData.child('status').val() === 'declined')) || (auth.uid === data.child('studentId').val() && newData.child('status').val() === 'cancelled'))))",
+        ".validate": "newData.hasChildren(['courseId','studentId','teacherId','studentName','price','status','createdAt','updatedAt'])",
+        "courseId": { ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())" },
+        "studentId": { ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())" },
+        "teacherId": { ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())" },
+        "studentName": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100 && (!data.exists() || newData.val() === data.val())" },
+        "price": { ".validate": "newData.isNumber() && (!data.exists() || newData.val() === data.val())" },
+        "status": { ".validate": "newData.val() === 'pending' || newData.val() === 'accepted' || newData.val() === 'declined' || newData.val() === 'cancelled'" },
+        "createdAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
+        "updatedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
+        "$other": { ".validate": false }
+      }
+    },
+    "tutor_reviews": {
+      ".read": true,
+      "$course": {
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && newData.exists() && root.child('tutor_requests').child($course + '_' + $uid).child('status').val() === 'accepted'",
+          ".validate": "newData.hasChildren(['rating','text','studentName','updatedAt'])",
+          "rating": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 1 && newData.val() <= 5" },
+          "text": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 1000" },
+          "studentName": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
+          "updatedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
+          "$other": { ".validate": false }
+        }
+      }
+    },
     "user_history_summaries": {
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || (auth.token.role === 'developer' && auth.token.email === 'quickcheck.edu@gmail.com' && auth.token.email_verified === true))",

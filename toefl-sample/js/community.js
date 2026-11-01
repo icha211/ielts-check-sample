@@ -134,7 +134,7 @@ export async function savePost(input, file, developer, editingId = null) {
         return editingId;
     }
     if (file) {
-        if (!["image/png", "image/jpeg", "image/webp", "video/mp4", "video/webm"].includes(file.type)) throw new Error("Choose a PNG, JPEG, WebP, MP4, or WebM file.");
+        if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) throw new Error("Choose a PNG, JPEG or WebP picture up to 40 MB.");
         if (file.type.startsWith("image/")) {
             if (file.size > 40 * 1024 * 1024) throw new Error("Pictures must be 40 MB or smaller before compression.");
             try {
@@ -144,8 +144,6 @@ export async function savePost(input, file, developer, editingId = null) {
                 throw new Error("This picture could not be compressed. Choose another picture and try again.", { cause: error });
             }
             if (file.size > 2 * 1024 * 1024) throw new Error("The compressed picture must be 2 MB or smaller.");
-        } else if (file.size > 20 * 1024 * 1024) {
-            throw new Error("Videos must be 20 MB or smaller.");
         }
         if (auth.currentUser?.uid !== user.uid) throw new Error("Your account changed. Sign in again before posting.");
     }
@@ -170,7 +168,7 @@ export async function savePost(input, file, developer, editingId = null) {
     try {
         if (uploaded) {
             media.mediaURL = await getDownloadURL(uploaded);
-            media.mediaType = file.type.startsWith("video/") ? "video" : "image";
+            media.mediaType = "image";
         }
         await set(target, { ...post, ...media, authorId: user.uid, createdAt: serverTimestamp() });
         postLocations.set(target.key, `${collection}/${target.key}`);

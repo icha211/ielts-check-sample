@@ -17,6 +17,7 @@
     "history.html": "history",
     "full-test-summary.html": "history",
     "social.html": "social",
+    "tutor-check.html": "tutor",
     "message.html": "message",
     "profile.html": "profile"
   }[page] || "";
@@ -50,7 +51,8 @@
     ] },
     social: { label: "Social", items: [
       { label: "Messages", icon: "message-circle", href: "message.html" },
-      { label: "Explore", icon: "globe", href: "social.html#community" }
+      { label: "Explore", icon: "globe", href: "social.html#community" },
+      { label: "Tutor Check", icon: "graduation-cap", href: "tutor-check.html" }
     ] }
   };
   const R = 120;
@@ -61,6 +63,7 @@
   <nav class="qcnav-links" aria-label="Main navigation" data-i18n-attr="aria-label">
     <a class="qcnav-link${cls("dashboard")}" href="index.html"${cur("dashboard")}><i data-lucide="house"></i><span data-i18n>Home</span></a>
     <a class="qcnav-link${cls("social")}" href="social.html#community"${cur("social")}><i data-lucide="globe"></i><span data-i18n>Explore</span></a>
+    <a class="qcnav-link${cls("tutor")}" href="tutor-check.html"${cur("tutor")}><i data-lucide="graduation-cap"></i><span data-i18n>Tutor Check</span></a>
   </nav>
   <div class="qcnav-actions">
     <a class="qcnav-upgrade" href="index.html#upgrade" data-i18n>Upgrade</a>

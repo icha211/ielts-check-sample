@@ -82,8 +82,8 @@ Deploy the updated database rules before publishing the timestamped-like client.
 Post pictures over 2 MB are compressed with the shared account-photo helper
 before uploading or encrypting private media. PNG/JPEG/WebP sources up to 40 MB
 are accepted; smaller pictures stay unchanged. Re-encoding produces JPEG, with
-transparent areas painted white. Videos retain their 20 MB limit and are not
-compressed. Compression failures stop publication and appear in the composer.
+transparent areas painted white. Video uploads are disabled. Compression
+failures stop publication and appear in the composer.
 Private-media download CORS failures are separate from upload size: the Storage
 bucket must allow the deployed site's origin to read encrypted attachment bytes.
 All post photos, including existing public/friends-only posts and profile embeds,
@@ -97,20 +97,59 @@ The scaled preview uses the same crop as the feed without altering the original.
 destructive image edits. Legacy format/fit values remain stored but the display
 policy overrides format; saved fit choices and vertical positions are retained.
 Embedded profile feeds use the same display policy;
-videos retain their existing sizing and controls. Deploy framing rules before
+Existing videos retain their sizing and playback controls, but new community
+uploads accept only PNG, JPEG and WebP pictures in both the composer and service.
+Deploy framing rules before
 publishing the client.
+
+### Tutor Check marketplace
+
+`toefl-sample/tutor-check.html`, `tutor-check.css` and `tutor-check.js` implement
+the course marketplace linked beside Explore in the shared header and mobile
+Social menu. `js/tutor-model.js` contains validation, IDR pricing and filters;
+`js/tutor-service.js` owns Firebase subscriptions and writes. No demo listings
+are inserted; the catalogue starts empty until teachers publish real courses.
+Filters are collapsible and start closed on mobile to keep course listings nearby.
+The hero reuses existing tutor artwork; cover images come from teacher-provided
+HTTPS URLs. Teachers must have permission to use their images.
+
+Sign-up, email activation, email sign-in and Google sign-in offer Student or
+Teacher. Self-service `tutor_roles/<uid>` is a marketplace capability only,
+not a Firebase developer/custom-token role. Existing teacher accounts are not
+downgraded by signing in with Student selected. Teachers publish/edit only their
+own courses without developer approval; pausing hides a listing from browsing
+and rejects new enrollment requests. Catalogue data is public even when paused,
+so course fields must not include private material.
+
+`tutor_courses` and `tutor_reviews` are live public catalogues.
+`tutor_library/<uid>/{cart,favorites}` is owner-only.
+`tutor_requests` is private and query-readable only by the student's `studentId`
+or teacher's `teacherId`. Requests snapshot the current IDR price and move from
+pending to accepted/declined (teacher) or cancelled (student). They do not charge
+money, deliver paid course material or imply payment has occurred. Existing
+requests are not duplicated; failures remain in the cart with explicit errors.
+Only accepted learners can write a review; displayed ratings use actual reviews,
+not fabricated sales counts or verification badges. Open course details update
+with live requests/reviews while preserving review drafts and keyboard focus.
+Request participants can
+open each other's existing profiles to connect/message.
+
+Deploy `database.rules.json` before releasing the new client/auth changes.
+Validate with `node --test toefl-sample/tutor.test.js`; run
+`toefl-sample/tutor-rules.test.js` against a database emulator for authorization.
+No new Storage rules or payment-provider configuration is needed.
 
 The Explore composer uses a single post-body field without a separate title.
 A short body excerpt remains as required title metadata for storage and sharing;
 feed cards display the body without a duplicate heading. Upload-size guidance
-opens from the Lucide info button beside Photo/Video and closes on another click,
+opens from the Lucide info button beside Photo and closes on another click,
 an outside click or Escape.
 
 Shared Realtime Database data lives in `community_posts`, `community_likes`,
 `community_comments`, and `community_members`. Feeds and comment lists load the
 latest 100 records. The sidebar displays an HTML/CSS tutor promotion
 instead of the group membership panel, with selectable, localized text and a
-disabled button. The promotion fills the sidebar width at natural content height,
+teacher-registration link. The promotion fills the sidebar width at natural content height,
 without stretching to match the composer. Explore uses a centered 1248px outer
 container, a feed capped at 640px, 24px column gaps and 15px/1.7 post body text.
 Side columns move below/before the feed at narrower breakpoints; mobile gutters

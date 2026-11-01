@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Find English courses, connect with teachers and request enrollment with Tutor Check.">
+    <title>Tutor Check | Quick Check</title>
+    <link rel="icon" href="../asset/icon/logo.png">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
+    <script src="qc-preferences.js?v=20261031-explore"></script>
+    <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
+    <link rel="stylesheet" href="tutor-check.css?v=20261101">
+</head>
+<body class="tutor-page">
+    <a class="skip-link" href="#catalog">Skip to courses</a>
+    <script src="site-navbar.js?v=20261101-tutor-check"></script>
+    <main class="marketplace">
+        <div class="market-heading">
+            <h1>Tutor Check</h1>
+            <div class="market-actions">
+                <a id="teacherSignup" href="signup.html?role=teacher">Teach a course</a>
+                <button id="manageButton" type="button" hidden><i class="ti ti-school" aria-hidden="true"></i> Teacher studio</button>
+                <button id="requestsButton" type="button">My requests</button>
+                <button id="favoritesButton" type="button" aria-label="Saved courses" aria-pressed="false"><i class="ti ti-heart" aria-hidden="true"></i><span class="wide-label">Saved</span></button>
+                <button id="cartButton" type="button"><i class="ti ti-shopping-cart" aria-hidden="true"></i> Cart <span id="cartCount">0</span></button>
+            </div>
+        </div>
+        <section class="course-hero" aria-labelledby="heroTitle">
+            <div class="hero-copy">
+                <h2 id="heroTitle">Find the perfect<br>English course for you!</h2>
+                <p>Learn with independent teachers, at your own pace.</p>
+                <form id="searchForm" class="course-search">
+                    <label class="sr-only" for="courseSearch">Search courses or teachers</label>
+                    <i class="ti ti-search" aria-hidden="true"></i>
+                    <input id="courseSearch" type="search" placeholder="Search courses or teachers..." maxlength="200">
+                    <button class="primary" type="submit">Search</button>
+                </form>
+            </div>
+            <img src="tutor-illustration.png" class="hero-art" alt="Online learning illustration" width="400" height="300" fetchpriority="high">
+            <span class="hero-note">Your English<br>journey starts here</span>
+        </section>
+        <section class="category-section panel" aria-labelledby="categoryTitle">
+            <div class="section-heading"><h2 id="categoryTitle">Browse by category</h2><button id="allCategories" class="text-button" type="button">See all <i class="ti ti-arrow-right" aria-hidden="true"></i></button></div>
+            <div id="categoryChoices" class="category-choices"></div>
+        </section>
+        <p id="marketStatus" class="market-status" role="status">Connecting to live courses...</p>
+        <p id="marketError" class="error" role="alert" hidden></p>
+        <div class="catalog-layout" id="catalog">
+            <aside class="filter-panel panel">
+                <details id="courseFilters" open>
+                <summary>Filters</summary>
+                <div class="filter-options">
+                <div class="section-heading"><button id="resetFilters" class="text-button" type="button">Reset filters</button></div>
+                <fieldset><legend>Price range</legend>
+                    <label><input type="checkbox" name="price" value="0:100000"> Under Rp100,000</label>
+                    <label><input type="checkbox" name="price" value="100000:250000"> Rp100,000 - Rp250,000</label>
+                    <label><input type="checkbox" name="price" value="250000:500000"> Rp250,000 - Rp500,000</label>
+                    <label><input type="checkbox" name="price" value="500000:100000001"> Rp500,000 and above</label>
+                </fieldset>
+                <fieldset><legend>Course rating</legend>
+                    <label><input type="radio" name="rating" value="" checked> Any rating</label>
+                    <label><input type="radio" name="rating" value="4"> <span class="stars">★★★★</span> &amp; up</label>
+                    <label><input type="radio" name="rating" value="3"> <span class="stars">★★★</span> &amp; up</label>
+                </fieldset>
+                <p class="muted">Ratings come from learners whose enrollment was accepted. Teacher accounts are self-registered.</p>
+                </div>
+                </details>
+            </aside>
+            <section class="course-results" aria-label="Courses">
+                <div class="catalog-toolbar">
+                    <nav id="typeTabs" class="type-tabs" aria-label="Course type"></nav>
+                    <label class="sort-control">Sort by <select id="courseSort"><option value="newest">Newest</option><option value="rating">Highest rated</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></label>
+                </div>
+                <p id="resultCount" class="muted" role="status"></p>
+                <div id="courseGrid" class="course-grid" aria-busy="true">
+                    <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+                </div>
+            </section>
+        </div>
+        <section id="teacherStudio" class="panel teacher-studio" hidden aria-labelledby="studioTitle">
+            <div class="section-heading"><div><h2 id="studioTitle">Teacher studio</h2><p class="muted">Publish directly. Manage your courses and respond to enrollment requests.</p></div><button id="newCourse" class="primary" type="button">Create course</button></div>
+            <div id="ownCourses" class="studio-courses"></div>
+            <h3>Enrollment requests</h3><div id="teacherInbox"></div>
+        </section>
+        <footer class="market-footer">Enrollment requests do not process payments. Agree on payment and class arrangements directly with the teacher.</footer>
+    </main>
+    <dialog id="courseDialog" class="market-dialog">
+        <div class="dialog-heading"><h2>Course details</h2><button type="button" data-close aria-label="Close course details">×</button></div>
+        <div id="courseDetail"></div>
+    </dialog>
+    <dialog id="cartDialog" class="market-dialog">
+        <div class="dialog-heading"><h2>Your cart</h2><button type="button" data-close aria-label="Close cart">×</button></div>
+        <div id="cartItems"></div>
+        <p id="cartTotal" class="cart-total"></p>
+        <p class="muted">No payment is collected. Send an enrollment request to each teacher.</p>
+        <p id="cartError" class="error" role="alert" hidden></p>
+        <button id="checkoutButton" class="primary" type="button">Request enrollment</button>
+    </dialog>
+    <dialog id="requestsDialog" class="market-dialog">
+        <div class="dialog-heading"><h2>My enrollment requests</h2><button type="button" data-close aria-label="Close requests">×</button></div>
+        <div id="studentRequests"></div>
+    </dialog>
+    <dialog id="editorDialog" class="market-dialog">
+        <div class="dialog-heading"><h2 id="editorHeading">Create course</h2><button type="button" data-close aria-label="Close course editor">×</button></div>
+        <form id="courseForm" class="course-form">
+            <label>Course title<input name="title" required maxlength="120"></label>
+            <label>Teacher display name<input name="teacherName" required maxlength="100"></label>
+            <div class="form-pair"><label>Category<select name="category" id="editorCategory"></select></label><label>Course type<select name="type" id="editorType"></select></label></div>
+            <div class="form-pair"><label>Price (IDR)<input name="price" type="number" required min="0" max="100000000" step="1"></label><label>Original price (optional)<input name="originalPrice" type="number" min="0" max="100000000" step="1"></label></div>
+            <label>Summary<textarea name="summary" required maxlength="500" rows="3"></textarea></label>
+            <label>Curriculum<textarea name="curriculum" required maxlength="5000" rows="5"></textarea></label>
+            <label>Schedule or access details<textarea name="schedule" required maxlength="300" rows="2" placeholder="Include timezone for live classes; explain access for self-paced courses."></textarea></label>
+            <label>Cover-image URL (optional)<input name="coverURL" type="url" maxlength="2000" placeholder="https://..."></label>
+            <p class="muted">Use an image you own or have permission to use. Course information is public, including paused listings.</p>
+            <label class="checkbox-label"><input name="published" type="checkbox" checked> Published and open for enrollment</label>
+            <p id="editorError" class="error" role="alert" hidden></p>
+            <button id="saveCourseButton" class="primary" type="submit">Publish course</button>
+        </form>
+    </dialog>
+    <script type="module" src="tutor-check.js?v=20261101"></script>
+</body>
+</html>

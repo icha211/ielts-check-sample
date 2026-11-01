@@ -1,4 +1,5 @@
 import { auth, db, googleProvider } from "./firebase-config.js";
+import { registerMarketplaceRole } from "./tutor-service.js";
 import {
     getAdditionalUserInfo,
     isSignInWithEmailLink,
@@ -40,6 +41,8 @@ const termsInput = document.getElementById("terms");
 const passwordInput = document.getElementById("password");
 const passwordGroup = document.getElementById("passwordGroup");
 const phoneInput = document.getElementById("phone");
+const marketplaceRoleInput = document.getElementById("marketplaceRole");
+if (new URLSearchParams(window.location.search).get("role") === "teacher") marketplaceRoleInput.value = "teacher";
 const PENDING_SIGNUP_KEY = "toefl_pending_signup";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
@@ -223,6 +226,7 @@ function enterActivationMode() {
         nationalityInput.value = pending.nationality || "";
         phoneInput.value = pending.phone || "";
         emailInput.value = pending.email || "";
+        marketplaceRoleInput.value = pending.marketplaceRole === "teacher" ? "teacher" : "student";
         emailInput.readOnly = Boolean(pending.email);
     }
     authHeading.textContent = "Activate Your Account";
@@ -272,7 +276,8 @@ async function sendActivationLink(email) {
         firstName: firstNameInput.value.trim(),
         lastName: lastNameInput.value.trim(),
         nationality: nationalityInput.value,
-        phone: phoneInput.value.trim()
+        phone: phoneInput.value.trim(),
+        marketplaceRole: marketplaceRoleInput.value
     };
     await sendSignInLinkToEmail(auth, email, {
         url: new URL("signup.html", window.location.href).href,
@@ -338,7 +343,8 @@ export async function handleEmailAuth(event) {
                 await saveUserProfile(user);
             }
         }
-        window.location.assign("index.html");
+        await registerMarketplaceRole(marketplaceRoleInput.value);
+        window.location.assign(marketplaceRoleInput.value === "teacher" ? "tutor-check.html" : "index.html");
     } catch (error) {
         console.error(isSignUp ? "Sign-up error:" : "Sign-in error:", error);
         if (isCompletingSignUp && !activatedUser && ["auth/invalid-action-code", "auth/expired-action-code"].includes(error.code)) {
@@ -358,7 +364,8 @@ export async function handleGoogleSignIn() {
         const result = await signInWithPopup(auth, googleProvider);
         const user = result.user;
         await saveUserProfile(user);
-        window.location.assign("index.html");
+        await registerMarketplaceRole(marketplaceRoleInput.value);
+        window.location.assign(marketplaceRoleInput.value === "teacher" ? "tutor-check.html" : "index.html");
     } catch (error) {
         console.error("Google sign-in error:", error);
         showMessage(getErrorMessage(error));

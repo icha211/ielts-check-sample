@@ -226,7 +226,7 @@ test("shared image compressor preserves the exact 2 MB boundary and retries enco
     assert.equal(encodes, 2, "an oversized encoded result must be retried");
     assert.ok(closed);
 });
-test("small images stay unchanged, videos are not compressed, and failed compression never uploads", async () => {
+test("small images stay unchanged, videos are rejected, and failed compression never uploads", async () => {
     const { context: service, writes } = serviceFixture();
     const photo = new Blob(["small photo"], { type: "image/webp" });
     let uploaded;
@@ -234,15 +234,18 @@ test("small images stay unchanged, videos are not compressed, and failed compres
     await service.savePost(post, photo, false);
     assert.equal(uploaded, photo);
     service.compressImageToLimit = async () => { throw new Error("decode failed"); };
-    const video = new Blob(["video"], { type: "video/mp4" });
-    await service.savePost(post, video, false);
-    assert.equal(uploaded, video);
     const before = writes.length;
     uploaded = null;
+    for (const visibility of ["public", "friends"]) {
+        for (const type of ["video/mp4", "video/webm"]) {
+            await assert.rejects(service.savePost({ ...post, visibility }, new Blob(["video"], { type }), false), /Choose a PNG/);
+        }
+    }
+    assert.equal(uploaded, null);
+    assert.equal(writes.length, before);
     await assert.rejects(service.savePost(post, photo, false), /could not be compressed/);
     assert.equal(uploaded, null);
     assert.equal(writes.length, before);
-    await assert.rejects(service.savePost(post, { type: "video/mp4", size: 20 * 1024 * 1024 + 1 }, false), /Videos must/);
 });
 test("community subscriptions reset all private state on account changes and dispose listeners", () => {
     const fixture = serviceFixture();

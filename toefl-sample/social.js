@@ -1,14 +1,17 @@
-import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261101-image-framing";
+import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261101-photos-only";
 import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameLayout, imageDisplaySettings } from "./js/community-model.js?v=20261101-photo-height-cap";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { db } from "./js/firebase-config.js";
 import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 window.QCPrefs?.addTranslations("id", {
+    "Photo": "Foto", "Photo uploads": "Unggahan foto",
+    "Choose a PNG, JPEG or WebP picture up to 40 MB.": "Pilih gambar PNG, JPEG atau WebP maksimal 40 MB.",
+    "PNG, JPEG or WebP pictures up to 40 MB. Pictures over 2 MB are automatically compressed before upload.": "Gambar PNG, JPEG atau WebP maksimal 40 MB. Gambar di atas 2 MB dikompresi otomatis sebelum diunggah.",
     "Tall photos can be cropped to 4:5 or shown whole. Shorter photos keep their natural height.": "Foto tinggi dapat dipotong menjadi 4:5 atau ditampilkan seluruhnya. Foto yang lebih pendek mempertahankan tinggi aslinya.",
     "Photos fill the width. Taller photos crop vertically; shorter photos have padding above and below.": "Foto memenuhi lebar. Foto yang lebih tinggi dipotong vertikal; foto yang lebih pendek memiliki ruang di atas dan bawah.",
     "Photos fill the width. Adjust the vertical position to choose what stays visible.": "Foto memenuhi lebar. Sesuaikan posisi vertikal untuk memilih bagian yang tetap terlihat.",
-    "Upload information": "Informasi unggahan", "Photo and video uploads": "Unggahan foto dan video",
+    "Upload information": "Informasi unggahan",
     "Public photos use a wide frame. Padding keeps the whole image visible when proportions differ.": "Foto publik menggunakan bingkai lebar. Ruang tambahan menjaga seluruh gambar terlihat jika proporsinya berbeda.",
     "Photo layout": "Tata letak foto", "Auto": "Otomatis", "Whole image": "Seluruh gambar",
     "Crop to fill": "Potong sesuai bingkai", "Reset": "Atur ulang",
@@ -51,7 +54,7 @@ window.QCPrefs?.addTranslations("id", {
     "Category": "Kategori", "Community group": "Grup komunitas", "Everyone": "Semua orang",
     "Tips & Resources": "Tips & Sumber Belajar", "Questions": "Pertanyaan",
     "Study Buddies": "Teman Belajar", "Announcements": "Pengumuman",
-    "Photo/Video": "Foto/Video", "Ask a Question": "Ajukan Pertanyaan", "Create a Post": "Buat Postingan",
+    "Ask a Question": "Ajukan Pertanyaan", "Create a Post": "Buat Postingan",
     "Post": "Kirim", "All Posts": "Semua Postingan", "Sort posts": "Urutkan postingan",
     "Latest": "Terbaru", "Most liked": "Paling disukai", "Oldest": "Terlama",
     "Community Groups": "Grup Komunitas", "View All": "Lihat Semua", "Show Less": "Lihat Lebih Sedikit",
@@ -95,8 +98,6 @@ window.QCPrefs?.addTranslations("id", {
     "Post link shared.": "Tautan postingan dibagikan.", "Remove attachment": "Hapus lampiran",
     "Community post attachment": "Lampiran postingan komunitas", "Attachment preview": "Pratinjau lampiran",
     "This attachment could not load.": "Lampiran tidak dapat dimuat.",
-    "Choose a PNG, JPEG or WebP picture up to 40 MB, or an MP4 or WebM video up to 20 MB.": "Pilih gambar PNG, JPEG atau WebP maksimal 40 MB, atau video MP4 atau WebM maksimal 20 MB.",
-    "Pictures over 2 MB are automatically compressed before upload. Videos: up to 20 MB.": "Gambar di atas 2 MB dikompresi otomatis sebelum diunggah. Video: maksimal 20 MB.",
     "Compressing picture...": "Mengompresi gambar...",
     "This picture could not be compressed. Choose another picture and try again.": "Gambar ini tidak dapat dikompresi. Pilih gambar lain dan coba lagi.",
     "Sign in and connect before posting.": "Masuk dan hubungkan sebelum mengirim postingan."
@@ -802,25 +803,22 @@ $("mediaInput").addEventListener("change", () => {
     const selected = $("mediaInput").files[0];
     if (!selected) return;
     clearPreview();
-    const maxBytes = (selected.type.startsWith("image/") ? 40 : 20) * 1024 * 1024;
-    if (!["image/png", "image/jpeg", "image/webp", "video/mp4", "video/webm"].includes(selected.type) || selected.size > maxBytes) {
-        showError(new Error(tr("Choose a PNG, JPEG or WebP picture up to 40 MB, or an MP4 or WebM video up to 20 MB.")), $("composerError"));
+    const maxBytes = 40 * 1024 * 1024;
+    if (!["image/png", "image/jpeg", "image/webp"].includes(selected.type) || selected.size > maxBytes) {
+        showError(new Error(tr("Choose a PNG, JPEG or WebP picture up to 40 MB.")), $("composerError"));
         return;
     }
     file = selected;
     previewURL = URL.createObjectURL(selected);
-    const preview = element(selected.type.startsWith("video/") ? "video" : "img");
-    if (selected.type.startsWith("image/")) {
-        formatFeedImage(preview, { visibility: $("postVisibility").value });
-        $("imageFraming").hidden = false;
-        preview.addEventListener("error", () => {
-            clearPreview();
-            showError(new Error(tr("This attachment could not load.")), $("composerError"));
-        }, { once: true });
-    }
+    const preview = element("img");
+    formatFeedImage(preview, { visibility: $("postVisibility").value });
+    $("imageFraming").hidden = false;
+    preview.addEventListener("error", () => {
+        clearPreview();
+        showError(new Error(tr("This attachment could not load.")), $("composerError"));
+    }, { once: true });
     preview.src = previewURL;
-    if (selected.type.startsWith("video/")) preview.controls = true;
-    else preview.alt = tr("Attachment preview");
+    preview.alt = tr("Attachment preview");
     $("mediaPreview").append(preview, button(tr("Remove attachment"), "text-button", clearPreview));
     $("mediaPreview").hidden = false;
     updateImageFraming();
