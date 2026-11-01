@@ -15,12 +15,13 @@ export function imageFeedFormat(width, height) {
 }
 
 export function imageDisplaySettings(settings = {}) {
-    return { imageFormat: "portrait", imageFit: "cover", imageX: 50, imageY: settings.imageY ?? 50 };
+    return { imageFormat: "portrait", imageFit: settings.imageFit || "cover", imageX: 50, imageY: settings.imageY ?? 50 };
 }
 
-export function imageFrameFit(width, height) {
+export function imageFrameLayout(width, height, settings = {}) {
     imageFeedFormat(width, height);
-    return width / height > 4 / 5 ? "contain" : "cover";
+    const tall = width / height < 4 / 5;
+    return { ratio: Math.max(4 / 5, width / height), fit: tall ? imageDisplaySettings(settings).imageFit : "contain", tall };
 }
 
 export function validatePost({ title, body, category, groupId = "", visibility = "public", imageFormat = "auto", imageFit = "contain", imageX = 50, imageY = 50 }, developer = false) {

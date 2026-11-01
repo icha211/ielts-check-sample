@@ -1,10 +1,11 @@
 import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261101-image-framing";
-import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameFit, imageDisplaySettings } from "./js/community-model.js?v=20261101-portrait-frame";
+import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameLayout, imageDisplaySettings } from "./js/community-model.js?v=20261101-photo-height-cap";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { db } from "./js/firebase-config.js";
 import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 window.QCPrefs?.addTranslations("id", {
+    "Tall photos can be cropped to 4:5 or shown whole. Shorter photos keep their natural height.": "Foto tinggi dapat dipotong menjadi 4:5 atau ditampilkan seluruhnya. Foto yang lebih pendek mempertahankan tinggi aslinya.",
     "Photos fill the width. Taller photos crop vertically; shorter photos have padding above and below.": "Foto memenuhi lebar. Foto yang lebih tinggi dipotong vertikal; foto yang lebih pendek memiliki ruang di atas dan bawah.",
     "Photos fill the width. Adjust the vertical position to choose what stays visible.": "Foto memenuhi lebar. Sesuaikan posisi vertikal untuk memilih bagian yang tetap terlihat.",
     "Upload information": "Informasi unggahan", "Photo and video uploads": "Unggahan foto dan video",
@@ -556,6 +557,7 @@ function editPost(post) {
     composerGroupId = post.groupId || "";
     $("postVisibility").value = post.visibility || "public";
     if (post.mediaType === "image" && post.mediaURL) {
+        $("imageFit").value = post.imageFit || "cover";
         $("imageY").value = post.imageY ?? 50;
         $("imageFraming").hidden = false;
         const existing = document.getElementById(`post-${post.id}`)?.querySelector("img.post-media");
@@ -757,28 +759,44 @@ function formatFeedImage(image, settings = {}) {
     image.style.objectFit = settings.imageFit;
     image.style.objectPosition = `50% ${settings.imageY}%`;
     const sizeFrame = () => {
-        image.style.objectFit = imageFrameFit(image.naturalWidth, image.naturalHeight);
-        if (image.style.objectFit === "contain") image.style.objectPosition = "50% 50%";
+        applyImageLayout(image, settings);
+        if (image.parentElement === $("mediaPreview")) updateImageFraming();
     };
     image.addEventListener("load", sizeFrame);
     if (image.naturalWidth && image.naturalHeight) sizeFrame();
 }
+function applyImageLayout(image, settings) {
+    const layout = imageFrameLayout(image.naturalWidth, image.naturalHeight, settings);
+    image.style.aspectRatio = String(layout.ratio);
+    image.style.objectFit = layout.fit;
+    image.style.objectPosition = layout.fit === "contain" ? "50% 50%" : `50% ${settings.imageY}%`;
+    return layout;
+}
 function framingSettings() {
-    return imageDisplaySettings({ imageY: Number($("imageY").value) });
+    return imageDisplaySettings({ imageFit: $("imageFit").value, imageY: Number($("imageY").value) });
 }
 function updateImageFraming() {
     const settings = framingSettings();
     $("imageYValue").textContent = `${settings.imageY}%`;
-    $("imageFramingHint").textContent = tr("Photos fill the width. Taller photos crop vertically; shorter photos have padding above and below.");
+    $("imageFramingHint").textContent = tr("Tall photos can be cropped to 4:5 or shown whole. Shorter photos keep their natural height.");
+    document.querySelectorAll("[data-image-fit]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.imageFit === settings.imageFit)));
     const preview = $("mediaPreview").querySelector("img");
-    if (!preview) return;
-    preview.style.objectPosition = preview.style.objectFit === "contain" ? "50% 50%" : `50% ${settings.imageY}%`;
+    if (!preview?.naturalWidth) return;
+    const layout = applyImageLayout(preview, settings);
+    $("imageFitChoices").hidden = !layout.tall;
+    $("imagePosition").hidden = !layout.tall || layout.fit !== "cover";
+    $("resetImageFraming").hidden = !layout.tall;
 }
 function resetImageFraming() {
+    $("imageFit").value = "cover";
     $("imageY").value = "50";
     updateImageFraming();
 }
 $("imageY").addEventListener("input", updateImageFraming);
+document.querySelectorAll("[data-image-fit]").forEach(button => button.addEventListener("click", () => {
+    $("imageFit").value = button.dataset.imageFit;
+    updateImageFraming();
+}));
 $("resetImageFraming").addEventListener("click", resetImageFraming);
 $("mediaInput").addEventListener("change", () => {
     const selected = $("mediaInput").files[0];

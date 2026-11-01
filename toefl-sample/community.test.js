@@ -10,7 +10,7 @@ const model = vm.createContext({ URL, Intl });
 vm.runInContext(source, model);
 const post = { title: " Listening advice ", body: " Practice with real recordings. ", category: "tips", groupId: "listening" };
 test("all photos fill the width and retain only the vertical crop position", () => {
-    for (const settings of [{}, { visibility: "public" }, { visibility: "friends", imageFormat: "portrait", imageFit: "contain", imageX: 0 }]) {
+    for (const settings of [{}, { visibility: "public" }, { visibility: "friends", imageFormat: "portrait", imageX: 0 }]) {
         assert.deepEqual(JSON.parse(JSON.stringify(model.imageDisplaySettings(settings))), {
             imageFormat: "portrait", imageFit: "cover", imageX: 50, imageY: 50
         });
@@ -21,25 +21,31 @@ test("all photos fill the width and retain only the vertical crop position", () 
     assert.equal(model.imageDisplaySettings(privateSettings).imageX, 50);
     assert.equal(model.imageDisplaySettings(privateSettings).imageY, 80);
 });
-test("fixed width-fitted frames crop taller photos and pad shorter photos vertically", () => {
-    for (const [width, height] of [[800, 1600], [1080, 1350], [1080, 1080], [1600, 900], [1080, 566], [3000, 1000]]) {
+test("4:5 caps tall photos with crop or contain while shorter photos have no padding", () => {
+    for (const [width, height] of [[900, 1600], [1080, 1350], [1080, 1080], [1600, 900], [3000, 1000]]) {
+      for (const imageFit of ["cover", "contain"]) {
         const frameWidth = 590;
-        const frameHeight = frameWidth * 5 / 4;
-        const fit = model.imageFrameFit(width, height);
+        const { ratio, fit, tall } = model.imageFrameLayout(width, height, { imageFit });
+        const frameHeight = frameWidth / ratio;
         const scale = (fit === "cover" ? Math.max : Math.min)(frameWidth / width, frameHeight / height);
-        assert.ok(Math.abs(width * scale - frameWidth) < 0.00001);
-        if (width / height > 4 / 5) {
-            assert.equal(fit, "contain");
-            assert.ok(height * scale < frameHeight);
-            const padding = (frameHeight - height * scale) / 2;
-            assert.ok(padding > 0);
-            assert.ok(Math.abs(2 * padding + height * scale - frameHeight) < 0.00001);
+        assert.ok(frameHeight <= frameWidth * 5 / 4 + 0.00001);
+        if (tall) {
+            assert.equal(ratio, 4 / 5);
+            assert.equal(fit, imageFit);
+            if (fit === "cover") {
+                assert.ok(Math.abs(width * scale - frameWidth) < 0.00001);
+                assert.ok(height * scale > frameHeight);
+            } else {
+                assert.ok(Math.abs(height * scale - frameHeight) < 0.00001);
+                assert.ok(width * scale < frameWidth);
+            }
         } else {
-            assert.equal(fit, "cover");
-            assert.ok(height * scale >= frameHeight - 0.00001);
+            assert.ok(Math.abs(width * scale - frameWidth) < 0.00001);
+            assert.ok(Math.abs(height * scale - frameHeight) < 0.00001);
         }
+      }
     }
-    assert.throws(() => model.imageFrameFit(0, 100), /invalid dimensions/);
+    assert.throws(() => model.imageFrameLayout(0, 100), /invalid dimensions/);
 });
 test("feed pictures choose the closest portrait, square or landscape reference ratio", () => {
     for (const [width, height, expected] of [

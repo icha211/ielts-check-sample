@@ -87,14 +87,15 @@ compressed. Compression failures stop publication and appear in the composer.
 Private-media download CORS failures are separate from upload size: the Storage
 bucket must allow the deployed site's origin to read encrypted attachment bytes.
 All post photos, including existing public/friends-only posts and profile embeds,
-fill the content width without side cropping or side padding. Frames always use
-4:5 portrait (for example, 1080x1350). Taller photos crop only vertically; shorter photos are
-centered with equal padding above and below. The composer and owner
-Edit post share a vertical-position slider, percentage readout and Reset.
+use 4:5 as a maximum height-to-width proportion. Taller photos (such as 9:16)
+offer Crop to fill or Whole image inside a 4:5 frame. Shorter photos (square or
+landscape) fill the width at their natural ratio without padding or forced cropping.
+The composer and owner Edit post share fit buttons for tall photos, a
+vertical-position slider for cropping, percentage readout and Reset.
 The scaled preview uses the same crop as the feed without altering the original.
 `imageFormat`, `imageFit`, `imageX` and `imageY` are validated post metadata, not
 destructive image edits. Legacy format/fit values remain stored but the display
-policy overrides them; saved vertical positions are retained.
+policy overrides format; saved fit choices and vertical positions are retained.
 Embedded profile feeds use the same display policy;
 videos retain their existing sizing and controls. Deploy framing rules before
 publishing the client.
