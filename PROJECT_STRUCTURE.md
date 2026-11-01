@@ -86,21 +86,16 @@ transparent areas painted white. Videos retain their 20 MB limit and are not
 compressed. Compression failures stop publication and appear in the composer.
 Private-media download CORS failures are separate from upload size: the Storage
 bucket must allow the deployed site's origin to read encrypted attachment bytes.
-Public post pictures (including existing posts and profile embeds) use a fixed
-full-width 1080:566 frame (about 1.91:1), centered with contain fitting. Matching
-proportions fill the frame; other proportions have padding without cropping.
-The public composer previews and saves this same layout and hides crop controls.
-Friends-only pictures use the closest reference aspect ratio: portrait 4:5
-(1080x1350), square 1:1 (1080x1080), or landscape 1080:566.
-The friends-only composer includes live framing controls:
-automatic/manual format, Show whole picture (default), Fill frame, horizontal/
-vertical position and reset. Owners can also adjust framing through Edit post.
-The editor uses visual format buttons and a Whole image/Crop to fill toggle.
-Its scaled preview is capped at 320px tall without changing the feed frame or
-saved settings; crop sliders and percentage readouts appear only in crop mode.
+All post photos, including existing public/friends-only posts and profile embeds,
+fill the content width without side cropping or padding. Frames use 1080:566
+(about 1.91:1) unless the original is wider, in which case the frame shortens to
+its natural ratio. Taller photos crop only vertically. The composer and owner
+Edit post share a vertical-position slider, percentage readout and Reset.
+The scaled preview uses the same crop as the feed without altering the original.
 `imageFormat`, `imageFit`, `imageX` and `imageY` are validated post metadata, not
-destructive image edits. Older photos default to showing the whole picture.
-Embedded profile feeds use the same audience-specific display policy;
+destructive image edits. Legacy format/fit values remain stored but the display
+policy overrides them; saved vertical positions are retained.
+Embedded profile feeds use the same display policy;
 videos retain their existing sizing and controls. Deploy framing rules before
 publishing the client.
 

@@ -1,10 +1,11 @@
 import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261101-image-framing";
-import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFeedFormat, imageDisplaySettings } from "./js/community-model.js?v=20261101-public-frame";
+import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameRatio, imageDisplaySettings } from "./js/community-model.js?v=20261101-width-crop";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { db } from "./js/firebase-config.js";
 import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
 window.QCPrefs?.addTranslations("id", {
+    "Photos fill the width. Adjust the vertical position to choose what stays visible.": "Foto memenuhi lebar. Sesuaikan posisi vertikal untuk memilih bagian yang tetap terlihat.",
     "Upload information": "Informasi unggahan", "Photo and video uploads": "Unggahan foto dan video",
     "Public photos use a wide frame. Padding keeps the whole image visible when proportions differ.": "Foto publik menggunakan bingkai lebar. Ruang tambahan menjaga seluruh gambar terlihat jika proporsinya berbeda.",
     "Photo layout": "Tata letak foto", "Auto": "Otomatis", "Whole image": "Seluruh gambar",
@@ -554,9 +555,6 @@ function editPost(post) {
     composerGroupId = post.groupId || "";
     $("postVisibility").value = post.visibility || "public";
     if (post.mediaType === "image" && post.mediaURL) {
-        $("imageFormat").value = post.imageFormat || "auto";
-        $("imageFit").value = post.imageFit || "contain";
-        $("imageX").value = post.imageX ?? 50;
         $("imageY").value = post.imageY ?? 50;
         $("imageFraming").hidden = false;
         const existing = document.getElementById(`post-${post.id}`)?.querySelector("img.post-media");
@@ -754,53 +752,31 @@ document.addEventListener("keydown", event => {
 });
 function formatFeedImage(image, settings = {}) {
     settings = imageDisplaySettings(settings);
-    image.dataset.requestedFormat = settings.imageFormat || "auto";
-    image.dataset.feedFormat = image.dataset.requestedFormat === "auto" ? "square" : image.dataset.requestedFormat;
-    image.style.objectFit = settings.imageFit || "contain";
-    image.style.objectPosition = `${settings.imageX ?? 50}% ${settings.imageY ?? 50}%`;
-    image.addEventListener("load", () => {
-        image.dataset.feedFormat = image.dataset.requestedFormat === "auto" ? imageFeedFormat(image.naturalWidth, image.naturalHeight) : image.dataset.requestedFormat;
-    });
+    image.dataset.feedFormat = "landscape";
+    image.style.objectFit = settings.imageFit;
+    image.style.objectPosition = `50% ${settings.imageY}%`;
+    const sizeFrame = () => {
+        image.style.aspectRatio = String(imageFrameRatio(image.naturalWidth, image.naturalHeight));
+    };
+    image.addEventListener("load", sizeFrame);
+    if (image.naturalWidth && image.naturalHeight) sizeFrame();
 }
 function framingSettings() {
-    return imageDisplaySettings({ visibility: $("postVisibility").value, imageFormat: $("imageFormat").value, imageFit: $("imageFit").value, imageX: Number($("imageX").value), imageY: Number($("imageY").value) });
+    return imageDisplaySettings({ imageY: Number($("imageY").value) });
 }
 function updateImageFraming() {
     const settings = framingSettings();
-    const publicPhoto = $("postVisibility").value !== "friends";
-    document.querySelectorAll(".image-format-choices, .image-fit-choices").forEach(group => { group.hidden = publicPhoto; });
-    $("resetImageFraming").hidden = publicPhoto;
-    document.querySelectorAll("[data-image-control]").forEach(button => {
-        button.setAttribute("aria-pressed", String(settings[button.dataset.imageControl] === button.dataset.value));
-    });
-    $("imagePosition").hidden = settings.imageFit !== "cover";
-    $("imageXValue").textContent = `${settings.imageX}%`;
     $("imageYValue").textContent = `${settings.imageY}%`;
-    $("imageFramingHint").textContent = tr(publicPhoto
-        ? "Public photos use a wide frame. Padding keeps the whole image visible when proportions differ."
-        : settings.imageFit === "cover"
-        ? "Edges are cropped. Use the sliders to position your subject."
-        : "All details visible. Your original stays unchanged.");
+    $("imageFramingHint").textContent = tr("Photos fill the width. Adjust the vertical position to choose what stays visible.");
     const preview = $("mediaPreview").querySelector("img");
     if (!preview) return;
-    preview.dataset.requestedFormat = settings.imageFormat;
-    preview.dataset.feedFormat = settings.imageFormat === "auto"
-        ? (preview.naturalWidth ? imageFeedFormat(preview.naturalWidth, preview.naturalHeight) : "square")
-        : settings.imageFormat;
-    preview.style.objectFit = settings.imageFit;
-    preview.style.objectPosition = `${settings.imageX}% ${settings.imageY}%`;
+    preview.style.objectPosition = `50% ${settings.imageY}%`;
 }
 function resetImageFraming() {
-    $("imageFormat").value = "auto";
-    $("imageFit").value = "contain";
-    $("imageX").value = $("imageY").value = "50";
+    $("imageY").value = "50";
     updateImageFraming();
 }
-["imageFormat", "imageFit", "imageX", "imageY"].forEach(id => $(id).addEventListener("input", updateImageFraming));
-document.querySelectorAll("[data-image-control]").forEach(button => button.addEventListener("click", () => {
-    $(button.dataset.imageControl).value = button.dataset.value;
-    updateImageFraming();
-}));
+$("imageY").addEventListener("input", updateImageFraming);
 $("resetImageFraming").addEventListener("click", resetImageFraming);
 $("mediaInput").addEventListener("change", () => {
     const selected = $("mediaInput").files[0];

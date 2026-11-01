@@ -15,13 +15,12 @@ export function imageFeedFormat(width, height) {
 }
 
 export function imageDisplaySettings(settings = {}) {
-    if (settings.visibility !== "friends") {
-        return { imageFormat: "landscape", imageFit: "contain", imageX: 50, imageY: 50 };
-    }
-    return {
-        imageFormat: settings.imageFormat || "auto", imageFit: settings.imageFit || "contain",
-        imageX: settings.imageX ?? 50, imageY: settings.imageY ?? 50
-    };
+    return { imageFormat: "landscape", imageFit: "cover", imageX: 50, imageY: settings.imageY ?? 50 };
+}
+
+export function imageFrameRatio(width, height) {
+    imageFeedFormat(width, height);
+    return Math.max(1080 / 566, width / height);
 }
 
 export function validatePost({ title, body, category, groupId = "", visibility = "public", imageFormat = "auto", imageFit = "contain", imageX = 50, imageY = 50 }, developer = false) {

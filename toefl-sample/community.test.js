@@ -9,16 +9,28 @@ const source = fs.readFileSync(path.join(__dirname, "js", "community-model.js"),
 const model = vm.createContext({ URL, Intl });
 vm.runInContext(source, model);
 const post = { title: " Listening advice ", body: " Practice with real recordings. ", category: "tips", groupId: "listening" };
-test("public photos always preserve the whole image in a centered wide frame, including older posts", () => {
-    for (const settings of [{}, { visibility: "public" }, { visibility: "public", imageFormat: "portrait", imageFit: "cover", imageX: 0, imageY: 100 }]) {
+test("all photos fill the width and retain only the vertical crop position", () => {
+    for (const settings of [{}, { visibility: "public" }, { visibility: "friends", imageFormat: "portrait", imageFit: "contain", imageX: 0 }]) {
         assert.deepEqual(JSON.parse(JSON.stringify(model.imageDisplaySettings(settings))), {
-            imageFormat: "landscape", imageFit: "contain", imageX: 50, imageY: 50
+            imageFormat: "landscape", imageFit: "cover", imageX: 50, imageY: 50
         });
     }
     const privateSettings = { visibility: "friends", imageFormat: "square", imageFit: "cover", imageX: 20, imageY: 80 };
     assert.equal(model.imageDisplaySettings(privateSettings).imageFit, "cover");
-    assert.equal(model.imageDisplaySettings(privateSettings).imageFormat, "square");
-    assert.equal(model.imageDisplaySettings(privateSettings).imageX, 20);
+    assert.equal(model.imageDisplaySettings(privateSettings).imageFormat, "landscape");
+    assert.equal(model.imageDisplaySettings(privateSettings).imageX, 50);
+    assert.equal(model.imageDisplaySettings(privateSettings).imageY, 80);
+});
+test("width-fitted frames crop height only and shorten for ultra-wide photos", () => {
+    for (const [width, height] of [[800, 1600], [1080, 1080], [1600, 900], [1080, 566], [3000, 1000]]) {
+        const frameWidth = 590;
+        const frameHeight = frameWidth / model.imageFrameRatio(width, height);
+        const scale = Math.max(frameWidth / width, frameHeight / height);
+        assert.ok(Math.abs(width * scale - frameWidth) < 0.00001);
+        assert.ok(height * scale >= frameHeight - 0.00001);
+        if (width / height > 1080 / 566) assert.ok(Math.abs(height * scale - frameHeight) < 0.00001);
+    }
+    assert.throws(() => model.imageFrameRatio(0, 100), /invalid dimensions/);
 });
 test("feed pictures choose the closest portrait, square or landscape reference ratio", () => {
     for (const [width, height, expected] of [
