@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
     <script src="qc-preferences.js?v=20261031-explore"></script>
     <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
-    <link rel="stylesheet" href="tutor-check.css?v=20261101">
+    <link rel="stylesheet" href="tutor-check.css?v=20261101-layout">
 </head>
 <body class="tutor-page">
     <a class="skip-link" href="#catalog">Skip to courses</a>
@@ -26,6 +26,28 @@
                 <button id="cartButton" type="button"><i class="ti ti-shopping-cart" aria-hidden="true"></i> Cart <span id="cartCount">0</span></button>
             </div>
         </div>
+        <div class="browse-layout">
+            <aside class="filter-panel panel" aria-label="Course filters">
+                <details id="courseFilters" open>
+                    <summary>Filters <span id="filterCount" class="filter-count" hidden></span></summary>
+                    <div class="filter-options">
+                        <div class="section-heading"><button id="resetFilters" class="text-button" type="button">Reset all</button></div>
+                        <fieldset><legend>Price range (IDR)</legend>
+                            <label><input type="checkbox" name="price" value="0:100000"> Under Rp100.000</label>
+                            <label><input type="checkbox" name="price" value="100000:250000"> Rp100.000 – under Rp250.000</label>
+                            <label><input type="checkbox" name="price" value="250000:500000"> Rp250.000 – under Rp500.000</label>
+                            <label><input type="checkbox" name="price" value="500000:100000001"> Rp500.000 and above</label>
+                        </fieldset>
+                        <fieldset><legend>Course rating</legend>
+                            <label><input type="radio" name="rating" value="" checked> Any rating</label>
+                            <label><input type="radio" name="rating" value="4"> <span class="stars" aria-hidden="true">★★★★</span><span>4 &amp; up</span></label>
+                            <label><input type="radio" name="rating" value="3"> <span class="stars" aria-hidden="true">★★★</span><span>3 &amp; up</span></label>
+                        </fieldset>
+                        <p class="muted">Reviews are from accepted learners. Teachers are self-registered, not platform-verified.</p>
+                    </div>
+                </details>
+            </aside>
+            <div class="browse-content">
         <section class="course-hero" aria-labelledby="heroTitle">
             <div class="hero-copy">
                 <h2 id="heroTitle">Find the perfect<br>English course for you!</h2>
@@ -38,45 +60,25 @@
                 </form>
             </div>
             <img src="tutor-illustration.png" class="hero-art" alt="Online learning illustration" width="400" height="300" fetchpriority="high">
-            <span class="hero-note">Your English<br>journey starts here</span>
         </section>
         <section class="category-section panel" aria-labelledby="categoryTitle">
-            <div class="section-heading"><h2 id="categoryTitle">Browse by category</h2><button id="allCategories" class="text-button" type="button">See all <i class="ti ti-arrow-right" aria-hidden="true"></i></button></div>
+            <div class="section-heading"><h2 id="categoryTitle">Browse by category</h2><button id="allCategories" class="text-button" type="button">All categories</button></div>
             <div id="categoryChoices" class="category-choices"></div>
         </section>
         <p id="marketStatus" class="market-status" role="status">Connecting to live courses...</p>
         <p id="marketError" class="error" role="alert" hidden></p>
-        <div class="catalog-layout" id="catalog">
-            <aside class="filter-panel panel">
-                <details id="courseFilters" open>
-                <summary>Filters</summary>
-                <div class="filter-options">
-                <div class="section-heading"><button id="resetFilters" class="text-button" type="button">Reset filters</button></div>
-                <fieldset><legend>Price range</legend>
-                    <label><input type="checkbox" name="price" value="0:100000"> Under Rp100,000</label>
-                    <label><input type="checkbox" name="price" value="100000:250000"> Rp100,000 - Rp250,000</label>
-                    <label><input type="checkbox" name="price" value="250000:500000"> Rp250,000 - Rp500,000</label>
-                    <label><input type="checkbox" name="price" value="500000:100000001"> Rp500,000 and above</label>
-                </fieldset>
-                <fieldset><legend>Course rating</legend>
-                    <label><input type="radio" name="rating" value="" checked> Any rating</label>
-                    <label><input type="radio" name="rating" value="4"> <span class="stars">★★★★</span> &amp; up</label>
-                    <label><input type="radio" name="rating" value="3"> <span class="stars">★★★</span> &amp; up</label>
-                </fieldset>
-                <p class="muted">Ratings come from learners whose enrollment was accepted. Teacher accounts are self-registered.</p>
-                </div>
-                </details>
-            </aside>
-            <section class="course-results" aria-label="Courses">
+            <section class="course-results" id="catalog" aria-label="Courses">
                 <div class="catalog-toolbar">
                     <nav id="typeTabs" class="type-tabs" aria-label="Course type"></nav>
                     <label class="sort-control">Sort by <select id="courseSort"><option value="newest">Newest</option><option value="rating">Highest rated</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></label>
                 </div>
                 <p id="resultCount" class="muted" role="status"></p>
+                <div id="activeFilters" class="active-filters" role="group" aria-label="Active filters" hidden></div>
                 <div id="courseGrid" class="course-grid" aria-busy="true">
                     <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
                 </div>
             </section>
+            </div>
         </div>
         <section id="teacherStudio" class="panel teacher-studio" hidden aria-labelledby="studioTitle">
             <div class="section-heading"><div><h2 id="studioTitle">Teacher studio</h2><p class="muted">Publish directly. Manage your courses and respond to enrollment requests.</p></div><button id="newCourse" class="primary" type="button">Create course</button></div>
@@ -118,6 +120,6 @@
             <button id="saveCourseButton" class="primary" type="submit">Publish course</button>
         </form>
     </dialog>
-    <script type="module" src="tutor-check.js?v=20261101"></script>
+    <script type="module" src="tutor-check.js?v=20261101-layout"></script>
 </body>
 </html>

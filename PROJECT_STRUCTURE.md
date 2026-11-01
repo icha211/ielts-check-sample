@@ -109,7 +109,11 @@ the course marketplace linked beside Explore in the shared header and mobile
 Social menu. `js/tutor-model.js` contains validation, IDR pricing and filters;
 `js/tutor-service.js` owns Firebase subscriptions and writes. No demo listings
 are inserted; the catalogue starts empty until teachers publish real courses.
-Filters are collapsible and start closed on mobile to keep course listings nearby.
+Filters sit left of the hero, categories and catalogue on desktop, with a
+viewport-bounded sticky panel. Below 1024px they stack above the content and
+start collapsed. Removable active-filter chips and a selection count keep
+filter state visible; All categories clears only the category, while Reset all
+clears all filters and sorting.
 The hero reuses existing tutor artwork; cover images come from teacher-provided
 HTTPS URLs. Teachers must have permission to use their images.
 

@@ -109,10 +109,41 @@ function card(course, statistics) {
     node.append(content);
     return node;
 }
+function renderFilterState() {
+    const target = $("activeFilters");
+    const focusedIndex = [...target.children].indexOf(document.activeElement);
+    target.replaceChildren();
+    const add = (label, clear) => {
+        const button = el("button", "", `${label} ×`);
+        button.type = "button";
+        button.addEventListener("click", () => { clear(); renderCatalog(); });
+        button.setAttribute("aria-label", `Remove filter: ${label}`);
+        target.append(button);
+    };
+    if (category) add(TUTOR_CATEGORIES.find(([id]) => id === category)[1], () => category = "");
+    if (type) add(TUTOR_TYPES[type], () => type = "");
+    if ($("courseSearch").value.trim()) add(`Search: ${$("courseSearch").value.trim()}`, () => $("courseSearch").value = "");
+    document.querySelectorAll('[name="price"]:checked').forEach(input => add(input.parentElement.textContent.trim(), () => input.checked = false));
+    const rating = document.querySelector('[name="rating"]:checked');
+    if (rating.value) add(`${rating.value} stars & up`, () => document.querySelector('[name="rating"][value=""]').checked = true);
+    if (favoritesOnly) add("Saved courses", () => { favoritesOnly = false; $("favoritesButton").setAttribute("aria-pressed", "false"); });
+    const count = target.children.length;
+    target.hidden = !count;
+    $("filterCount").hidden = !count;
+    $("filterCount").textContent = count;
+    $("resetFilters").disabled = !count && $("courseSort").value === "newest";
+    $("allCategories").disabled = !category;
+    document.querySelectorAll("[data-category]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.category === category)));
+    document.querySelectorAll("[data-type]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.type === type)));
+    if (focusedIndex >= 0) {
+        (target.children[Math.min(focusedIndex, count - 1)] || $("courseFilters").querySelector("summary")).focus();
+    }
+}
 function renderCatalog() {
     $("manageButton").hidden = role !== "teacher";
     $("teacherSignup").hidden = role === "teacher";
     $("cartCount").textContent = Object.keys(library.cart || {}).length;
+    renderFilterState();
     if (!catalogReady || !reviewsReady) return;
     const statistics = stats();
     const filters = { category, type, search: $("courseSearch").value, sort: $("courseSort").value,
@@ -129,6 +160,12 @@ function renderCatalog() {
         const noCatalog = !Object.values(courses).some(course => course.published);
         empty.append(icon("school"), el("h3", "", noCatalog ? "Your next course is on its way" : "No matching courses"),
             el("p", "muted", noCatalog ? "Teachers can publish their first course. New listings appear here automatically." : "Try another category, search or filter."));
+        if (!noCatalog) {
+            const reset = el("button", "text-button", "Clear all filters");
+            reset.type = "button";
+            reset.addEventListener("click", resetFilters);
+            empty.append(reset);
+        }
         grid.append(empty);
     } else rows.forEach(course => grid.append(card(course, statistics[course.id])));
     $("cartCount").textContent = Object.keys(library.cart || {}).length;
@@ -329,20 +366,22 @@ $("searchForm").addEventListener("submit", event => { event.preventDefault(); re
 $("courseSearch").addEventListener("input", renderCatalog);
 $("courseSort").addEventListener("change", renderCatalog);
 document.querySelectorAll('.filter-panel input').forEach(input => input.addEventListener("change", renderCatalog));
-const compactFilters = matchMedia("(max-width:767px)");
+const compactFilters = matchMedia("(max-width:1023px)");
 function syncFilterLayout() { $("courseFilters").open = !compactFilters.matches; }
 syncFilterLayout();
 compactFilters.addEventListener("change", syncFilterLayout);
 function resetFilters() {
+    const recoverFocus = document.activeElement?.closest(".empty-state");
     category = ""; type = ""; favoritesOnly = false;
     $("courseSearch").value = ""; $("courseSort").value = "newest";
     document.querySelectorAll('[name="price"]').forEach(input => input.checked = false);
     document.querySelector('[name="rating"][value=""]').checked = true;
     $("favoritesButton").setAttribute("aria-pressed", "false");
     renderCatalog();
+    if (recoverFocus) $("courseSearch").focus();
 }
 $("resetFilters").addEventListener("click", resetFilters);
-$("allCategories").addEventListener("click", resetFilters);
+$("allCategories").addEventListener("click", () => { category = ""; renderCatalog(); });
 $("favoritesButton").addEventListener("click", () => {
     if (!requireLogin()) return;
     favoritesOnly = !favoritesOnly; $("favoritesButton").setAttribute("aria-pressed", String(favoritesOnly)); renderCatalog();
