@@ -3,6 +3,18 @@
     ".read": false,
     ".write": false,
 
+    "tutor_course_stats": {
+      "$course": {
+        "students": { ".read": true },
+        ".write": false
+      }
+    },
+    "tutor_public_teachers": {
+      "$uid": {
+        ".read": true,
+        ".write": false
+      }
+    },
     "tutor_roles": {
       "$uid": {
         ".read": true,
@@ -63,7 +75,7 @@
       }
     },
     "tutor_requests": {
-      ".indexOn": ["studentId", "teacherId"],
+      ".indexOn": ["studentId", "teacherId", "courseId"],
       ".read": "auth != null && ((query.orderByChild === 'studentId' && query.equalTo === auth.uid) || (query.orderByChild === 'teacherId' && query.equalTo === auth.uid))",
       "$request": {
         ".write": "auth != null && newData.exists() && ((!data.exists() && newData.child('studentId').val() === auth.uid && newData.child('teacherId').val() !== auth.uid && newData.child('status').val() === 'pending' && root.child('tutor_courses').child(newData.child('courseId').val()).child('published').val() === true && newData.child('teacherId').val() === root.child('tutor_courses').child(newData.child('courseId').val()).child('teacherId').val() && newData.child('price').val() === root.child('tutor_courses').child(newData.child('courseId').val()).child('price').val() && $request === newData.child('courseId').val() + '_' + auth.uid) || (data.child('status').val() === 'pending' && ((auth.uid === data.child('teacherId').val() && (newData.child('status').val() === 'accepted' || newData.child('status').val() === 'declined')) || (auth.uid === data.child('studentId').val() && newData.child('status').val() === 'cancelled'))))",

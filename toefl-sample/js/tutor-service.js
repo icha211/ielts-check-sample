@@ -15,6 +15,8 @@ export async function registerMarketplaceRole(role) {
 }
 export const watchCatalog = (callback, error) => onValue(ref(db, "tutor_courses"), snap => callback(snap.val() || {}), error);
 export const watchReviews = (callback, error) => onValue(ref(db, "tutor_reviews"), snap => callback(snap.val() || {}), error);
+export const watchCourseStudents = (id, callback, error) => onValue(ref(db, `tutor_course_stats/${id}/students`), snap => callback(snap.val()), error);
+export const watchTeacherIdentity = (uid, callback, error) => onValue(ref(db, `tutor_public_teachers/${uid}`), snap => callback(snap.val() || {}), error);
 export const watchTeachingRole = (uid, callback, error) => onValue(ref(db, `tutor_roles/${uid}`), snap => callback(snap.val() === "teacher"), error);
 export const watchTeachingProfile = (uid, callback, error) => onValue(ref(db, `tutor_profiles/${uid}`), snap => callback(snap.val() || {}), error);
 export async function saveTeachingProfile(input) {

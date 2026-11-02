@@ -11,7 +11,7 @@
     <script src="qc-preferences.js?v=20261031-explore"></script>
     <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
     <link rel="stylesheet" href="tutor-brand.css?v=20261101-add-course">
-    <link rel="stylesheet" href="tutor-check.css?v=20261102-shared-nav">
+    <link rel="stylesheet" href="tutor-check.css?v=20261102-ux-filters">
 </head>
 <body class="tutor-page">
     <a class="skip-link" href="#catalog">Skip to courses</a>
@@ -20,33 +20,32 @@
         <h1 class="sr-only">Marketplace</h1>
         <div id="browseLayout" class="browse-layout">
             <aside class="filter-panel panel" aria-label="Course filters">
-                <details id="courseFilters" open>
-                    <summary>Filters <span id="filterCount" class="filter-count" hidden></span></summary>
+                <div id="courseFilters">
+                    <div class="filter-heading">
+                        <h2 id="filterHeading" tabindex="-1">Filters <span id="filterCount" class="filter-count" hidden></span></h2>
+                        <button id="resetFilters" class="text-button" type="button">Clear all</button>
+                    </div>
+                    <p class="filter-help">Results update as you choose.</p>
+                    <a class="filter-results-link" href="#catalog">View matching courses</a>
                     <div class="filter-options">
-                        <div class="section-heading"><button id="resetFilters" class="text-button" type="button">Reset all</button></div>
-                        <fieldset><legend>Price range (IDR)</legend>
+                        <fieldset aria-describedby="priceHelp"><legend>Price range <span class="filter-currency">(IDR)</span></legend>
+                            <p id="priceHelp" class="filter-help">Choose one or more ranges.</p>
                             <label><input type="checkbox" name="price" value="0:100000"> Under Rp100.000</label>
-                            <label><input type="checkbox" name="price" value="100000:250000"> Rp100.000 – under Rp250.000</label>
-                            <label><input type="checkbox" name="price" value="250000:500000"> Rp250.000 – under Rp500.000</label>
-                            <label><input type="checkbox" name="price" value="500000:100000001"> Rp500.000 and above</label>
-                        </fieldset>
-                        <fieldset><legend>Course type</legend>
-                            <label><input type="radio" name="courseType" value="" checked> Any type</label>
-                            <label><input type="radio" name="courseType" value="live"> Live classes</label>
-                            <label><input type="radio" name="courseType" value="self"> Self-paced</label>
-                            <label><input type="radio" name="courseType" value="package"> Packages</label>
+                            <label><input type="checkbox" name="price" value="100000:250000"> <span>Rp100.000 to<br>under Rp250.000</span></label>
+                            <label><input type="checkbox" name="price" value="250000:500000"> <span>Rp250.000 to<br>under Rp500.000</span></label>
+                            <label><input type="checkbox" name="price" value="500000:100000001"> Rp500.000 &amp; up</label>
                         </fieldset>
                         <label class="teacher-filter" for="teacherFilter">Teacher
                             <select id="teacherFilter"><option value="">All teachers</option></select>
                         </label>
-                        <fieldset><legend>Course rating</legend>
-                            <label><input type="radio" name="rating" value="" checked> Any rating</label>
-                            <label><input type="radio" name="rating" value="4"> <span class="stars" aria-hidden="true">★★★★</span><span>4 &amp; up</span></label>
-                            <label><input type="radio" name="rating" value="3"> <span class="stars" aria-hidden="true">★★★</span><span>3 &amp; up</span></label>
+                        <fieldset class="rating-filters"><legend>Rating</legend>
+                            <label><input type="radio" name="rating" value="" checked> All ratings</label>
+                            <label><input type="radio" name="rating" value="5" aria-label="5 stars"> <span class="stars" aria-hidden="true">★</span><span>5.0</span></label>
+                            <label><input type="radio" name="rating" value="4" aria-label="4 stars and up"> <span class="stars" aria-hidden="true">★</span><span>4.0 &amp; up</span></label>
+                            <label><input type="radio" name="rating" value="3" aria-label="3 stars and up"> <span class="stars" aria-hidden="true">★</span><span>3.0 &amp; up</span></label>
                         </fieldset>
-                        <p class="muted">Reviews are from accepted learners. Teachers are self-registered, not platform-verified.</p>
                     </div>
-                </details>
+                </div>
             </aside>
             <div class="browse-content">
         <section class="course-hero" aria-labelledby="heroTitle">
@@ -71,15 +70,17 @@
         </section>
         <p id="marketStatus" class="market-status" role="status">Connecting to live courses...</p>
         <p id="marketError" class="error" role="alert" hidden></p>
-            <section class="course-results" id="catalog" aria-label="Courses">
+        <p id="marketActionStatus" class="sr-only" role="status" aria-atomic="true"></p>
+            <section class="course-results" id="catalog" aria-label="Courses" tabindex="-1">
                 <div class="catalog-toolbar">
+                    <p id="resultCount" role="status" aria-atomic="true" tabindex="-1"></p>
                     <label class="sort-control">Sort by <select id="courseSort"><option value="newest">Newest</option><option value="rating">Highest rated</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></label>
                 </div>
-                <p id="resultCount" class="muted" role="status"></p>
                 <div id="activeFilters" class="active-filters" role="group" aria-label="Active filters" hidden></div>
                 <div id="courseGrid" class="course-grid" aria-busy="true">
-                    <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
+                    <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
                 </div>
+                <p class="muted">Reviews are from accepted learners. Teachers are self-registered, not platform-verified.</p>
             </section>
             </div>
         </div>
@@ -144,6 +145,6 @@
             <button id="saveCourseButton" class="primary" type="submit">Publish course</button>
         </form>
     </dialog>
-    <script type="module" src="tutor-check.js?v=20261102-shared-nav"></script>
+    <script type="module" src="tutor-check.js?v=20261102-ux-filters"></script>
 </body>
 </html>

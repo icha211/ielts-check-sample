@@ -67,3 +67,23 @@ test("enrollment prices and transitions are protected, inboxes are private, only
     const retained = await request("tutor_requests", "enroll-teacher", "GET", undefined, { orderBy: "teacherId", equalTo: "enroll-teacher" });
     assert.equal((await retained.json())["enroll-course_enroll-student"].status, "accepted");
 });
+test("public course totals expose only a count and public teacher identity is backend-written", { skip: !host }, async () => {
+    const url = new URL(`http://${host}/.json?ns=demo-toefl-messaging-default-rtdb`);
+    const seeded = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer owner" },
+        body: JSON.stringify({
+            "tutor_course_stats/public-stats-test": { students: 2, records: { privateStudent: { accepted: true, revision: 1 } } },
+            "tutor_public_teachers/public-teacher-test": { displayName: "Teacher", photoURL: "" }
+        })
+    });
+    assert.equal(seeded.status, 200);
+    const count = await request("tutor_course_stats/public-stats-test/students", null);
+    assert.equal(count.status, 200);
+    assert.equal(await count.json(), 2);
+    assert.equal((await request("tutor_course_stats/public-stats-test", null)).status, 401);
+    assert.equal((await request("tutor_course_stats/public-stats-test/records", "public-teacher-test")).status, 401);
+    assert.equal((await request("tutor_course_stats/public-stats-test/students", "public-teacher-test", "PUT", 99)).status, 401);
+    assert.equal((await request("tutor_public_teachers/public-teacher-test", null)).status, 200);
+    assert.equal((await request("tutor_public_teachers/public-teacher-test", "public-teacher-test", "PUT", { displayName: "Fake" })).status, 401);
+});

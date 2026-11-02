@@ -1,16 +1,62 @@
 import { auth } from "./js/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, rupiah, validateCourse } from "./js/tutor-model.js?v=20261101-crud";
-import { watchCatalog, watchReviews, watchTeachingProfile, watchAccount, saveCourse, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview } from "./js/tutor-service.js?v=20261101-crud";
+import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse } from "./js/tutor-model.js?v=20261101-crud";
+import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStudents, watchAccount, saveCourse, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview } from "./js/tutor-service.js?v=20261102-market-cards";
 
 const $ = id => document.getElementById(id);
 let courses = {}, reviews = {}, library = {}, requests = {}, inbox = {};
 let uid = "", role = "student", roleReady = false, version = 0, accountStop = () => {};
-let category = "", type = "", favoritesOnly = false, editingId = "", detailId = "";
+let category = "", favoritesOnly = false, editingId = "", detailId = "";
 let selectedTeacher = new URLSearchParams(location.search).get("teacher") || "";
 let detailProfile = {}, detailProfileStop = () => {};
 let catalogReady = false, reviewsReady = false, checkoutBusy = false;
+const teacherIdentities = {}, publicStudents = {};
+const teacherIdentityStops = new Map(), courseStudentStops = new Map();
+const filterPanel = document.querySelector(".filter-panel");
+const filterSidebar = elSidebarFilters();
+function elSidebarFilters() {
+    const container = document.createElement("div");
+    container.id = "marketplaceSidebarFilters";
+    $("qcnavSidebar").append(container);
+    return container;
+}
+function courseTeacher(course) {
+    return teacherIdentities[course.teacherId]?.displayName || course.teacherName;
+}
+function syncPublicCourseData() {
+    const teacherIds = new Set(Object.values(courses).map(course => course.teacherId));
+    for (const [id, stop] of teacherIdentityStops) {
+        if (!teacherIds.has(id)) { stop(); teacherIdentityStops.delete(id); delete teacherIdentities[id]; }
+    }
+    for (const id of teacherIds) {
+        if (teacherIdentityStops.has(id)) continue;
+        teacherIdentityStops.set(id, watchTeacherIdentity(id, profile => {
+            teacherIdentities[id] = profile;
+            renderCatalog();
+            if (!$("coursePage").hidden) renderDetail();
+        }, failure => {
+            console.error("[TutorCheck] Public teacher sync failed:", failure);
+            error("Some course details could not sync. You can still browse courses. Refresh to retry.");
+        }));
+    }
+    for (const [id, stop] of courseStudentStops) {
+        if (!(id in courses)) { stop(); courseStudentStops.delete(id); delete publicStudents[id]; }
+    }
+    for (const id of Object.keys(courses)) {
+        if (courseStudentStops.has(id)) continue;
+        courseStudentStops.set(id, watchCourseStudents(id, count => {
+            publicStudents[id] = Number.isSafeInteger(count) && count >= 0 ? count : null;
+            renderCatalog();
+            if (!$("coursePage").hidden) renderDetail();
+        }, failure => {
+            publicStudents[id] = null;
+            renderCatalog();
+            console.error("[TutorCheck] Public student totals sync failed:", failure);
+            error("Some course details could not sync. You can still browse courses. Refresh to retry.");
+        }));
+    }
+}
 const pageParams = new URLSearchParams(location.search);
 let initialCourse = pageParams.get("course") || "";
 let initialStudio = pageParams.get("studio") === "1";
@@ -39,20 +85,31 @@ const el = (tag, className = "", text = "") => {
     return node;
 };
 function icon(name) { const node = el("i", `ti ti-${name}`); node.setAttribute("aria-hidden", "true"); return node; }
-function error(message, target = $("marketError")) {
+function error(message, target = (!$("coursePage").hidden && $("detailError")) || $("marketError")) {
     console.error("[TutorCheck]", message);
-    target.textContent = message instanceof Error ? message.message : String(message);
+    const text = message instanceof Error ? message.message : String(message);
+    if (target.textContent !== text) target.textContent = text;
     target.hidden = false;
 }
 function action(text, className, callback) {
     const node = el("button", className, text);
     node.type = "button";
     node.addEventListener("click", async () => {
+        const hadFocus = document.activeElement === node;
+        const courseId = node.closest(".course-card")?.dataset.courseId;
+        const focusKey = node.dataset.focusKey;
         node.disabled = true;
         const current = version;
         try { await callback(); }
         catch (failure) { if (current === version) error(failure); }
-        finally { if (node.isConnected) node.disabled = false; }
+        finally {
+            if (node.isConnected) node.disabled = false;
+            if (current === version && hadFocus && courseId && focusKey && !$("browseLayout").hidden && document.activeElement === document.body) {
+                const card = [...$("courseGrid").querySelectorAll(".course-card")].find(card => card.dataset.courseId === courseId);
+                const control = card?.querySelector(`[data-focus-key="${focusKey}"]`);
+                (control && !control.disabled ? control : $("resultCount")).focus({ preventScroll: true });
+            }
+        }
     });
     return node;
 }
@@ -91,7 +148,16 @@ function cover(course, detail = false) {
             node.controls = true;
             node.preload = "metadata";
             node.playsInline = true;
+            if (course.coverURL) node.poster = course.coverURL;
             node.setAttribute("aria-label", `${course.title} video preview`);
+            return node;
+        }
+        if (course.coverURL) {
+            const node = el("img", "course-cover");
+            node.src = course.coverURL;
+            node.alt = `${course.title} video preview thumbnail`;
+            node.loading = "lazy";
+            node.addEventListener("error", () => node.replaceWith(el("div", "course-cover course-cover--video", "Video thumbnail unavailable")), { once: true });
             return node;
         }
         const node = el("div", "course-cover course-cover--video");
@@ -128,49 +194,78 @@ function price(course) {
 }
 function card(course, statistics) {
     const node = el("article", "course-card panel");
+    node.dataset.courseId = course.id;
     const artwork = el("div", "course-artwork");
     artwork.append(cover(course));
-    if (course.originalPrice > course.price) artwork.append(el("span", "course-badge", "Limited offer"));
+    if (course.originalPrice > course.price) artwork.append(el("span", "course-badge", "Course offer"));
     const detail = action("", "course-open", () => showCourse(course.id));
     detail.append(icon("arrow-up-right"));
     detail.setAttribute("aria-label", `View ${course.title}`);
+    detail.dataset.focusKey = "preview";
     artwork.append(detail);
     const saved = Boolean(library.favorites?.[course.id]);
-    const save = action("", "save-button course-save", async () => {
-        if (requireLogin()) await toggleLibrary("favorites", course.id, !saved);
-    });
-    save.append(icon(saved ? "heart-filled" : "heart"));
-    save.setAttribute("aria-label", `${saved ? "Unsave" : "Save"} ${course.title}`);
-    save.setAttribute("aria-pressed", String(saved));
-    artwork.append(save);
+    const favoriteButton = className => {
+        const save = action("", className, async () => {
+            if (!requireLogin()) return;
+            await toggleLibrary("favorites", course.id, !saved);
+            $("marketActionStatus").textContent = `${course.title} ${saved ? "removed from" : "added to"} saved courses.`;
+        });
+        save.append(icon(saved ? "heart-filled" : "heart"));
+        save.setAttribute("aria-label", `${saved ? "Unsave" : "Save"} ${course.title}`);
+        save.setAttribute("aria-pressed", String(saved));
+        save.dataset.focusKey = className.includes("card-favorite") ? "favorite" : "cover-favorite";
+        return save;
+    };
+    artwork.append(favoriteButton("save-button course-save"));
     node.append(artwork);
     const content = el("div", "course-content");
-    const teacher = el("a", "teacher-name", course.teacherName);
+    const teacherName = courseTeacher(course);
+    const teacher = el("a", "teacher-name", teacherName);
     teacher.href = `profile.html?uid=${encodeURIComponent(course.teacherId)}`;
+    teacher.dataset.focusKey = "teacher";
     const heading = el("h3");
     heading.append(action(course.title, "course-title", () => showCourse(course.id)));
+    heading.firstElementChild.dataset.focusKey = "title";
     const teacherLine = el("div", "course-teacher-line");
-    const avatar = el("span", "teacher-avatar", course.teacherName.trim().charAt(0).toUpperCase() || "T");
+    const photoURL = teacherIdentities[course.teacherId]?.photoURL;
+    const avatar = photoURL ? el("img", "teacher-avatar") : el("span", "teacher-avatar", teacherName.trim().charAt(0).toUpperCase() || "T");
+    if (photoURL) {
+        avatar.src = photoURL;
+        avatar.alt = "";
+        avatar.loading = "lazy";
+        avatar.addEventListener("error", () => avatar.replaceWith(el("span", "teacher-avatar", teacherName.trim().charAt(0).toUpperCase() || "T")), { once: true });
+    }
     avatar.setAttribute("aria-hidden", "true");
     teacherLine.append(avatar, teacher);
     const ratingLine = el("div", "course-rating-line");
     ratingLine.append(
         el("p", "rating", statistics.count ? `★ ${statistics.rating.toFixed(1)}` : "New course"),
-        el("span", "review-count", statistics.count ? `${statistics.count} review${statistics.count === 1 ? "" : "s"}` : "Be the first to review")
+        el("span", "review-count", `(${statistics.count} review${statistics.count === 1 ? "" : "s"})`)
     );
+    const count = publicStudents[course.id];
+    const countText = Number.isSafeInteger(count)
+        ? `${count} student${count === 1 ? "" : "s"}`
+        : course.teacherId === uid ? `${statistics.students} student${statistics.students === 1 ? "" : "s"}` : "Student count unavailable";
+    const learners = el("span", "learner-count", countText);
+    learners.title = "Number of accepted enrollments; student records remain private.";
+    ratingLine.append(learners);
     content.append(teacherLine, ratingLine, heading);
-    if (course.teacherId === uid) content.append(el("p", "learner-count", `${statistics.students} accepted learner${statistics.students === 1 ? "" : "s"}`));
     content.append(price(course));
     const bottom = el("div", "card-bottom");
     const inCart = Boolean(library.cart?.[course.id]);
     const cart = action(inCart ? "In cart" : "Add to cart", "primary", async () => {
         if (!requireLogin()) return;
         await toggleLibrary("cart", course.id, !inCart);
+        $("marketActionStatus").textContent = `${course.title} ${inCart ? "removed from" : "added to"} your cart.`;
     });
+    cart.dataset.focusKey = "cart";
+    cart.setAttribute("aria-label", `${inCart ? "Remove from cart:" : "Add to cart:"} ${course.title}`);
     cart.disabled = uid === course.teacherId || Boolean(requests[`${course.id}_${uid}`]);
     if (uid === course.teacherId) cart.textContent = "Your course";
     else if (cart.disabled) cart.textContent = "Requested";
-    bottom.append(cart);
+    if (cart.disabled) cart.setAttribute("aria-label", `${cart.textContent}: ${course.title}`);
+    cart.prepend(icon("shopping-cart"));
+    bottom.append(cart, favoriteButton("save-button card-favorite"));
     content.append(bottom);
     node.append(content);
     return node;
@@ -187,17 +282,16 @@ function renderFilterState() {
         target.append(button);
     };
     if (selectedTeacher) {
-        const teacher = Object.values(courses).find(course => course.teacherId === selectedTeacher)?.teacherName || "Selected teacher";
+        const course = Object.values(courses).find(course => course.teacherId === selectedTeacher);
+        const teacher = course ? courseTeacher(course) : "Selected teacher";
         add(teacher, () => { selectedTeacher = ""; $("teacherFilter").value = ""; });
     }
     if (category) add(TUTOR_CATEGORIES.find(([id]) => id === category)[1], () => category = "");
-    if (type) add(TUTOR_TYPES[type], () => { type = ""; document.querySelector('[name="courseType"][value=""]').checked = true; });
-    if ($("courseSearch").value.trim()) add(`Search: ${$("courseSearch").value.trim()}`, () => $("courseSearch").value = "");
-    document.querySelectorAll('[name="price"]:checked').forEach(input => add(input.parentElement.textContent.trim(), () => input.checked = false));
+    if ($("courseSearch").value.trim()) add(`Search: ${$("courseSearch").value.trim()}`, () => { $("courseSearch").value = ""; $("topCourseSearch").value = ""; });
+    document.querySelectorAll('[name="price"]:checked').forEach(input => add(input.parentElement.innerText.trim().replace(/\s+/g, " "), () => input.checked = false));
     const rating = document.querySelector('[name="rating"]:checked');
-    if (rating.value) add(`${rating.value} stars & up`, () => document.querySelector('[name="rating"][value=""]').checked = true);
+    if (rating?.value) add(`${rating.value} stars${rating.value === "5" ? "" : " & up"}`, () => document.querySelector('[name="rating"][value=""]').checked = true);
     if (favoritesOnly) add("Saved courses", () => { favoritesOnly = false; $("favoritesButton").setAttribute("aria-pressed", "false"); });
-    document.querySelectorAll('[name="courseType"]').forEach(input => { input.checked = input.value === type; });
     const count = target.children.length;
     target.hidden = !count;
     $("filterCount").hidden = !count;
@@ -206,7 +300,7 @@ function renderFilterState() {
     $("allCategories").setAttribute("aria-pressed", String(!category));
     document.querySelectorAll("[data-category]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.category === category)));
     if (focusedIndex >= 0) {
-        (target.children[Math.min(focusedIndex, count - 1)] || $("courseFilters").querySelector("summary")).focus();
+        (target.children[Math.min(focusedIndex, count - 1)] || $("filterHeading")).focus();
     }
 }
 function renderCatalog() {
@@ -216,24 +310,33 @@ function renderCatalog() {
     $("cartCount").textContent = Object.keys(library.cart || {}).length;
     const teacherOptions = $("teacherFilter");
     const teacherSelection = selectedTeacher;
-    const teacherRows = [...new Map(Object.values(courses).map(course => [course.teacherId, course.teacherName])).entries()]
+    const teacherRows = [...new Map(Object.values(courses).filter(course => course.published && !course.archived).map(course => [course.teacherId, courseTeacher(course)])).entries()]
         .sort((a, b) => a[1].localeCompare(b[1]));
-    teacherOptions.replaceChildren(new Option("All teachers", ""));
-    teacherRows.forEach(([id, name]) => teacherOptions.append(new Option(name, id)));
+    const teacherSignature = JSON.stringify(teacherRows);
+    if (teacherOptions.dataset.options !== teacherSignature) {
+        teacherOptions.replaceChildren(new Option("All teachers", ""));
+        teacherRows.forEach(([id, name]) => teacherOptions.append(new Option(name, id)));
+        teacherOptions.dataset.options = teacherSignature;
+    }
     selectedTeacher = teacherRows.some(([id]) => id === teacherSelection) || (!catalogReady && !teacherRows.length) ? teacherSelection : "";
     teacherOptions.value = selectedTeacher;
     renderFilterState();
     if (!catalogReady || !reviewsReady) return;
     const statistics = stats();
-    const filters = { teacher: selectedTeacher, category, type, search: $("courseSearch").value, sort: $("courseSort").value,
-        rating: document.querySelector('[name="rating"]:checked').value,
+    const filters = { teacher: selectedTeacher, category, search: $("courseSearch").value, sort: $("courseSort").value,
+        rating: document.querySelector('[name="rating"]:checked')?.value || "",
         prices: [...document.querySelectorAll('[name="price"]:checked')].map(input => input.value) };
-    let rows = selectCourses(courses, filters, statistics);
+    const displayCourses = Object.fromEntries(Object.entries(courses).map(([id, course]) => [id, { ...course, teacherName: courseTeacher(course) }]));
+    let rows = selectCourses(displayCourses, filters, statistics);
     if (favoritesOnly) rows = rows.filter(course => library.favorites?.[course.id]);
     const grid = $("courseGrid");
+    const focusedCard = document.activeElement?.closest(".course-card");
+    const focusedCourse = focusedCard?.dataset.courseId;
+    const focusKey = document.activeElement?.dataset.focusKey;
     grid.replaceChildren();
     grid.setAttribute("aria-busy", "false");
-    $("resultCount").textContent = `${rows.length} ${favoritesOnly ? "saved " : ""}course${rows.length === 1 ? "" : "s"}`;
+    const resultText = `${rows.length} ${favoritesOnly ? "saved " : ""}course${rows.length === 1 ? "" : "s"}${$("filterCount").hidden ? " available" : " match your filters"}`;
+    if ($("resultCount").textContent !== resultText) $("resultCount").textContent = resultText;
     if (!rows.length) {
         const empty = el("div", "empty-state");
         const noCatalog = !Object.values(courses).some(course => course.published && !course.archived);
@@ -247,6 +350,11 @@ function renderCatalog() {
         }
         grid.append(empty);
     } else rows.forEach(course => grid.append(card(course, statistics[course.id])));
+    if (focusedCourse && focusKey && !$("browseLayout").hidden) {
+        const replacement = [...grid.querySelectorAll(".course-card")].find(card => card.dataset.courseId === focusedCourse);
+        const control = replacement?.querySelector(`[data-focus-key="${focusKey}"]`);
+        (control && !control.disabled ? control : $("resultCount")).focus({ preventScroll: true });
+    }
     document.querySelectorAll("[data-category]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.category === category)));
     renderCart();
     renderRequests();
@@ -270,8 +378,11 @@ function renderCatalog() {
 }
 function syncMarketplaceNavigation() {
     const teacher = role === "teacher";
-    $("qcnavMarketplaceStudentSidebar").hidden = teacher;
-    $("qcnavMarketplaceTeacherSidebar").hidden = !teacher;
+    const browsing = !$("browseLayout").hidden;
+    document.body.classList.toggle("marketplace-browsing", browsing);
+    $("qcnavMarketplaceStudentSidebar").hidden = browsing || teacher;
+    $("qcnavMarketplaceTeacherSidebar").hidden = browsing || !teacher;
+    filterSidebar.hidden = !browsing;
     const params = new URLSearchParams(location.search);
     const studio = teacher && params.get("studio") === "1";
     const classes = params.get("classes") === "1";
@@ -431,6 +542,7 @@ function showCourse(id) {
     $("browseLayout").hidden = true;
     $("coursePage").hidden = false;
     $("teacherStudio").hidden = true;
+    syncMarketplaceNavigation();
     renderDetail();
     $("coursePage").scrollIntoView({ block: "start" });
     const course = courses[id];
@@ -483,23 +595,47 @@ function showClasses() {
     }
 }
 function renderDetail() {
-    const target = $("courseDetail"), course = courses[detailId];
+    const target = $("courseDetail");
+    const savedCourse = courses[detailId];
+    const course = savedCourse ? { ...savedCourse, teacherName: courseTeacher(savedCourse) } : null;
     const oldForm = target.querySelector("form");
     const draft = oldForm ? new FormData(oldForm) : null;
     const focused = target.contains(document.activeElement) ? document.activeElement : null;
     const focusedName = focused?.name;
-    const selectedTab = target.querySelector('[data-detail-tab][aria-selected="true"]')?.dataset.detailTab || "overview";
+    const focusedTab = focused?.dataset.detailTab;
+    const sameCourse = target.dataset.courseId === detailId;
+    const selectedTab = sameCourse ? target.querySelector('[data-detail-tab][aria-selected="true"]')?.dataset.detailTab || "overview" : "overview";
     const selectionStart = focused?.selectionStart, selectionEnd = focused?.selectionEnd;
+    const existingVideo = target.querySelector("video.detail-cover");
+    const previousFeedback = sameCourse ? target.querySelector(".detail-feedback")?.textContent || "" : "";
+    const previousError = sameCourse ? target.querySelector("#detailError:not([hidden])")?.textContent || "" : "";
+    target.dataset.courseId = detailId;
     target.replaceChildren();
     if (!course) { target.append(el("p", "error", "This course is unavailable.")); return; }
     $("coursePageTitle").textContent = course.title;
     const courseStats = stats()[detailId] || courseStatsFor(detailId);
+    const teacherStats = teachingSummary(courses, reviews, course.teacherId);
+    const curriculumLines = String(course.curriculum || "").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const outcomeLines = String(course.whatYouLearn || "").split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const teacherAvatar = () => {
+        const imageURL = detailProfile.imageURL || teacherIdentities[course.teacherId]?.photoURL;
+        const avatar = imageURL
+            ? el("img", "teacher-profile-image")
+            : el("span", "teacher-profile-image teacher-profile-initial", course.teacherName.trim().charAt(0).toUpperCase() || "T");
+        if (imageURL) {
+            avatar.src = imageURL;
+            avatar.alt = `${course.teacherName} profile`;
+            avatar.addEventListener("error", () => avatar.replaceWith(el("span", "teacher-profile-image teacher-profile-initial", course.teacherName.trim().charAt(0).toUpperCase() || "T")), { once: true });
+        }
+        return avatar;
+    };
     const detailLayout = el("div", "detail-layout");
     const detailMain = el("div", "detail-main");
     const purchase = el("aside", "purchase-panel");
+    purchase.setAttribute("aria-label", "Course enrollment");
     const intro = el("section", "detail-intro");
     const media = el("div", "detail-media");
-    media.append(cover(course, true));
+    media.append(existingVideo?.getAttribute("src") === course.previewURL && course.previewType === "video" ? existingVideo : cover(course, true));
     const introCopy = el("div", "detail-intro-copy");
     introCopy.append(
         el("span", "course-kicker", `${TUTOR_CATEGORIES.find(([id]) => id === course.category)?.[1] || "English"} · ${TUTOR_TYPES[course.type]}`),
@@ -507,17 +643,29 @@ function renderDetail() {
     );
     const teacherLink = el("a", "detail-teacher-link", course.teacherName);
     teacherLink.href = `profile.html?uid=${encodeURIComponent(course.teacherId)}`;
-    introCopy.append(teacherLink);
+    const introTeacher = el("div", "detail-intro-teacher");
+    const introTeacherCopy = el("div");
+    introTeacherCopy.append(teacherLink, el("p", "muted", detailProfile.qualification || "Independent English teacher"));
+    introTeacher.append(teacherAvatar(), introTeacherCopy);
+    introCopy.append(introTeacher);
     const ratingText = courseStats.count
-        ? `★ ${courseStats.rating.toFixed(1)} · ${courseStats.count} review${courseStats.count === 1 ? "" : "s"}`
+        ? `${courseStats.rating.toFixed(1)} · ${courseStats.count} review${courseStats.count === 1 ? "" : "s"}`
         : "New course · No reviews yet";
-    introCopy.append(el("p", "detail-rating", ratingText));
+    const ratingLine = el("p", "detail-rating");
+    if (courseStats.count) ratingLine.append(icon("star-filled"));
+    ratingLine.append(el("span", "", ratingText));
+    introCopy.append(ratingLine);
+    if (Number.isSafeInteger(publicStudents[detailId])) ratingLine.append(el("span", "detail-student-count", `| ${publicStudents[detailId]} students`));
     const quickStats = el("div", "quick-stats");
-    quickStats.append(
-        el("span", "", TUTOR_TYPES[course.type]),
-        el("span", "", `${course.curriculum.split(/\r?\n/).filter(Boolean).length} curriculum items`),
-        el("span", "", `${String(course.whatYouLearn || course.curriculum).split(/\r?\n/).filter(Boolean).length} learning outcomes`)
-    );
+    [
+        ["presentation", TUTOR_TYPES[course.type], "Course format"],
+        ["stack-2", String(curriculumLines.length), "Curriculum items"],
+        ["target-arrow", String(outcomeLines.length), "Learning outcomes"]
+    ].forEach(([glyph, value, label]) => {
+        const metric = el("div", "quick-stat");
+        metric.append(icon(glyph), el("strong", "", value), el("span", "", label));
+        quickStats.append(metric);
+    });
     introCopy.append(quickStats);
     intro.append(media, introCopy);
     detailMain.append(intro);
@@ -534,7 +682,18 @@ function renderDetail() {
         button.setAttribute("aria-controls", `course-panel-${id}`);
         button.setAttribute("role", "tab");
         button.setAttribute("aria-selected", String(id === selectedTab));
+        button.tabIndex = id === selectedTab ? 0 : -1;
         button.addEventListener("click", () => selectDetailTab(id));
+        button.addEventListener("keydown", event => {
+            const index = tabNames.findIndex(([key]) => key === id);
+            const next = event.key === "ArrowRight" ? (index + 1) % tabNames.length
+                : event.key === "ArrowLeft" ? (index + tabNames.length - 1) % tabNames.length
+                    : event.key === "Home" ? 0 : event.key === "End" ? tabNames.length - 1 : -1;
+            if (next < 0) return;
+            event.preventDefault();
+            selectDetailTab(tabNames[next][0]);
+            tabs.children[next].focus();
+        });
         tabs.append(button);
     });
     detailMain.append(tabs);
@@ -548,12 +707,25 @@ function renderDetail() {
     overview.append(el("h3", "", "About this course"), el("p", "detail-copy", course.summary));
     overview.append(el("h3", "", "What you'll learn"));
     const outcomes = el("ul", "learning-outcomes");
-    String(course.whatYouLearn || course.curriculum).split(/\r?\n/).map(line => line.trim()).filter(Boolean).forEach(line => {
+    outcomeLines.forEach(line => {
         const item = el("li");
         item.append(icon("circle-check"), el("span", "", line));
         outcomes.append(item);
     });
-    overview.append(outcomes, el("h3", "", "Schedule and access"), el("p", "detail-copy", course.schedule));
+    if (!outcomeLines.length) overview.append(el("p", "muted", "The teacher has not added learning outcomes yet."));
+    overview.append(outcomes);
+    const curriculumPreview = el("section", "curriculum-preview panel");
+    const curriculumHeading = el("div", "detail-side-heading");
+    curriculumHeading.append(el("h3", "", "Course curriculum"), el("span", "muted", `${curriculumLines.length} course items`),
+        action("View detailed curriculum →", "text-link", () => selectDetailTab("curriculum", true)));
+    const curriculumPreviewList = el("ol", "curriculum-list");
+    curriculumLines.slice(0, 3).forEach((line, index) => {
+        const item = el("li");
+        item.append(icon("player-play"), el("span", "", line), el("span", "curriculum-index", `Lesson ${String(index + 1).padStart(2, "0")}`));
+        curriculumPreviewList.append(item);
+    });
+    curriculumPreview.append(curriculumHeading, curriculumPreviewList);
+    overview.append(curriculumPreview, el("h3", "", "Schedule and access"), el("p", "detail-copy", course.schedule));
     panels.append(overview);
 
     const curriculumPanel = el("section", "detail-tab-panel");
@@ -563,7 +735,7 @@ function renderDetail() {
     curriculumPanel.dataset.detailPanel = "curriculum";
     curriculumPanel.append(el("h3", "", "Course curriculum"), el("p", "muted", `${course.curriculum.split(/\r?\n/).filter(Boolean).length} course items`));
     const curriculumList = el("ol", "curriculum-list");
-    String(course.curriculum).split(/\r?\n/).map(line => line.trim()).filter(Boolean).forEach((line, index) => {
+    curriculumLines.forEach((line, index) => {
         const item = el("li");
         item.append(icon("player-play"), el("span", "", line), el("span", "curriculum-index", `Lesson ${String(index + 1).padStart(2, "0")}`));
         curriculumList.append(item);
@@ -618,11 +790,7 @@ function renderDetail() {
     teacherPanel.setAttribute("role", "tabpanel");
     teacherPanel.setAttribute("aria-labelledby", "course-tab-teacher");
     teacherPanel.dataset.detailPanel = "teacher";
-    const teacherImage = detailProfile.imageURL ? el("img", "teacher-profile-image") : el("span", "teacher-profile-image teacher-profile-initial", course.teacherName.trim().charAt(0).toUpperCase() || "T");
-    if (detailProfile.imageURL) {
-        teacherImage.src = detailProfile.imageURL;
-        teacherImage.alt = `${course.teacherName} profile`;
-    }
+    const teacherImage = teacherAvatar();
     const teacherInfo = el("div");
     teacherInfo.append(el("h3", "", course.teacherName), el("p", "muted", detailProfile.qualification || "Independent English teacher"));
     if (Number.isInteger(detailProfile.experience)) teacherInfo.append(el("p", "muted", `${detailProfile.experience} years of teaching experience`));
@@ -651,12 +819,16 @@ function renderDetail() {
     detailMain.append(panels);
 
     purchase.append(price(course));
-    if (course.originalPrice > course.price) purchase.append(el("p", "offer-note", `${Math.round((1 - course.price / course.originalPrice) * 100)}% off the original price`));
+    if (course.originalPrice > course.price) {
+        const offer = el("div", "offer-note");
+        offer.append(icon("tag"), el("span", "", "Course offer · Save " + rupiah(course.originalPrice - course.price)));
+        purchase.append(offer);
+    }
     const purchaseNotice = el("p", "purchase-note", course.archived ? "This listing is archived." : course.published ? "No payment is collected here." : "This listing is paused.");
-    purchase.append(purchaseNotice);
     const add = action(library.cart?.[detailId] ? "In cart" : "Add to cart", "primary purchase-action", async () => {
         if (requireLogin()) await toggleLibrary("cart", detailId, true);
     });
+    add.prepend(icon("shopping-cart"));
     add.disabled = !course.published || course.archived || course.teacherId === uid || Boolean(requests[`${detailId}_${uid}`]);
     if (requests[`${detailId}_${uid}`]) add.textContent = "Already requested";
     purchase.append(add);
@@ -664,8 +836,10 @@ function renderDetail() {
         if (!requireLogin()) return;
         await requestEnrollment({ ...course, id: detailId });
         $("marketStatus").textContent = "Your class request was sent. The teacher will confirm the schedule.";
+        target.querySelector(".detail-feedback").textContent = "Request sent. The teacher will confirm the schedule.";
         renderCatalog();
     });
+    book.prepend(icon("calendar-event"));
     book.disabled = !course.published || course.archived || course.teacherId === uid || Boolean(requests[`${detailId}_${uid}`]);
     if (requests[`${detailId}_${uid}`]) book.textContent = "Request sent";
     purchase.append(book);
@@ -683,17 +857,52 @@ function renderDetail() {
             catch (err) { if (err.name !== "AbortError") throw err; }
         } else if (navigator.clipboard?.writeText) {
             await navigator.clipboard.writeText(url);
-            $("marketStatus").textContent = "Course link copied.";
+            target.querySelector(".detail-feedback").textContent = "Course link copied.";
         } else {
             const feedback = target.querySelector(".detail-feedback");
             feedback.textContent = url;
         }
     });
     share.append(icon("share-3"));
-    purchase.append(share);
-    const feedback = el("p", "detail-feedback");
+    share.setAttribute("aria-label", "Share this course");
+    share.title = "Share this course";
+    const shareURL = new URL(`tutor-check.html?course=${encodeURIComponent(detailId)}`, location.href).href;
+    const copyLink = action("", "share-icon", async () => {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(shareURL);
+            target.querySelector(".detail-feedback").textContent = "Course link copied.";
+        } else target.querySelector(".detail-feedback").textContent = shareURL;
+    });
+    copyLink.append(icon("link"));
+    copyLink.setAttribute("aria-label", "Copy course link");
+    copyLink.title = "Copy course link";
+    const shareLinks = el("div", "course-share-links");
+    shareLinks.append(copyLink);
+    [
+        ["Facebook", "brand-facebook", `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareURL)}`],
+        ["X", "brand-x", `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareURL)}&text=${encodeURIComponent(course.title)}`]
+    ].forEach(([label, glyph, href]) => {
+        const link = el("a", "share-icon");
+        link.href = href;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.setAttribute("aria-label", `Share on ${label}`);
+        link.title = `Share on ${label}`;
+        link.append(icon(glyph));
+        shareLinks.append(link);
+    });
+    shareLinks.append(share);
+    const shareSection = el("div", "course-share");
+    shareSection.append(el("p", "muted", "Share this course:"), shareLinks);
+    purchase.append(purchaseNotice, shareSection);
+    const feedback = el("p", "detail-feedback", previousFeedback);
     feedback.setAttribute("role", "status");
     purchase.append(feedback);
+    const detailError = el("p", "error", previousError);
+    detailError.id = "detailError";
+    detailError.setAttribute("role", "alert");
+    detailError.hidden = !previousError;
+    purchase.append(detailError);
 
     const detailSidebar = el("aside", "detail-sidebar");
     detailSidebar.append(purchase);
@@ -704,31 +913,25 @@ function renderDetail() {
     seeProfile.href = `profile.html?uid=${encodeURIComponent(course.teacherId)}`;
     teacherHeading.append(seeProfile);
     const teacherSummaryBody = el("div", "detail-side-teacher");
-    const teacherAvatar = detailProfile.imageURL
-        ? el("img", "teacher-profile-image")
-        : el("span", "teacher-profile-image teacher-profile-initial", course.teacherName.trim().charAt(0).toUpperCase() || "T");
-    if (detailProfile.imageURL) {
-        teacherAvatar.src = detailProfile.imageURL;
-        teacherAvatar.alt = `${course.teacherName} profile`;
-    }
     const teacherCopy = el("div");
     teacherCopy.append(el("strong", "", course.teacherName), el("p", "muted", detailProfile.qualification || "Independent English teacher"));
-    if (courseStats.count) teacherCopy.append(el("p", "detail-side-rating", `★ ${courseStats.rating.toFixed(1)} · ${courseStats.count} review${courseStats.count === 1 ? "" : "s"}`));
-    teacherSummaryBody.append(teacherAvatar, teacherCopy);
+    if (teacherStats.reviews.length) teacherCopy.append(el("p", "detail-side-rating", `★ ${teacherStats.rating.toFixed(1)} · ${teacherStats.reviews.length} review${teacherStats.reviews.length === 1 ? "" : "s"}`));
+    teacherSummaryBody.append(teacherAvatar(), teacherCopy);
     teacherSummary.append(teacherHeading, teacherSummaryBody);
-    if (detailProfile.about) teacherSummary.append(el("p", "detail-copy detail-side-about", detailProfile.about));
+    teacherSummary.append(el("p", "detail-copy detail-side-about", detailProfile.about || "This teacher has not added an introduction yet."));
     detailSidebar.append(teacherSummary);
 
     const reviewSummaryCard = el("section", "detail-side-card panel");
     const reviewHeading = el("div", "detail-side-heading");
     reviewHeading.append(el("h3", "", "Student reviews"));
-    const seeReviews = action("See all", "text-link", () => selectDetailTab("reviews"));
+    const seeReviews = action("See all →", "text-link", () => selectDetailTab("reviews", true));
     reviewHeading.append(seeReviews);
     reviewSummaryCard.append(reviewHeading, buildReviewSummary(detailId, courseStats));
     detailSidebar.append(reviewSummaryCard);
     detailLayout.append(detailMain, detailSidebar);
     target.append(detailLayout);
     selectDetailTab(selectedTab);
+    if (focusedTab) target.querySelector(`[data-detail-tab="${focusedTab}"]`)?.focus({ preventScroll: true });
     if (reviewFocus) {
         const field = target.querySelector(".review-form")?.elements.namedItem(reviewFocus.name);
         field?.focus();
@@ -747,7 +950,8 @@ function buildReviewSummary(id, statistics) {
     const ratings = Object.values(reviews[id] || {}).filter(review => Number.isInteger(review.rating) && review.rating >= 1 && review.rating <= 5);
     const summary = el("div", "review-summary");
     const total = el("div", "review-total");
-    total.append(el("strong", "", statistics.count ? statistics.rating.toFixed(1) : "—"), el("span", "review-stars", statistics.count ? "★★★★★" : "No ratings yet"), el("span", "muted", `${statistics.count} verified learner review${statistics.count === 1 ? "" : "s"}`));
+    const filledStars = statistics.count ? Math.round(statistics.rating) : 0;
+    total.append(el("strong", "", statistics.count ? statistics.rating.toFixed(1) : "—"), el("span", "review-stars", statistics.count ? "★".repeat(filledStars) + "☆".repeat(5 - filledStars) : "No ratings yet"), el("span", "muted", `${statistics.count} verified learner review${statistics.count === 1 ? "" : "s"}`));
     const breakdown = el("div", "rating-breakdown");
     for (let stars = 5; stars >= 1; stars--) {
         const count = ratings.filter(review => review.rating === stars).length;
@@ -762,10 +966,19 @@ function buildReviewSummary(id, statistics) {
     summary.append(total, breakdown);
     return summary;
 }
-function selectDetailTab(id) {
+function selectDetailTab(id, navigate = false) {
     const target = $("courseDetail");
-    target.querySelectorAll("[data-detail-tab]").forEach(button => button.setAttribute("aria-selected", String(button.dataset.detailTab === id)));
+    target.querySelectorAll("[data-detail-tab]").forEach(button => {
+        const selected = button.dataset.detailTab === id;
+        button.setAttribute("aria-selected", String(selected));
+        button.tabIndex = selected ? 0 : -1;
+    });
     target.querySelectorAll("[data-detail-panel]").forEach(panel => { panel.hidden = panel.dataset.detailPanel !== id; });
+    if (navigate) {
+        const tab = target.querySelector(`[data-detail-tab="${id}"]`);
+        tab?.focus({ preventScroll: true });
+        target.querySelector(".detail-tabs")?.scrollIntoView({ block: "start" });
+    }
 }
 let editorPreviewURL = "";
 function renderMediaPreview(file, course) {
@@ -924,24 +1137,27 @@ $("topCourseSearch").addEventListener("input", () => { $("courseSearch").value =
 $("courseSort").addEventListener("change", renderCatalog);
 $("teacherFilter").addEventListener("change", () => { selectedTeacher = $("teacherFilter").value; renderCatalog(); });
 document.querySelectorAll(".filter-panel input").forEach(input => input.addEventListener("change", () => {
-    if (input.name === "courseType") type = input.value;
     renderCatalog();
 }));
-const compactFilters = matchMedia("(max-width:1023px)");
-function syncFilterLayout() { $("courseFilters").open = !compactFilters.matches; }
+const compactFilters = matchMedia("(max-width:780px)");
+function syncFilterLayout() {
+    if (compactFilters.matches) document.querySelector(".browse-content").insertBefore(filterPanel, $("marketStatus"));
+    else filterSidebar.append(filterPanel);
+}
 syncFilterLayout();
 compactFilters.addEventListener("change", syncFilterLayout);
 function resetFilters() {
     const recoverFocus = document.activeElement?.closest(".empty-state");
-    category = ""; type = ""; selectedTeacher = ""; favoritesOnly = false;
+    const resetFocused = document.activeElement === $("resetFilters");
+    category = ""; selectedTeacher = ""; favoritesOnly = false;
     $("courseSearch").value = ""; $("topCourseSearch").value = ""; $("courseSort").value = "newest";
     $("teacherFilter").value = "";
     document.querySelectorAll('[name="price"]').forEach(input => input.checked = false);
-    document.querySelector('[name="courseType"][value=""]').checked = true;
     document.querySelector('[name="rating"][value=""]').checked = true;
     $("favoritesButton").setAttribute("aria-pressed", "false");
     renderCatalog();
     if (recoverFocus) $("courseSearch").focus();
+    else if (resetFocused) $("filterHeading").focus({ preventScroll: true });
 }
 $("resetFilters").addEventListener("click", resetFilters);
 $("allCategories").addEventListener("click", () => { category = ""; renderCatalog(); });
@@ -971,7 +1187,7 @@ window.addEventListener("popstate", () => {
     else showCatalog();
 });
 const catalogStop = watchCatalog(data => {
-    courses = data; catalogReady = true; renderCatalog();
+    courses = data; catalogReady = true; syncPublicCourseData(); renderCatalog();
     if (!$("coursePage").hidden) renderDetail();
     if ($("marketStatus").textContent === "Course connection failed.") {
         $("marketError").hidden = true;
@@ -1014,4 +1230,9 @@ const authStop = onAuthStateChanged(auth, user => {
         inbox: guarded(data => { inbox = data; if (!$("coursePage").hidden) renderDetail(); })
     }, err => { if (current === version) error(`Your marketplace account could not sync. Refresh to retry. ${err.message}`); });
 });
-window.addEventListener("pagehide", () => { accountStop(); catalogStop(); reviewsStop(); authStop(); compactFilters.removeEventListener("change", syncFilterLayout); }, { once: true });
+window.addEventListener("pagehide", () => {
+    accountStop(); catalogStop(); reviewsStop(); authStop();
+    teacherIdentityStops.forEach(stop => stop());
+    courseStudentStops.forEach(stop => stop());
+    compactFilters.removeEventListener("change", syncFilterLayout);
+}, { once: true });

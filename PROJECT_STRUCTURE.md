@@ -112,15 +112,55 @@ student home continues to use the learner dashboard.
 `js/tutor-model.js` contains validation, IDR pricing and filters;
 `js/tutor-service.js` owns Firebase subscriptions and writes. No demo listings
 are inserted; the catalogue starts empty until teachers publish real courses.
-Filters sit left of the hero, categories and catalogue on desktop, with a
-viewport-bounded sticky panel. Below 1024px they stack above the content and
-start collapsed. The marketplace shows four course cards per row on wide
-screens and adapts to smaller viewports. Removable active-filter chips and a
+On Marketplace browse only, filters replace navigation links inside the shared
+sidebar; detail and teacher-studio views restore role-specific navigation.
+The navbar is retained. The Marketplace filter card stays fixed on the left
+on desktop without a collapse control, with Price Range, Teacher and Rating
+only. On mobile it stays expanded after the course introduction/categories,
+with a jump link to matching courses instead of using a drawer.
+Price ranges support multiple selections and use exclusive upper bounds.
+Rating uses a single native radio group with All ratings to clear the threshold.
+Filter rows, selects and card actions have at least 44px targets. Matching counts
+are announced politely; active selections can be removed individually or cleared
+together. Live card refreshes preserve keyboard focus, and teacher options update
+only when their public data changes.
+Detail and studio views retain the original navigation collapse and drawer.
+There is no separate filter column in the
+catalogue. The marketplace shows four course cards per row at 1100px and wider,
+three on narrower desktop screens, two on tablets and one on phones.
+Cards include preview media, live public teacher identity, ratings, accepted
+student totals, IDR prices/discounts, cart and two synchronized favorite buttons.
+Removable active-filter chips and a
 selection count keep filter state visible; All courses clears only the
 category, while Reset all clears all filters and sorting. Course details open
 as shareable `?course=<id>` pages with browser back/forward support and live
 overview, learning outcomes, curriculum, real reviews, teacher profile and
 enrollment panels.
+The student detail view pairs the course preview and teacher/rating statistics
+with a purchase card, teacher summary and review breakdown. Overview includes
+learning outcomes and the first three curriculum items; the curriculum and
+reviews tabs expose the full content. Prices remain in IDR. Discounts use the
+teacher's saved original price; no countdown, certification, bestseller badge
+or public enrollment count is invented. On mobile, purchase actions follow
+the course introduction, before the tabbed content. Profile links open the
+course owner's public profile.
+
+`functions/` contains the Node 22 Firebase Realtime Database triggers for
+Marketplace public data. `tutor_course_stats/<course>/students` is the only
+public aggregate field; its event-revision ledger is private, and client writes
+to the aggregate and `tutor_public_teachers` are denied. Retried/out-of-order
+enrollment events do not double-count students. Public teacher identity contains
+only profile name and photo; user records and enrollment identities stay private.
+Deploy rules and functions before the new client:
+`firebase deploy --only database,functions`.
+For existing courses and teachers, run `npm --prefix functions run backfill:marketplace`
+with Application Default Credentials and `FIREBASE_DATABASE_URL` set to the
+intended project's database URL. This is an administrative operation; verify
+the target first. Missing aggregates display "Student count unavailable", not
+zero. This backend is plain JavaScript with no compilation step. CI uses Node 22,
+`npm --prefix functions run check` and `npm --prefix functions test`.
+Trigger integration and database privacy checks:
+`firebase emulators:exec --only database,functions,auth --project demo-toefl-messaging "node --test functions/emulator.test.js toefl-sample/tutor-rules.test.js"`.
 The hero reuses existing tutor artwork. Teachers can upload a PNG, JPEG or WebP
 image, or an MP4/WebM preview video up to 60 seconds and 20 MB. Preview media is
 publicly readable under `tutor-courses/<uid>/`; only its owner can upload or

@@ -37,6 +37,129 @@ test("ratings start empty and average actual learner reviews without invented st
     assert.equal(model.courseStats({ bad: { rating: 8 } }).count, 0);
     assert.equal(model.courseStats({}, { a: { status: "accepted" }, b: { status: "pending" } }).students, 1);
 });
+test("course detail tabs expose one panel and one keyboard tab stop", () => {
+    const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
+    const buttons = ["overview", "curriculum", "reviews", "teacher", "faq"].map(id => ({
+        dataset: { detailTab: id }, attributes: {}, tabIndex: 0,
+        setAttribute(name, value) { this.attributes[name] = value; },
+        focus() { this.focused = true; }
+    }));
+    const panels = buttons.map(button => ({ dataset: { detailPanel: button.dataset.detailTab }, hidden: false }));
+    let scrolled = false;
+    const target = {
+        querySelectorAll: selector => selector === "[data-detail-tab]" ? buttons : panels,
+        querySelector: selector => selector === ".detail-tabs"
+            ? { scrollIntoView: () => { scrolled = true; } }
+            : buttons.find(button => selector.includes(`"${button.dataset.detailTab}"`))
+    };
+    const context = vm.createContext({ $: () => target });
+    vm.runInContext(source.slice(source.indexOf("function selectDetailTab("), source.indexOf("\nlet editorPreviewURL")), context);
+    context.selectDetailTab("curriculum");
+    assert.deepEqual(buttons.filter(button => button.tabIndex === 0).map(button => button.dataset.detailTab), ["curriculum"]);
+    assert.deepEqual(panels.filter(panel => !panel.hidden).map(panel => panel.dataset.detailPanel), ["curriculum"]);
+    assert.equal(buttons[1].attributes["aria-selected"], "true");
+    assert.equal(buttons[0].attributes["aria-selected"], "false");
+    assert.equal(scrolled, false);
+    context.selectDetailTab("reviews", true);
+    assert.equal(buttons[2].focused, true);
+    assert.equal(scrolled, true);
+    assert.deepEqual(panels.filter(panel => !panel.hidden).map(panel => panel.dataset.detailPanel), ["reviews"]);
+});
+test("detail action errors appear in the visible purchase panel instead of the hidden catalog", () => {
+    const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
+    const nodes = { coursePage: { hidden: false }, detailError: { hidden: true }, marketError: { hidden: true } };
+    const logged = [];
+    const context = vm.createContext({ $: id => nodes[id], console: { error: (...args) => logged.push(args) } });
+    vm.runInContext(source.slice(source.indexOf("function error("), source.indexOf("\nfunction action(")), context);
+    context.error("Sign in to book a class.");
+    assert.equal(nodes.detailError.textContent, "Sign in to book a class.");
+    assert.equal(nodes.detailError.hidden, false);
+    assert.equal(nodes.marketError.hidden, true);
+    nodes.coursePage.hidden = true;
+    context.error("Course listings could not load.");
+    assert.equal(nodes.marketError.hidden, false);
+    assert.equal(nodes.marketError.textContent, "Course listings could not load.");
+    assert.equal(logged.length, 2);
+});
+test("video cards show the saved thumbnail while details retain the actual video", () => {
+    const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
+    const context = vm.createContext({
+        el: (tag, className) => ({
+            tag, className, attributes: {},
+            setAttribute(name, value) { this.attributes[name] = value; },
+            addEventListener() {}
+        })
+    });
+    vm.runInContext(source.slice(source.indexOf("function cover("), source.indexOf("\nfunction price(")), context);
+    const input = { ...course, previewType: "video", previewURL: "https://example.test/preview.mp4", coverURL: "https://example.test/thumbnail.jpg" };
+    const card = context.cover(input);
+    assert.equal(card.tag, "img");
+    assert.equal(card.src, input.coverURL);
+    assert.match(card.alt, /thumbnail/);
+    const detail = context.cover(input, true);
+    assert.equal(detail.tag, "video");
+    assert.equal(detail.src, input.previewURL);
+    assert.equal(detail.poster, input.coverURL);
+    assert.equal(detail.controls, true);
+});
+test("marketplace filter card stays expanded and exposes only price, teacher and rating", () => {
+    const source = fs.readFileSync(path.join(__dirname, "tutor-check.html"), "utf8");
+    const filter = source.slice(source.indexOf('<aside class="filter-panel'), source.indexOf("</aside>"));
+    assert.doesNotMatch(filter, /<details|<summary|courseType|Any rating/);
+    assert.match(filter, /id="filterHeading"/);
+    assert.match(filter, /id="resetFilters"[^>]*>Clear all</);
+    assert.match(filter, /id="teacherFilter"/);
+    assert.equal((filter.match(/name="price"/g) || []).length, 4);
+    assert.equal((filter.match(/type="radio" name="rating"/g) || []).length, 4);
+    assert.match(filter, /name="rating" value="" checked> All ratings/);
+    assert.match(filter, /aria-describedby="priceHelp"/);
+    assert.match(filter, /class="filter-results-link" href="#catalog"/);
+    assert.ok(filter.includes('aria-label="5 stars"'));
+    for (const rating of [3, 4]) assert.ok(filter.includes(`aria-label="${rating} stars and up"`));
+});
+test("price ranges are non-overlapping at boundaries and rating thresholds exclude unrated courses", () => {
+    const courses = Object.fromEntries([0, 99999, 100000, 249999, 250000, 499999, 500000, 100000000]
+        .map(price => [String(price), { ...course, price }]));
+    for (const [range, expected] of [
+        ["0:100000", ["0", "99999"]], ["100000:250000", ["100000", "249999"]],
+        ["250000:500000", ["250000", "499999"]], ["500000:100000001", ["500000", "100000000"]]
+    ]) assert.deepEqual(Array.from(model.selectCourses(courses, { prices: [range] }), row => row.id), expected);
+    const ratings = { "0": { rating: 5 }, "99999": { rating: 4.5 }, "100000": { rating: 3 } };
+    assert.deepEqual(Array.from(model.selectCourses(courses, { rating: "4" }, ratings), row => row.id), ["0", "99999"]);
+    assert.equal(model.selectCourses(courses, { rating: "" }, ratings).length, 8);
+});
+test("card actions recover focus after a live replacement without stealing focus from another control", async () => {
+    const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
+    const document = { body: {}, activeElement: null };
+    const replacement = { focus() { document.activeElement = this; } };
+    const courseCard = { dataset: { courseId: "course-1" }, querySelector: () => replacement };
+    const nodes = {
+        browseLayout: { hidden: false },
+        courseGrid: { querySelectorAll: () => [courseCard] },
+        resultCount: { focus() { document.activeElement = this; } }
+    };
+    const context = vm.createContext({
+        version: 1, document, $: id => nodes[id], error: failure => assert.fail(String(failure)),
+        el: () => ({
+            dataset: { focusKey: "cart" }, isConnected: true,
+            closest: () => courseCard,
+            addEventListener(name, callback) { this.click = callback; },
+            set disabled(value) { if (value && document.activeElement === this) document.activeElement = document.body; }
+        })
+    });
+    vm.runInContext(source.slice(source.indexOf("function action("), source.indexOf("\nfunction requireLogin(")), context);
+    for (const moveFocus of [false, true]) {
+        const otherControl = {};
+        let button;
+        button = context.action("Add to cart", "", async () => {
+            button.isConnected = false;
+            if (moveFocus) document.activeElement = otherControl;
+        });
+        document.activeElement = button;
+        await button.click();
+        assert.equal(document.activeElement, moveFocus ? otherControl : replacement);
+    }
+});
 function fixture() {
     const data = {}, writes = [];
     const context = vm.createContext({
@@ -54,6 +177,31 @@ function fixture() {
     vm.runInContext(source, context);
     return { context, data, writes };
 }
+test("public subscriptions retain missing counts and observe only public identity and totals", () => {
+    const { context } = fixture();
+    const subscriptions = [], values = [];
+    const onError = () => {};
+    context.onValue = (target, callback, error) => {
+        subscriptions.push({ target, callback, error });
+        return () => { target.stopped = true; };
+    };
+    context.testValues = values;
+    context.testOnError = onError;
+    const stopCount = vm.runInContext('watchCourseStudents("course-id", value => testValues.push(value), testOnError)', context);
+    const stopTeacher = vm.runInContext('watchTeacherIdentity("teacher-id", value => testValues.push(value), testOnError)', context);
+    assert.equal(subscriptions[0].target.key, "tutor_course_stats/course-id/students");
+    assert.equal(subscriptions[1].target.key, "tutor_public_teachers/teacher-id");
+    assert.equal(subscriptions[0].error, onError);
+    assert.equal(subscriptions[1].error, onError);
+    subscriptions[0].callback({ val: () => null });
+    subscriptions[0].callback({ val: () => 0 });
+    subscriptions[0].callback({ val: () => 12 });
+    subscriptions[1].callback({ val: () => ({ displayName: "Updated teacher" }) });
+    assert.deepEqual(values, [null, 0, 12, { displayName: "Updated teacher" }]);
+    stopCount();
+    stopTeacher();
+    assert.ok(subscriptions.every(({ target }) => target.stopped));
+});
     test("teaching profiles validate self-reported fields without accepting unsafe images", () => {
         const profile = { experience: 8, qualification: "TESOL", about: "Speaking practice", imageURL: "" };
         assert.equal(model.validateTeachingProfile(profile).experience, 8);
