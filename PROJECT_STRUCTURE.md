@@ -111,11 +111,16 @@ Social menu. `js/tutor-model.js` contains validation, IDR pricing and filters;
 are inserted; the catalogue starts empty until teachers publish real courses.
 Filters sit left of the hero, categories and catalogue on desktop, with a
 viewport-bounded sticky panel. Below 1024px they stack above the content and
-start collapsed. Removable active-filter chips and a selection count keep
-filter state visible; All categories clears only the category, while Reset all
-clears all filters and sorting.
-The hero reuses existing tutor artwork; cover images come from teacher-provided
-HTTPS URLs. Teachers must have permission to use their images.
+start collapsed. The marketplace shows four course cards per row on wide
+screens and adapts to smaller viewports. Removable active-filter chips and a
+selection count keep filter state visible; All categories clears only the
+category, while Reset all clears all filters and sorting. Course details show
+the overview, learning outcomes, curriculum, real reviews, teacher profile and
+an enrollment panel.
+The hero reuses existing tutor artwork. Teachers can upload a PNG, JPEG or WebP
+image, or an MP4/WebM preview video up to 60 seconds and 20 MB. Preview media is
+publicly readable under `tutor-courses/<uid>/`; only its owner can upload or
+delete it. Teachers must have permission to use their media.
 
 Teacher accounts use a marketplace-specific layout on the existing
 `toefl-sample/profile.html`, implemented by `profile-teacher.js` and
@@ -123,10 +128,12 @@ Teacher accounts use a marketplace-specific layout on the existing
 Teacher tabs expose live published courses, real learner reviews, self-reported
 experience/qualification and teaching approach. The existing bio editor,
 account settings, connection requests, messaging and community feed are reused.
-The study sidebar is hidden only for the teacher-specific layout.
-`tutor-brand.css` shares the navbar's teal accent, neutral surfaces and
-responsive card sizing between Tutor Check and teacher profiles, without
-restyling student profiles. Mobile teacher tabs wrap so all sections remain
+Teacher profiles retain the shared navigation sidebar, desktop collapse control
+and mobile menu access, alongside the teacher-specific enrollment panel.
+`tutor-brand.css` shares neutral surfaces and responsive card sizing between
+Tutor Check and teacher profiles, without restyling student profiles. The
+marketplace uses the blue palette from its course design; teacher profiles
+retain their teal accent. Mobile teacher tabs wrap so all sections remain
 visible; enrollment sits after profile content rather than displacing it.
 `tutor_profiles/<uid>` holds public teaching details with teacher-only owner
 writes. Individual `tutor_roles/<uid>` values are public for profile routing;
@@ -170,10 +177,10 @@ with live requests/reviews while preserving review drafts and keyboard focus.
 Request participants can
 open each other's existing profiles to connect/message.
 
-Deploy `database.rules.json` before releasing the new client/auth changes.
-Validate with `node --test toefl-sample/tutor.test.js`; run
+Deploy `database.rules.json` and `storage.rules` before releasing course preview
+uploads. Validate with `node --test toefl-sample/tutor.test.js`; run
 `toefl-sample/tutor-rules.test.js` against a database emulator for authorization.
-No new Storage rules or payment-provider configuration is needed.
+Enrollment and course previews still do not process payments.
 
 The Explore composer uses a single post-body field without a separate title.
 A short body excerpt remains as required title metadata for storage and sharing;

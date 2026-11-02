@@ -19,7 +19,7 @@ test("teacher self-registration cannot grant developer privileges; listing owner
     assert.equal((await request("tutor_roles", null)).status, 401);
     assert.equal((await request("tutor_roles/tutor-teacher", "stranger", "PUT", "teacher")).status, 401);
     assert.equal((await request("tutor_roles/tutor-teacher", "tutor-teacher", "PUT", "developer")).status, 401);
-    const course = { teacherId: "tutor-teacher", teacherName: "Teacher", title: "IELTS", summary: "Practice", curriculum: "Speaking", schedule: "Monday WIB", category: "ielts", type: "live", price: 100000, originalPrice: 0, coverURL: "", published: true, createdAt: stamp, updatedAt: stamp };
+    const course = { teacherId: "tutor-teacher", teacherName: "Teacher", title: "IELTS", summary: "Practice", whatYouLearn: "Speaking", curriculum: "Speaking", schedule: "Monday WIB", category: "ielts", type: "live", price: 100000, originalPrice: 0, coverURL: "", previewURL: "", previewPath: "", previewType: "", published: true, createdAt: stamp, updatedAt: stamp };
     assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PUT", course)).status, 200);
     assert.equal((await request("tutor_courses/test-course", null)).status, 200);
     assert.equal((await request("tutor_courses/test-course", "stranger", "PATCH", { price: 0, updatedAt: stamp })).status, 401);
@@ -44,7 +44,7 @@ test("public teaching backgrounds remain owner-written and require a teacher rol
     assert.equal((await request("tutor_profiles/profile-teacher", "profile-teacher", "DELETE")).status, 200);
 });
 test("enrollment prices and transitions are protected, inboxes are private, only accepted learners review", { skip: !host }, async () => {
-    const course = { teacherId: "enroll-teacher", teacherName: "Teacher", title: "Speaking", summary: "Practice", curriculum: "Speaking", schedule: "Monday WIB", category: "speaking", type: "live", price: 100000, originalPrice: 0, coverURL: "", published: true, createdAt: stamp, updatedAt: stamp };
+    const course = { teacherId: "enroll-teacher", teacherName: "Teacher", title: "Speaking", summary: "Practice", whatYouLearn: "Speaking", curriculum: "Speaking", schedule: "Monday WIB", category: "speaking", type: "live", price: 100000, originalPrice: 0, coverURL: "", previewURL: "", previewPath: "", previewType: "", published: true, createdAt: stamp, updatedAt: stamp };
     await request("tutor_roles/enroll-teacher", "enroll-teacher", "PUT", "teacher");
     assert.equal((await request("tutor_courses/enroll-course", "enroll-teacher", "PUT", course)).status, 200);
     const row = { courseId: "enroll-course", studentId: "enroll-student", teacherId: "enroll-teacher", studentName: "Learner", price: 100000, status: "pending", createdAt: stamp, updatedAt: stamp };

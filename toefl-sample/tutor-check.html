@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Find English courses, connect with teachers and request enrollment with Tutor Check.">
-    <title>Tutor Check | Quick Check</title>
+    <meta name="description" content="Explore English courses, meet independent teachers and request enrollment through the Quick Check marketplace.">
+    <title>Marketplace | Quick Check</title>
     <link rel="icon" href="../asset/icon/logo.png">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
     <script src="qc-preferences.js?v=20261031-explore"></script>
     <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
-    <link rel="stylesheet" href="tutor-check.css?v=20261101-teacher">
     <link rel="stylesheet" href="tutor-brand.css?v=20261101-add-course">
+    <link rel="stylesheet" href="tutor-check.css?v=20261101-teacher">
 </head>
 <body class="tutor-page">
     <a class="skip-link" href="#catalog">Skip to courses</a>
     <script src="site-navbar.js?v=20261101-tutor-check"></script>
     <main class="marketplace">
         <div class="market-heading">
-            <h1>Tutor Check</h1>
+            <h1>Marketplace</h1>
             <div class="market-actions">
                 <a id="teacherSignup" href="signup.html?role=teacher">Teach a course</a>
                 <button id="manageButton" type="button" hidden><i class="ti ti-school" aria-hidden="true"></i> Teacher studio</button>
@@ -39,6 +39,15 @@
                             <label><input type="checkbox" name="price" value="250000:500000"> Rp250.000 – under Rp500.000</label>
                             <label><input type="checkbox" name="price" value="500000:100000001"> Rp500.000 and above</label>
                         </fieldset>
+                        <fieldset><legend>Course type</legend>
+                            <label><input type="radio" name="courseType" value="" checked> Any type</label>
+                            <label><input type="radio" name="courseType" value="live"> Live classes</label>
+                            <label><input type="radio" name="courseType" value="self"> Self-paced</label>
+                            <label><input type="radio" name="courseType" value="package"> Packages</label>
+                        </fieldset>
+                        <label class="teacher-filter" for="teacherFilter">Teacher
+                            <select id="teacherFilter"><option value="">All teachers</option></select>
+                        </label>
                         <fieldset><legend>Course rating</legend>
                             <label><input type="radio" name="rating" value="" checked> Any rating</label>
                             <label><input type="radio" name="rating" value="4"> <span class="stars" aria-hidden="true">★★★★</span><span>4 &amp; up</span></label>
@@ -70,7 +79,6 @@
         <p id="marketError" class="error" role="alert" hidden></p>
             <section class="course-results" id="catalog" aria-label="Courses">
                 <div class="catalog-toolbar">
-                    <nav id="typeTabs" class="type-tabs" aria-label="Course type"></nav>
                     <label class="sort-control">Sort by <select id="courseSort"><option value="newest">Newest</option><option value="rating">Highest rated</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></label>
                 </div>
                 <p id="resultCount" class="muted" role="status"></p>
@@ -82,7 +90,16 @@
             </div>
         </div>
         <section id="teacherStudio" class="panel teacher-studio" hidden aria-labelledby="studioTitle">
-            <div class="section-heading"><div><h2 id="studioTitle">Teacher studio</h2><p class="muted">Publish directly. Manage your courses and respond to enrollment requests.</p></div><button id="newCourse" class="primary" type="button">Create course</button></div>
+            <div class="studio-welcome">
+                <div>
+                    <p class="studio-eyebrow">Teacher dashboard</p>
+                    <h2 id="studioTitle">Good to see you, <span id="studioTeacherName">teacher</span></h2>
+                    <p class="muted">Manage your courses and respond to learners in one place.</p>
+                </div>
+                <button id="newCourse" class="primary" type="button"><i class="ti ti-plus" aria-hidden="true"></i> Create a course</button>
+            </div>
+            <div id="studioMetrics" class="studio-metrics" aria-label="Teaching overview"></div>
+            <div class="section-heading studio-course-heading"><div><h3>Your courses</h3><p class="muted">Published listings appear in the marketplace.</p></div></div>
             <div id="ownCourses" class="studio-courses"></div>
             <label>Show enrollments<select id="teacherEnrollmentFilter"><option value="">All enrollments</option><option value="pending">Pending requests</option><option value="accepted">Accepted learners</option><option value="declined">Declined requests</option><option value="cancelled">Cancelled requests</option></select></label>
             <h3>Enrollment requests and learners</h3><div id="teacherInbox"></div>
@@ -95,8 +112,8 @@
         <p id="archiveError" class="error" role="alert" hidden></p>
         <button id="archiveCancel" type="button">Cancel</button><button id="archiveConfirm" class="primary" type="button">Archive course</button>
     </dialog>
-    <dialog id="courseDialog" class="market-dialog">
-        <div class="dialog-heading"><h2>Course details</h2><button type="button" data-close aria-label="Close course details">×</button></div>
+    <dialog id="courseDialog" class="market-dialog course-dialog" aria-labelledby="courseDialogHeading">
+        <div class="dialog-heading"><h2 id="courseDialogHeading">Course details</h2><button type="button" data-close aria-label="Close course details">×</button></div>
         <div id="courseDetail"></div>
     </dialog>
     <dialog id="cartDialog" class="market-dialog">
@@ -114,15 +131,20 @@
     <dialog id="editorDialog" class="market-dialog">
         <div class="dialog-heading"><h2 id="editorHeading">Create course</h2><button type="button" data-close aria-label="Close course editor">×</button></div>
         <form id="courseForm" class="course-form">
-            <label>Course title<input name="title" required maxlength="120"></label>
-            <label>Teacher display name<input name="teacherName" required maxlength="100"></label>
+            <label>Course title<input name="title" required maxlength="120" placeholder="Give your course a clear name"></label>
+            <label>Teacher name from your profile<input name="teacherName" required maxlength="100" readonly></label>
             <div class="form-pair"><label>Category<select name="category" id="editorCategory"></select></label><label>Course type<select name="type" id="editorType"></select></label></div>
             <div class="form-pair"><label>Price (IDR)<input name="price" type="number" required min="0" max="100000000" step="1"></label><label>Original price (optional)<input name="originalPrice" type="number" min="0" max="100000000" step="1"></label></div>
-            <label>Summary<textarea name="summary" required maxlength="500" rows="3"></textarea></label>
-            <label>Curriculum<textarea name="curriculum" required maxlength="5000" rows="5"></textarea></label>
+            <label>About this course<textarea name="summary" required maxlength="500" rows="3" placeholder="Describe who this course is for and what it covers"></textarea></label>
+            <label>What students will learn<textarea name="whatYouLearn" required maxlength="1200" rows="4" placeholder="Add one learning outcome per line"></textarea></label>
+            <label>Course curriculum<textarea name="curriculum" required maxlength="5000" rows="5" placeholder="Add modules and lessons, one per line"></textarea></label>
             <label>Schedule or access details<textarea name="schedule" required maxlength="300" rows="2" placeholder="Include timezone for live classes; explain access for self-paced courses."></textarea></label>
-            <label>Cover-image URL (optional)<input name="coverURL" type="url" maxlength="2000" placeholder="https://..."></label>
-            <p class="muted">Use an image you own or have permission to use. Course information is public, including paused listings.</p>
+            <label>Course thumbnail or short preview video
+                <input name="previewFile" type="file" accept="image/png,image/jpeg,image/webp,video/mp4,video/webm">
+            </label>
+            <p class="muted">Choose an image or a video up to 60 seconds and 20 MB. Use media you own or have permission to use.</p>
+            <div id="mediaPreview" class="media-preview" hidden aria-live="polite"></div>
+            <p class="muted">Course information is public, including paused listings.</p>
             <label class="checkbox-label"><input name="published" type="checkbox" checked> Published and open for enrollment</label>
             <p id="editorError" class="error" role="alert" hidden></p>
             <button id="saveCourseButton" class="primary" type="submit">Publish course</button>

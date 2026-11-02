@@ -8,7 +8,7 @@ export const TUTOR_CATEGORIES = [
 export const TUTOR_TYPES = { live: "Live Classes", self: "Self-Paced", package: "Packages" };
 export function validateCourse(input) {
     const course = {};
-    for (const [key, max] of [["title", 120], ["summary", 500], ["curriculum", 5000], ["schedule", 300], ["teacherName", 100]]) {
+    for (const [key, max] of [["title", 120], ["summary", 500], ["whatYouLearn", 1200], ["curriculum", 5000], ["schedule", 300], ["teacherName", 100]]) {
         course[key] = String(input[key] || "").trim();
         if (!course[key] || course[key].length > max) throw new Error(`Enter ${key} (1-${max} characters).`);
     }
@@ -22,7 +22,22 @@ export function validateCourse(input) {
         try { url = new URL(coverURL); } catch { throw new Error("Enter a valid HTTPS cover-image URL."); }
         if (url.protocol !== "https:") throw new Error("Cover images must use HTTPS.");
     }
-    return { ...course, category: input.category, type: input.type, price: input.price, originalPrice: input.originalPrice, coverURL, published: input.published === true };
+    const previewURL = String(input.previewURL || "").trim();
+    const previewPath = String(input.previewPath || "").trim();
+    const previewType = String(input.previewType || "");
+    if (previewURL.length > 2000) throw new Error("Course preview URLs must be 2,000 characters or fewer.");
+    if (previewURL) {
+        let url;
+        try { url = new URL(previewURL); } catch { throw new Error("Enter a valid HTTPS course preview URL."); }
+        if (url.protocol !== "https:") throw new Error("Course previews must use HTTPS URLs.");
+    }
+    if (previewPath.length > 500 || (previewPath && !/^tutor-courses\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/preview\.(png|jpe?g|webp|mp4|webm)$/i.test(previewPath))) {
+        throw new Error("Choose a valid uploaded course preview.");
+    }
+    if (!["", "image", "video"].includes(previewType) ||
+        (previewType === "" && (previewURL || previewPath)) ||
+        (previewType !== "" && (!previewURL || !previewPath))) throw new Error("Upload an image or video preview for this course.");
+    return { ...course, category: input.category, type: input.type, price: input.price, originalPrice: input.originalPrice, coverURL, previewURL, previewPath, previewType, published: input.published === true };
 }
 export function courseStats(reviews = {}, requests = {}) {
     const ratings = Object.values(reviews).filter(row => Number.isInteger(row.rating) && row.rating >= 1 && row.rating <= 5);

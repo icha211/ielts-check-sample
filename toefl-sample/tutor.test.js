@@ -5,13 +5,21 @@ const vm = require("node:vm");
 const { test } = require("node:test");
 const model = vm.createContext({ URL, Intl });
 vm.runInContext(fs.readFileSync(path.join(__dirname, "js", "tutor-model.js"), "utf8").replace(/^export /gm, ""), model);
-const course = { title: "IELTS Speaking", teacherName: "A teacher", summary: "Speaking practice", curriculum: "Part 1\nPart 2", schedule: "Saturdays, 10:00 WIB", category: "speaking", type: "live", price: 100000, originalPrice: 150000, coverURL: "", published: true };
+const course = { title: "IELTS Speaking", teacherName: "A teacher", summary: "Speaking practice", whatYouLearn: "Build speaking fluency", curriculum: "Part 1\nPart 2", schedule: "Saturdays, 10:00 WIB", category: "speaking", type: "live", price: 100000, originalPrice: 150000, coverURL: "", previewURL: "", previewPath: "", previewType: "", published: true };
 test("course publishing validates money, fields, types and safe cover URLs", () => {
     assert.equal(model.validateCourse(course).price, 100000);
-    for (const change of [{ price: -1 }, { price: 0.5 }, { originalPrice: 50000 }, { originalPrice: -1 }, { category: "invalid" }, { type: "invalid" }, { title: "" }, { curriculum: "a".repeat(5001) }, { coverURL: "javascript:alert(1)" }, { coverURL: "http://example.com" }]) {
+    for (const change of [{ price: -1 }, { price: 0.5 }, { originalPrice: 50000 }, { originalPrice: -1 }, { category: "invalid" }, { type: "invalid" }, { title: "" }, { curriculum: "a".repeat(5001) }, { whatYouLearn: "" }, { whatYouLearn: "a".repeat(1201) }, { coverURL: "javascript:alert(1)" }, { coverURL: "http://example.com" }]) {
         assert.throws(() => model.validateCourse({ ...course, ...change }));
     }
     assert.equal(model.validateCourse({ ...course, price: 0, originalPrice: 0 }).price, 0);
+    assert.equal(model.validateCourse({ ...course, previewURL: "https://example.com/preview.mp4", previewPath: "tutor-courses/teacher/preview/preview.mp4", previewType: "video" }).previewType, "video");
+    for (const change of [
+        { previewURL: "http://example.com/image.jpg", previewPath: "tutor-courses/teacher/preview/preview.jpg", previewType: "image" },
+        { previewURL: "https://", previewPath: "tutor-courses/teacher/preview/preview.jpg", previewType: "image" },
+        { previewURL: "https://example.com/image.jpg", previewPath: "../image.jpg", previewType: "image" },
+        { previewURL: "https://example.com/image.jpg", previewPath: "", previewType: "image" },
+        { previewURL: "https://example.com/image.jpg", previewPath: "tutor-courses/teacher/preview/preview.jpg", previewType: "audio" }
+    ]) assert.throws(() => model.validateCourse({ ...course, ...change }));
 });
 test("catalog searches, filters IDR ranges, omits paused courses and sorts real prices", () => {
     const courses = { a: { ...course, createdAt: 1 }, b: { ...course, title: "Business English", summary: "Workplace communication", category: "business", price: 500000, createdAt: 2 }, c: { ...course, published: false } };
@@ -27,6 +35,7 @@ test("ratings start empty and average actual learner reviews without invented st
     assert.equal(model.courseStats().rating, null);
     assert.equal(model.courseStats({ a: { rating: 5 }, b: { rating: 4 } }).rating, 4.5);
     assert.equal(model.courseStats({ bad: { rating: 8 } }).count, 0);
+    assert.equal(model.courseStats({}, { a: { status: "accepted" }, b: { status: "pending" } }).students, 1);
 });
 function fixture() {
     const data = {}, writes = [];
