@@ -2,7 +2,7 @@ import { auth } from "./js/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse } from "./js/tutor-model.js?v=20261101-crud";
-import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStudents, watchAccount, saveCourse, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview } from "./js/tutor-service.js?v=20261102-market-cards";
+import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStudents, watchAccount, saveCourse, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview } from "./js/tutor-service.js?v=20261102-market-cards";
 
 const $ = id => document.getElementById(id);
 $("editorFieldBank").append($("courseEditorFields").content.cloneNode(true));
@@ -10,7 +10,7 @@ let courses = {}, reviews = {}, library = {}, requests = {}, inbox = {};
 let uid = "", role = "student", roleReady = false, authReady = false, version = 0, accountStop = () => {};
 let category = "", favoritesOnly = false, editingId = "", detailId = "";
 let selectedTeacher = new URLSearchParams(location.search).get("teacher") || "";
-let detailProfile = {}, detailProfileStop = () => {};
+let detailProfile = {}, detailProfileReady = false, detailProfileStop = () => {};
 let catalogReady = false, reviewsReady = false, checkoutBusy = false;
 const teacherIdentities = {}, publicStudents = {};
 const teacherIdentityStops = new Map(), courseStudentStops = new Map();
@@ -65,6 +65,7 @@ let initialCreate = pageParams.get("create") === "1";
 let initialClasses = pageParams.get("classes") === "1";
 let archiveId = "";
 let editorDirty = false, editorBusy = false, editorReturnCourse = "";
+let teacherEditDirty = false, teacherEditBusy = false;
 let editorProfileStop = () => {};
 let removedPreview = false;
 let pendingEditorExit = null;
@@ -542,10 +543,10 @@ function renderStudio() {
     });
     if (!items.children.length) items.append(el("p", "muted", $("teacherEnrollmentFilter").value ? "No enrollments with this status." : "Enrollment requests will appear here in real time."));
 }
-function showCourse(id) {
-    if (!$("courseEditor").hidden) return requestEditorExit(() => showCourse(id));
+function showCourse(id, scroll = true) {
+    if (!$("courseEditor").hidden) return requestEditorExit(() => showCourse(id, scroll));
     detailProfileStop();
-    detailProfile = {};
+    if (courses[detailId]?.teacherId !== courses[id]?.teacherId) { detailProfile = {}; detailProfileReady = false; }
     detailId = id;
     const url = new URL(location.href);
     if (url.searchParams.get("course") !== id || url.searchParams.has("studio") || url.searchParams.has("classes")) {
@@ -559,12 +560,13 @@ function showCourse(id) {
     $("teacherStudio").hidden = true;
     syncMarketplaceNavigation();
     renderDetail();
-    $("coursePage").scrollIntoView({ block: "start" });
+    if (scroll) $("coursePage").scrollIntoView({ block: "start" });
     const course = courses[id];
     if (course) {
         detailProfileStop = watchTeachingProfile(course.teacherId, profile => {
             if (detailId !== id) return;
             detailProfile = profile;
+            detailProfileReady = true;
             if (!$("coursePage").hidden) renderDetail();
         }, err => error(`Teacher profile could not load. ${err.message}`));
     }
@@ -612,6 +614,7 @@ function showClasses() {
     }
 }
 function renderDetail(target = $("courseDetail"), editorCourse = null) {
+    if (!editorCourse && !$("courseEditor").hidden) return;
     const savedCourse = editorCourse || courses[detailId];
     const course = savedCourse ? { ...savedCourse, teacherName: courseTeacher(savedCourse) } : null;
     const oldForm = target.querySelector("form");
@@ -835,9 +838,6 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     detailMain.append(panels);
 
     purchase.append(price(course));
-    if (!editorCourse && course.teacherId === uid && role === "teacher" && !course.archived) {
-        purchase.append(action("Edit this course", "primary purchase-action", () => openEditor(detailId)));
-    }
     if (course.originalPrice > course.price) {
         const offer = el("div", "offer-note");
         offer.append(icon("tag"), el("span", "", "Course offer · Save " + rupiah(course.originalPrice - course.price)));
@@ -956,6 +956,124 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
         field?.focus();
         if (reviewFocus.start != null && reviewFocus.end != null) field?.setSelectionRange(reviewFocus.start, reviewFocus.end);
     }
+    if (!editorCourse && course.teacherId === uid && role === "teacher" && !course.archived) {
+        addCourseEditControls(target);
+    }
+    if (course.teacherId === uid && role === "teacher") addTeacherEditControls(target);
+}
+function addTeacherEditControls(target) {
+    for (const selector of [".detail-side-about", ".teacher-detail-panel .detail-copy"]) {
+        const description = target.querySelector(selector);
+        const pencil = editIcon("Edit teacher introduction", () => {
+            if ($("courseEditor").hidden) return openEditor(detailId, { name: "teacherIntroduction", teacherPanel: selector.includes("teacher-detail-panel") });
+            if (target.querySelector(".inline-teacher-editor")) return;
+            const editor = el("div", "inline-teacher-editor");
+            const fields = {};
+            for (const [name, labelText, max] of [["qualification", "Qualification", 120], ["about", "Teacher introduction", 3000]]) {
+                const label = el("label", "inline-course-field", labelText);
+                const input = el("textarea");
+                input.value = detailProfile[name] || "";
+                input.maxLength = max;
+                input.rows = name === "about" ? 4 : 2;
+                label.append(input);
+                editor.append(label);
+                fields[name] = input;
+            }
+            const note = el("p", "muted", "This updates your shared teacher profile across all courses.");
+            const failure = el("p", "error");
+            failure.setAttribute("role", "alert");
+            failure.hidden = true;
+            const cancel = action("Cancel introduction changes", "text-link", () => {
+                teacherEditDirty = false;
+                editor.remove();
+                description.querySelector("button")?.focus({ preventScroll: true });
+            });
+            const save = action("Save introduction", "primary", async () => {
+                const current = version;
+                teacherEditBusy = true;
+                const controls = [...editor.querySelectorAll("textarea,button")];
+                controls.forEach(control => control.disabled = true);
+                failure.hidden = true;
+                try {
+                    const input = {
+                        experience: detailProfile.experience ?? 0,
+                        qualification: fields.qualification.value,
+                        about: fields.about.value,
+                        imageURL: detailProfile.imageURL || ""
+                    };
+                    await saveTeachingProfile(input);
+                    if (current !== version) return;
+                    detailProfile = input;
+                    teacherEditDirty = false;
+                    target.querySelectorAll(".detail-side-about, .teacher-detail-panel .detail-copy").forEach(node => {
+                        const button = node.querySelector(".course-edit-icon");
+                        node.textContent = input.about || "This teacher has not added an introduction yet.";
+                        if (button) node.append(button);
+                    });
+                    target.querySelectorAll(".detail-intro-teacher .muted, .detail-side-teacher .muted, .teacher-detail-panel > div > .muted:not(.editor-teacher-experience)").forEach(node => {
+                        node.textContent = input.qualification || "Independent English teacher";
+                    });
+                    editor.remove();
+                } catch (err) {
+                    if (current === version) error(err, failure);
+                } finally {
+                    teacherEditBusy = false;
+                    controls.forEach(control => control.disabled = false);
+                }
+            });
+            editor.addEventListener("input", event => { teacherEditDirty = true; event.stopPropagation(); });
+            editor.append(note, failure, save, cancel);
+            description.after(editor);
+            fields.about.focus({ preventScroll: true });
+        });
+        pencil.disabled = !detailProfileReady;
+        description.append(pencil);
+    }
+}
+function editIcon(label, callback, glyph = "pencil") {
+    const button = el("button", "course-edit-icon");
+    button.type = "button";
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    button.append(icon(glyph));
+    button.addEventListener("click", callback);
+    return button;
+}
+function addCourseEditControls(target) {
+    const edit = (name, options = {}) => openEditor(detailId, { name, ...options });
+    for (const [selector, name, label] of [
+        [".detail-title", "title", "course title"], [".course-kicker", "category", "category and format"],
+        [".purchase-panel > .course-price", "price", "course price"],
+        ['[data-detail-panel="overview"] > .detail-copy:first-of-type', "summary", "course description"],
+        ['[data-detail-panel="overview"] > .detail-copy:last-of-type', "schedule", "schedule"],
+        [".detail-media", "previewFile", "course preview"]
+    ]) {
+        const node = target.querySelector(selector);
+        node.classList.add("course-editable-display");
+        node.append(editIcon(`Edit ${label}`, () => edit(name)));
+    }
+    for (const [selector, name, noun] of [
+        [".learning-outcomes", "whatYouLearn", "outcome"],
+        ['[data-detail-panel="curriculum"] .curriculum-list', "curriculum", "lesson"],
+        [".curriculum-preview .curriculum-list", "curriculum", "lesson"]
+    ]) {
+        const list = target.querySelector(selector);
+        [...list.children].forEach((item, index) => {
+            const controls = el("span", "course-item-tools");
+            controls.append(editIcon(`Edit ${noun} ${index + 1}`, () => edit(name, { index })),
+                editIcon(`Remove ${noun} ${index + 1}`, () => edit(name, { index, remove: true }), "trash"));
+            item.append(controls);
+        });
+        list.after(action(`Add ${noun}`, "text-link course-add-item", () => edit(name, { add: true })));
+    }
+    const purchase = target.querySelector(".purchase-panel");
+    purchase.append(action(courses[detailId].published ? "Pause course" : "Publish course", "text-button", () => edit("published")));
+    purchase.append(action("Archive course", "text-button", () => {
+        archiveId = detailId;
+        $("archiveCourseName").textContent = courses[detailId].title;
+        $("archiveError").hidden = true;
+        openDialog("archiveDialog");
+    }));
 }
 function courseStatsFor(id) {
     const course = courses[id];
@@ -1045,12 +1163,14 @@ async function validatePreviewFile(file) {
         URL.revokeObjectURL(previewURL);
     }
 }
-function openEditor(id = "") {
+function openEditor(id = "", edit = { name: "title" }) {
     if (role !== "teacher") return error("Register as a teacher to create courses.");
     if (id && (!courses[id] || courses[id].teacherId !== uid || courses[id].archived)) {
         return error("You can only edit your own active courses. Restore archived courses first.");
     }
-    if (!$("courseEditor").hidden) return requestEditorExit(() => openEditor(id));
+    if (!$("courseEditor").hidden) return requestEditorExit(() => openEditor(id, edit));
+    if (id && ($("coursePage").hidden || detailId !== id)) showCourse(id);
+    const activeTab = $("courseDetail").querySelector('[aria-selected="true"]')?.dataset.detailTab || "overview";
     const url = new URL(location.href);
     url.searchParams.delete("create");
     history.replaceState(history.state, "", url);
@@ -1058,7 +1178,7 @@ function openEditor(id = "") {
     detailProfileStop();
     detailProfileStop = () => {};
     editorProfileStop();
-    detailProfile = {};
+    if (!id) { detailProfile = {}; detailProfileReady = false; }
     editingId = id;
     const form = $("courseForm");
     $("editorFieldBank").append(...editorLabels);
@@ -1073,10 +1193,11 @@ function openEditor(id = "") {
     editorDirty = false;
     $("browseLayout").hidden = true;
     $("teacherStudio").hidden = true;
-    $("coursePage").hidden = true;
-    $("courseDetail").replaceChildren();
+    $("coursePage").hidden = false;
+    $("courseDetail").hidden = true;
     $("courseEditor").hidden = false;
     detailId = id;
+    $("coursePageTitle").textContent = course?.title || "New course";
     const draft = Object.fromEntries(new FormData(form));
     draft.teacherId = uid;
     draft.teacherName = form.elements.namedItem("teacherName").value || "Your teacher profile";
@@ -1086,23 +1207,28 @@ function openEditor(id = "") {
     draft.published = form.elements.namedItem("published").checked;
     renderDetail($("editorCanvas"), { ...course, ...draft });
     arrangeCourseEditor();
+    selectDetailTab(activeTab, false, $("editorCanvas"));
     renderMediaPreview(null, course);
     $("editorError").hidden = true;
-    $("editorHeading").textContent = id ? "Edit course" : "Create course";
+    $("editorHeading").textContent = id ? "Unsaved course changes" : "New course";
     $("archiveEditorCourse").hidden = !id;
     updateEditorSummary();
     syncMarketplaceNavigation();
-    $("editorHeading").focus();
-    $("courseEditor").scrollIntoView({ block: "start" });
+    activateCourseField(edit);
     const current = version;
     editorProfileStop = watchTeachingProfile(uid, profile => {
         if (current !== version || $("courseEditor").hidden || editingId !== id) return;
         const canvas = $("editorCanvas");
+        detailProfile = profile;
+        detailProfileReady = true;
+        canvas.querySelectorAll('[aria-label="Edit teacher introduction"]').forEach(button => button.disabled = false);
         canvas.querySelectorAll(".detail-intro-teacher .muted, .detail-side-teacher .muted, .teacher-detail-panel > div > .muted:not(.editor-teacher-experience)").forEach(node => {
             node.textContent = profile.qualification || "Independent English teacher";
         });
         canvas.querySelectorAll(".detail-side-about, .teacher-detail-panel .detail-copy").forEach(node => {
+            const button = node.querySelector(".course-edit-icon");
             node.textContent = profile.about || "Add an introduction in your teacher profile.";
+            if (button) node.append(button);
         });
         const imageURL = profile.imageURL || teacherIdentities[uid]?.photoURL;
         if (imageURL) {
@@ -1119,22 +1245,74 @@ function openEditor(id = "") {
         experience.textContent = experience.hidden ? "" : `${profile.experience} years of teaching experience`;
     }, err => error(`Teacher profile could not load. ${err.message}`, $("editorError")));
 }
+function inlineCourseControl(names, display, labelText) {
+    const group = el("div", "course-inline-control");
+    group.dataset.editField = names[0];
+    const view = el("div", "course-inline-display");
+    const fields = el("div", "course-inline-inputs");
+    fields.hidden = true;
+    display.replaceWith(group);
+    const button = editIcon(`Edit ${labelText}`, () => {
+        view.hidden = true;
+        fields.hidden = false;
+        fields.querySelector("input,textarea,select")?.focus({ preventScroll: true });
+    });
+    view.append(display, button);
+    for (const name of names) {
+        const label = $("courseForm").elements.namedItem(name).closest("label");
+        label.classList.add("inline-course-field");
+        fields.append(label);
+    }
+    const done = action("Done", "text-link", () => {
+        const field = fields.querySelector("input,textarea,select");
+        if (names[0] === "price") {
+            display.replaceChildren(...price({
+                price: Number(field.value || 0),
+                originalPrice: Number($("courseForm").elements.namedItem("originalPrice").value || 0)
+            }).childNodes);
+        } else if (names[0] === "category") {
+            display.textContent = `${TUTOR_CATEGORIES.find(([id]) => id === field.value)?.[1]} · ${TUTOR_TYPES[$("editorType").value]}`;
+        } else if (names[0] === "published") {
+            display.textContent = field.checked ? "Published and open for enrollment" : "Paused";
+        } else {
+            display.textContent = field.value || `Add ${labelText}`;
+        }
+        fields.hidden = true;
+        view.hidden = false;
+        button.focus({ preventScroll: true });
+    });
+    fields.append(done);
+    group.append(view, fields);
+    return group;
+}
+function activateCourseField(edit) {
+    const canvas = $("editorCanvas");
+    if (edit.name === "teacherIntroduction") {
+        if (edit.teacherPanel) selectDetailTab("teacher", false, canvas);
+        canvas.querySelector(`${edit.teacherPanel ? ".teacher-detail-panel .detail-copy" : ".detail-side-about"} .course-edit-icon`)?.click();
+        return;
+    }
+    const tab = edit.name === "curriculum" ? "curriculum" : ["summary", "whatYouLearn", "schedule"].includes(edit.name) ? "overview" : null;
+    if (tab) selectDetailTab(tab, false, canvas);
+    if (["whatYouLearn", "curriculum"].includes(edit.name)) {
+        const section = canvas.querySelector(`.editor-${edit.name}`).closest(".editor-list");
+        if (edit.add) section.querySelector(".course-add-item").click();
+        else {
+            const row = section.querySelectorAll("li")[edit.index ?? 0];
+            row?.querySelector(edit.remove ? '[data-move="remove"]' : ".course-edit-icon").click();
+            if (!row) section.querySelector(".course-add-item").focus({ preventScroll: true });
+        }
+    } else {
+        canvas.querySelector(`[data-edit-field="${edit.name}"] .course-edit-icon`)?.click();
+    }
+}
 function arrangeCourseEditor() {
     const canvas = $("editorCanvas"), form = $("courseForm");
     const moveField = (name, target) => {
-        const field = form.elements.namedItem(name);
-        const label = field.closest("label");
-        label.classList.add("inline-course-field");
-        target.replaceWith(label);
+        inlineCourseControl([name], target, name === "title" ? "course title" : name === "summary" ? "course description" : "schedule");
     };
     moveField("title", canvas.querySelector(".detail-title"));
-    const metadata = el("div", "editor-metadata");
-    canvas.querySelector(".course-kicker").replaceWith(metadata);
-    for (const name of ["category", "type"]) {
-        const label = form.elements.namedItem(name).closest("label");
-        label.classList.add("inline-course-field");
-        metadata.append(label);
-    }
+    inlineCourseControl(["category", "type"], canvas.querySelector(".course-kicker"), "category and format");
     const overview = canvas.querySelector('[data-detail-panel="overview"]');
     const copy = overview.querySelectorAll(".detail-copy");
     moveField("summary", copy[0]);
@@ -1143,18 +1321,13 @@ function arrangeCourseEditor() {
     createEditorList("curriculum", canvas.querySelector('[data-detail-panel="curriculum"] .curriculum-list'), "lesson");
     const emptyOutcomes = overview.querySelector(".editor-list").previousElementSibling;
     if (emptyOutcomes?.matches(".muted")) emptyOutcomes.remove();
-    const curriculumShortcut = action("Edit curriculum", "text-link", () => selectDetailTab("curriculum", true, canvas));
+    const curriculumShortcut = action("Edit curriculum", "text-link", () => selectDetailTab("curriculum", false, canvas));
     overview.querySelector(".curriculum-preview").append(curriculumShortcut);
     const purchase = canvas.querySelector(".purchase-panel");
-    purchase.replaceChildren();
-    for (const name of ["price", "originalPrice", "published"]) {
-        const label = form.elements.namedItem(name).closest("label");
-        label.classList.add("inline-course-field");
-        purchase.append(label);
-    }
-    const pricePreview = el("p", "course-price");
-    pricePreview.id = "editorPricePreview";
-    purchase.append(pricePreview, el("p", "muted", "Course information is public, including paused listings. No payment is collected here."));
+    inlineCourseControl(["price", "originalPrice"], purchase.querySelector(".course-price"), "course price");
+    const state = el("p", "muted", form.elements.namedItem("published").checked ? "Published and open for enrollment" : "Paused");
+    purchase.append(state);
+    inlineCourseControl(["published"], state, "publication status");
     const media = canvas.querySelector(".detail-media");
     const fileLabel = form.elements.namedItem("previewFile").closest("label");
     fileLabel.classList.add("inline-course-field");
@@ -1167,20 +1340,26 @@ function arrangeCourseEditor() {
     });
     remove.id = "removeCoursePreview";
     media.replaceChildren($("mediaPreview"), fileLabel, $("editorFieldBank").querySelector("p"), remove);
+    const mediaOptions = el("div", "course-media-options");
+    mediaOptions.hidden = true;
+    mediaOptions.append(fileLabel, media.querySelector("p"), remove);
+    media.append(editIcon("Edit course preview", () => {
+        mediaOptions.hidden = !mediaOptions.hidden;
+        if (!mediaOptions.hidden) fileLabel.querySelector("input").focus({ preventScroll: true });
+    }), mediaOptions);
+    media.dataset.editField = "previewFile";
     const teacherPanel = canvas.querySelector('[data-detail-panel="teacher"]');
     const experience = el("p", "muted editor-teacher-experience");
     experience.hidden = true;
     teacherPanel.querySelector(".detail-copy").before(experience);
-    const profile = el("a", "text-link", "Edit teacher profile");
-    profile.href = "profile.html";
-    teacherPanel.append(profile, el("p", "muted", "Teacher information is shared across your courses. Reviews are written by learners and cannot be edited here."));
+    teacherPanel.append(el("p", "muted", "Teacher information is shared across your courses. Reviews are written by learners and cannot be edited here."));
     const reviewForm = canvas.querySelector(".review-form");
     if (reviewForm) reviewForm.remove();
 }
 function createEditorList(name, target, noun) {
     const field = $("courseForm").elements.namedItem(name);
     field.required = false;
-    const list = el("ol", `curriculum-list editor-item-list editor-${name}`);
+    const list = el(name === "whatYouLearn" ? "ul" : "ol", `${name === "whatYouLearn" ? "learning-outcomes" : "curriculum-list"} editor-item-list editor-${name}`);
     const section = el("div", "editor-list");
     const sync = () => {
         field.value = [...list.querySelectorAll("input")].map(input => input.value.trim()).filter(Boolean).join("\n");
@@ -1190,7 +1369,7 @@ function createEditorList(name, target, noun) {
     const renumber = () => {
         [...list.children].forEach((item, index) => {
             item.querySelector("input").setAttribute("aria-label", `${noun} ${index + 1}`);
-            item.querySelector(".editor-item-number").textContent = String(index + 1).padStart(2, "0");
+            if (name !== "whatYouLearn") item.querySelector(".editor-item-number").textContent = String(index + 1).padStart(2, "0");
             item.querySelector("[data-move='up']").disabled = index === 0;
             item.querySelector("[data-move='down']").disabled = index === list.children.length - 1;
         });
@@ -1202,8 +1381,22 @@ function createEditorList(name, target, noun) {
         input.value = value;
         input.maxLength = field.maxLength;
         input.placeholder = `Add a ${noun}`;
+        input.hidden = !focus;
         input.addEventListener("input", sync);
+        const text = el("span", "course-item-text", value || `Add a ${noun}`);
+        text.hidden = focus;
+        const edit = editIcon(`Edit ${noun}`, () => {
+            text.hidden = true;
+            input.hidden = false;
+            input.focus({ preventScroll: true });
+        });
+        input.addEventListener("blur", () => {
+            text.textContent = input.value || `Add a ${noun}`;
+            text.hidden = false;
+            input.hidden = true;
+        });
         const controls = el("div", "row-actions");
+        controls.append(edit);
         for (const [direction, glyph] of [["up", "arrow-up"], ["down", "arrow-down"], ["remove", "trash"]]) {
             const button = el("button", "text-button");
             button.type = "button";
@@ -1211,7 +1404,7 @@ function createEditorList(name, target, noun) {
                 if (direction === "remove") {
                     const next = item.nextElementSibling || item.previousElementSibling;
                     item.remove();
-                    (next?.querySelector("input") || add).focus();
+                    (next?.querySelector(".course-edit-icon") || add).focus({ preventScroll: true });
                 } else if (direction === "up" && item.previousElementSibling) {
                     list.insertBefore(item, item.previousElementSibling);
                 } else if (direction === "down" && item.nextElementSibling) {
@@ -1225,12 +1418,16 @@ function createEditorList(name, target, noun) {
             button.append(icon(glyph));
             controls.append(button);
         }
-        item.append(el("span", "editor-item-number"), input, controls);
+        const content = el("div", "course-item-content");
+        content.append(text, input);
+        const marker = el("span", "editor-item-number");
+        if (name === "whatYouLearn") marker.append(icon("circle-check"));
+        item.append(marker, content, controls);
         list.append(item);
         renumber();
         if (focus) input.focus();
     };
-    const add = action(`Add ${noun}`, "text-button", () => { addRow("", true); sync(); });
+    const add = action(`Add ${noun}`, "text-link course-add-item", () => { addRow("", true); sync(); });
     field.value.split(/\r?\n/).map(line => line.trim()).filter(Boolean).forEach(value => addRow(value));
     section.append(list, add);
     target.replaceWith(section);
@@ -1246,10 +1443,14 @@ function updateEditorSummary() {
     }
     const price = form.elements.namedItem("price").valueAsNumber;
     const original = form.elements.namedItem("originalPrice").valueAsNumber;
-    $("editorPricePreview").textContent = rupiah(Number.isFinite(price) ? price : 0);
-    if (Number.isFinite(original) && original > price) $("editorPricePreview").append(el("del", "", rupiah(original)));
+    const priceDisplay = canvas.querySelector('[data-edit-field="price"] .course-price');
+    priceDisplay.textContent = rupiah(Number.isFinite(price) ? price : 0);
+    if (Number.isFinite(original) && original > price) priceDisplay.append(el("del", "", rupiah(original)));
     $("editorStatus").textContent = editorDirty ? "Unsaved changes" : "Edit any field below. Nothing changes for learners until you save.";
     $("saveCourseButton").textContent = form.elements.namedItem("published").checked ? editingId ? "Save changes" : "Publish course" : "Save paused course";
+    if (editingId) {
+        $("coursePageTitle").textContent = form.elements.namedItem("title").value || courses[editingId].title;
+    }
     const previewList = canvas.querySelector(".curriculum-preview .curriculum-list");
     previewList.replaceChildren();
     form.elements.namedItem("curriculum").value.split(/\r?\n/).filter(line => line.trim()).slice(0, 3).forEach((line, index) => {
@@ -1269,15 +1470,17 @@ function closeEditor() {
     if (editorPreviewURL) URL.revokeObjectURL(editorPreviewURL);
     editorPreviewURL = "";
     editorDirty = false;
+    teacherEditDirty = false;
     $("courseEditor").hidden = true;
+    $("courseDetail").hidden = false;
     $("editorFieldBank").append(...editorLabels);
     $("editorCanvas").replaceChildren();
     $("courseForm").reset();
     editingId = "";
 }
 function requestEditorExit(callback) {
-    if (editorBusy) return;
-    if (!editorDirty) { closeEditor(); callback(); return; }
+    if (editorBusy || teacherEditBusy) return;
+    if (!editorDirty && !teacherEditDirty) { closeEditor(); callback(); return; }
     pendingEditorExit = callback;
     openDialog("discardCourseDialog");
     $("keepCourseEdit").focus();
@@ -1291,7 +1494,13 @@ $("discardCourseEdit").addEventListener("click", () => {
 });
 $("cancelCourseEdit").addEventListener("click", () => {
     const courseId = editorReturnCourse;
-    requestEditorExit(() => courseId ? showCourse(courseId) : setStudioView(true));
+    const tab = $("editorCanvas").querySelector('[aria-selected="true"]')?.dataset.detailTab;
+    requestEditorExit(() => {
+        if (courseId) {
+            showCourse(courseId, false);
+            if (tab) selectDetailTab(tab);
+        } else setStudioView(true);
+    });
 });
 $("archiveEditorCourse").addEventListener("click", () => {
     archiveId = editingId;
@@ -1308,6 +1517,11 @@ $("courseForm").addEventListener("input", () => {
 $("courseForm").addEventListener("invalid", event => {
     const panel = event.target.closest("[data-detail-panel]");
     if (panel) selectDetailTab(panel.dataset.detailPanel, false, $("editorCanvas"));
+    const control = event.target.closest(".course-inline-control");
+    if (control) {
+        control.querySelector(".course-inline-display").hidden = true;
+        control.querySelector(".course-inline-inputs").hidden = false;
+    }
 }, true);
 $("courseForm").elements.namedItem("previewFile").addEventListener("change", () => {
     removedPreview = false;
@@ -1316,7 +1530,7 @@ $("courseForm").elements.namedItem("previewFile").addEventListener("change", () 
     updateEditorSummary();
 });
 window.addEventListener("beforeunload", event => {
-    if (!editorDirty && !editorBusy) return;
+    if (!editorDirty && !editorBusy && !teacherEditDirty && !teacherEditBusy) return;
     event.preventDefault();
     event.returnValue = "";
 });
@@ -1328,6 +1542,9 @@ document.addEventListener("click", event => {
 });
 $("courseForm").addEventListener("submit", async event => {
     event.preventDefault();
+    if (teacherEditDirty || teacherEditBusy) {
+        return error("Save or cancel the teacher introduction changes before saving the course.", $("editorError"));
+    }
     const form = $("courseForm"), fields = [...form.elements];
     const disabledStates = fields.map(field => field.disabled);
     const data = Object.fromEntries(new FormData(form));
@@ -1363,8 +1580,10 @@ $("courseForm").addEventListener("submit", async event => {
         uploadedRef = null;
         if (current !== version) return;
         courses[savedId] = { ...existing, ...validateCourse(data), teacherId: uid, createdAt: existing?.createdAt || Date.now(), updatedAt: Date.now() };
+        const selectedTab = $("editorCanvas").querySelector('[aria-selected="true"]')?.dataset.detailTab;
         closeEditor();
-        showCourse(savedId);
+        showCourse(savedId, false);
+        if (selectedTab) selectDetailTab(selectedTab);
         let cleanupWarning = "";
         if (existing?.previewPath && existing.previewPath !== data.previewPath) {
             try { await deleteObject(storageRef(storage, existing.previewPath)); }
@@ -1531,7 +1750,7 @@ const authStop = onAuthStateChanged(auth, user => {
             role = data; roleReady = true;
             if (role !== "teacher" && !$("courseEditor").hidden) {
                 closeEditor(); showCatalog(); error("Teacher access is required to edit courses.");
-            }
+            } else if (!$("coursePage").hidden) renderDetail();
         }),
         library: guarded(data => { library = data; if (!$("coursePage").hidden) renderDetail(); }),
         requests: guarded(data => { requests = data; if (!$("coursePage").hidden) renderDetail(); }),

@@ -120,12 +120,14 @@ test("inline saves preserve media, remove it only on request, and keep failed ed
             const nodes = {
                 courseForm: { elements: fields, addEventListener: (name, callback) => { submit = callback; } },
                 editorError: { hidden: true, scrollIntoView() {} },
-                marketStatus: {}, courseDetail: { querySelector: () => feedback }
+                marketStatus: {}, courseDetail: { querySelector: () => feedback },
+                editorCanvas: { querySelector: () => null }
             };
             const context = vm.createContext({
                 $: id => nodes[id], editingId: scenario === "create" ? "" : "one",
                 courses: scenario === "create" ? {} : { one: existing }, uid: "teacher", detailId: "one",
                 version: 1, editorBusy: false, removedPreview: scenario === "remove",
+                teacherEditDirty: false, teacherEditBusy: false,
                 FormData: class extends Map { constructor() { super(Object.entries(course)); } },
                 validateCourse: model.validateCourse,
                 saveCourse: async (data, id) => {
@@ -170,11 +172,38 @@ test("inline saves preserve media, remove it only on request, and keep failed ed
         });
     }
 });
+test("course pencils reveal only the selected component and stay on the course page", () => {
+    const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
+    const calls = [];
+    const row = { querySelector: selector => ({ click: () => calls.push(selector) }) };
+    const section = {
+        querySelectorAll: () => [row],
+        querySelector: () => ({ click: () => calls.push("add"), focus() {} })
+    };
+    const canvas = {
+        querySelector: selector => selector.startsWith(".editor-")
+            ? { closest: () => section }
+            : { click: () => calls.push(selector) }
+    };
+    const context = vm.createContext({ $: () => canvas, selectDetailTab: tab => calls.push(tab) });
+    vm.runInContext(source.slice(source.indexOf("function activateCourseField("), source.indexOf("function arrangeCourseEditor(")), context);
+    context.activateCourseField({ name: "title" });
+    assert.deepEqual(calls, ['[data-edit-field="title"] .course-edit-icon']);
+    calls.length = 0;
+    context.activateCourseField({ name: "curriculum", index: 0 });
+    assert.deepEqual(calls, ["curriculum", ".course-edit-icon"]);
+    calls.length = 0;
+    context.activateCourseField({ name: "curriculum", index: 0, remove: true });
+    assert.deepEqual(calls, ["curriculum", '[data-move="remove"]']);
+    calls.length = 0;
+    context.activateCourseField({ name: "whatYouLearn", add: true });
+    assert.deepEqual(calls, ["overview", "add"]);
+});
 test("leaving the course editor confirms dirty edits and blocks navigation during saves", () => {
     const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
     const calls = [];
     const context = vm.createContext({
-        editorBusy: false, editorDirty: false, pendingEditorExit: null,
+        editorBusy: false, editorDirty: false, teacherEditBusy: false, teacherEditDirty: false, pendingEditorExit: null,
         closeEditor: () => calls.push("close"), openDialog: id => calls.push(id),
         $: () => ({ focus: () => calls.push("focus") })
     });
@@ -189,6 +218,15 @@ test("leaving the course editor confirms dirty edits and blocks navigation durin
     assert.equal(context.pendingEditorExit, exit);
     calls.length = 0;
     context.editorBusy = true;
+    context.requestEditorExit(exit);
+    assert.deepEqual(calls, []);
+    context.editorBusy = false;
+    context.editorDirty = false;
+    context.teacherEditDirty = true;
+    context.requestEditorExit(exit);
+    assert.deepEqual(calls, ["discardCourseDialog", "focus"]);
+    calls.length = 0;
+    context.teacherEditBusy = true;
     context.requestEditorExit(exit);
     assert.deepEqual(calls, []);
 });
