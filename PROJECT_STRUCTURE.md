@@ -105,18 +105,22 @@ publishing the client.
 ### Tutor Check marketplace
 
 `toefl-sample/tutor-check.html`, `tutor-check.css` and `tutor-check.js` implement
-the course marketplace linked beside Explore in the shared header and mobile
-Social menu. `js/tutor-model.js` contains validation, IDR pricing and filters;
+the course marketplace using the shared Quick Check navigation component,
+adjusted on this page for marketplace search/actions and role-specific student
+or teacher navigation. Teacher home opens a separate live teaching dashboard;
+student home continues to use the learner dashboard.
+`js/tutor-model.js` contains validation, IDR pricing and filters;
 `js/tutor-service.js` owns Firebase subscriptions and writes. No demo listings
 are inserted; the catalogue starts empty until teachers publish real courses.
 Filters sit left of the hero, categories and catalogue on desktop, with a
 viewport-bounded sticky panel. Below 1024px they stack above the content and
 start collapsed. The marketplace shows four course cards per row on wide
 screens and adapts to smaller viewports. Removable active-filter chips and a
-selection count keep filter state visible; All categories clears only the
-category, while Reset all clears all filters and sorting. Course details show
-the overview, learning outcomes, curriculum, real reviews, teacher profile and
-an enrollment panel.
+selection count keep filter state visible; All courses clears only the
+category, while Reset all clears all filters and sorting. Course details open
+as shareable `?course=<id>` pages with browser back/forward support and live
+overview, learning outcomes, curriculum, real reviews, teacher profile and
+enrollment panels.
 The hero reuses existing tutor artwork. Teachers can upload a PNG, JPEG or WebP
 image, or an MP4/WebM preview video up to 60 seconds and 20 MB. Preview media is
 publicly readable under `tutor-courses/<uid>/`; only its owner can upload or

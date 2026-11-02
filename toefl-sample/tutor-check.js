@@ -6,7 +6,7 @@ import { watchCatalog, watchReviews, watchTeachingProfile, watchAccount, saveCou
 
 const $ = id => document.getElementById(id);
 let courses = {}, reviews = {}, library = {}, requests = {}, inbox = {};
-let uid = "", role = "student", version = 0, accountStop = () => {};
+let uid = "", role = "student", roleReady = false, version = 0, accountStop = () => {};
 let category = "", type = "", favoritesOnly = false, editingId = "", detailId = "";
 let selectedTeacher = new URLSearchParams(location.search).get("teacher") || "";
 let detailProfile = {}, detailProfileStop = () => {};
@@ -15,6 +15,7 @@ const pageParams = new URLSearchParams(location.search);
 let initialCourse = pageParams.get("course") || "";
 let initialStudio = pageParams.get("studio") === "1";
 let initialCreate = pageParams.get("create") === "1";
+let initialClasses = pageParams.get("classes") === "1";
 let archiveId = "";
 const storage = getStorage(auth.app);
 async function updateCourseState(id, state) {
@@ -73,10 +74,6 @@ document.querySelectorAll("dialog").forEach(dialog => {
         if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
     });
 });
-$("courseDialog").addEventListener("close", () => {
-    detailProfileStop();
-    detailProfileStop = () => {};
-});
 function stats() {
     return Object.fromEntries(Object.keys(courses).map(id => {
         const courseRequests = courses[id].teacherId === uid
@@ -102,8 +99,14 @@ function cover(course, detail = false) {
         return node;
     }
     if (!url) {
-        const node = el("div", "course-cover");
-        node.append(icon(TUTOR_CATEGORIES.find(([id]) => id === course.category)?.[2] || "book"));
+        const node = el("div", `course-cover course-cover--fallback${detail ? " detail-cover" : ""}`);
+        const category = TUTOR_CATEGORIES.find(([id]) => id === course.category);
+        node.setAttribute("aria-label", `${course.title} course cover preview`);
+        node.append(
+            icon(category?.[2] || "book"),
+            el("span", "fallback-category", category?.[1] || "English course"),
+            el("strong", "fallback-title", course.title)
+        );
         return node;
     }
     const node = el("img", `course-cover${detail ? " detail-cover" : ""}`);
@@ -132,13 +135,18 @@ function card(course, statistics) {
     detail.append(icon("arrow-up-right"));
     detail.setAttribute("aria-label", `View ${course.title}`);
     artwork.append(detail);
+    const saved = Boolean(library.favorites?.[course.id]);
+    const save = action("", "save-button course-save", async () => {
+        if (requireLogin()) await toggleLibrary("favorites", course.id, !saved);
+    });
+    save.append(icon(saved ? "heart-filled" : "heart"));
+    save.setAttribute("aria-label", `${saved ? "Unsave" : "Save"} ${course.title}`);
+    save.setAttribute("aria-pressed", String(saved));
+    artwork.append(save);
     node.append(artwork);
     const content = el("div", "course-content");
     const teacher = el("a", "teacher-name", course.teacherName);
     teacher.href = `profile.html?uid=${encodeURIComponent(course.teacherId)}`;
-    const categoryName = TUTOR_CATEGORIES.find(([id]) => id === course.category)?.[1] || "English";
-    const typeLabel = TUTOR_TYPES[course.type] || "Course";
-    const categoryLine = el("p", "course-kicker", `${categoryName} · ${typeLabel}`);
     const heading = el("h3");
     heading.append(action(course.title, "course-title", () => showCourse(course.id)));
     const teacherLine = el("div", "course-teacher-line");
@@ -150,10 +158,9 @@ function card(course, statistics) {
         el("p", "rating", statistics.count ? `★ ${statistics.rating.toFixed(1)}` : "New course"),
         el("span", "review-count", statistics.count ? `${statistics.count} review${statistics.count === 1 ? "" : "s"}` : "Be the first to review")
     );
-    const learnerCount = course.teacherId === uid
-        ? `${statistics.students} accepted learner${statistics.students === 1 ? "" : "s"}`
-        : "Learner count not shared";
-    content.append(categoryLine, heading, teacherLine, ratingLine, el("p", "learner-count", learnerCount), price(course));
+    content.append(teacherLine, ratingLine, heading);
+    if (course.teacherId === uid) content.append(el("p", "learner-count", `${statistics.students} accepted learner${statistics.students === 1 ? "" : "s"}`));
+    content.append(price(course));
     const bottom = el("div", "card-bottom");
     const inCart = Boolean(library.cart?.[course.id]);
     const cart = action(inCart ? "In cart" : "Add to cart", "primary", async () => {
@@ -163,14 +170,7 @@ function card(course, statistics) {
     cart.disabled = uid === course.teacherId || Boolean(requests[`${course.id}_${uid}`]);
     if (uid === course.teacherId) cart.textContent = "Your course";
     else if (cart.disabled) cart.textContent = "Requested";
-    const saved = Boolean(library.favorites?.[course.id]);
-    const save = action("", "save-button", async () => {
-        if (requireLogin()) await toggleLibrary("favorites", course.id, !saved);
-    });
-    save.append(icon(saved ? "heart-filled" : "heart"));
-    save.setAttribute("aria-label", `${saved ? "Unsave" : "Save"} ${course.title}`);
-    save.setAttribute("aria-pressed", String(saved));
-    bottom.append(cart, save);
+    bottom.append(cart);
     content.append(bottom);
     node.append(content);
     return node;
@@ -203,7 +203,7 @@ function renderFilterState() {
     $("filterCount").hidden = !count;
     $("filterCount").textContent = count;
     $("resetFilters").disabled = !count && $("courseSort").value === "newest";
-    $("allCategories").disabled = !category;
+    $("allCategories").setAttribute("aria-pressed", String(!category));
     document.querySelectorAll("[data-category]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.category === category)));
     if (focusedIndex >= 0) {
         (target.children[Math.min(focusedIndex, count - 1)] || $("courseFilters").querySelector("summary")).focus();
@@ -212,6 +212,7 @@ function renderFilterState() {
 function renderCatalog() {
     $("manageButton").hidden = role !== "teacher";
     $("teacherSignup").hidden = role === "teacher";
+    syncMarketplaceNavigation();
     $("cartCount").textContent = Object.keys(library.cart || {}).length;
     const teacherOptions = $("teacherFilter");
     const teacherSelection = selectedTeacher;
@@ -246,9 +247,6 @@ function renderCatalog() {
         }
         grid.append(empty);
     } else rows.forEach(course => grid.append(card(course, statistics[course.id])));
-    $("cartCount").textContent = Object.keys(library.cart || {}).length;
-    $("manageButton").hidden = role !== "teacher";
-    $("teacherSignup").hidden = role === "teacher";
     document.querySelectorAll("[data-category]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.category === category)));
     renderCart();
     renderRequests();
@@ -259,13 +257,50 @@ function renderCatalog() {
         if (courses[id]?.published && !courses[id].archived && (!selectedTeacher || courses[id].teacherId === selectedTeacher)) showCourse(id);
         else error("This course is no longer available for enrollment.");
     }
-    if (initialStudio && role === "teacher") { initialStudio = false; $("teacherStudio").hidden = false; $("teacherStudio").scrollIntoView({ block: "start" }); }
+    if (initialStudio && role === "teacher") { initialStudio = false; setStudioView(true, false); }
     if (initialCreate && role === "teacher") {
         initialCreate = false;
-        $("teacherStudio").hidden = false;
+        setStudioView(true, false);
         openEditor();
     }
+    if (initialClasses && uid && roleReady) {
+        initialClasses = false;
+        showClasses();
+    }
 }
+function syncMarketplaceNavigation() {
+    const teacher = role === "teacher";
+    $("qcnavMarketplaceStudentSidebar").hidden = teacher;
+    $("qcnavMarketplaceTeacherSidebar").hidden = !teacher;
+    const params = new URLSearchParams(location.search);
+    const studio = teacher && params.get("studio") === "1";
+    const classes = params.get("classes") === "1";
+    const homeLink = $("qcnavHomeLink");
+    const currentLink = (link, active) => {
+        if (!link) return;
+        link.classList.toggle("active", active);
+        if (active) link.setAttribute("aria-current", "page");
+        else link.removeAttribute("aria-current");
+    };
+    if (homeLink) {
+        homeLink.href = teacher ? "tutor-check.html?studio=1" : "index.html";
+        currentLink(homeLink, studio);
+    }
+    currentLink(document.querySelector('.qcnav-links a[href="tutor-check.html"]'), !studio && !classes);
+    currentLink(document.querySelector('.qcnav-links a[href="tutor-check.html?classes=1"]'), classes);
+    const teacherLinks = $("qcnavMarketplaceTeacherSidebar");
+    if (teacherLinks) {
+        teacherLinks.querySelectorAll(".qcnav-item").forEach(link => currentLink(link, false));
+        const hash = location.hash.slice(1);
+        const activeTeacherLink = hash
+            ? [...teacherLinks.querySelectorAll(".qcnav-item")].find(link => link.hash === `#${hash}`)
+            : classes ? [...teacherLinks.querySelectorAll(".qcnav-item")].find(link => link.hash === "#teacherInbox")
+                : studio ? teacherLinks.querySelector(".qcnav-item")
+                    : [...teacherLinks.querySelectorAll(".qcnav-item")].find(link => link.getAttribute("href") === "tutor-check.html");
+        currentLink(activeTeacherLink, true);
+    }
+}
+window.addEventListener("hashchange", syncMarketplaceNavigation);
 function row(title, description) {
     const node = el("div", "request-row");
     const text = el("div");
@@ -386,15 +421,65 @@ function showCourse(id) {
     detailProfileStop();
     detailProfile = {};
     detailId = id;
+    const url = new URL(location.href);
+    if (url.searchParams.get("course") !== id || url.searchParams.has("studio") || url.searchParams.has("classes")) {
+        url.searchParams.set("course", id);
+        url.searchParams.delete("studio");
+        url.searchParams.delete("classes");
+        history.pushState({ marketplaceCourse: id }, "", url);
+    }
+    $("browseLayout").hidden = true;
+    $("coursePage").hidden = false;
+    $("teacherStudio").hidden = true;
     renderDetail();
-    openDialog("courseDialog");
+    $("coursePage").scrollIntoView({ block: "start" });
     const course = courses[id];
     if (course) {
         detailProfileStop = watchTeachingProfile(course.teacherId, profile => {
             if (detailId !== id) return;
             detailProfile = profile;
-            if ($("courseDialog").open) renderDetail();
+            if (!$("coursePage").hidden) renderDetail();
         }, err => error(`Teacher profile could not load. ${err.message}`));
+    }
+}
+function showCatalog() {
+    detailProfileStop();
+    detailProfileStop = () => {};
+    detailId = "";
+    $("teacherStudio").hidden = true;
+    $("coursePage").hidden = true;
+    $("browseLayout").hidden = false;
+    syncMarketplaceNavigation();
+    $("browseLayout").scrollIntoView({ block: "start" });
+}
+function setStudioView(show, updateHistory = true) {
+    if (show && role !== "teacher") return;
+    if (updateHistory) {
+        const url = new URL(location.href);
+        url.searchParams.delete("course");
+        url.searchParams.delete("classes");
+        if (show) url.searchParams.set("studio", "1");
+        else url.searchParams.delete("studio");
+        history.pushState({ marketplaceStudio: show }, "", url);
+    }
+    detailProfileStop();
+    detailProfileStop = () => {};
+    detailId = "";
+    $("coursePage").hidden = true;
+    $("browseLayout").hidden = show;
+    $("teacherStudio").hidden = !show;
+    syncMarketplaceNavigation();
+    $(show ? "teacherStudio" : "browseLayout").scrollIntoView({ block: "start" });
+}
+function showClasses() {
+    if (!requireLogin()) return;
+    if (role === "teacher") {
+        setStudioView(true, false);
+        $("teacherInbox").scrollIntoView({ block: "start" });
+    } else {
+        showCatalog();
+        renderRequests();
+        openDialog("requestsDialog");
     }
 }
 function renderDetail() {
@@ -407,7 +492,7 @@ function renderDetail() {
     const selectionStart = focused?.selectionStart, selectionEnd = focused?.selectionEnd;
     target.replaceChildren();
     if (!course) { target.append(el("p", "error", "This course is unavailable.")); return; }
-    $("courseDialogHeading").textContent = course.title;
+    $("coursePageTitle").textContent = course.title;
     const courseStats = stats()[detailId] || courseStatsFor(detailId);
     const detailLayout = el("div", "detail-layout");
     const detailMain = el("div", "detail-main");
@@ -431,7 +516,7 @@ function renderDetail() {
     quickStats.append(
         el("span", "", TUTOR_TYPES[course.type]),
         el("span", "", `${course.curriculum.split(/\r?\n/).filter(Boolean).length} curriculum items`),
-        el("span", "", course.teacherId === uid ? `${courseStats.students} accepted learners` : "Learner count not shared")
+        el("span", "", `${String(course.whatYouLearn || course.curriculum).split(/\r?\n/).filter(Boolean).length} learning outcomes`)
     );
     introCopy.append(quickStats);
     intro.append(media, introCopy);
@@ -609,7 +694,39 @@ function renderDetail() {
     const feedback = el("p", "detail-feedback");
     feedback.setAttribute("role", "status");
     purchase.append(feedback);
-    detailLayout.append(detailMain, purchase);
+
+    const detailSidebar = el("aside", "detail-sidebar");
+    detailSidebar.append(purchase);
+    const teacherSummary = el("section", "detail-side-card panel");
+    const teacherHeading = el("div", "detail-side-heading");
+    teacherHeading.append(el("h3", "", "Meet your teacher"));
+    const seeProfile = el("a", "text-link", "See profile");
+    seeProfile.href = `profile.html?uid=${encodeURIComponent(course.teacherId)}`;
+    teacherHeading.append(seeProfile);
+    const teacherSummaryBody = el("div", "detail-side-teacher");
+    const teacherAvatar = detailProfile.imageURL
+        ? el("img", "teacher-profile-image")
+        : el("span", "teacher-profile-image teacher-profile-initial", course.teacherName.trim().charAt(0).toUpperCase() || "T");
+    if (detailProfile.imageURL) {
+        teacherAvatar.src = detailProfile.imageURL;
+        teacherAvatar.alt = `${course.teacherName} profile`;
+    }
+    const teacherCopy = el("div");
+    teacherCopy.append(el("strong", "", course.teacherName), el("p", "muted", detailProfile.qualification || "Independent English teacher"));
+    if (courseStats.count) teacherCopy.append(el("p", "detail-side-rating", `★ ${courseStats.rating.toFixed(1)} · ${courseStats.count} review${courseStats.count === 1 ? "" : "s"}`));
+    teacherSummaryBody.append(teacherAvatar, teacherCopy);
+    teacherSummary.append(teacherHeading, teacherSummaryBody);
+    if (detailProfile.about) teacherSummary.append(el("p", "detail-copy detail-side-about", detailProfile.about));
+    detailSidebar.append(teacherSummary);
+
+    const reviewSummaryCard = el("section", "detail-side-card panel");
+    const reviewHeading = el("div", "detail-side-heading");
+    reviewHeading.append(el("h3", "", "Student reviews"));
+    const seeReviews = action("See all", "text-link", () => selectDetailTab("reviews"));
+    reviewHeading.append(seeReviews);
+    reviewSummaryCard.append(reviewHeading, buildReviewSummary(detailId, courseStats));
+    detailSidebar.append(reviewSummaryCard);
+    detailLayout.append(detailMain, detailSidebar);
     target.append(detailLayout);
     selectDetailTab(selectedTab);
     if (reviewFocus) {
@@ -795,8 +912,15 @@ TUTOR_CATEGORIES.forEach(([id, label, glyph]) => {
 Object.entries(TUTOR_TYPES).forEach(([id, label]) => {
     const option = el("option", "", label); option.value = id; $("editorType").append(option);
 });
-$("searchForm").addEventListener("submit", event => { event.preventDefault(); renderCatalog(); $("catalog").scrollIntoView({ block: "start" }); });
-$("courseSearch").addEventListener("input", renderCatalog);
+$("searchForm").addEventListener("submit", event => { event.preventDefault(); $("topCourseSearch").value = $("courseSearch").value; renderCatalog(); $("catalog").scrollIntoView({ block: "start" }); });
+$("topSearchForm").addEventListener("submit", event => {
+    event.preventDefault();
+    $("courseSearch").value = $("topCourseSearch").value;
+    renderCatalog();
+    $("catalog").scrollIntoView({ block: "start" });
+});
+$("courseSearch").addEventListener("input", () => { $("topCourseSearch").value = $("courseSearch").value; renderCatalog(); });
+$("topCourseSearch").addEventListener("input", () => { $("courseSearch").value = $("topCourseSearch").value; renderCatalog(); });
 $("courseSort").addEventListener("change", renderCatalog);
 $("teacherFilter").addEventListener("change", () => { selectedTeacher = $("teacherFilter").value; renderCatalog(); });
 document.querySelectorAll(".filter-panel input").forEach(input => input.addEventListener("change", () => {
@@ -810,7 +934,7 @@ compactFilters.addEventListener("change", syncFilterLayout);
 function resetFilters() {
     const recoverFocus = document.activeElement?.closest(".empty-state");
     category = ""; type = ""; selectedTeacher = ""; favoritesOnly = false;
-    $("courseSearch").value = ""; $("courseSort").value = "newest";
+    $("courseSearch").value = ""; $("topCourseSearch").value = ""; $("courseSort").value = "newest";
     $("teacherFilter").value = "";
     document.querySelectorAll('[name="price"]').forEach(input => input.checked = false);
     document.querySelector('[name="courseType"][value=""]').checked = true;
@@ -827,11 +951,28 @@ $("favoritesButton").addEventListener("click", () => {
 });
 $("cartButton").addEventListener("click", () => { if (requireLogin()) { $("cartError").hidden = true; renderCart(); openDialog("cartDialog"); } });
 $("requestsButton").addEventListener("click", () => { if (requireLogin()) { renderRequests(); openDialog("requestsDialog"); } });
-$("manageButton").addEventListener("click", () => { $("teacherStudio").hidden = !$("teacherStudio").hidden; if (!$("teacherStudio").hidden) $("teacherStudio").scrollIntoView({ block: "start" }); });
+$("manageButton").addEventListener("click", () => setStudioView($("teacherStudio").hidden));
 $("newCourse").addEventListener("click", () => openEditor());
+$("backToCatalog").addEventListener("click", () => {
+    if (history.state?.marketplaceCourse) history.back();
+    else {
+        const url = new URL(location.href);
+        url.searchParams.delete("course");
+        history.replaceState(null, "", url);
+        showCatalog();
+    }
+});
+window.addEventListener("popstate", () => {
+    const params = new URLSearchParams(location.search);
+    const courseId = params.get("course");
+    if (courseId) showCourse(courseId);
+    else if (params.get("studio") === "1" && role === "teacher") setStudioView(true, false);
+    else if (params.get("classes") === "1") showClasses();
+    else showCatalog();
+});
 const catalogStop = watchCatalog(data => {
     courses = data; catalogReady = true; renderCatalog();
-    if ($("courseDialog").open) renderDetail();
+    if (!$("coursePage").hidden) renderDetail();
     if ($("marketStatus").textContent === "Course connection failed.") {
         $("marketError").hidden = true;
     }
@@ -844,7 +985,7 @@ const catalogStop = watchCatalog(data => {
 });
 const reviewsStop = watchReviews(data => {
     reviews = data; reviewsReady = true; renderCatalog();
-    if ($("courseDialog").open) renderDetail();
+    if (!$("coursePage").hidden) renderDetail();
     if ($("marketStatus").textContent === "Review connection failed.") {
         $("marketError").hidden = true;
     }
@@ -856,18 +997,21 @@ const reviewsStop = watchReviews(data => {
 });
 const authStop = onAuthStateChanged(auth, user => {
     accountStop(); version++;
-    uid = user?.uid || ""; role = "student"; library = {}; requests = {}; inbox = {}; favoritesOnly = false;
+    uid = user?.uid || ""; role = "student"; roleReady = false; library = {}; requests = {}; inbox = {}; favoritesOnly = false;
     document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close());
     $("teacherStudio").hidden = true; $("favoritesButton").setAttribute("aria-pressed", "false");
     renderCatalog();
-    if (!uid) return;
+    if (!uid) {
+        if (initialClasses) { initialClasses = false; error("Sign in to see your classes."); }
+        return;
+    }
     const current = version;
     const guarded = callback => data => { if (current === version) { callback(data); renderCatalog(); } };
     accountStop = watchAccount(uid, {
-        role: guarded(data => role = data),
-        library: guarded(data => { library = data; if ($("courseDialog").open) renderDetail(); }),
-        requests: guarded(data => { requests = data; if ($("courseDialog").open) renderDetail(); }),
-        inbox: guarded(data => { inbox = data; if ($("courseDialog").open) renderDetail(); })
+        role: guarded(data => { role = data; roleReady = true; }),
+        library: guarded(data => { library = data; if (!$("coursePage").hidden) renderDetail(); }),
+        requests: guarded(data => { requests = data; if (!$("coursePage").hidden) renderDetail(); }),
+        inbox: guarded(data => { inbox = data; if (!$("coursePage").hidden) renderDetail(); })
     }, err => { if (current === version) error(`Your marketplace account could not sync. Refresh to retry. ${err.message}`); });
 });
 window.addEventListener("pagehide", () => { accountStop(); catalogStop(); reviewsStop(); authStop(); compactFilters.removeEventListener("change", syncFilterLayout); }, { once: true });

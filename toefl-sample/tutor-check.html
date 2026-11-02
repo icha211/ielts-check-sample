@@ -11,23 +11,14 @@
     <script src="qc-preferences.js?v=20261031-explore"></script>
     <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
     <link rel="stylesheet" href="tutor-brand.css?v=20261101-add-course">
-    <link rel="stylesheet" href="tutor-check.css?v=20261101-teacher">
+    <link rel="stylesheet" href="tutor-check.css?v=20261102-shared-nav">
 </head>
 <body class="tutor-page">
     <a class="skip-link" href="#catalog">Skip to courses</a>
-    <script src="site-navbar.js?v=20261101-tutor-check"></script>
+    <script src="site-navbar.js?v=20261102-shared-nav"></script>
     <main class="marketplace">
-        <div class="market-heading">
-            <h1>Marketplace</h1>
-            <div class="market-actions">
-                <a id="teacherSignup" href="signup.html?role=teacher">Teach a course</a>
-                <button id="manageButton" type="button" hidden><i class="ti ti-school" aria-hidden="true"></i> Teacher studio</button>
-                <button id="requestsButton" type="button">My requests</button>
-                <button id="favoritesButton" type="button" aria-label="Saved courses" aria-pressed="false"><i class="ti ti-heart" aria-hidden="true"></i><span class="wide-label">Saved</span></button>
-                <button id="cartButton" type="button"><i class="ti ti-shopping-cart" aria-hidden="true"></i> Cart <span id="cartCount">0</span></button>
-            </div>
-        </div>
-        <div class="browse-layout">
+        <h1 class="sr-only">Marketplace</h1>
+        <div id="browseLayout" class="browse-layout">
             <aside class="filter-panel panel" aria-label="Course filters">
                 <details id="courseFilters" open>
                     <summary>Filters <span id="filterCount" class="filter-count" hidden></span></summary>
@@ -71,9 +62,12 @@
             </div>
             <img src="tutor-illustration.png" class="hero-art" alt="Online learning illustration" width="400" height="300" fetchpriority="high">
         </section>
-        <section class="category-section panel" aria-labelledby="categoryTitle">
-            <div class="section-heading"><h2 id="categoryTitle">Browse by category</h2><button id="allCategories" class="text-button" type="button">All categories</button></div>
+        <section class="category-section" aria-labelledby="categoryTitle">
+            <h2 id="categoryTitle" class="sr-only">Browse by category</h2>
+            <div class="category-row">
+                <button id="allCategories" class="category-chip" type="button" aria-pressed="true"><i class="ti ti-layout-grid" aria-hidden="true"></i>All courses</button>
             <div id="categoryChoices" class="category-choices"></div>
+            </div>
         </section>
         <p id="marketStatus" class="market-status" role="status">Connecting to live courses...</p>
         <p id="marketError" class="error" role="alert" hidden></p>
@@ -89,6 +83,10 @@
             </section>
             </div>
         </div>
+        <section id="coursePage" class="course-page" hidden aria-labelledby="coursePageTitle">
+            <div class="course-page-breadcrumb"><button id="backToCatalog" type="button"><i class="ti ti-arrow-left" aria-hidden="true"></i> Back to Marketplace</button><span aria-hidden="true">›</span><span id="coursePageTitle"></span></div>
+            <div id="courseDetail"></div>
+        </section>
         <section id="teacherStudio" class="panel teacher-studio" hidden aria-labelledby="studioTitle">
             <div class="studio-welcome">
                 <div>
@@ -111,10 +109,6 @@
         <p id="archiveCourseName"></p><p>The course will leave the marketplace. Existing enrollment requests and reviews remain. Restore it later as a paused course.</p>
         <p id="archiveError" class="error" role="alert" hidden></p>
         <button id="archiveCancel" type="button">Cancel</button><button id="archiveConfirm" class="primary" type="button">Archive course</button>
-    </dialog>
-    <dialog id="courseDialog" class="market-dialog course-dialog" aria-labelledby="courseDialogHeading">
-        <div class="dialog-heading"><h2 id="courseDialogHeading">Course details</h2><button type="button" data-close aria-label="Close course details">×</button></div>
-        <div id="courseDetail"></div>
     </dialog>
     <dialog id="cartDialog" class="market-dialog">
         <div class="dialog-heading"><h2>Your cart</h2><button type="button" data-close aria-label="Close cart">×</button></div>
@@ -150,6 +144,6 @@
             <button id="saveCourseButton" class="primary" type="submit">Publish course</button>
         </form>
     </dialog>
-    <script type="module" src="tutor-check.js?v=20261101-add-course"></script>
+    <script type="module" src="tutor-check.js?v=20261102-shared-nav"></script>
 </body>
 </html>

@@ -10,6 +10,10 @@
     console.error("[MessageNotifications] Could not start unread message updates:", error);
   });
   const page = (location.pathname.split("/").pop() || "index.html").toLowerCase();
+  const marketplacePage = page === "tutor-check.html";
+  const marketplaceParams = new URLSearchParams(location.search);
+  const marketplaceStudioPage = marketplacePage && marketplaceParams.get("studio") === "1";
+  const marketplaceClassesPage = marketplacePage && marketplaceParams.get("classes") === "1";
   const pageKey = {
     "index.html": "dashboard",
     "study-plan.html": "today",
@@ -27,10 +31,77 @@
   const tr = (text, vars) => (prefs ? prefs.t(text, vars) : text.replace(/\{(\w+)\}/g, (m, k) => (vars && k in vars ? vars[k] : m)));
   const formatToday = () => tr("Today, {date}", { date: new Intl.DateTimeFormat(prefs ? prefs.locale() : "en", { day: "numeric", month: "short", year: "numeric" }).format(now) });
   const todayLabel = formatToday();
+  const calendarIcon = `<svg class="qcnav-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><text x="12" y="18" text-anchor="middle" stroke="none" fill="currentColor">${now.getDate()}</text></svg>`;
   const cls = (key) => (pageKey === key ? " active" : "");
   const cur = (key) => (pageKey === key ? ' aria-current="page"' : "");
-
-  const calendarIcon = `<svg class="qcnav-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/><text x="12" y="18" text-anchor="middle" stroke="none" fill="currentColor">${now.getDate()}</text></svg>`;
+  const marketplaceHomeLink = marketplaceStudioPage ? "tutor-check.html?studio=1" : "index.html";
+  const marketplaceNav = marketplacePage
+    ? `<a id="qcnavHomeLink" class="qcnav-link${marketplaceStudioPage ? " active" : ""}" href="${marketplaceHomeLink}"${marketplaceStudioPage ? ' aria-current="page"' : ""}><i data-lucide="house"></i><span data-i18n>Home</span></a>
+       <a class="qcnav-link${!marketplaceClassesPage && !marketplaceStudioPage ? " active" : ""}" href="tutor-check.html"${!marketplaceClassesPage && !marketplaceStudioPage ? ' aria-current="page"' : ""}><i data-lucide="shopping-bag"></i><span data-i18n>Marketplace</span></a>
+       <a class="qcnav-link${marketplaceClassesPage ? " active" : ""}" href="tutor-check.html?classes=1"${marketplaceClassesPage ? ' aria-current="page"' : ""}><i data-lucide="book-open-check"></i><span data-i18n>My Classes</span></a>`
+    : `<a class="qcnav-link${cls("dashboard")}" href="index.html"${cur("dashboard")}><i data-lucide="house"></i><span data-i18n>Home</span></a>
+       <a class="qcnav-link${cls("social")}" href="social.html#community"${cur("social")}><i data-lucide="globe"></i><span data-i18n>Explore</span></a>
+       <a class="qcnav-link${cls("tutor")}" href="tutor-check.html"${cur("tutor")}><i data-lucide="graduation-cap"></i><span data-i18n>Tutor Check</span></a>`;
+  const marketplaceSearch = marketplacePage
+    ? `<form id="topSearchForm" class="qcnav-market-search"><label class="sr-only" for="topCourseSearch">Search courses, teachers, or topics</label><i data-lucide="search"></i><input id="topCourseSearch" type="search" maxlength="200" placeholder="Search for courses, teachers, or topics..."></form>`
+    : "";
+  const marketplaceActions = marketplacePage
+    ? `<div class="qcnav-market-actions">
+         <a id="teacherSignup" href="signup.html?role=teacher" data-i18n>Teach a course</a>
+         <button id="manageButton" type="button" aria-label="Open teacher studio" hidden><i data-lucide="school"></i><span id="manageLabel" data-i18n>Teacher studio</span></button>
+         <button id="requestsButton" type="button" aria-label="My enrollment requests" title="My requests"><i data-lucide="bell"></i></button>
+         <button id="favoritesButton" type="button" aria-label="Saved courses" title="Saved courses" aria-pressed="false"><i data-lucide="heart"></i></button>
+         <button id="cartButton" type="button" aria-label="Cart"><i data-lucide="shopping-cart"></i><span id="cartCount" class="qcnav-market-cart-count">0</span></button>
+       </div>`
+    : "";
+  const marketplaceSidebar = marketplacePage
+    ? `<nav id="qcnavMarketplaceStudentSidebar" aria-label="Student navigation">
+         <div class="qcnav-label" data-i18n>Student</div>
+         <a class="qcnav-item" href="index.html"><span class="qcnav-ico"><i data-lucide="house"></i></span><span class="qcnav-text" data-i18n>Home</span></a>
+         <a class="qcnav-item" href="section 1.html"><span class="qcnav-ico"><i data-lucide="file-text"></i></span><span class="qcnav-text" data-i18n>Practice Test</span></a>
+         <a class="qcnav-item" href="section 2.html"><span class="qcnav-ico"><i data-lucide="shield-check"></i></span><span class="qcnav-text" data-i18n>Mock Test</span></a>
+         <div class="qcnav-divider"></div>
+         <div class="qcnav-label" data-i18n>Study</div>
+         <a class="qcnav-item" href="MyProgress.html"><span class="qcnav-ico"><i data-lucide="chart-line"></i></span><span class="qcnav-text" data-i18n>Progress</span></a>
+         <a class="qcnav-item" href="study-plan.html"><span class="qcnav-ico"><i data-lucide="calendar-days"></i></span><span class="qcnav-text" data-i18n>Calendar</span></a>
+         <a class="qcnav-item active" href="tutor-check.html" aria-current="page"><span class="qcnav-ico"><i data-lucide="shopping-bag"></i></span><span class="qcnav-text" data-i18n>Marketplace</span></a>
+         <a class="qcnav-item" href="material-preview.html"><span class="qcnav-ico"><i data-lucide="book-open"></i></span><span class="qcnav-text" data-i18n>Study Materials</span></a>
+         <div class="qcnav-divider"></div>
+         <div class="qcnav-label" data-i18n>Community</div>
+         <a class="qcnav-item" href="social.html#community"><span class="qcnav-ico"><i data-lucide="users-round"></i></span><span class="qcnav-text" data-i18n>Community</span></a>
+         <a class="qcnav-item" href="profile.html"><span class="qcnav-ico"><i data-lucide="user-round"></i></span><span class="qcnav-text" data-i18n>Profile</span></a>
+         <div class="qcnav-divider"></div>
+         <a class="qcnav-item" href="../index.html"><span class="qcnav-ico"><i data-lucide="undo-2"></i></span><span class="qcnav-text" data-i18n>Back to IELTS</span></a>
+       </nav>
+       <nav id="qcnavMarketplaceTeacherSidebar" aria-label="Teacher navigation" hidden>
+         <div class="qcnav-label" data-i18n>Dashboard</div>
+         <a class="qcnav-item active" href="tutor-check.html?studio=1" aria-current="page"><span class="qcnav-ico"><i data-lucide="house"></i></span><span class="qcnav-text" data-i18n>Home</span></a>
+         <div class="qcnav-divider"></div>
+         <div class="qcnav-label" data-i18n>Teaching</div>
+         <a class="qcnav-item" href="tutor-check.html?studio=1#ownCourses"><span class="qcnav-ico"><i data-lucide="book-open"></i></span><span class="qcnav-text" data-i18n>My Courses</span></a>
+         <a class="qcnav-item" href="tutor-check.html?studio=1&create=1"><span class="qcnav-ico"><i data-lucide="circle-plus"></i></span><span class="qcnav-text" data-i18n>Create Course</span></a>
+         <a class="qcnav-item" href="tutor-check.html?studio=1#teacherInbox"><span class="qcnav-ico"><i data-lucide="users-round"></i></span><span class="qcnav-text" data-i18n>Students</span></a>
+         <a class="qcnav-item" href="message.html"><span class="qcnav-ico"><i data-lucide="message-circle"></i></span><span class="qcnav-text" data-i18n>Messages</span></a>
+         <div class="qcnav-divider"></div>
+         <div class="qcnav-label" data-i18n>Account</div>
+         <a class="qcnav-item" href="profile.html"><span class="qcnav-ico"><i data-lucide="user-round"></i></span><span class="qcnav-text" data-i18n>Profile</span></a>
+         <div class="qcnav-divider"></div>
+         <a class="qcnav-item" href="tutor-check.html"><span class="qcnav-ico"><i data-lucide="undo-2"></i></span><span class="qcnav-text" data-i18n>Student Marketplace</span></a>
+       </nav>`
+    : `<a class="qcnav-item${cls("today")}" href="study-plan.html"${cur("today")}><span class="qcnav-ico">${calendarIcon}</span><span class="qcnav-text" data-qcnav-today>${todayLabel}</span></a>
+       <div class="qcnav-divider"></div>
+       <div class="qcnav-label" data-i18n>Study Progress</div>
+       <a class="qcnav-item${cls("progress")}" href="MyProgress.html"${cur("progress")}><span class="qcnav-ico"><i data-lucide="chart-line"></i></span><span class="qcnav-text" data-i18n>My Progress</span></a>
+       <a class="qcnav-item${cls("history")}" href="history.html"${cur("history")}><span class="qcnav-ico"><i data-lucide="history"></i></span><span class="qcnav-text" data-i18n>Test History</span></a>
+       <div class="qcnav-divider"></div>
+       <div class="qcnav-label" data-i18n>Social</div>
+       <a class="qcnav-item${cls("profile")}" href="profile.html"${cur("profile")}><span class="qcnav-ico"><i data-lucide="user-round"></i></span><span class="qcnav-text" data-i18n>Profile</span></a>
+       <a class="qcnav-item${cls("message")}" href="message.html" data-message-link="Message"${cur("message")}><span class="qcnav-ico"><i data-lucide="message-circle"></i><span class="qcnav-badge" data-message-badge aria-hidden="true" hidden></span></span><span class="qcnav-text" data-i18n>Message</span></a>
+       <a class="qcnav-item${cls("social")}" href="social.html#community"${cur("social")}><span class="qcnav-ico"><i data-lucide="globe"></i></span><span class="qcnav-text" data-i18n>Explore</span></a>
+       <div class="qcnav-divider"></div>
+       <div class="qcnav-label" data-developer-only hidden data-i18n>Admin</div>
+       <a class="qcnav-item" href="developer.html" data-developer-only hidden><span class="qcnav-ico"><i data-lucide="book-open"></i></span><span class="qcnav-text">Developer</span></a>
+       <a class="qcnav-item" href="../index.html"><span class="qcnav-ico"><i data-lucide="undo-2"></i></span><span class="qcnav-text" data-i18n>Back to IELTS</span></a>`;
 
   const renderIcons = () => { if (window.lucide && window.lucide.createIcons) window.lucide.createIcons(); };
   const ensureIcons = () => {
@@ -61,11 +132,11 @@
   <button class="qcnav-icon-btn qcnav-menu-btn" id="qcnavMenuBtn" type="button" aria-label="Open menu" data-i18n-attr="aria-label"><i data-lucide="menu"></i></button>
   <a class="qcnav-brand" href="index.html" aria-label="Quick Check dashboard" data-i18n-attr="aria-label"><img src="../asset/icon/logo.png" alt="Quick Check"></a>
   <nav class="qcnav-links" aria-label="Main navigation" data-i18n-attr="aria-label">
-    <a class="qcnav-link${cls("dashboard")}" href="index.html"${cur("dashboard")}><i data-lucide="house"></i><span data-i18n>Home</span></a>
-    <a class="qcnav-link${cls("social")}" href="social.html#community"${cur("social")}><i data-lucide="globe"></i><span data-i18n>Explore</span></a>
-    <a class="qcnav-link${cls("tutor")}" href="tutor-check.html"${cur("tutor")}><i data-lucide="graduation-cap"></i><span data-i18n>Tutor Check</span></a>
+    ${marketplaceNav}
   </nav>
+  ${marketplaceSearch}
   <div class="qcnav-actions">
+    ${marketplaceActions}
     <a class="qcnav-upgrade" href="index.html#upgrade" data-i18n>Upgrade</a>
     <div class="qcnav-settings-menu">
       <button class="qcnav-icon-btn qcnav-settings-btn" id="qcnavSettingsBtn" type="button" aria-label="Settings" data-i18n-attr="aria-label" aria-haspopup="true" aria-expanded="false" aria-controls="qcnavSettingsPanel"><i data-lucide="settings"></i></button>
@@ -121,25 +192,12 @@
   </div>
 </header>
 <div class="qcnav-scrim" id="qcnavScrim"></div>
-<aside class="qcnav-sidebar" id="qcnavSidebar" aria-label="TOEFL navigation" data-i18n-attr="aria-label">
+<aside class="qcnav-sidebar" id="qcnavSidebar" aria-label="${marketplacePage ? "Quick Check navigation" : "TOEFL navigation"}" data-i18n-attr="aria-label">
   <div class="qcnav-sidebar-top">
-    <span class="qcnav-label">TOEFL ITP</span>
+    <span class="qcnav-label">${marketplacePage ? "Quick Check" : "TOEFL ITP"}</span>
     <button class="qcnav-collapse" id="qcnavCollapse" type="button" aria-label="Collapse sidebar" title="Collapse sidebar"><i data-lucide="panel-left-close"></i></button>
   </div>
-  <a class="qcnav-item${cls("today")}" href="study-plan.html"${cur("today")}><span class="qcnav-ico">${calendarIcon}</span><span class="qcnav-text" data-qcnav-today>${todayLabel}</span></a>
-  <div class="qcnav-divider"></div>
-  <div class="qcnav-label" data-i18n>Study Progress</div>
-  <a class="qcnav-item${cls("progress")}" href="MyProgress.html"${cur("progress")}><span class="qcnav-ico"><i data-lucide="chart-line"></i></span><span class="qcnav-text" data-i18n>My Progress</span></a>
-  <a class="qcnav-item${cls("history")}" href="history.html"${cur("history")}><span class="qcnav-ico"><i data-lucide="history"></i></span><span class="qcnav-text" data-i18n>Test History</span></a>
-  <div class="qcnav-divider"></div>
-  <div class="qcnav-label" data-i18n>Social</div>
-  <a class="qcnav-item${cls("profile")}" href="profile.html"${cur("profile")}><span class="qcnav-ico"><i data-lucide="user-round"></i></span><span class="qcnav-text" data-i18n>Profile</span></a>
-  <a class="qcnav-item${cls("message")}" href="message.html" data-message-link="Message"${cur("message")}><span class="qcnav-ico"><i data-lucide="message-circle"></i><span class="qcnav-badge" data-message-badge aria-hidden="true" hidden></span></span><span class="qcnav-text" data-i18n>Message</span></a>
-  <a class="qcnav-item${cls("social")}" href="social.html#community"${cur("social")}><span class="qcnav-ico"><i data-lucide="globe"></i></span><span class="qcnav-text" data-i18n>Explore</span></a>
-  <div class="qcnav-divider"></div>
-  <div class="qcnav-label" data-developer-only hidden data-i18n>Admin</div>
-  <a class="qcnav-item" href="developer.html" data-developer-only hidden><span class="qcnav-ico"><i data-lucide="book-open"></i></span><span class="qcnav-text">Developer</span></a>
-  <a class="qcnav-item" href="../index.html"><span class="qcnav-ico"><i data-lucide="undo-2"></i></span><span class="qcnav-text" data-i18n>Back to IELTS</span></a>
+  ${marketplaceSidebar}
 </aside>
 <div class="qcnav-quick" id="qcnavQuick">
   ${Object.entries(quickGroups).map(([g, grp]) => `<div class="qcnav-fan" data-group="${g}" role="menu" aria-label="${grp.label}" data-i18n-attr="aria-label">${grp.items.map((q, i) => {
