@@ -80,6 +80,117 @@ test("detail action errors appear in the visible purchase panel instead of the h
     assert.equal(nodes.marketError.hidden, false);
     assert.equal(nodes.marketError.textContent, "Course listings could not load.");
     assert.equal(logged.length, 2);
+    nodes.courseEditor = { hidden: false };
+    nodes.editorError = { hidden: true };
+    context.error("Your course could not be saved.");
+    assert.equal(nodes.editorError.textContent, "Your course could not be saved.");
+    assert.equal(nodes.editorError.hidden, false);
+});
+test("course editor tabs can target the live canvas without changing learner tabs", () => {
+    const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
+    const buttons = ["overview", "curriculum"].map(id => ({
+        dataset: { detailTab: id }, tabIndex: 0,
+        setAttribute(name, value) { this[name] = value; }
+    }));
+    const panels = buttons.map(button => ({ dataset: { detailPanel: button.dataset.detailTab } }));
+    const canvas = { querySelectorAll: selector => selector === "[data-detail-tab]" ? buttons : panels };
+    const context = vm.createContext({ $: () => { throw new Error("Must not use learner canvas"); } });
+    vm.runInContext(source.slice(source.indexOf("function selectDetailTab("), source.indexOf("\nlet editorPreviewURL")), context);
+    context.selectDetailTab("curriculum", false, canvas);
+    assert.equal(buttons[1].tabIndex, 0);
+    assert.equal(buttons[0].tabIndex, -1);
+    assert.equal(panels[0].hidden, true);
+    assert.equal(panels[1].hidden, false);
+});
+test("inline saves preserve media, remove it only on request, and keep failed edits open", async t => {
+    const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
+    const handler = source.slice(source.indexOf('$("courseForm").addEventListener("submit"'), source.indexOf('$("checkoutButton").addEventListener'));
+    for (const scenario of ["preserve", "remove", "failure", "create"]) {
+        await t.test(scenario, async () => {
+            const existing = {
+                ...course, teacherId: "teacher", coverURL: "https://example.test/cover.jpg",
+                previewURL: "https://example.test/preview.jpg", previewPath: "tutor-courses/teacher/media/preview.jpg", previewType: "image"
+            };
+            const fields = Object.entries(course).map(([name, value]) => ({ name, value, disabled: false }));
+            fields.push({ name: "previewFile", files: [], disabled: false }, { name: "archive", disabled: true });
+            fields.find(field => field.name === "published").checked = true;
+            fields.namedItem = name => fields.find(field => field.name === name);
+            let submit;
+            const calls = [], feedback = {};
+            const nodes = {
+                courseForm: { elements: fields, addEventListener: (name, callback) => { submit = callback; } },
+                editorError: { hidden: true, scrollIntoView() {} },
+                marketStatus: {}, courseDetail: { querySelector: () => feedback }
+            };
+            const context = vm.createContext({
+                $: id => nodes[id], editingId: scenario === "create" ? "" : "one",
+                courses: scenario === "create" ? {} : { one: existing }, uid: "teacher", detailId: "one",
+                version: 1, editorBusy: false, removedPreview: scenario === "remove",
+                FormData: class extends Map { constructor() { super(Object.entries(course)); } },
+                validateCourse: model.validateCourse,
+                saveCourse: async (data, id) => {
+                    if (scenario === "failure") throw new Error("Connection failed");
+                    calls.push(["save", data, id]);
+                    return id || "new-course";
+                },
+                closeEditor: () => calls.push(["close"]),
+                showCourse: id => { context.detailId = id; calls.push(["show", id]); },
+                storage: {}, storageRef: (_, path) => path,
+                deleteObject: async path => calls.push(["delete", path]),
+                error: (err, target) => { target.textContent = err.message; target.hidden = false; },
+                console
+            });
+            vm.runInContext(handler, context);
+            await submit({ preventDefault() {} });
+            assert.equal(context.editorBusy, false);
+            assert.equal(fields[0].disabled, false);
+            assert.equal(fields.at(-1).disabled, true);
+            if (scenario === "failure") {
+                assert.equal(nodes.editorError.textContent, "Connection failed");
+                assert.equal(nodes.editorError.hidden, false);
+                assert.equal(calls.length, 0);
+                return;
+            }
+            const saved = calls.find(([name]) => name === "save")[1];
+            assert.equal(saved.price, course.price);
+            assert.equal(saved.curriculum, course.curriculum);
+            assert.equal(saved.whatYouLearn, course.whatYouLearn);
+            assert.ok(calls.some(([name]) => name === "close"));
+            assert.ok(calls.some(([name, id]) => name === "show" && id === (scenario === "create" ? "new-course" : "one")));
+            if (scenario === "preserve") {
+                assert.equal(saved.coverURL, existing.coverURL);
+                assert.equal(saved.previewURL, existing.previewURL);
+                assert.ok(!calls.some(([name]) => name === "delete"));
+            } else if (scenario === "remove") {
+                for (const name of ["coverURL", "previewURL", "previewPath", "previewType"]) assert.equal(saved[name], "");
+                assert.deepEqual(calls.find(([name]) => name === "delete"), ["delete", existing.previewPath]);
+            } else {
+                assert.equal(context.courses["new-course"].teacherId, "teacher");
+            }
+        });
+    }
+});
+test("leaving the course editor confirms dirty edits and blocks navigation during saves", () => {
+    const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
+    const calls = [];
+    const context = vm.createContext({
+        editorBusy: false, editorDirty: false, pendingEditorExit: null,
+        closeEditor: () => calls.push("close"), openDialog: id => calls.push(id),
+        $: () => ({ focus: () => calls.push("focus") })
+    });
+    vm.runInContext(source.slice(source.indexOf("function requestEditorExit("), source.indexOf('$("keepCourseEdit").addEventListener')), context);
+    const exit = () => calls.push("exit");
+    context.requestEditorExit(exit);
+    assert.deepEqual(calls, ["close", "exit"]);
+    calls.length = 0;
+    context.editorDirty = true;
+    context.requestEditorExit(exit);
+    assert.deepEqual(calls, ["discardCourseDialog", "focus"]);
+    assert.equal(context.pendingEditorExit, exit);
+    calls.length = 0;
+    context.editorBusy = true;
+    context.requestEditorExit(exit);
+    assert.deepEqual(calls, []);
 });
 test("video cards show the saved thumbnail while details retain the actual video", () => {
     const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");

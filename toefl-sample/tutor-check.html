@@ -11,7 +11,7 @@
     <script src="qc-preferences.js?v=20261031-explore"></script>
     <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
     <link rel="stylesheet" href="tutor-brand.css?v=20261101-add-course">
-    <link rel="stylesheet" href="tutor-check.css?v=20261102-ux-filters">
+    <link rel="stylesheet" href="tutor-check.css?v=20261102-inline-editor">
 </head>
 <body class="tutor-page">
     <a class="skip-link" href="#catalog">Skip to courses</a>
@@ -103,6 +103,22 @@
             <label>Show enrollments<select id="teacherEnrollmentFilter"><option value="">All enrollments</option><option value="pending">Pending requests</option><option value="accepted">Accepted learners</option><option value="declined">Declined requests</option><option value="cancelled">Cancelled requests</option></select></label>
             <h3>Enrollment requests and learners</h3><div id="teacherInbox"></div>
         </section>
+        <section id="courseEditor" class="course-page course-editor" hidden aria-labelledby="editorHeading">
+            <form id="courseForm">
+                <header class="editor-toolbar">
+                    <div><h2 id="editorHeading" tabindex="-1">Create course</h2><p class="muted">Edit your course where learners will see it. Changes go live when you save.</p></div>
+                    <div class="row-actions">
+                        <button id="cancelCourseEdit" type="button">Cancel</button>
+                        <button id="archiveEditorCourse" type="button" hidden>Archive course</button>
+                        <button id="saveCourseButton" class="primary" type="submit">Publish course</button>
+                    </div>
+                </header>
+                <p id="editorError" class="error" role="alert" hidden></p>
+                <p id="editorStatus" class="muted" role="status"></p>
+                <div id="editorFieldBank" hidden></div>
+                <div id="editorCanvas"></div>
+            </form>
+        </section>
         <footer class="market-footer">Enrollment requests do not process payments. Agree on payment and class arrangements directly with the teacher.</footer>
     </main>
     <dialog id="archiveDialog" class="market-dialog" aria-labelledby="archiveHeading">
@@ -110,6 +126,12 @@
         <p id="archiveCourseName"></p><p>The course will leave the marketplace. Existing enrollment requests and reviews remain. Restore it later as a paused course.</p>
         <p id="archiveError" class="error" role="alert" hidden></p>
         <button id="archiveCancel" type="button">Cancel</button><button id="archiveConfirm" class="primary" type="button">Archive course</button>
+    </dialog>
+    <dialog id="discardCourseDialog" class="market-dialog" aria-labelledby="discardCourseHeading">
+        <div class="dialog-heading"><h2 id="discardCourseHeading">Discard unsaved changes?</h2><button type="button" data-close aria-label="Keep editing">×</button></div>
+        <p>Your course has not been saved. Keep editing or discard these changes.</p>
+        <button id="keepCourseEdit" type="button">Keep editing</button>
+        <button id="discardCourseEdit" type="button">Discard changes</button>
     </dialog>
     <dialog id="cartDialog" class="market-dialog">
         <div class="dialog-heading"><h2>Your cart</h2><button type="button" data-close aria-label="Close cart">×</button></div>
@@ -123,9 +145,7 @@
         <div class="dialog-heading"><h2>My enrollment requests</h2><button type="button" data-close aria-label="Close requests">×</button></div>
         <div id="studentRequests"></div>
     </dialog>
-    <dialog id="editorDialog" class="market-dialog">
-        <div class="dialog-heading"><h2 id="editorHeading">Create course</h2><button type="button" data-close aria-label="Close course editor">×</button></div>
-        <form id="courseForm" class="course-form">
+    <template id="courseEditorFields">
             <label>Course title<input name="title" required maxlength="120" placeholder="Give your course a clear name"></label>
             <label>Teacher name from your profile<input name="teacherName" required maxlength="100" readonly></label>
             <div class="form-pair"><label>Category<select name="category" id="editorCategory"></select></label><label>Course type<select name="type" id="editorType"></select></label></div>
@@ -139,12 +159,8 @@
             </label>
             <p class="muted">Choose an image or a video up to 60 seconds and 20 MB. Use media you own or have permission to use.</p>
             <div id="mediaPreview" class="media-preview" hidden aria-live="polite"></div>
-            <p class="muted">Course information is public, including paused listings.</p>
             <label class="checkbox-label"><input name="published" type="checkbox" checked> Published and open for enrollment</label>
-            <p id="editorError" class="error" role="alert" hidden></p>
-            <button id="saveCourseButton" class="primary" type="submit">Publish course</button>
-        </form>
-    </dialog>
-    <script type="module" src="tutor-check.js?v=20261102-ux-filters"></script>
+    </template>
+    <script type="module" src="tutor-check.js?v=20261102-inline-editor"></script>
 </body>
 </html>

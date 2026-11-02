@@ -145,6 +145,17 @@ or public enrollment count is invented. On mobile, purchase actions follow
 the course introduction, before the tabbed content. Profile links open the
 course owner's public profile.
 
+Course creation and editing use a full-page, in-place editor built with the same
+detail renderer as the learner view, not a modal form. Teachers edit the title,
+category, format, overview, schedule and IDR prices at their display positions;
+outcomes and curriculum items can be added, edited, reordered or removed.
+Preview media can be replaced or removed. Changes remain local until Save or
+Publish succeeds; cancelling or navigating away warns about unsaved changes.
+The editor also exposes pause/publish and archive controls (archive preserves
+enrollments and reviews). Teacher information links to the shared profile editor;
+learner reviews and platform enrollment/payment FAQs remain read-only.
+Run `node --test toefl-sample/tutor.test.js` for marketplace regressions.
+
 `functions/` contains the Node 22 Firebase Realtime Database triggers for
 Marketplace public data. `tutor_course_stats/<course>/students` is the only
 public aggregate field; its event-revision ledger is private, and client writes
