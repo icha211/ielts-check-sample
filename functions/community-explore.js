@@ -38,6 +38,17 @@ async function accessible(uid, postId, location) {
     }
     return post;
 }
+exports.getExploreSetup = onCall(options, async request => {
+    const uid = user(request);
+    await limited(uid, "exploreSetup", 60);
+    const [saved, role] = await Promise.all([
+        db().ref(`explore_preferences/${uid}`).get(), db().ref(`tutor_roles/${uid}`).get()
+    ]);
+    return {
+        preferences: preferences({ viewTracking: false, discoverable: false, ...saved.val() }),
+        practiceOptions: PRACTICE_OPTIONS, role: role.val() === "teacher" ? "teacher" : "student"
+    };
+});
 exports.saveExplorePreferences = onCall(options, async request => {
     const uid = user(request), data = valid(() => preferences(request.data));
     await limited(uid, "explorePreferences", 30);
@@ -80,7 +91,7 @@ exports.getExploreFeed = onCall(options, async request => {
         db().ref("partnerDirectory").limitToLast(100).get(),
         db().ref("tutor_courses").orderByChild("published").equalTo(true).limitToLast(100).get()
     ]);
-    const prefs = prefsSnap.val() || { viewTracking: false, discoverable: false, goals: [], skills: [], styles: [], level: "" };
+    const prefs = preferences({ viewTracking: false, discoverable: false, ...prefsSnap.val() });
     const blocks = blocksSnap.val() || {}, directory = directorySnap.val() || {};
     const network = new Set(Object.entries(contactsSnap.val() || {}).filter(([, contact]) => contact.status === "connected").map(([id]) => id));
     await Promise.all([...network].map(async id => {

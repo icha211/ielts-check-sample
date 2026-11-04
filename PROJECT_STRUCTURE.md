@@ -163,6 +163,27 @@ Teachers reach the same Explore page from marketplace top navigation, the
 teacher sidebar or the tutor mobile dock. Registered, email-verified teachers
 can publish, edit and remove their own posts under the same community
 permissions, media validation and rate limits as other members.
+New email-link activations and new Google accounts continue to the interactive
+`learning-setup.html?welcome=1` flow after profile/role creation. Returning
+accounts retain their role-specific home and are not automatically prompted.
+The five steps collect learning goals, proficiency, practice skills, learning
+style and separate discovery/viewing consent. Each question can be answered
+later; skipping the whole flow writes nothing. Back preserves selections.
+Only the final Save writes the existing private `explore_preferences/<uid>`
+through `saveExplorePreferences`; failures retain the form for retry.
+Students and teachers return to their respective homes. Account settings and
+Explore's compact Edit learning preferences link reopen the same flow with
+saved choices; cancelling leaves those choices unchanged. The large preference
+form is no longer embedded in the feed. `getExploreSetup` returns only the
+caller's preferences, options and role, without reading or ranking any posts.
+It requires a registered, verified account and permits 60 reads/account/hour.
+Unanswered matching fields still contribute zero, and both consent switches
+default to off. Onboarding adds no new personal-identification fields.
+The onboarding uses self-hosted Plus Jakarta Sans (400/700) under the included
+SIL OFL license, nested soft-surface enclosures and an editorial split that
+collapses to one column on mobile. Step changes use a short transform/opacity
+transition with a shared easing curve; reduced-motion disables all entry and
+step animations. Native checkbox/radio semantics and heading focus remain intact.
 It shares the existing Firebase Auth account, opt-in `partnerDirectory` profiles
 and presence, and `message.html?to=<uid>` messaging flow. Study-buddy matches rank
 the learner's saved CEFR level; missing levels are not replaced by invented scores.
@@ -443,10 +464,11 @@ Explore supports MP4/WebM previews up to 20 MB (Storage-enforced) and 60 seconds
 Friends-only videos use the existing AES-GCM encryption and protected keys;
 Storage accepts ciphertext with the 16-byte tag overhead. Duration is not a
 server-attested watch/completion or media-validation guarantee.
-Deploy database/Storage rules and the three Explore callables plus the updated
+Deploy database/Storage rules and the four Explore callables plus the updated
 `publishCommunityPost` before deploying Hosting. Validate with Functions policy
 tests, community units, Explore browser journeys, and callable/rules emulators.
-The browser journeys also check default-off viewing consent, foreground dwell,
+The browser journeys also check signup onboarding, skip/back/retry/profile
+editing, returning-account routing, default-off viewing consent, foreground dwell,
 blur reset, deduplication, disabling tracking and keyword preservation after
 ranking failures. On constrained local machines, `--inspect-functions=<free-port>`
 serializes emulator function execution to avoid concurrent cold-start timeouts.

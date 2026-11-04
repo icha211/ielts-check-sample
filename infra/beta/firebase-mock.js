@@ -5,7 +5,7 @@ function user() {
     const value = readUser();
     if (!value) return null;
     return {
-        ...value, isAnonymous: false, app: {}, getIdToken: async () => `beta-token-${value.uid}`,
+        ...value, isAnonymous: false, providerData: [{ providerId: "password" }], app: {}, getIdToken: async () => `beta-token-${value.uid}`,
         getIdTokenResult: async () => ({ claims: { email: value.email, role: value.role, email_verified: value.emailVerified } })
     };
 }
@@ -21,6 +21,14 @@ export const httpsCallable = (_, name) => async input => {
     const delay = Number(localStorage.getItem("beta-call-delay") || 0);
     if (delay) await new Promise(resolve => setTimeout(resolve, delay));
     if (localStorage.getItem("beta-deny-call") === name) throw new Error("Mock service unavailable. Please retry.");
+    if (name === "getExploreSetup") {
+        const data = readDb(), uid = user()?.uid;
+        return { data: {
+            preferences: data.explore_preferences?.[uid] || { viewTracking: false, discoverable: false, goals: [], level: "", skills: [], styles: [] },
+            role: data.tutor_roles?.[uid] === "teacher" ? "teacher" : "student",
+            practiceOptions: { goals: ["IELTS Preparation", "TOEFL ITP Preparation", "TOEFL iBT Preparation", "Duolingo English Test Preparation", "Daily English Conversation", "Business English", "Academic English", "English for Beginners", "Scholarship Preparation"], level: ["Beginner", "Intermediate", "Advanced"], skills: ["Speaking", "Listening", "Pronunciation", "Vocabulary", "Grammar", "Writing"], styles: ["Voice Call", "Video Call", "Text Conversation", "Group Discussion", "One-on-One Practice"] }
+        } };
+    }
     if (name === "getExploreFeed") {
         const data = readDb(), uid = user()?.uid;
         const preferences = data.explore_preferences?.[uid] || { viewTracking: false, discoverable: false, goals: [], level: "", skills: [], styles: [] };
@@ -69,9 +77,10 @@ export const httpsCallable = (_, name) => async input => {
     return { data: {} };
 };
 export const ref = (_, path) => ({ path });
-export const getAdditionalUserInfo = () => ({ isNewUser: true });
-export const isSignInWithEmailLink = () => false;
+export const getAdditionalUserInfo = result => ({ isNewUser: result.newUser === true });
+export const isSignInWithEmailLink = (_, url) => new URL(url).searchParams.get("betaActivation") === "1";
 export const sendEmailVerification = async () => {};
+export const deleteUser = async () => { await signOut(); };
 export const sendPasswordResetEmail = async () => {};
 export const sendSignInLinkToEmail = async () => {};
 export const updatePassword = async () => {};
@@ -108,8 +117,19 @@ export async function signInWithEmailAndPassword(_, email, password) {
     authListeners.forEach(callback => callback(user()));
     return { user: user() };
 }
-export const signInWithPopup = () => { throw new Error("Use the beta email login"); };
-export const signInWithEmailLink = signInWithPopup;
+export const signInWithPopup = async () => {
+    const value = JSON.parse(localStorage.getItem("beta-google-user") || "null");
+    if (!value) throw new Error("Use the beta email login");
+    localStorage.setItem("beta-user", JSON.stringify(value));
+    authListeners.forEach(callback => callback(user()));
+    return { user: user(), newUser: localStorage.getItem("beta-google-new") === "true" };
+};
+export const signInWithEmailLink = async (_, email) => {
+    const value = { uid: email.startsWith("teacher") ? "teacher" : "student", email, emailVerified: true, displayName: "New Learner" };
+    localStorage.setItem("beta-user", JSON.stringify(value));
+    authListeners.forEach(callback => callback(user()));
+    return { user: user(), newUser: true };
+};
 export async function signOut() {
     localStorage.removeItem("beta-user");
     authListeners.forEach(callback => callback(null));

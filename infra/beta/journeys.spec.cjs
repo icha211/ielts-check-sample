@@ -42,7 +42,7 @@ test.beforeEach(async ({ context, page }) => {
         if (url.origin === "http://127.0.0.1:9460") {
             if (url.pathname.endsWith("/js/firebase-config.js")) return route.fulfill({ contentType: "text/javascript", body: firebase });
             if (/\/js\/(partner-directory|message-notifications|account-menu)\.js$/.test(url.pathname)) {
-                return route.fulfill({ contentType: "text/javascript", body: "export const initAccountMenu = () => {}; export const resolveDisplayName = (user, profile) => profile.first_name || user?.displayName || 'Learner';" });
+                return route.fulfill({ contentType: "text/javascript", body: "export const initAccountMenu = () => {}; export const setPartnerVisibility = async () => {}; export const signOutAndRedirect = async () => { location.assign('signup.html'); }; export const resolveDisplayName = (user, profile) => profile.first_name || user?.displayName || 'Learner';" });
             }
             return route.continue();
         }
@@ -58,6 +58,9 @@ test.beforeEach(async ({ context, page }) => {
         }
         if (url.hostname === "quickcheck-25590-default-rtdb.asia-southeast1.firebasedatabase.app" && route.request().method() === "GET") {
             return route.fulfill({ contentType: "application/json", headers: { ETag: '"beta-revision"' }, body: "null" });
+        }
+        if (url.hostname === "firestore.googleapis.com" && route.request().method() === "GET" && url.pathname.startsWith("/v1/projects/quickcheck-25590/databases/(default)/documents/studyPlans/")) {
+            return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: { code: 404, status: "NOT_FOUND", message: "No study plan in this fixture." } }) });
         }
         unexpectedRequests.push(`${route.request().method()} ${url.origin}${url.pathname}`);
         return route.abort("blockedbyclient");
@@ -95,6 +98,171 @@ async function signIn(page) {
     await expect(page).toHaveURL(/tutor-check\.html\?studio=1$/);
     await expect(page.locator("#courseGrid")).toHaveAttribute("aria-busy", "false");
 }
+
+async function chooseLearningPreferences(page, { viewTracking = false, discoverable = false } = {}) {
+    await expect(page.locator("#setupForm")).toBeVisible();
+    await page.getByLabel("IELTS Preparation", { exact: true }).check();
+    await page.locator("#setupNext").click();
+    await page.getByLabel("Intermediate", { exact: true }).check();
+    await page.locator("#setupNext").click();
+    await page.getByLabel("Speaking", { exact: true }).check();
+    await page.locator("#setupNext").click();
+    await page.getByLabel("Voice Call", { exact: true }).check();
+    await page.locator("#setupNext").click();
+    await page.locator('input[name="viewTracking"]').setChecked(viewTracking);
+    await page.locator('input[name="discoverable"]').setChecked(discoverable);
+}
+
+for (const role of ["student", "teacher"]) {
+    test(`new ${role} Google accounts receive skippable learning onboarding`, async ({ page }) => {
+        await page.goto(`/toefl-sample/signup.html?role=${role}`);
+        await page.evaluate(role => {
+            const data = JSON.parse(localStorage.getItem("beta-db"));
+            delete data.tutor_roles[role];
+            localStorage.setItem("beta-db", JSON.stringify(data));
+            localStorage.setItem("beta-google-user", JSON.stringify({ uid: role, email: `${role}@example.test`, emailVerified: true, displayName: "New Member" }));
+            localStorage.setItem("beta-google-new", "true");
+        }, role);
+        await page.locator("#marketplaceRole").selectOption(role);
+        await page.locator("#google-signin-button").click();
+        await expect(page).toHaveURL(/learning-setup\.html\?welcome=1$/);
+        await expect(page.locator("#setupForm")).toBeVisible();
+        await expect(page.locator("#stepTitle")).toHaveText("What are you working toward?");
+        await expect(page.locator("#setupNext")).toBeDisabled();
+        await page.locator("#setupSkip").click();
+        await expect(page).toHaveURL(role === "teacher" ? /tutor-check\.html\?studio=1$/ : /toefl-sample\/index\.html$/);
+        expect(await page.evaluate(role => JSON.parse(localStorage.getItem("beta-db")).explore_preferences?.[role] || null, role)).toBeNull();
+    });
+}
+
+test("new email accounts complete interactive onboarding with private defaults and recoverable saves", async ({ page }, testInfo) => {
+    await page.goto("/toefl-sample/signup.html?betaActivation=1");
+    await page.locator("#firstName").fill("New");
+    await page.locator("#lastName").fill("Learner");
+    await page.locator("#email").fill("student@example.test");
+    await page.locator("#nationality").selectOption("ID");
+    await page.locator("#terms").check();
+    await page.locator("#password").fill("beta-password");
+    await page.locator("#submitBtn").click();
+    await expect(page).toHaveURL(/learning-setup\.html\?welcome=1$/);
+    await expect(page.locator("#setupForm")).toBeVisible();
+    await page.getByLabel("IELTS Preparation", { exact: true }).check();
+    await page.locator("#setupNext").click();
+    await page.locator("#setupBack").click();
+    await expect(page.getByLabel("IELTS Preparation", { exact: true })).toBeChecked();
+    await chooseLearningPreferences(page);
+    await expect(page.locator('input[name="viewTracking"]')).not.toBeChecked();
+    await expect(page.locator('input[name="discoverable"]')).not.toBeChecked();
+    await expect(page.locator("#setupReview")).toContainText("IELTS Preparation");
+    await page.screenshot({ path: testInfo.outputPath("learning-onboarding-light.png"), fullPage: true });
+    await page.evaluate(() => document.documentElement.dataset.theme = "dark");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const contrast = await page.locator("#setupNext").evaluate(button => {
+        const style = getComputedStyle(button);
+        const luminance = color => {
+            const rgb = color.match(/[\d.]+/g).slice(0, 3).map(value => Number(value) / 255);
+            const linear = rgb.map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
+            return .2126 * linear[0] + .7152 * linear[1] + .0722 * linear[2];
+        };
+        const a = luminance(style.color), b = luminance(style.backgroundColor);
+        return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+    });
+    expect(contrast).toBeGreaterThanOrEqual(4.5);
+    await page.screenshot({ path: testInfo.outputPath("learning-onboarding-dark.png"), fullPage: true });
+    await page.evaluate(() => localStorage.setItem("beta-deny-call", "saveExplorePreferences"));
+    await page.locator("#setupNext").click();
+    await expect(page.locator("#setupError")).toContainText("selections are still here");
+    await expect(page.locator("#setupNext")).toBeEnabled();
+    await expect(page.locator("#setupReview")).toContainText("IELTS Preparation");
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("beta-db")).explore_preferences?.student || null)).toBeNull();
+    await page.evaluate(() => localStorage.removeItem("beta-deny-call"));
+    await page.locator("#setupNext").click();
+    await expect(page).toHaveURL(/toefl-sample\/index\.html$/);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("beta-db")).explore_preferences.student)).toEqual({
+        goals: ["IELTS Preparation"], level: "Intermediate", skills: ["Speaking"], styles: ["Voice Call"], viewTracking: false, discoverable: false
+    });
+});
+
+test("existing accounts can edit onboarding from profile settings without changing data on cancel", async ({ page }) => {
+    await signIn(page);
+    const preferences = { goals: ["IELTS Preparation"], level: "Intermediate", skills: ["Speaking"], styles: ["Voice Call"], viewTracking: true, discoverable: true };
+    await page.evaluate(preferences => {
+        const data = JSON.parse(localStorage.getItem("beta-db"));
+        data.explore_preferences = { teacher: preferences };
+        localStorage.setItem("beta-db", JSON.stringify(data));
+    }, preferences);
+    await page.goto("/toefl-sample/profile.html");
+    await page.locator("#profileSettings").click();
+    await page.getByRole("link", { name: "Edit preferences", exact: true }).click();
+    await expect(page).toHaveURL(/learning-setup\.html\?from=profile$/);
+    await chooseLearningPreferences(page, { viewTracking: true, discoverable: true });
+    await expect(page.locator('input[name="viewTracking"]')).toBeChecked();
+    await page.locator('input[name="viewTracking"]').uncheck();
+    await page.locator("#setupSkip").click();
+    await expect(page).toHaveURL(/profile\.html$/);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("beta-db")).explore_preferences.teacher)).toEqual(preferences);
+});
+
+test("onboarding load errors expose retry without showing empty saved preferences", async ({ page }) => {
+    await signIn(page);
+    await page.evaluate(() => localStorage.setItem("beta-deny-call", "getExploreSetup"));
+    await page.goto("/toefl-sample/learning-setup.html?from=profile");
+    await expect(page.locator("#setupError")).toContainText("Retry before making changes");
+    await expect(page.locator("#setupForm")).toBeHidden();
+    await page.evaluate(() => localStorage.removeItem("beta-deny-call"));
+    await page.locator("#setupRetry").click();
+    await expect(page.locator("#setupForm")).toBeVisible();
+    await expect(page.locator("#setupError")).toBeHidden();
+});
+
+test("onboarding questions can be answered later without inventing matching data", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/toefl-sample/learning-setup.html?from=explore");
+    await expect(page.locator("#setupForm")).toBeVisible();
+    for (let index = 0; index < 4; index++) await page.locator("#setupLater").click();
+    await expect(page.locator("#setupReview")).toContainText("Not selected");
+    await expect(page.locator('input[name="viewTracking"]')).not.toBeChecked();
+    await page.locator("#setupNext").click();
+    await expect(page).toHaveURL(/social\.html#community$/);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("beta-db")).explore_preferences.teacher)).toEqual({
+        goals: [], level: "", skills: [], styles: [], viewTracking: false, discoverable: false
+    });
+});
+
+test("onboarding visual refinement supports keyboard selection and reduced motion", async ({ page }, testInfo) => {
+    await signIn(page);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/toefl-sample/learning-setup.html?from=profile");
+    await expect(page.locator("#setupForm")).toBeVisible();
+    await page.evaluate(() => document.fonts.ready);
+    expect(await page.locator("body").evaluate(body => getComputedStyle(body).fontFamily)).toContain("Plus Jakarta Sans");
+    await page.getByLabel("IELTS Preparation", { exact: true }).focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByLabel("IELTS Preparation", { exact: true })).toBeChecked();
+    await page.locator("#setupNext").click();
+    await expect(page.locator("#stepTitle")).toBeFocused();
+    await expect(page.locator("#stepTitle")).toHaveText("Where are you starting?");
+    expect(await page.locator("#setupForm").evaluate(form => form.getAnimations().length)).toBe(0);
+    await page.getByLabel("Intermediate", { exact: true }).focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByLabel("Intermediate", { exact: true })).toBeChecked();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const next = await page.locator("#setupNext").boundingBox();
+    expect(next.height).toBeGreaterThanOrEqual(44);
+    await page.screenshot({ path: testInfo.outputPath("learning-onboarding-level.png"), fullPage: true });
+    await page.setViewportSize({ width: 320, height: 700 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("returning Google accounts go to their dashboard without automatic onboarding", async ({ page }) => {
+    await page.goto("/toefl-sample/signup.html");
+    await page.evaluate(() => {
+        localStorage.setItem("beta-google-user", JSON.stringify({ uid: "teacher", email: "teacher@example.test", emailVerified: true, displayName: "Returning Teacher" }));
+        localStorage.setItem("beta-google-new", "false");
+    });
+    await page.locator("#google-signin-button").click();
+    await expect(page).toHaveURL(/tutor-check\.html\?studio=1$/);
+});
 
 test("teachers reach Explore from their dashboard and manage their own posts", async ({ page }, testInfo) => {
     await signIn(page);
@@ -161,36 +329,18 @@ test("Explore mixes ranked posts, partners and courses and saves matching prefer
     await expect(page.locator("#post-one")).toContainText("IELTS, Speaking");
     await page.getByRole("button", { name: "Following", exact: true }).click();
     await expect(page.getByRole("button", { name: "Following", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await page.locator("#explorePreferences summary").click();
-    await expect(page.locator("#viewTracking")).not.toBeChecked();
-    await page.locator('#practiceFields input[name="goals"][value="IELTS Preparation"]').check();
-    await page.locator('#practiceFields select[name="level"]').selectOption("Intermediate");
-    await page.locator('#practiceFields input[name="skills"][value="Speaking"]').check();
-    await page.locator('#practiceFields input[name="styles"][value="Voice Call"]').check();
-    await page.locator("#practiceDiscoverable").check();
-    await page.locator("#saveExplorePreferences").click();
-    await expect(page.locator("#liveStatus")).toContainText("preferences saved");
+    await expect(page.locator("#explorePreferencesForm")).toHaveCount(0);
+    await page.getByRole("link", { name: "Edit learning preferences", exact: true }).click();
+    await chooseLearningPreferences(page, { discoverable: true });
+    await expect(page.locator('input[name="viewTracking"]')).not.toBeChecked();
+    await page.locator("#setupNext").click();
+    await expect(page).toHaveURL(/social\.html#community$/);
     await page.reload();
-    await page.locator("#explorePreferences summary").click();
-    await expect(page.locator("#practiceDiscoverable")).toBeChecked();
-    await expect(page.locator('#practiceFields select[name="level"]')).toHaveValue("Intermediate");
-    expect(await page.locator('#practiceFields input[name="goals"]').first().evaluate(input => input.getBoundingClientRect().width)).toBeLessThan(30);
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("beta-db")).explore_preferences.teacher)).toMatchObject({ discoverable: true, viewTracking: false, level: "Intermediate" });
     await page.locator("#post-one .post-actions").getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.locator("#post-one .post-actions").getByRole("button", { name: "Saved", exact: true })).toHaveAttribute("aria-pressed", "true");
     await page.screenshot({ path: testInfo.outputPath("explore-recommendations.png"), fullPage: true });
     await page.evaluate(() => document.documentElement.dataset.theme = "dark");
-    await expect(page.getByLabel("English proficiency level")).toHaveValue("Intermediate");
-    const contrast = await page.getByLabel("English proficiency level").evaluate(select => {
-        const style = getComputedStyle(select);
-        const luminance = color => {
-            const rgb = color.match(/[\d.]+/g).slice(0, 3).map(value => Number(value) / 255);
-            const linear = rgb.map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
-            return .2126 * linear[0] + .7152 * linear[1] + .0722 * linear[2];
-        };
-        const foreground = luminance(style.color), background = luminance(style.backgroundColor);
-        return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
-    });
-    expect(contrast).toBeGreaterThanOrEqual(4.5);
     await page.screenshot({ path: testInfo.outputPath("explore-recommendations-dark.png"), fullPage: true });
 });
 test("Explore recommendation errors expose retry and keyword limits preserve the composer", async ({ page }) => {
@@ -259,11 +409,11 @@ test("Explore viewing signals require consent and continuous foreground dwell wi
     await page.locator("#post-one").scrollIntoViewIfNeeded();
     await page.clock.runFor(12000);
     expect(await views()).toBe(0);
-    await page.locator("#explorePreferences summary").click();
-    await page.locator("#viewTracking").check();
-    await page.locator("#saveExplorePreferences").click();
-    await expect(page.locator("#saveExplorePreferences")).toBeEnabled();
-    await page.locator("#explorePreferences summary").click();
+    await page.getByRole("link", { name: "Edit learning preferences", exact: true }).click();
+    await chooseLearningPreferences(page, { viewTracking: true });
+    await page.locator("#setupNext").click();
+    await expect(page).toHaveURL(/social\.html#community$/);
+    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
     await page.locator("#post-one").scrollIntoViewIfNeeded();
     await page.waitForTimeout(100);
     await page.clock.runFor(9000);
@@ -279,10 +429,11 @@ test("Explore viewing signals require consent and continuous foreground dwell wi
     await expect.poll(views).toBe(1);
     await page.clock.runFor(12000);
     expect(await views()).toBe(1);
-    await page.locator("#explorePreferences summary").click();
-    await page.locator("#viewTracking").uncheck();
-    await page.locator("#saveExplorePreferences").click();
-    await expect(page.locator("#saveExplorePreferences")).toBeEnabled();
+    await page.getByRole("link", { name: "Edit learning preferences", exact: true }).click();
+    await chooseLearningPreferences(page, { viewTracking: false });
+    await page.locator("#setupNext").click();
+    await expect(page).toHaveURL(/social\.html#community$/);
+    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
     await page.locator("#postBody").fill("A new post after disabling viewing.");
     await page.locator("#publishButton").click();
     const newPost = page.locator(".post-card").filter({ hasText: "A new post after disabling viewing." });

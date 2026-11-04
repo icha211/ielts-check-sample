@@ -1,5 +1,5 @@
 import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, reportCommunityContent, setCommunityBlock, loadPrivateMedia, recordExploreInteraction } from "./js/community.js?v=20261104-explore-ranking";
-import { getExploreFeed, saveExplorePreferences } from "./js/explore-service.js?v=20261104-explore-ranking";
+import { getExploreFeed } from "./js/explore-service.js?v=20261104-learning-setup";
 import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameLayout, imageDisplaySettings, validateMediaFile } from "./js/community-model.js?v=20261104-short-video";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { db } from "./js/firebase-config.js";
@@ -11,6 +11,7 @@ window.QCPrefs?.addTranslations("id", {
     "Refresh recommendations": "Perbarui rekomendasi",
     "Following uses your accepted connections. Recommendations also include practice partners and published courses.": "Following menggunakan koneksi yang telah diterima. Rekomendasi juga mencakup teman latihan dan kursus yang dipublikasikan.",
     "Practice matching and privacy": "Kecocokan latihan dan privasi",
+    "Edit learning preferences": "Edit preferensi belajar",
     "Learning keywords (up to 3)": "Kata kunci belajar (maksimal 3)",
     "Choose up to three topics so learners can discover your post.": "Pilih maksimal tiga topik agar pelajar dapat menemukan postingan Anda.",
     "Choose up to three distinct learning keywords.": "Pilih maksimal tiga kata kunci belajar yang berbeda.",
@@ -269,40 +270,10 @@ function fillExplorePreferences() {
         option.selected = selected.includes(value);
         return option;
     }));
-    const fields = $("practiceFields");
-    if (fields.children.length) return;
-    for (const [key, label] of [["goals", "Learning goals"], ["level", "English proficiency level"], ["skills", "Practice skills"], ["styles", "Learning style"]]) {
-        const field = element("fieldset");
-        field.append(element("legend", "", tr(label)));
-        if (key === "level") {
-            const select = element("select");
-            select.name = key;
-            select.setAttribute("aria-label", tr(label));
-            select.append(element("option", "", ""));
-            for (const value of exploreData.practiceOptions[key]) {
-                const option = element("option", "", tr(value));
-                option.value = value;
-                select.append(option);
-            }
-            select.value = exploreData.preferences[key];
-            field.append(select);
-        } else for (const value of exploreData.practiceOptions[key]) {
-            const label = element("label", "explore-check");
-            const input = element("input");
-            input.type = "checkbox"; input.name = key; input.value = value;
-            input.checked = exploreData.preferences[key]?.includes(value);
-            label.append(input, element("span", "", tr(value)));
-            field.append(label);
-        }
-        fields.append(field);
-    }
-    $("viewTracking").checked = exploreData.preferences.viewTracking;
-    $("practiceDiscoverable").checked = exploreData.preferences.discoverable;
 }
 function setExploreBusy(busy) {
     exploreBusy = busy;
     $("refreshExplore").disabled = busy;
-    $("saveExplorePreferences").disabled = busy;
     document.querySelectorAll("[data-explore-mode]").forEach(button => { button.disabled = busy; });
 }
 async function loadExplore(force = false) {
@@ -1005,7 +976,6 @@ const unsubscribe = subscribeCommunity(async (next) => {
         const version = ++authVersion;
         exploreRequest++; exploreData = null; setExploreBusy(false); lastExploreRefresh = 0;
         viewedPosts.clear(); visiblePosts.clear(); viewObserver.disconnect();
-        $("practiceFields").replaceChildren();
         $("postKeywords").replaceChildren();
         $("exploreControls").hidden = embeddedProfile || !next.uid;
         stopProfileDetails?.();
@@ -1104,28 +1074,6 @@ $("refreshExplore").addEventListener("click", () => {
         return;
     }
     loadExplore();
-});
-$("explorePreferencesForm").addEventListener("submit", async event => {
-    event.preventDefault();
-    if (exploreBusy) return;
-    if (!exploreData) return showError(new Error(tr("Load recommendations before saving preferences.")), $("explorePreferencesError"));
-    const version = authVersion;
-    setExploreBusy(true);
-    const form = new FormData(event.target);
-    const input = { goals: form.getAll("goals"), level: form.get("level") || "", skills: form.getAll("skills"), styles: form.getAll("styles"),
-        viewTracking: $("viewTracking").checked, discoverable: $("practiceDiscoverable").checked };
-    $("explorePreferencesError").hidden = true;
-    try {
-        const result = await saveExplorePreferences(input);
-        if (version !== authVersion) return;
-        if (!result?.preferences || typeof result.preferences.viewTracking !== "boolean") throw new Error("Explore returned an invalid preference response. Retry saving.");
-        exploreData.preferences = result.preferences;
-        visiblePosts.clear();
-        $("liveStatus").textContent = tr("Explore preferences saved.");
-        setExploreBusy(false);
-        await loadExplore(true);
-    } catch (error) { if (version === authVersion) showError(error, $("explorePreferencesError")); }
-    finally { if (version === authVersion) setExploreBusy(false); }
 });
 $("postKeywords").addEventListener("change", () => {
     if ($("postKeywords").selectedOptions.length > 3) {

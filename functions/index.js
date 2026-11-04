@@ -64,5 +64,6 @@ exports.getTutorVerificationStatus = marketplaceVerification.getTutorVerificatio
 exports.listTutorVerificationRequests = marketplaceVerification.listTutorVerificationRequests;
 exports.reviewTutorVerification = marketplaceVerification.reviewTutorVerification;
 exports.getExploreFeed = communityExplore.getExploreFeed;
+exports.getExploreSetup = communityExplore.getExploreSetup;
 exports.saveExplorePreferences = communityExplore.saveExplorePreferences;
 exports.recordExploreInteraction = communityExplore.recordExploreInteraction;

@@ -100,6 +100,7 @@ test("callable authentication and authorization protect privileged writes", { ti
             createCommunityReport: { postId, postLocation: `community_posts/${postId}`, targetType: "post", reason: "spam" },
             moderateCommunityReport: { reportId, action: "remove" },
             getExploreFeed: { mode: "global" },
+            getExploreSetup: {},
             saveExplorePreferences: { viewTracking: false, discoverable: false, goals: [], level: "", skills: [], styles: [] },
             recordExploreInteraction: { postId, postLocation: `community_posts/${postId}`, kind: "save", enabled: true }
         };
@@ -205,6 +206,21 @@ test("callable authentication and authorization protect privileged writes", { ti
             assert.equal((await db.ref(`explore_practice_profiles/${uid("teacher")}`).get()).exists(), false);
             assert.equal((await call("saveExplorePreferences", tokens.student, { ...practice, viewTracking: false, discoverable: false })).status, 200);
             assert.equal((await call("recordExploreInteraction", tokens.student, { ...signal, kind: "view", visibleMs: 10001 })).body.error.status, "PERMISSION_DENIED");
+        });
+        await t.test("learning setup returns only the caller's private preferences and normalized empty choices", async () => {
+            const blank = { viewTracking: false, discoverable: false, goals: [], level: "", skills: [], styles: [] };
+            assert.equal((await call("saveExplorePreferences", tokens.student, blank)).status, 200);
+            const student = (await call("getExploreSetup", tokens.student, { uid: uid("teacher") })).body.result;
+            assert.deepEqual(student.preferences, blank, "A caller-supplied UID cannot select another learner");
+            assert.equal(student.role, "student");
+            assert.equal(student.practiceOptions.goals.length, 9);
+            assert.equal(student.practiceOptions.level.length, 3);
+            assert.equal(student.practiceOptions.skills.length, 6);
+            assert.equal(student.practiceOptions.styles.length, 5);
+            const teacher = (await call("getExploreSetup", tokens.teacher)).body.result;
+            assert.equal(teacher.role, "teacher");
+            assert.deepEqual(teacher.preferences.goals, ["IELTS Preparation"]);
+            assert.equal(teacher.preferences.viewTracking, false);
         });
         await t.test("authorized moderation succeeds and records the moderator", async () => {
             const response = await call("moderateCommunityReport", tokens.moderator, operations.moderateCommunityReport);
