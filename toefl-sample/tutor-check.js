@@ -481,9 +481,10 @@ function syncMarketplaceNavigation() {
     $("qcnavMarketplaceTeacherSidebar").hidden = browsing || !teacher;
     filterSidebar.hidden = !browsing || classesView;
     filterPanel.hidden = classesView;
-    $("marketTabs").hidden = teacher;
-    currentTab($("browseTab"), !classesView);
-    currentTab($("classesTab"), classesView);
+    $("marketTabs").hidden = teacher || !$("courseEditor").hidden || !$("teacherStudio").hidden;
+    const classesShown = classesView && $("teacherStudio").hidden;
+    currentTab($("browseTab"), !classesShown);
+    currentTab($("classesTab"), classesShown);
     const params = new URLSearchParams(location.search);
     const studio = teacher && params.get("studio") === "1";
     const classes = params.get("classes") === "1";
@@ -2144,7 +2145,7 @@ document.querySelectorAll(".filter-panel input").forEach(input => input.addEvent
 }));
 const compactFilters = matchMedia("(max-width:780px)");
 function syncFilterLayout() {
-    if (compactFilters.matches) $("marketTabs").after(filterPanel);
+    if (compactFilters.matches) document.querySelector(".browse-content").prepend(filterPanel);
     else filterSidebar.append(filterPanel);
 }
 syncFilterLayout();
@@ -2172,17 +2173,21 @@ $("cartButton").addEventListener("click", () => { if (requireLogin()) { $("cartE
 $("browseTab").addEventListener("click", event => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button) return;
     event.preventDefault();
-    if (!classesView) return;
+    if (!classesView && !$("browseLayout").hidden) return;
     const url = new URL(location.href);
     url.searchParams.delete("classes");
+    url.searchParams.delete("course");
     rememberScroll();
     history.pushState({ marketplaceClasses: false }, "", url);
-    showCatalog();
+    showCatalog(false);
+    window.scrollTo(0, 0);
 });
 $("classesTab").addEventListener("click", event => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button) return;
     event.preventDefault();
-    if (!classesView) showClasses();
+    if (classesView && !$("browseLayout").hidden) return;
+    showClasses(true, false);
+    window.scrollTo(0, 0);
 });
 $("manageButton").addEventListener("click", () => setStudioView($("teacherStudio").hidden));
 $("newCourse").addEventListener("click", () => openEditor());
