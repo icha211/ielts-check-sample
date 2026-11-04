@@ -59,8 +59,10 @@ service firebase.storage {
       allow delete: if isOwner(uid) || isDeveloper();
       allow create: if isOwner(uid)
         && request.auth.token.email_verified == true
-        && request.resource.size <= 2 * 1024 * 1024
-        && request.resource.contentType.matches('image/(png|jpeg|webp)');
+        && ((request.resource.size <= 2 * 1024 * 1024
+          && request.resource.contentType.matches('image/(png|jpeg|webp)'))
+          || (request.resource.size <= 20 * 1024 * 1024
+          && request.resource.contentType.matches('video/(mp4|webm)')));
     }
     match /community-private/{uid}/{postId}/attachment {
       // Only ciphertext is stored here. Decryption keys are in friend-protected RTDB posts.
@@ -68,7 +70,7 @@ service firebase.storage {
       allow delete: if isOwner(uid);
       allow create: if isOwner(uid)
         && request.auth.token.email_verified == true
-        && request.resource.size <= 2 * 1024 * 1024 + 16
+        && request.resource.size <= 20 * 1024 * 1024 + 16
         && request.resource.contentType == 'application/octet-stream';
     }
   }

@@ -6,6 +6,27 @@ export const GROUPS = [
     { id: "reading", name: "Reading Strategies", icon: "book" }
 ];
 export const CATEGORIES = { questions: "Questions", tips: "Tips & Resources", buddies: "Study Buddies", announcements: "Announcements" };
+export const MEDIA_LIMITS = Object.freeze({
+    pictureOriginalBytes: 40 * 1024 * 1024,
+    pictureUploadBytes: 2 * 1024 * 1024,
+    videoBytes: 20 * 1024 * 1024,
+    videoDurationSeconds: 60
+});
+
+export function validateMediaFile(file, duration) {
+    if (["image/png", "image/jpeg", "image/webp"].includes(file?.type)) {
+        if (file.size > MEDIA_LIMITS.pictureOriginalBytes) throw new Error("Pictures must be 40 MB or smaller before compression.");
+        return "image";
+    }
+    if (["video/mp4", "video/webm"].includes(file?.type)) {
+        if (file.size > MEDIA_LIMITS.videoBytes) throw new Error("Videos must be 20 MB or smaller.");
+        if (duration !== undefined && (!Number.isFinite(duration) || duration <= 0 || duration > MEDIA_LIMITS.videoDurationSeconds)) {
+            throw new Error("Videos must be 60 seconds or shorter.");
+        }
+        return "video";
+    }
+    throw new Error("Choose a PNG, JPEG or WebP picture or MP4/WebM video.");
+}
 
 export function imageFeedFormat(width, height) {
     if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) throw new Error("This picture has invalid dimensions.");
@@ -24,8 +45,10 @@ export function imageFrameLayout(width, height, settings = {}) {
     return { ratio: Math.max(4 / 5, width / height), fit: tall ? imageDisplaySettings(settings).imageFit : "contain", tall };
 }
 
-export function validatePost({ title, body, category, groupId = "", visibility = "public", imageFormat = "auto", imageFit = "contain", imageX = 50, imageY = 50 }, developer = false) {
-    const result = { title: String(title || "").trim(), body: String(body || "").trim(), category, groupId, visibility };
+export function validatePost({ title, body, category, groupId = "", visibility = "public", keywords = [], imageFormat = "auto", imageFit = "contain", imageX = 50, imageY = 50 }, developer = false) {
+    if (!Array.isArray(keywords) || keywords.length > 3 || new Set(keywords).size !== keywords.length ||
+        keywords.some(tag => typeof tag !== "string" || !tag || tag.length > 60)) throw new Error("Choose up to three distinct learning keywords.");
+    const result = { title: String(title || "").trim(), body: String(body || "").trim(), category, groupId, visibility, keywords };
     if (!["auto", "portrait", "square", "landscape"].includes(imageFormat) || !["contain", "cover"].includes(imageFit) ||
         ![imageX, imageY].every(value => typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100)) throw new Error("Choose valid picture framing settings.");
     Object.assign(result, { imageFormat, imageFit, imageX, imageY });

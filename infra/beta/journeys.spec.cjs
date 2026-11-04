@@ -42,7 +42,7 @@ test.beforeEach(async ({ context, page }) => {
         if (url.origin === "http://127.0.0.1:9460") {
             if (url.pathname.endsWith("/js/firebase-config.js")) return route.fulfill({ contentType: "text/javascript", body: firebase });
             if (/\/js\/(partner-directory|message-notifications|account-menu)\.js$/.test(url.pathname)) {
-                return route.fulfill({ contentType: "text/javascript", body: "export const initAccountMenu = () => {};" });
+                return route.fulfill({ contentType: "text/javascript", body: "export const initAccountMenu = () => {}; export const resolveDisplayName = (user, profile) => profile.first_name || user?.displayName || 'Learner';" });
             }
             return route.continue();
         }
@@ -95,6 +95,161 @@ async function signIn(page) {
     await expect(page).toHaveURL(/tutor-check\.html\?studio=1$/);
     await expect(page.locator("#courseGrid")).toHaveAttribute("aria-busy", "false");
 }
+
+test("Explore mixes ranked posts, partners and courses and saves matching preferences", async ({ page }, testInfo) => {
+    await signIn(page);
+    await page.evaluate(({ course }) => {
+        const data = JSON.parse(localStorage.getItem("beta-db"));
+        data[".info"] = { connected: true };
+        data.community_posts = {
+            one: { authorId: "student", title: "IELTS practice", body: "Practice speaking every day.", category: "tips", groupId: "", visibility: "public", keywords: ["IELTS", "Speaking"], createdAt: 2, mediaURL: "", mediaPath: "", mediaType: "" },
+            two: { authorId: "teacher", title: "Learning progress", body: "My listening progress.", category: "tips", groupId: "", visibility: "public", createdAt: 1, mediaURL: "", mediaPath: "", mediaType: "" }
+        };
+        data.partnerDirectory = { student: { displayName: "Practice Learner", level: "B1" } };
+        localStorage.setItem("beta-db", JSON.stringify(data));
+        localStorage.setItem("beta-explore-items", JSON.stringify([
+            { type: "post", id: "one" }, { type: "partner", id: "student", profile: data.partnerDirectory.student, matchingScore: 70 },
+            { type: "course", id: "beta", course }, { type: "post", id: "two" }
+        ]));
+    }, { course });
+    await page.goto("/toefl-sample/social.html");
+    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
+    await expect(page.locator("#postFeed > article")).toHaveCount(4);
+    expect(await page.locator("#postFeed > article").evaluateAll(nodes => nodes.map(node => node.dataset.recommendation || "post"))).toEqual(["post", "partner", "course", "post"]);
+    await expect(page.locator("#postFeed")).toContainText("70% practice match");
+    await expect(page.locator("#post-one")).toContainText("IELTS, Speaking");
+    await page.getByRole("button", { name: "Following", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Following", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.locator("#explorePreferences summary").click();
+    await expect(page.locator("#viewTracking")).not.toBeChecked();
+    await page.locator('#practiceFields input[name="goals"][value="IELTS Preparation"]').check();
+    await page.locator('#practiceFields select[name="level"]').selectOption("Intermediate");
+    await page.locator('#practiceFields input[name="skills"][value="Speaking"]').check();
+    await page.locator('#practiceFields input[name="styles"][value="Voice Call"]').check();
+    await page.locator("#practiceDiscoverable").check();
+    await page.locator("#saveExplorePreferences").click();
+    await expect(page.locator("#liveStatus")).toContainText("preferences saved");
+    await page.reload();
+    await page.locator("#explorePreferences summary").click();
+    await expect(page.locator("#practiceDiscoverable")).toBeChecked();
+    await expect(page.locator('#practiceFields select[name="level"]')).toHaveValue("Intermediate");
+    expect(await page.locator('#practiceFields input[name="goals"]').first().evaluate(input => input.getBoundingClientRect().width)).toBeLessThan(30);
+    await page.locator("#post-one .post-actions").getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.locator("#post-one .post-actions").getByRole("button", { name: "Saved", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.screenshot({ path: testInfo.outputPath("explore-recommendations.png"), fullPage: true });
+    await page.evaluate(() => document.documentElement.dataset.theme = "dark");
+    await expect(page.getByLabel("English proficiency level")).toHaveValue("Intermediate");
+    const contrast = await page.getByLabel("English proficiency level").evaluate(select => {
+        const style = getComputedStyle(select);
+        const luminance = color => {
+            const rgb = color.match(/[\d.]+/g).slice(0, 3).map(value => Number(value) / 255);
+            const linear = rgb.map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4);
+            return .2126 * linear[0] + .7152 * linear[1] + .0722 * linear[2];
+        };
+        const foreground = luminance(style.color), background = luminance(style.backgroundColor);
+        return (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05);
+    });
+    expect(contrast).toBeGreaterThanOrEqual(4.5);
+    await page.screenshot({ path: testInfo.outputPath("explore-recommendations-dark.png"), fullPage: true });
+});
+test("Explore recommendation errors expose retry and keyword limits preserve the composer", async ({ page }) => {
+    await signIn(page);
+    await page.evaluate(() => {
+        const data = JSON.parse(localStorage.getItem("beta-db"));
+        data[".info"] = { connected: true };
+        data.community_posts = {};
+        localStorage.setItem("beta-db", JSON.stringify(data));
+        localStorage.setItem("beta-deny-call", "getExploreFeed");
+    });
+    await page.goto("/toefl-sample/social.html");
+    await expect(page.locator("#exploreError")).toContainText("unavailable");
+    await expect(page.locator("#exploreStatus")).toContainText("chronologically");
+    await page.evaluate(() => localStorage.removeItem("beta-deny-call"));
+    await page.locator("#refreshExplore").click();
+    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
+    await page.locator("#postBody").fill("My English practice tips.");
+    await page.locator("#postKeywords").selectOption(["IELTS", "TOEFL", "Speaking", "Listening"]);
+    await page.locator("#publishButton").click();
+    await expect(page.locator("#composerError")).toContainText("three");
+    await expect(page.locator("#postBody")).toHaveValue("My English practice tips.");
+    await page.locator("#postKeywords").selectOption(["IELTS", "Speaking"]);
+    await page.locator("#publishButton").click();
+    await expect(page.locator("#postFeed")).toContainText("My English practice tips.");
+    await expect(page.locator("#postFeed")).toContainText("IELTS, Speaking");
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("beta-call-counts")).recordExploreInteraction || 0)).toBe(0);
+});
+
+test("Explore keeps existing keywords when recommendations fail during post editing", async ({ page }) => {
+    await signIn(page);
+    await page.evaluate(() => {
+        const data = JSON.parse(localStorage.getItem("beta-db"));
+        data[".info"] = { connected: true };
+        data.community_posts = {
+            one: { authorId: "teacher", body: "My speaking practice.", category: "tips", groupId: "", visibility: "public", keywords: ["IELTS", "Speaking"], createdAt: Date.now() }
+        };
+        localStorage.setItem("beta-db", JSON.stringify(data));
+        localStorage.setItem("beta-deny-call", "getExploreFeed");
+    });
+    await page.goto("/toefl-sample/social.html");
+    await expect(page.locator("#exploreError")).toContainText("unavailable");
+    await page.locator("#post-one summary").click();
+    await page.locator("#post-one").getByRole("button", { name: "Edit", exact: true }).click();
+    expect(await page.locator("#postKeywords").evaluate(select => [...select.selectedOptions].map(option => option.value))).toEqual(["IELTS", "Speaking"]);
+    await page.locator("#postBody").fill("Updated speaking practice.");
+    await page.locator("#publishButton").click();
+    await expect(page.locator("#post-one")).toContainText("Updated speaking practice.");
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("beta-db")).community_posts.one.keywords)).toEqual(["IELTS", "Speaking"]);
+});
+
+test("Explore viewing signals require consent and continuous foreground dwell without duplicates", async ({ page }) => {
+    await signIn(page);
+    await page.evaluate(() => {
+        const data = JSON.parse(localStorage.getItem("beta-db"));
+        data[".info"] = { connected: true };
+        data.community_posts = {
+            one: { authorId: "student", body: "Practice speaking every day.", category: "tips", groupId: "", visibility: "public", createdAt: Date.now() }
+        };
+        localStorage.setItem("beta-db", JSON.stringify(data));
+    });
+    await page.clock.install();
+    await page.goto("/toefl-sample/social.html");
+    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
+    const views = () => page.evaluate(() => JSON.parse(localStorage.getItem("beta-call-counts") || "{}").recordExploreInteraction || 0);
+    await page.locator("#post-one").scrollIntoViewIfNeeded();
+    await page.clock.runFor(12000);
+    expect(await views()).toBe(0);
+    await page.locator("#explorePreferences summary").click();
+    await page.locator("#viewTracking").check();
+    await page.locator("#saveExplorePreferences").click();
+    await expect(page.locator("#saveExplorePreferences")).toBeEnabled();
+    await page.locator("#explorePreferences summary").click();
+    await page.locator("#post-one").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(100);
+    await page.clock.runFor(9000);
+    expect(await views()).toBe(0);
+    await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    await page.clock.runFor(12000);
+    expect(await views()).toBe(0);
+    await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+    await page.waitForTimeout(100);
+    await page.clock.runFor(9000);
+    expect(await views()).toBe(0);
+    await page.clock.runFor(3000);
+    await expect.poll(views).toBe(1);
+    await page.clock.runFor(12000);
+    expect(await views()).toBe(1);
+    await page.locator("#explorePreferences summary").click();
+    await page.locator("#viewTracking").uncheck();
+    await page.locator("#saveExplorePreferences").click();
+    await expect(page.locator("#saveExplorePreferences")).toBeEnabled();
+    await page.locator("#postBody").fill("A new post after disabling viewing.");
+    await page.locator("#publishButton").click();
+    const newPost = page.locator(".post-card").filter({ hasText: "A new post after disabling viewing." });
+    await expect(newPost).toBeVisible();
+    await newPost.scrollIntoViewIfNeeded();
+    await page.clock.runFor(12000);
+    expect(await views()).toBe(1);
+});
 
 test("sign-in errors stay visible; successful login edits the live course and survives reload", async ({ page }) => {
     await page.goto("/toefl-sample/signup.html");

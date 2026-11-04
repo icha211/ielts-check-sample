@@ -26,7 +26,9 @@ test("callable authentication and authorization protect privileged writes", { ti
         ...ids.flatMap(name => [`tutor_verification/${uid(name)}`, `community_security/rateLimits/${uid(name)}`]),
         `community_posts/${postId}`, `community_private_posts/${uid("teacher")}/${postId}`,
         `community_comments/${postId}`, `community_private_comments/${uid("teacher")}/${postId}`,
-        `community_reports/${reportId}`
+        `community_reports/${reportId}`,
+        ...ids.flatMap(name => [`explore_preferences/${uid(name)}`, `explore_practice_profiles/${uid(name)}`, `explore_user_actions/${uid(name)}`]),
+        `explore_signals/${postId}`
     ];
     async function signIn(body, method) {
         const response = await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:${method}?key=emulator-only`, {
@@ -96,7 +98,10 @@ test("callable authentication and authorization protect privileged writes", { ti
             publishCommunityPost: { postId, post: { title: "Test", body: "Test body", category: "tips" } },
             createCommunityComment: { postId, postLocation: `community_posts/${postId}`, body: "Test comment" },
             createCommunityReport: { postId, postLocation: `community_posts/${postId}`, targetType: "post", reason: "spam" },
-            moderateCommunityReport: { reportId, action: "remove" }
+            moderateCommunityReport: { reportId, action: "remove" },
+            getExploreFeed: { mode: "global" },
+            saveExplorePreferences: { viewTracking: false, discoverable: false, goals: [], level: "", skills: [], styles: [] },
+            recordExploreInteraction: { postId, postLocation: `community_posts/${postId}`, kind: "save", enabled: true }
         };
         for (const [name, data] of Object.entries(operations)) {
             await t.test(`${name} rejects missing, anonymous, unverified and invalid tokens`, async () => {
@@ -150,6 +155,56 @@ test("callable authentication and authorization protect privileged writes", { ti
             const status = await call("getTutorVerificationStatus", tokens.teacher);
             assert.equal(status.status, 200);
             assert.equal(status.body.result.reviewerNote, "");
+        });
+        await t.test("Explore preferences, idempotent signals and feeds preserve consent and private content", async () => {
+            const publicId = `${prefix}-explore`, privateId = `${prefix}-private-explore`;
+            const courseId = `${prefix}-course`;
+            const practice = { viewTracking: false, discoverable: true, goals: ["IELTS Preparation"], level: "Intermediate", skills: ["Speaking"], styles: ["Voice Call"] };
+            protectedPaths.push(`community_posts/${publicId}`, `community_private_posts/${uid("teacher")}/${privateId}`,
+                `explore_signals/${publicId}`, `explore_signals/${privateId}`,
+                `community_likes/${publicId}`, `community_comments/${publicId}`, `tutor_courses/${courseId}`,
+                `partnerDirectory/${uid("teacher")}`, `message_contacts/${uid("student")}/${uid("teacher")}`, `message_contacts/${uid("teacher")}/${uid("student")}`);
+            await db.ref(`community_blocks/${uid("teacher")}/${uid("student")}`).remove();
+            await db.ref().update({
+                [`community_posts/${publicId}`]: { authorId: uid("teacher"), body: "Public IELTS", keywords: ["IELTS"], createdAt: Date.now(), visibility: "public" },
+                [`community_private_posts/${uid("teacher")}/${privateId}`]: { authorId: uid("teacher"), body: "Private IELTS", createdAt: Date.now(), visibility: "friends" },
+                [`tutor_courses/${courseId}`]: { teacherId: uid("teacher"), title: "IELTS course", category: "ielts", published: true, createdAt: Date.now() },
+                [`partnerDirectory/${uid("teacher")}`]: { displayName: "Explore teacher", level: "B1" },
+                [`message_contacts/${uid("student")}/${uid("teacher")}`]: { status: "connected" },
+                [`message_contacts/${uid("teacher")}/${uid("student")}`]: { status: "connected" },
+                [`community_likes/${publicId}/${uid("teacher")}`]: true,
+                [`community_comments/${publicId}/one`]: { authorId: uid("teacher"), createdAt: Date.now(), body: "Comment" }
+            });
+            assert.equal((await call("saveExplorePreferences", tokens.teacher, practice)).status, 200);
+            assert.equal((await call("saveExplorePreferences", tokens.student, { ...practice, discoverable: false })).status, 200);
+            const signal = { postId: publicId, postLocation: `community_posts/${publicId}`, kind: "save", enabled: true };
+            assert.equal((await call("recordExploreInteraction", tokens.student, signal)).status, 200);
+            assert.equal((await call("recordExploreInteraction", tokens.student, signal)).status, 200);
+            assert.deepEqual((await db.ref(`explore_signals/${publicId}/${uid("student")}`).get()).val(), { save: true });
+            assert.equal((await call("recordExploreInteraction", tokens.student, { ...signal, kind: "view", visibleMs: 10001 })).body.error.status, "FAILED_PRECONDITION");
+            assert.equal((await call("saveExplorePreferences", tokens.student, { ...practice, viewTracking: true, discoverable: false })).status, 200);
+            assert.equal((await call("recordExploreInteraction", tokens.student, { ...signal, kind: "view", visibleMs: 10000 })).body.error.status, "INVALID_ARGUMENT");
+            assert.equal((await call("recordExploreInteraction", tokens.student, { ...signal, kind: "view", visibleMs: 10001 })).status, 200);
+            const privateSignal = { ...signal, postId: privateId, postLocation: `community_private_posts/${uid("teacher")}/${privateId}` };
+            assert.equal((await call("recordExploreInteraction", tokens.student, privateSignal)).status, 200);
+            assert.equal((await db.ref(`explore_signals/${privateId}`).get()).exists(), false);
+            const global = (await call("getExploreFeed", tokens.student, { mode: "global" })).body.result;
+            assert.equal(global.keywords.length, 40);
+            assert.equal(global.items.some(item => item.id === privateId), false);
+            const partner = global.items.find(item => item.id === uid("teacher") && item.type === "partner");
+            assert.equal(partner.matchingScore, 100);
+            assert.ok(global.items.some(item => item.id === courseId && item.type === "course"));
+            assert.ok(global.items.find(item => item.id === publicId).network >= 3, "canonical existing likes and comments contribute network weights");
+            const following = (await call("getExploreFeed", tokens.student, { mode: "following" })).body.result;
+            assert.ok(following.items.some(item => item.id === privateId));
+            await db.ref(`community_blocks/${uid("teacher")}/${uid("student")}`).set(true);
+            assert.equal((await call("recordExploreInteraction", tokens.student, signal)).body.error.status, "PERMISSION_DENIED");
+            const blocked = (await call("getExploreFeed", tokens.student, { mode: "following" })).body.result;
+            assert.equal(blocked.items.some(item => [publicId, privateId, courseId, uid("teacher")].includes(item.id)), false);
+            assert.equal((await call("saveExplorePreferences", tokens.teacher, { ...practice, discoverable: false })).status, 200);
+            assert.equal((await db.ref(`explore_practice_profiles/${uid("teacher")}`).get()).exists(), false);
+            assert.equal((await call("saveExplorePreferences", tokens.student, { ...practice, viewTracking: false, discoverable: false })).status, 200);
+            assert.equal((await call("recordExploreInteraction", tokens.student, { ...signal, kind: "view", visibleMs: 10001 })).body.error.status, "PERMISSION_DENIED");
         });
         await t.test("authorized moderation succeeds and records the moderator", async () => {
             const response = await call("moderateCommunityReport", tokens.moderator, operations.moderateCommunityReport);

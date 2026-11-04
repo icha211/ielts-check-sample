@@ -3,7 +3,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/fi
 import { onValue, ref, query, orderByChild, limitToLast, push, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
-import { validatePost, GROUPS } from "./community-model.js?v=20261101-image-framing";
+import { validatePost, validateMediaFile, GROUPS } from "./community-model.js?v=20261104-short-video";
 import { compressImageToLimit } from "./image-compress.js?v=20261031-compress";
 
 const postLocations = new Map();
@@ -40,7 +40,7 @@ export function subscribeCommunity(callback, onError) {
             if (version !== generation) return;
             const merged = Object.assign({}, publicPosts.value || {}, ...privatePosts.values());
             const visible = Object.fromEntries(Object.entries(merged).filter(([, post]) => !state.blocks[post.authorId]));
-            state.posts = Object.fromEntries(Object.entries(visible).sort(([, a], [, b]) => b.createdAt - a.createdAt).slice(0, 100));
+            state.posts = Object.fromEntries(Object.entries(visible).sort(([, a], [, b]) => b.createdAt - a.createdAt));
             postLocations.clear();
             Object.keys(publicPosts.value || {}).forEach((id) => postLocations.set(id, `community_posts/${id}`));
             privatePosts.forEach((posts, author) => Object.keys(posts).forEach((id) => postLocations.set(id, `community_private_posts/${author}/${id}`)));
@@ -140,9 +140,8 @@ export async function savePost(input, file, developer, editingId = null) {
         return editingId;
     }
     if (file) {
-        if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) throw new Error("Choose a PNG, JPEG or WebP picture up to 40 MB.");
-        if (file.type.startsWith("image/")) {
-            if (file.size > 40 * 1024 * 1024) throw new Error("Pictures must be 40 MB or smaller before compression.");
+        const mediaType = validateMediaFile(file);
+        if (mediaType === "image") {
             try {
                 const result = await compressImageToLimit(file, 2 * 1024 * 1024);
                 file = result.blob;
@@ -157,24 +156,24 @@ export async function savePost(input, file, developer, editingId = null) {
     const target = push(ref(db, collection));
     let uploaded = null;
     const media = { mediaURL: "", mediaPath: "", mediaType: "", mediaKey: "", mediaIV: "", ...(post.visibility === "friends" ? { mediaMime: file?.type || "" } : {}) };
-    if (file) {
-        media.mediaPath = `${post.visibility === "friends" ? "community-private" : "community"}/${user.uid}/${target.key}/attachment`;
-        uploaded = storageRef(getStorage(auth.app), media.mediaPath);
-        if (post.visibility === "friends") {
-            const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, await file.arrayBuffer());
-            media.mediaKey = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.exportKey("raw", key))));
-            media.mediaIV = btoa(String.fromCharCode(...iv));
-            await uploadBytes(uploaded, new Blob([encrypted]), { contentType: "application/octet-stream" });
-        } else {
-            await uploadBytes(uploaded, file, { contentType: file.type });
-        }
-    }
     try {
+        if (file) {
+            media.mediaType = validateMediaFile(file);
+            media.mediaPath = `${post.visibility === "friends" ? "community-private" : "community"}/${user.uid}/${target.key}/attachment`;
+            uploaded = storageRef(getStorage(auth.app), media.mediaPath);
+            if (post.visibility === "friends") {
+                const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, await file.arrayBuffer());
+                media.mediaKey = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.exportKey("raw", key))));
+                media.mediaIV = btoa(String.fromCharCode(...iv));
+                await uploadBytes(uploaded, new Blob([encrypted]), { contentType: "application/octet-stream" });
+            } else {
+                await uploadBytes(uploaded, file, { contentType: file.type });
+            }
+        }
         if (uploaded) {
             media.mediaURL = await getDownloadURL(uploaded);
-            media.mediaType = "image";
         }
         const functions = getFunctions(auth.app, "asia-southeast1");
         await httpsCallable(functions, "publishCommunityPost")({ postId: target.key, post: { ...post, ...media } });
@@ -240,4 +239,12 @@ export async function setGroupMembership(id, joined) {
     const user = requireUser();
     if (!GROUPS.some((group) => group.id === id)) throw new Error("Choose a valid community group.");
     await set(ref(db, `community_members/${id}/${user.uid}`), joined ? true : null);
+}
+export async function recordExploreInteraction(id, kind, enabled = true, details = {}) {
+    requireUser();
+    requireId(id);
+    const functions = getFunctions(auth.app, "asia-southeast1");
+    return (await httpsCallable(functions, "recordExploreInteraction")({
+        ...details, postId: id, postLocation: postPath(id), kind, enabled
+    })).data;
 }

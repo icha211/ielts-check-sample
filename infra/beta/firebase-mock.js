@@ -21,6 +21,36 @@ export const httpsCallable = (_, name) => async input => {
     const delay = Number(localStorage.getItem("beta-call-delay") || 0);
     if (delay) await new Promise(resolve => setTimeout(resolve, delay));
     if (localStorage.getItem("beta-deny-call") === name) throw new Error("Mock service unavailable. Please retry.");
+    if (name === "getExploreFeed") {
+        const data = readDb(), uid = user()?.uid;
+        const preferences = data.explore_preferences?.[uid] || { viewTracking: false, discoverable: false, goals: [], level: "", skills: [], styles: [] };
+        const custom = JSON.parse(localStorage.getItem("beta-explore-items") || "null");
+        return { data: {
+            items: custom || Object.entries(data.community_posts || {}).filter(([, post]) => !post.deletedAt).map(([id]) => ({ type: "post", id })),
+            preferences, actions: data.explore_user_actions?.[uid] || {},
+            keywords: ["IELTS", "TOEFL", "Speaking", "Listening", "Reading", "Writing", "Grammar", "Vocabulary"],
+            practiceOptions: { goals: ["IELTS Preparation", "TOEFL ITP Preparation"], level: ["Beginner", "Intermediate", "Advanced"], skills: ["Speaking", "Listening", "Writing"], styles: ["Voice Call", "Video Call", "Text Conversation"] }
+        } };
+    }
+    if (name === "saveExplorePreferences") {
+        const data = readDb();
+        (data.explore_preferences ||= {})[user().uid] = input;
+        localStorage.setItem("beta-db", JSON.stringify(data));
+        return { data: { preferences: input } };
+    }
+    if (name === "recordExploreInteraction") {
+        const data = readDb();
+        const key = input.postLocation.startsWith("community_private_posts/") ? `private:${input.postLocation.split("/")[1]}:${input.postId}` : input.postId;
+        const actions = ((data.explore_user_actions ||= {})[user().uid] ||= {});
+        (actions[key] ||= {})[input.kind] = input.enabled;
+        localStorage.setItem("beta-db", JSON.stringify(data));
+        return { data: { recorded: true } };
+    }
+    if (name === "publishCommunityPost") {
+        const location = input.post.visibility === "friends" ? `community_private_posts/${user().uid}/${input.postId}` : `community_posts/${input.postId}`;
+        await set({ path: location }, { ...input.post, authorId: user().uid, createdAt: Date.now() });
+        return { data: { id: input.postId } };
+    }
     if (name === "getTutorVerificationStatus") {
         return { data: JSON.parse(localStorage.getItem("beta-verification") || '{"status":"not_requested"}') };
     }
@@ -87,7 +117,7 @@ export async function signOut() {
 const readDb = () => JSON.parse(localStorage.getItem("beta-db") || "{}");
 function valueAt(target) {
     let value = target.path.split("/").reduce((node, key) => node?.[key], readDb()) ?? null;
-    if (target.filter && value) {
+    if (target.filter && Object.hasOwn(target.filter, "value") && value) {
         value = Object.fromEntries(Object.entries(value).filter(([, row]) => row?.[target.filter.key] === target.filter.value));
     }
     return value;
@@ -109,6 +139,7 @@ export function onValue(target, callback, error) {
 function notify() {
     listeners.forEach(({ target, callback }) => callback(snapshot(target)));
 }
+window.addEventListener("beta-db-updated", notify);
 export async function set(target, value) {
     const delay = Number(localStorage.getItem("beta-write-delay") || 0);
     if (delay) await new Promise(resolve => setTimeout(resolve, delay));
@@ -123,7 +154,7 @@ export async function set(target, value) {
     else node[parts.at(-1)] = value;
     localStorage.setItem("beta-db", JSON.stringify(data));
     // Firebase listeners run after writes, not synchronously inside a form submit.
-    setTimeout(notify, 0);
+    setTimeout(() => window.dispatchEvent(new Event("beta-db-updated")), 0);
 }
 export const update = async (target, values) => {
     if (target.path === "") {

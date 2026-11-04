@@ -3,6 +3,31 @@ const { test } = require("node:test");
 const host = process.env.FIREBASE_DATABASE_EMULATOR_HOST;
 const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST;
 const namespace = "demo-toefl-messaging-default-rtdb";
+test("Explore keywords enforce the taxonomy and private recommendation data rejects direct access", { skip: !host }, async () => {
+    const uid = "keyword-owner", id = "keyword-post";
+    const url = path => new URL(`http://${host}/${path}.json?ns=${namespace}`);
+    const post = { authorId: uid, title: "IELTS", body: "Practice", category: "tips", groupId: "", visibility: "public", createdAt: 1, mediaURL: "", mediaPath: "", mediaType: "" };
+    const seeded = await fetch(url(""), { method: "PATCH", headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
+        body: JSON.stringify({ [`community_posts/${id}`]: post, [`community_private_posts/${uid}/${id}`]: { ...post, visibility: "friends", mediaKey: "", mediaIV: "", mediaMime: "" } }) });
+    assert.equal(seeded.status, 200);
+    async function write(path, data, actor = uid) {
+        const target = url(path);
+        target.searchParams.set("auth", token(actor));
+        return fetch(target, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    }
+    for (const path of [`community_posts/${id}`, `community_private_posts/${uid}/${id}`]) {
+        assert.equal((await write(path, { keywords: ["IELTS", "Speaking", "Practice Partner"] })).status, 200);
+        for (const tags of [["IELTS", "TOEFL", "Speaking", "Listening"], ["unknown"], ["IELTS", "IELTS"], { 0: "IELTS", 2: "Speaking" }]) {
+            assert.equal((await write(path, { keywords: tags })).status, 401);
+        }
+    }
+    for (const path of [`explore_signals/${id}`, `explore_practice_profiles/${uid}`, `explore_preferences/${uid}`, `explore_user_actions/${uid}`]) {
+        assert.equal((await write(path, { fake: true })).status, 401);
+        assert.equal((await fetch(url(path))).status, 401);
+        const stranger = url(path); stranger.searchParams.set("auth", token("keyword-stranger"));
+        assert.equal((await fetch(stranger)).status, 401);
+    }
+});
 test("social profiles protect editing and opt-in connection lists", { skip: !host }, async () => {
     async function request(path, uid, method = "GET", data, admin = false) {
         const url = new URL(`http://${host}/${path}.json`);
@@ -212,7 +237,7 @@ test("community Storage rules allow owned media and reject other owners and exec
     }
     async function uploadSize(uid, collection, contentType, size) {
         const url = new URL(`http://${storageHost}/v0/b/demo-toefl-messaging.appspot.com/o`);
-        url.searchParams.set("name", `${collection}/${uid}/storage-size-test-${runId}/attachment`);
+        url.searchParams.set("name", `${collection}/${uid}/storage-size-test-${runId}-${contentType.replace(/\W/g, "")}-${size}/attachment`);
         url.searchParams.set("uploadType", "media");
         return fetch(url, {
             method: "POST",
@@ -234,11 +259,13 @@ test("community Storage rules allow owned media and reject other owners and exec
     assert.equal((await upload("bob", "alice", "image/jpeg")).status, 403);
     assert.equal((await upload("alice", "alice", "text/html")).status, 403);
     assert.equal((await upload("alice", "alice", "image/svg+xml")).status, 403);
-    assert.equal((await upload("alice", "alice", "video/mp4")).status, 403);
+    assert.equal((await upload("alice", "alice", "video/mp4")).status, 200);
+    assert.equal((await upload("alice", "alice", "video/webm")).status, 200);
     assert.equal((await upload("alice", "alice", "application/octet-stream", "community-private")).status, 200);
     assert.equal((await upload("bob", "alice", "application/octet-stream", "community-private")).status, 403);
     assert.equal((await upload("alice", "alice", "image/png", "community-private")).status, 403, "private attachments must be ciphertext, not directly displayed images");
     assert.equal((await uploadSize("alice", "community", "image/png", 2 * 1024 * 1024 + 1)).status, 403, "public media is capped at the compressed image limit");
-    assert.equal((await uploadSize("alice", "community-private", "application/octet-stream", 2 * 1024 * 1024 + 17)).status, 403, "private ciphertext includes only the AES-GCM tag overhead");
+    assert.equal((await uploadSize("alice", "community", "video/mp4", 20 * 1024 * 1024 + 1)).status, 403, "public videos are capped at 20 MB");
+    assert.equal((await uploadSize("alice", "community-private", "application/octet-stream", 20 * 1024 * 1024 + 17)).status, 403, "private ciphertext is capped at the video limit plus AES-GCM tag overhead");
     assert.equal((await uploadUnverified()).status, 403, "unverified accounts cannot upload community media");
 });

@@ -66,6 +66,16 @@ test("picture framing defaults to preserving the full image and validates saved 
     for (const change of [{ imageFit: "invalid" }, { imageFormat: "invalid" }, { imageX: -1 }, { imageY: 101 }, { imageX: "50" }, { imageY: NaN }])
         assert.throws(() => model.validatePost({ ...post, ...change }), /framing/);
 });
+test("community media accepts supported short videos within file-size and duration limits", () => {
+    const { pictureOriginalBytes, videoBytes, videoDurationSeconds } = vm.runInContext("MEDIA_LIMITS", model);
+    assert.equal(model.validateMediaFile({ type: "image/png", size: pictureOriginalBytes }), "image");
+    assert.equal(model.validateMediaFile({ type: "video/mp4", size: videoBytes }, videoDurationSeconds), "video");
+    assert.equal(model.validateMediaFile({ type: "video/webm", size: 1 }, 12.5), "video");
+    assert.throws(() => model.validateMediaFile({ type: "video/mp4", size: videoBytes + 1 }), /20 MB/);
+    assert.throws(() => model.validateMediaFile({ type: "video/webm", size: 1 }, 60.01), /60 seconds/);
+    assert.throws(() => model.validateMediaFile({ type: "video/mp4", size: 1 }, NaN), /60 seconds/);
+    assert.throws(() => model.validateMediaFile({ type: "video/quicktime", size: 1 }), /MP4\/WebM/);
+});
 test("picture framing persists for public/private posts and later owner edits", async () => {
     for (const visibility of ["public", "friends"]) {
         const { context: service, calls, writes } = serviceFixture();
@@ -134,6 +144,7 @@ function serviceFixture() {
             return { data: { id: data.postId || "post1" } };
         },
         compressImageToLimit: async (file) => ({ blob: file }),
+        validateMediaFile: model.validateMediaFile,
         validatePost: model.validatePost, GROUPS: vm.runInContext("GROUPS", model),
         onAuthStateChanged(_, callback) { authCallback = callback; return () => {}; },
         ref: (_, key) => ({ key }),
@@ -240,26 +251,36 @@ test("shared image compressor preserves the exact 2 MB boundary and retries enco
     assert.equal(encodes, 2, "an oversized encoded result must be retried");
     assert.ok(closed);
 });
-test("small images stay unchanged, videos are rejected, and failed compression never uploads", async () => {
-    const { context: service, writes } = serviceFixture();
+test("small images stay unchanged, short videos upload and failed compression never uploads", async () => {
+    const { context: service, writes, calls } = serviceFixture();
     const photo = new Blob(["small photo"], { type: "image/webp" });
     let uploaded;
-    service.uploadBytes = async (_, blob) => { uploaded = blob; };
+    service.uploadBytes = async (_, blob, metadata) => { uploaded = { blob, metadata }; };
     await service.savePost(post, photo, false);
-    assert.equal(uploaded, photo);
+    assert.equal(uploaded.blob, photo);
+    for (const [type, visibility] of [["video/mp4", "public"], ["video/webm", "friends"]]) {
+        const video = new Blob(["short video"], { type });
+        await service.savePost({ ...post, visibility }, video, false);
+        assert.equal(uploaded.metadata.contentType, visibility === "friends" ? "application/octet-stream" : type);
+        const saved = calls.at(-1).data.post;
+        assert.equal(saved.mediaType, "video");
+        if (visibility === "friends") {
+            assert.equal(saved.mediaMime, type);
+            service.fetch = async () => ({ ok: true, arrayBuffer: () => uploaded.blob.arrayBuffer() });
+            const decrypted = await service.loadPrivateMedia(saved);
+            assert.equal(decrypted.type, type);
+            assert.equal(await decrypted.text(), await video.text());
+            assert.notEqual(await uploaded.blob.text(), await video.text());
+        }
+    }
     service.compressImageToLimit = async () => { throw new Error("decode failed"); };
     const before = writes.length;
     uploaded = null;
-    for (const visibility of ["public", "friends"]) {
-        for (const type of ["video/mp4", "video/webm"]) {
-            await assert.rejects(service.savePost({ ...post, visibility }, new Blob(["video"], { type }), false), /Choose a PNG/);
-        }
-    }
-    assert.equal(uploaded, null);
-    assert.equal(writes.length, before);
     await assert.rejects(service.savePost(post, photo, false), /could not be compressed/);
-    assert.equal(uploaded, null);
+    assert.equal(uploaded, null, "failed image compression does not reach upload");
     assert.equal(writes.length, before);
+    await assert.rejects(service.savePost(post, { type: "video/mp4", size: 20 * 1024 * 1024 + 1 }, false), /20 MB/);
+    assert.equal(writes.length, before, "oversized video does not publish");
 });
 test("community subscriptions reset all private state on account changes and dispose listeners", () => {
     const fixture = serviceFixture();

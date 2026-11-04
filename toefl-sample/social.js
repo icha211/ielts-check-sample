@@ -1,12 +1,52 @@
-import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, reportCommunityContent, setCommunityBlock, loadPrivateMedia } from "./js/community.js?v=20261102-community-safety";
-import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameLayout, imageDisplaySettings } from "./js/community-model.js?v=20261101-photo-height-cap";
+import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, reportCommunityContent, setCommunityBlock, loadPrivateMedia, recordExploreInteraction } from "./js/community.js?v=20261104-explore-ranking";
+import { getExploreFeed, saveExplorePreferences } from "./js/explore-service.js?v=20261104-explore-ranking";
+import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameLayout, imageDisplaySettings, validateMediaFile } from "./js/community-model.js?v=20261104-short-video";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { db } from "./js/firebase-config.js";
 import { equalTo, limitToLast, onValue, orderByChild, query, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 window.QCPrefs?.addTranslations("id", {
+    "Following": "Koneksi", "Global": "Global", "Recommended": "Rekomendasi",
+    "Refresh recommendations": "Perbarui rekomendasi",
+    "Following uses your accepted connections. Recommendations also include practice partners and published courses.": "Following menggunakan koneksi yang telah diterima. Rekomendasi juga mencakup teman latihan dan kursus yang dipublikasikan.",
+    "Practice matching and privacy": "Kecocokan latihan dan privasi",
+    "Learning keywords (up to 3)": "Kata kunci belajar (maksimal 3)",
+    "Choose up to three topics so learners can discover your post.": "Pilih maksimal tiga topik agar pelajar dapat menemukan postingan Anda.",
+    "Choose up to three distinct learning keywords.": "Pilih maksimal tiga kata kunci belajar yang berbeda.",
+    "Learning goals": "Tujuan belajar", "English proficiency level": "Tingkat kemampuan bahasa Inggris",
+    "Practice skills": "Keterampilan latihan", "Learning style": "Gaya belajar",
+    "Save preferences": "Simpan preferensi", "Save": "Simpan", "Saved": "Tersimpan",
+    "Practice partner": "Teman latihan", "Teacher or course": "Tutor atau kursus",
+    "View course": "Lihat kursus", "{score}% practice match": "Kecocokan latihan {score}%",
+    "Based on your selected goals, level, skills and learning style.": "Berdasarkan tujuan, tingkat, keterampilan, dan gaya belajar yang Anda pilih.",
+    "Loading recommendations...": "Memuat rekomendasi...",
+    "Recommendations use a recent, bounded sample. Refresh to update ranking.": "Rekomendasi menggunakan sampel terbaru yang terbatas. Perbarui untuk memperbarui urutan.",
+    "Recommendations unavailable. Showing your accessible posts chronologically.": "Rekomendasi tidak tersedia. Postingan yang dapat Anda akses ditampilkan berdasarkan waktu.",
+    "Wait one minute between recommendation refreshes.": "Tunggu satu menit sebelum memperbarui rekomendasi.",
+    "Load recommendations before saving preferences.": "Muat rekomendasi sebelum menyimpan preferensi.",
+    "Explore preferences saved.": "Preferensi Explore disimpan.",
+    "Matching uses goals (40%), level (30%), skills (20%) and learning style (10%). Unanswered fields contribute zero.": "Kecocokan menggunakan tujuan (40%), tingkat (30%), keterampilan (20%), dan gaya belajar (10%). Isian kosong bernilai nol.",
+    "Recommend me as a practice partner. My selected practice preferences will be shown to signed-in learners.": "Rekomendasikan saya sebagai teman latihan. Preferensi latihan saya akan ditampilkan kepada pelajar yang masuk.",
+    "Personalize recommendations using posts I view for more than 10 seconds or videos I finish.": "Personalisasi rekomendasi menggunakan postingan yang saya lihat lebih dari 10 detik atau video yang saya selesaikan.",
+    "Off by default. Likes, comments, saves and shares still inform recommendations. Turning this off stops viewing events and excludes previous views from your learning interests.": "Nonaktif secara bawaan. Suka, komentar, simpan, dan bagikan tetap memengaruhi rekomendasi. Menonaktifkan ini menghentikan pencatatan tampilan dan mengecualikan tampilan sebelumnya dari minat belajar Anda.",
+    "Beginner": "Pemula", "Intermediate": "Menengah", "Advanced": "Mahir",
+    "IELTS Preparation": "Persiapan IELTS", "TOEFL ITP Preparation": "Persiapan TOEFL ITP", "TOEFL iBT Preparation": "Persiapan TOEFL iBT",
+    "Duolingo English Test Preparation": "Persiapan Duolingo English Test", "Scholarship Preparation": "Persiapan beasiswa",
+    "Daily English Conversation": "Percakapan bahasa Inggris sehari-hari", "Business English": "Bahasa Inggris bisnis", "Academic English": "Bahasa Inggris akademik",
+    "English for Beginners": "Bahasa Inggris untuk pemula", "Voice Call": "Panggilan suara", "Video Call": "Panggilan video",
+    "Text Conversation": "Percakapan teks", "Group Discussion": "Diskusi kelompok", "One-on-One Practice": "Latihan satu lawan satu",
+    "Speaking": "Berbicara", "Listening": "Mendengarkan", "Pronunciation": "Pelafalan", "Vocabulary": "Kosakata", "Grammar": "Tata bahasa", "Writing": "Menulis"
+});
+window.QCPrefs?.addTranslations("id", {
     "Photo": "Foto", "Photo uploads": "Unggahan foto",
+    "Photo or video": "Foto atau video", "Photo and video uploads": "Unggahan foto dan video",
+    "PNG, JPEG or WebP pictures up to 40 MB. Pictures over 2 MB are compressed before upload. MP4 or WebM videos up to 20 MB and 60 seconds.": "Gambar PNG, JPEG atau WebP maksimal 40 MB. Gambar di atas 2 MB dikompresi sebelum diunggah. Video MP4 atau WebM maksimal 20 MB dan 60 detik.",
+    "Choose a PNG, JPEG or WebP picture or MP4/WebM video.": "Pilih gambar PNG, JPEG atau WebP, atau video MP4/WebM.",
+    "Pictures must be 40 MB or smaller before compression.": "Ukuran gambar sebelum dikompresi harus maksimal 40 MB.",
+    "Videos must be 20 MB or smaller.": "Ukuran video harus maksimal 20 MB.",
+    "Videos must be 60 seconds or shorter.": "Durasi video harus 60 detik atau kurang.",
+    "Wait for video validation to finish before posting.": "Tunggu hingga validasi video selesai sebelum mengirim postingan.",
     "Choose a PNG, JPEG or WebP picture up to 40 MB.": "Pilih gambar PNG, JPEG atau WebP maksimal 40 MB.",
     "PNG, JPEG or WebP pictures up to 40 MB. Pictures over 2 MB are automatically compressed before upload.": "Gambar PNG, JPEG atau WebP maksimal 40 MB. Gambar di atas 2 MB dikompresi otomatis sebelum diunggah.",
     "Tall photos can be cropped to 4:5 or shown whole. Shorter photos keep their natural height.": "Foto tinggi dapat dipotong menjadi 4:5 atau ditampilkan seluruhnya. Foto yang lebih pendek mempertahankan tinggi aslinya.",
@@ -113,7 +153,7 @@ window.QCPrefs?.addTranslations("id", {
     "Remove this post?": "Hapus postingan ini?", "Remove post": "Hapus postingan", "Cancel": "Batal",
     "It will no longer appear in the community feed. This cannot be undone.": "Postingan tidak lagi muncul di komunitas. Tindakan ini tidak dapat dibatalkan.",
     "Saving...": "Menyimpan...", "Save changes": "Simpan perubahan", "Your post has been saved.": "Postingan Anda telah disimpan.",
-    "Showing the latest 100 community posts.": "Menampilkan 100 postingan komunitas terbaru.",
+    "Recommendations use a recent sample. Other sorts show up to 100 posts.": "Rekomendasi menggunakan sampel terbaru. Urutan lain menampilkan hingga 100 postingan.",
     "Showing the latest 100 comments.": "Menampilkan 100 komentar terbaru.",
     "Show all groups": "Tampilkan semua grup", "Open this group to read and share posts.": "Buka grup untuk membaca dan berbagi postingan.",
     "You left the group.": "Anda keluar dari grup.", "You joined the group.": "Anda bergabung dengan grup.",
@@ -178,8 +218,42 @@ let moderationStop = null;
 let moderationUid = null;
 let file = null;
 let previewURL = "";
+let mediaValidationPending = false;
 let publishing = false;
 let syncError = false;
+let exploreMode = "global", exploreData = null, exploreBusy = false, exploreRequest = 0, lastExploreRefresh = 0;
+const viewedPosts = new Set(), visiblePosts = new Map();
+const viewObserver = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+        const id = entry.target.dataset.viewPost;
+        if (entry.isIntersecting && entry.intersectionRatio >= .5 && !document.hidden) visiblePosts.set(id, performance.now());
+        else visiblePosts.delete(id);
+    }
+}, { threshold: [.5] });
+async function recordView(id, details) {
+    if (!exploreData?.preferences.viewTracking || viewedPosts.has(id) || !state.connected || document.hidden || !document.hasFocus()) return;
+    viewedPosts.add(id);
+    const version = authVersion;
+    try { await recordExploreInteraction(id, "view", true, details); }
+    catch (error) {
+        if (version !== authVersion) return;
+        viewedPosts.delete(id);
+        showError(error, $("exploreError"));
+    }
+}
+const viewClock = setInterval(() => {
+    if (document.hidden || !document.hasFocus() || !exploreData?.preferences.viewTracking) { visiblePosts.clear(); return; }
+    for (const [id, started] of visiblePosts) if (performance.now() - started > 10000) {
+        visiblePosts.delete(id);
+        recordView(id, { visibleMs: performance.now() - started });
+    }
+}, 1000);
+document.addEventListener("visibilitychange", () => {
+    visiblePosts.clear();
+    if (!document.hidden) cards.forEach(entry => { viewObserver.unobserve(entry.node); viewObserver.observe(entry.node); });
+});
+window.addEventListener("focus", () => cards.forEach(entry => { viewObserver.unobserve(entry.node); viewObserver.observe(entry.node); }));
+window.addEventListener("blur", () => visiblePosts.clear());
 const activity = new Map();
 const cards = new Map();
 const openedComments = new Set();
@@ -187,6 +261,81 @@ const commentDrafts = new Map();
 const expandedPosts = new Set();
 const pending = new Set();
 const privateMedia = new Map();
+function fillExplorePreferences() {
+    const selected = [...$("postKeywords").selectedOptions].map(option => option.value);
+    $("postKeywords").replaceChildren(...exploreData.keywords.map(value => {
+        const option = element("option", "", value);
+        option.value = value;
+        option.selected = selected.includes(value);
+        return option;
+    }));
+    const fields = $("practiceFields");
+    if (fields.children.length) return;
+    for (const [key, label] of [["goals", "Learning goals"], ["level", "English proficiency level"], ["skills", "Practice skills"], ["styles", "Learning style"]]) {
+        const field = element("fieldset");
+        field.append(element("legend", "", tr(label)));
+        if (key === "level") {
+            const select = element("select");
+            select.name = key;
+            select.setAttribute("aria-label", tr(label));
+            select.append(element("option", "", ""));
+            for (const value of exploreData.practiceOptions[key]) {
+                const option = element("option", "", tr(value));
+                option.value = value;
+                select.append(option);
+            }
+            select.value = exploreData.preferences[key];
+            field.append(select);
+        } else for (const value of exploreData.practiceOptions[key]) {
+            const label = element("label", "explore-check");
+            const input = element("input");
+            input.type = "checkbox"; input.name = key; input.value = value;
+            input.checked = exploreData.preferences[key]?.includes(value);
+            label.append(input, element("span", "", tr(value)));
+            field.append(label);
+        }
+        fields.append(field);
+    }
+    $("viewTracking").checked = exploreData.preferences.viewTracking;
+    $("practiceDiscoverable").checked = exploreData.preferences.discoverable;
+}
+function setExploreBusy(busy) {
+    exploreBusy = busy;
+    $("refreshExplore").disabled = busy;
+    $("saveExplorePreferences").disabled = busy;
+    document.querySelectorAll("[data-explore-mode]").forEach(button => { button.disabled = busy; });
+}
+async function loadExplore(force = false) {
+    if (!state.uid || embeddedProfile || exploreBusy) return;
+    if (!force && Date.now() - lastExploreRefresh < 60000) return;
+    const version = authVersion, request = ++exploreRequest;
+    setExploreBusy(true);
+    $("exploreError").hidden = true;
+    $("exploreStatus").textContent = tr("Loading recommendations...");
+    try {
+        const data = await getExploreFeed(exploreMode);
+        if (version !== authVersion || request !== exploreRequest) return;
+        if (!data || !Array.isArray(data.items) || !Array.isArray(data.keywords) || !data.preferences || !data.practiceOptions || !data.actions) throw new Error("Explore returned an invalid response. Retry recommendations.");
+        exploreData = data;
+        lastExploreRefresh = Date.now();
+        fillExplorePreferences();
+        $("exploreStatus").textContent = tr("Recommendations use a recent, bounded sample. Refresh to update ranking.");
+        visiblePosts.clear();
+        cards.forEach(entry => { viewObserver.unobserve(entry.node); entry.node.remove(); });
+        cards.clear();
+        renderFeed();
+    } catch (error) {
+        if (version !== authVersion || request !== exploreRequest) return;
+        exploreData = null;
+        $("exploreStatus").textContent = tr("Recommendations unavailable. Showing your accessible posts chronologically.");
+        showError(error, $("exploreError"));
+        renderFeed();
+    } finally {
+        if (version === authVersion && request === exploreRequest) {
+            setExploreBusy(false);
+        }
+    }
+}
 function releasePrivateMedia(id) {
     const entry = privateMedia.get(id);
     if (!entry) return;
@@ -275,7 +424,7 @@ function renderPeople() {
     if (!state.uid || state.loading) {
         list.append(element("p", "helper", tr(state.loading ? "Loading online learners..." : "Sign in to see online learners.")));
     } else {
-        const people = selectPeople(state.profiles, state.uid, { onlineOnly: true }).filter((profile) => !state.blocks?.[profile.uid]);
+        const people = selectPeople(state.profiles, state.uid, { onlineOnly: true }).filter((profile) => !state.blocks?.[profile.id]);
         if (!people.length) list.append(element("p", "helper", tr("No other learners are online right now. Find a study buddy to connect later.")));
         people.slice(0, 5).forEach((profile) => list.append(personRow(profile)));
     }
@@ -286,7 +435,7 @@ function renderPeopleResults() {
         onlineOnly: peopleMode === "online",
         search: $("peopleSearch").value,
         level: person(state.uid).level
-    }).filter((profile) => !state.blocks?.[profile.uid]);
+    }).filter((profile) => !state.blocks?.[profile.id]);
     $("peopleResults").replaceChildren(...people.map((profile) => personRow(profile, true)));
     if (!people.length) $("peopleResults").append(element("p", "helper", tr("No learners match your search. Try a different name or level.")));
 }
@@ -337,12 +486,19 @@ function renderFeed() {
     }
     if (state.loading && !Object.keys(state.posts).length) return;
     const likes = Object.fromEntries([...activity].map(([id, value]) => [id, value.likes]));
-    const posts = selectPosts(state.posts, { category, groupId, sort: $("postSort").value, likes }).filter((post) => !profileAuthor || post.authorId === profileAuthor);
+    let posts = selectPosts(state.posts, { category, groupId, sort: $("postSort").value, likes }).filter((post) => !profileAuthor || post.authorId === profileAuthor).slice(0, 100);
+    const recommended = !profileAuthor && category === "all" && !groupId && $("postSort").value === "recommended" && exploreData;
+    let items = posts.map(post => ({ type: "post", id: post.id }));
+    if (recommended) {
+        items = exploreData.items.filter(item => item.type === "post" ? state.posts[item.id] && !state.posts[item.id].deletedAt :
+            !state.blocks[item.type === "partner" ? item.id : item.course.teacherId]);
+        posts = items.filter(item => item.type === "post").map(item => ({ ...state.posts[item.id], id: item.id }));
+    }
     $("postFeed").setAttribute("aria-busy", "false");
-    $("postFeed").querySelectorAll(".skeleton, .empty-feed").forEach((node) => node.remove());
+    $("postFeed").querySelectorAll(".skeleton, .empty-feed, .explore-recommendation").forEach((node) => node.remove());
     const visible = new Set(posts.map((post) => post.id));
-    cards.forEach((entry, id) => { if (!visible.has(id)) { entry.node.remove(); releasePrivateMedia(id); cards.delete(id); } });
-    if (!posts.length) {
+    cards.forEach((entry, id) => { if (!visible.has(id)) { viewObserver.unobserve(entry.node); visiblePosts.delete(id); entry.node.remove(); releasePrivateMedia(id); cards.delete(id); } });
+    if (!items.length) {
         $("postFeed").append(emptyFeed("Start the conversation", "No posts here yet. Share a question, a useful tip, or your study goals."));
         return;
     }
@@ -353,13 +509,40 @@ function renderFeed() {
         if (!entry || entry.signature !== signature) {
             releasePrivateMedia(post.id);
             const node = makePost(post);
-            if (entry) entry.node.replaceWith(node);
+            node.dataset.viewPost = post.id;
+            if (entry) { viewObserver.unobserve(entry.node); entry.node.replaceWith(node); }
             entry = { node, signature };
             cards.set(post.id, entry);
+            viewObserver.observe(node);
+            node.querySelector("video")?.addEventListener("ended", event => {
+                const video = event.target;
+                let played = 0;
+                for (let index = 0; index < video.played.length; index++) played += video.played.end(index) - video.played.start(index);
+                if (video.duration > 0 && played >= video.duration * .95) recordView(post.id, { completed: true });
+            });
         }
-        const index = posts.indexOf(post);
+        const index = items.findIndex(item => item.type === "post" && item.id === post.id);
         if ($("postFeed").children[index] !== entry.node) $("postFeed").insertBefore(entry.node, $("postFeed").children[index] || null);
         paintActivity(post.id);
+    });
+    items.forEach((item, index) => {
+        if (item.type === "post") return;
+        const node = element("article", "card explore-recommendation");
+        node.dataset.recommendation = item.type;
+        if (item.type === "partner") {
+            node.append(element("p", "recommendation-label", tr("Practice partner")), element("h2", "", item.profile.displayName),
+                element("p", "", tr("{score}% practice match", { score: item.matchingScore })),
+                element("p", "helper", [...(item.practice?.goals || []), item.practice?.level, ...(item.practice?.skills || []), ...(item.practice?.styles || [])].filter(Boolean).map(value => tr(value)).join(", ")),
+                element("p", "helper", tr("Based on your selected goals, level, skills and learning style.")),
+                personRow({ ...item.profile, id: item.id }, true));
+        } else {
+            const link = element("a", "secondary-button", tr("View course"));
+            link.href = `tutor-check.html?course=${encodeURIComponent(item.id)}`;
+            node.append(element("p", "recommendation-label", tr("Teacher or course")), element("h2", "", item.course.title),
+                element("p", "helper", item.course.summary),
+                element("p", "", new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(item.course.price)), link);
+        }
+        $("postFeed").insertBefore(node, $("postFeed").children[index] || null);
     });
 }
 function makePost(post) {
@@ -438,7 +621,7 @@ function makePost(post) {
                 console.error("[Community] Private attachment failed:", error);
             });
         } else media.src = url;
-        if (post.mediaType === "video") { media.controls = true; media.preload = "metadata"; }
+        if (post.mediaType === "video") { media.controls = true; media.preload = "metadata"; media.playsInline = true; }
         else { media.alt = tr("Community post attachment"); media.loading = "lazy"; }
         media.addEventListener("error", () => {
             media.replaceWith(element("p", "form-error", tr("This attachment could not load.")));
@@ -459,7 +642,22 @@ function makePost(post) {
     comments.setAttribute("aria-expanded", String(openedComments.has(post.id)));
     const share = button(tr("Share"), "", () => sharePost(post, share));
     share.prepend(icon("share-3"));
-    actions.append(like, comments, share);
+    const actionKey = post.visibility === "friends" ? `private:${post.authorId}:${post.id}` : post.id;
+    const saved = Boolean(exploreData?.actions[actionKey]?.save);
+    const save = button(tr(saved ? "Saved" : "Save"), "", () => perform(save, async () => {
+        if (!exploreData) throw new Error(tr("Load recommendations before saving preferences."));
+        const enabled = !exploreData?.actions[actionKey]?.save, version = authVersion;
+        await recordExploreInteraction(post.id, "save", enabled);
+        if (version !== authVersion || !exploreData) return;
+        (exploreData.actions[actionKey] ||= {}).save = enabled;
+        save.textContent = tr(enabled ? "Saved" : "Save");
+        save.setAttribute("aria-pressed", String(enabled));
+    }));
+    save.setAttribute("aria-pressed", String(saved));
+    save.disabled = !state.uid || !exploreData;
+    save.prepend(icon("bookmark"));
+    if (post.keywords?.length) node.append(element("p", "post-keywords", post.keywords.join(", ")));
+    actions.append(like, comments, save, share);
     const panel = element("section", "comments");
     panel.hidden = !openedComments.has(post.id);
     panel.setAttribute("aria-label", tr("Comments"));
@@ -550,6 +748,7 @@ async function sharePost(post, target) {
             setTimeout(() => { target.replaceChildren(icon("share-3"), document.createTextNode(tr("Share"))); }, 2000);
         }
         $("liveStatus").textContent = tr("Post link shared.");
+        await recordExploreInteraction(post.id, "share");
     } catch (error) { if (error.name !== "AbortError") showError(error); }
 }
 function startComposer(value) {
@@ -563,11 +762,15 @@ function clearPreview() {
     if (previewURL) URL.revokeObjectURL(previewURL);
     previewURL = "";
     file = null;
+    mediaValidationPending = false;
     $("mediaInput").value = "";
     $("mediaPreview").replaceChildren();
     $("mediaPreview").hidden = true;
     $("imageFraming").hidden = true;
     resetImageFraming();
+}
+function updatePublishAvailability() {
+    $("publishButton").disabled = !state.uid || state.loading || !state.connected || publishing || mediaValidationPending;
 }
 function updateComposerUI() {
     const body = $("postBody");
@@ -583,6 +786,7 @@ function updateComposerUI() {
         : $("postVisibility").value === "friends"
             ? "Only you and friends with accepted message connections can read this post."
             : "Sign in to read public posts and participate.");
+    updatePublishAvailability();
 }
 function resetComposer() {
     $("postForm").reset();
@@ -593,6 +797,7 @@ function resetComposer() {
     $("publishButton").textContent = tr("Post");
     composerCategory = "tips";
     composerGroupId = "";
+    [...$("postKeywords").options].forEach(option => { option.selected = false; });
     $("attachButton").disabled = !state.uid;
     updateComposerUI();
 }
@@ -604,6 +809,13 @@ function editPost(post) {
     composerCategory = post.category;
     composerGroupId = post.groupId || "";
     $("postVisibility").value = post.visibility || "public";
+    for (const value of post.keywords || []) {
+        if ([...$("postKeywords").options].some(option => option.value === value)) continue;
+        const option = element("option", "", value);
+        option.value = value;
+        $("postKeywords").append(option);
+    }
+    [...$("postKeywords").options].forEach(option => { option.selected = (post.keywords || []).includes(option.value); });
     if (post.mediaType === "image" && post.mediaURL) {
         $("imageFit").value = post.imageFit || "cover";
         $("imageY").value = post.imageY ?? 50;
@@ -791,6 +1003,11 @@ const unsubscribe = subscribeCommunity(async (next) => {
     if (accountChanged) {
         syncError = false;
         const version = ++authVersion;
+        exploreRequest++; exploreData = null; setExploreBusy(false); lastExploreRefresh = 0;
+        viewedPosts.clear(); visiblePosts.clear(); viewObserver.disconnect();
+        $("practiceFields").replaceChildren();
+        $("postKeywords").replaceChildren();
+        $("exploreControls").hidden = embeddedProfile || !next.uid;
         stopProfileDetails?.();
         stopProfileDetails = null;
         profileDetails = {};
@@ -831,7 +1048,7 @@ const unsubscribe = subscribeCommunity(async (next) => {
     renderIdentity();
     renderBlockedAccounts();
     syncModerationQueue();
-    $("publishButton").disabled = !state.uid || state.loading || !state.connected || publishing;
+    updatePublishAvailability();
     $("postBody").disabled = !state.uid;
     $("attachButton").disabled = !state.uid || Boolean(editingId) || publishing;
     Object.entries(state.posts).forEach(([id, post]) => {
@@ -856,6 +1073,7 @@ const unsubscribe = subscribeCommunity(async (next) => {
     });
     renderPeople();
     renderFeed();
+    if (accountChanged && next.uid && !embeddedProfile) loadExplore(true);
     const linked = document.getElementById(location.hash.slice(1));
     if (linked?.classList.contains("post-card") && !linked.dataset.linkOpened) {
         linked.dataset.linkOpened = "true";
@@ -873,6 +1091,47 @@ document.querySelectorAll("[data-filter]").forEach((node) => node.addEventListen
     renderFilters();
     renderFeed();
 }));
+document.querySelectorAll("[data-explore-mode]").forEach(node => node.addEventListener("click", async () => {
+    if (exploreBusy || node.dataset.exploreMode === exploreMode) return;
+    exploreMode = node.dataset.exploreMode;
+    exploreData = null;
+    document.querySelectorAll("[data-explore-mode]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.exploreMode === exploreMode)));
+    await loadExplore(true);
+}));
+$("refreshExplore").addEventListener("click", () => {
+    if (Date.now() - lastExploreRefresh < 60000) {
+        $("exploreStatus").textContent = tr("Wait one minute between recommendation refreshes.");
+        return;
+    }
+    loadExplore();
+});
+$("explorePreferencesForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (exploreBusy) return;
+    if (!exploreData) return showError(new Error(tr("Load recommendations before saving preferences.")), $("explorePreferencesError"));
+    const version = authVersion;
+    setExploreBusy(true);
+    const form = new FormData(event.target);
+    const input = { goals: form.getAll("goals"), level: form.get("level") || "", skills: form.getAll("skills"), styles: form.getAll("styles"),
+        viewTracking: $("viewTracking").checked, discoverable: $("practiceDiscoverable").checked };
+    $("explorePreferencesError").hidden = true;
+    try {
+        const result = await saveExplorePreferences(input);
+        if (version !== authVersion) return;
+        if (!result?.preferences || typeof result.preferences.viewTracking !== "boolean") throw new Error("Explore returned an invalid preference response. Retry saving.");
+        exploreData.preferences = result.preferences;
+        visiblePosts.clear();
+        $("liveStatus").textContent = tr("Explore preferences saved.");
+        setExploreBusy(false);
+        await loadExplore(true);
+    } catch (error) { if (version === authVersion) showError(error, $("explorePreferencesError")); }
+    finally { if (version === authVersion) setExploreBusy(false); }
+});
+$("postKeywords").addEventListener("change", () => {
+    if ($("postKeywords").selectedOptions.length > 3) {
+        showError(new Error(tr("Choose up to three distinct learning keywords.")), $("composerError"));
+    } else $("composerError").hidden = true;
+});
 document.querySelectorAll("[data-compose]").forEach((node) => node.addEventListener("click", () => startComposer(node.dataset.compose)));
 $("postBody").addEventListener("focus", updateComposerUI);
 $("postBody").addEventListener("input", updateComposerUI);
@@ -980,30 +1239,53 @@ $("mediaInput").addEventListener("change", () => {
     const selected = $("mediaInput").files[0];
     if (!selected) return;
     clearPreview();
-    const maxBytes = 40 * 1024 * 1024;
-    if (!["image/png", "image/jpeg", "image/webp"].includes(selected.type) || selected.size > maxBytes) {
-        showError(new Error(tr("Choose a PNG, JPEG or WebP picture up to 40 MB.")), $("composerError"));
+    let mediaKind;
+    try { mediaKind = validateMediaFile(selected); }
+    catch (error) {
+        showError(new Error(tr(error.message)), $("composerError"));
         return;
     }
     file = selected;
+    mediaValidationPending = mediaKind === "video";
     previewURL = URL.createObjectURL(selected);
-    const preview = element("img");
-    formatFeedImage(preview, { visibility: $("postVisibility").value });
-    $("imageFraming").hidden = false;
+    const preview = element(mediaKind === "video" ? "video" : "img");
+    if (mediaKind === "video") {
+        preview.controls = true;
+        preview.preload = "metadata";
+        preview.playsInline = true;
+        preview.addEventListener("loadedmetadata", () => {
+            if (file !== selected) return;
+            try {
+                validateMediaFile(selected, preview.duration);
+                mediaValidationPending = false;
+                updatePublishAvailability();
+                $("composerError").hidden = true;
+            } catch (error) {
+                clearPreview();
+                showError(new Error(tr(error.message)), $("composerError"));
+            }
+        }, { once: true });
+    } else {
+        formatFeedImage(preview, { visibility: $("postVisibility").value });
+        $("imageFraming").hidden = false;
+    }
     preview.addEventListener("error", () => {
+        if (file !== selected) return;
         clearPreview();
         showError(new Error(tr("This attachment could not load.")), $("composerError"));
     }, { once: true });
     preview.src = previewURL;
-    preview.alt = tr("Attachment preview");
+    if (mediaKind === "image") preview.alt = tr("Attachment preview");
     $("mediaPreview").append(preview, button(tr("Remove attachment"), "text-button", clearPreview));
     $("mediaPreview").hidden = false;
-    updateImageFraming();
+    if (mediaKind === "image") updateImageFraming();
+    updatePublishAvailability();
     $("composerError").hidden = true;
 });
 $("postForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     if (publishing) return;
+    if (mediaValidationPending) return showError(new Error(tr("Wait for video validation to finish before posting.")), $("composerError"));
     if (!state.uid || !state.connected) return showError(new Error(tr("Sign in and connect before posting.")), $("composerError"));
     publishing = true;
     const version = authVersion;
@@ -1013,7 +1295,7 @@ $("postForm").addEventListener("submit", async (event) => {
     $("composerError").hidden = true;
     const fields = [...$("postForm").querySelectorAll("input, textarea, select, button")];
     const disabled = fields.map((field) => field.disabled);
-    const input = { title: $("postBody").value.trim().slice(0, 80).split("\n")[0], body: $("postBody").value, category: composerCategory, groupId: composerGroupId, visibility: $("postVisibility").value, ...framingSettings() };
+    const input = { title: $("postBody").value.trim().slice(0, 80).split("\n")[0], body: $("postBody").value, category: composerCategory, groupId: composerGroupId, visibility: $("postVisibility").value, keywords: [...$("postKeywords").selectedOptions].map(option => option.value), ...framingSettings() };
     closeUploadInfo();
     fields.forEach((field) => { field.disabled = true; });
     try {
@@ -1024,6 +1306,8 @@ $("postForm").addEventListener("submit", async (event) => {
         groupId = "";
         renderFilters();
         renderFeed();
+        lastExploreRefresh = 0;
+        await loadExplore(true);
         $("liveStatus").textContent = tr("Your post has been saved.");
         document.getElementById(`post-${id}`)?.scrollIntoView({ block: "center", behavior: "instant" });
     } catch (error) { if (version === authVersion) showError(error, $("composerError")); }
@@ -1031,7 +1315,6 @@ $("postForm").addEventListener("submit", async (event) => {
         publishing = false;
         fields.forEach((field, index) => { field.disabled = disabled[index]; });
         $("attachButton").disabled = !state.uid || Boolean(editingId);
-        submit.disabled = !state.uid || !state.connected;
         submit.textContent = tr(editingId ? "Save changes" : "Post");
         updateComposerUI();
     }
@@ -1060,6 +1343,9 @@ const clock = setInterval(() => {
 }, 60000);
 window.addEventListener("pagehide", (event) => {
     if (event.persisted) return;
+    clearInterval(viewClock);
+    viewObserver.disconnect();
+    visiblePosts.clear();
     clearInterval(clock);
     stopProfileDetails?.();
     moderationStop?.();

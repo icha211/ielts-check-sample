@@ -6,6 +6,7 @@ const logger = require("firebase-functions/logger");
 const { publicTeacher, enrollmentStats } = require("./marketplace");
 const communityModeration = require("./community-moderation");
 const marketplaceVerification = require("./marketplace-verification");
+const communityExplore = require("./community-explore");
 
 initializeApp();
 setGlobalOptions({ region: process.env.FUNCTIONS_EMULATOR === "true" ? "us-central1" : "asia-southeast1" });
@@ -62,3 +63,6 @@ exports.requestTutorVerification = marketplaceVerification.requestTutorVerificat
 exports.getTutorVerificationStatus = marketplaceVerification.getTutorVerificationStatus;
 exports.listTutorVerificationRequests = marketplaceVerification.listTutorVerificationRequests;
 exports.reviewTutorVerification = marketplaceVerification.reviewTutorVerification;
+exports.getExploreFeed = communityExplore.getExploreFeed;
+exports.saveExplorePreferences = communityExplore.saveExplorePreferences;
+exports.recordExploreInteraction = communityExplore.recordExploreInteraction;

@@ -275,6 +275,14 @@
       }
     },
 
+    "explore_preferences": {
+      "$uid": { ".read": "auth != null && auth.uid === $uid", ".write": false }
+    },
+    "explore_user_actions": {
+      "$uid": { ".read": "auth != null && auth.uid === $uid", ".write": false }
+    },
+    "explore_practice_profiles": { ".read": false, ".write": false },
+    "explore_signals": { ".read": false, ".write": false },
     "community_posts": {
       ".read": "auth != null",
       ".indexOn": ["createdAt"],
@@ -288,6 +296,10 @@
         "groupId": { ".validate": "newData.isString() && (newData.val() === '' || newData.val() === 'general' || newData.val() === 'speaking' || newData.val() === 'writing' || newData.val() === 'listening' || newData.val() === 'reading')" },
         "visibility": { ".validate": "newData.val() === 'public'" },
         "imageFormat": { ".validate": "newData.val() === 'auto' || newData.val() === 'portrait' || newData.val() === 'square' || newData.val() === 'landscape'" },
+        "keywords": {
+          ".validate": "newData.hasChildren(['0']) && (!newData.child('2').exists() || newData.child('1').exists())",
+          "$tag": { ".validate": "($tag === '0' || $tag === '1' || $tag === '2') && newData.isString() && newData.val().matches(/^(IELTS|TOEFL|TOEIC|PTE|Duolingo English Test|Speaking|Listening|Reading|Writing|Grammar|Vocabulary|Pronunciation|English Conversation|Daily English|Academic English|Business English|English for Beginners|English for Intermediate|English for Advanced|English Study Tips|Learning Strategies|English Quiz|English Practice|Mock Test|Exam Preparation|English Resources|English Books|English Movies|English Podcasts|Study Motivation|Learning Progress|Study Partner|Practice Partner|Language Exchange|English Community|Tutor & Teacher|Online Course|Scholarship|Study Abroad|Education & Learning)$/) && ($tag === '0' || newData.val() !== newData.parent().child('0').val()) && ($tag === '1' || newData.val() !== newData.parent().child('1').val()) && ($tag === '2' || newData.val() !== newData.parent().child('2').val())" }
+        },
         "imageFit": { ".validate": "newData.val() === 'contain' || newData.val() === 'cover'" },
         "imageX": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
         "imageY": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
@@ -316,7 +328,7 @@
     "community_comments": {
       "$post": {
         ".read": "auth != null",
-        ".indexOn": ["createdAt"],
+        ".indexOn": ["createdAt", "authorId"],
         "$comment": {
           ".write": "auth != null && auth.token.email_verified === true && data.exists() && !newData.exists() && (data.child('authorId').val() === auth.uid || (auth.token.role === 'developer' && auth.token.email === 'quickcheck.edu@gmail.com' && auth.token.email_verified === true)) && !root.child('community_blocks').child(auth.uid).child(root.child('community_posts').child($post).child('authorId').val()).exists() && !root.child('community_blocks').child(root.child('community_posts').child($post).child('authorId').val()).child(auth.uid).exists()",
           ".validate": "newData.hasChildren(['authorId', 'body', 'createdAt'])",
@@ -342,6 +354,10 @@
           "groupId": { ".validate": "newData.isString() && (newData.val() === '' || newData.val() === 'general' || newData.val() === 'speaking' || newData.val() === 'writing' || newData.val() === 'listening' || newData.val() === 'reading')" },
           "visibility": { ".validate": "newData.val() === 'friends'" },
           "imageFormat": { ".validate": "newData.val() === 'auto' || newData.val() === 'portrait' || newData.val() === 'square' || newData.val() === 'landscape'" },
+          "keywords": {
+            ".validate": "newData.hasChildren(['0']) && (!newData.child('2').exists() || newData.child('1').exists())",
+            "$tag": { ".validate": "($tag === '0' || $tag === '1' || $tag === '2') && newData.isString() && newData.val().matches(/^(IELTS|TOEFL|TOEIC|PTE|Duolingo English Test|Speaking|Listening|Reading|Writing|Grammar|Vocabulary|Pronunciation|English Conversation|Daily English|Academic English|Business English|English for Beginners|English for Intermediate|English for Advanced|English Study Tips|Learning Strategies|English Quiz|English Practice|Mock Test|Exam Preparation|English Resources|English Books|English Movies|English Podcasts|Study Motivation|Learning Progress|Study Partner|Practice Partner|Language Exchange|English Community|Tutor & Teacher|Online Course|Scholarship|Study Abroad|Education & Learning)$/) && ($tag === '0' || newData.val() !== newData.parent().child('0').val()) && ($tag === '1' || newData.val() !== newData.parent().child('1').val()) && ($tag === '2' || newData.val() !== newData.parent().child('2').val())" }
+          },
           "imageFit": { ".validate": "newData.val() === 'contain' || newData.val() === 'cover'" },
           "imageX": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },
           "imageY": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100" },

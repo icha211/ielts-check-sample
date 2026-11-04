@@ -3,6 +3,7 @@ const COMMUNITY_LIMITS = Object.freeze({
     comment: { maximum: 20, windowMs: 60 * 60 * 1000 },
     report: { maximum: 10, windowMs: 24 * 60 * 60 * 1000 }
 });
+const { keywords } = require("./explore-policy");
 
 function nextRateWindow(current, now, limit) {
     const active = current && Number.isFinite(current.startedAt) &&
@@ -45,7 +46,7 @@ function validateCommunityPost(input, uid, postId, isModerator = false) {
     const mediaPath = String(input.mediaPath || "");
     const mediaType = String(input.mediaType || "");
     const privatePost = (input.visibility || "public") === "friends";
-    if (mediaURL.length > 2048 || !["", "image"].includes(mediaType)) throw new TypeError("Invalid media.");
+    if (mediaURL.length > 2048 || !["", "image", "video"].includes(mediaType)) throw new TypeError("Invalid media.");
     if (mediaType) {
         const prefix = privatePost ? `community-private/${uid}/` : `community/${uid}/`;
         if (!mediaURL.startsWith("https://firebasestorage.googleapis.com/") ||
@@ -58,10 +59,11 @@ function validateCommunityPost(input, uid, postId, isModerator = false) {
     if (privatePost && mediaType && (
         !/^[A-Za-z0-9+/]{43}=$/.test(String(input.mediaKey || "")) ||
         !/^[A-Za-z0-9+/]{16}$/.test(String(input.mediaIV || "")) ||
-        !["image/png", "image/jpeg", "image/webp"].includes(input.mediaMime)
+        !["image/png", "image/jpeg", "image/webp", "video/mp4", "video/webm"].includes(input.mediaMime) ||
+        (mediaType === "video") !== String(input.mediaMime || "").startsWith("video/")
     )) throw new TypeError("Private media must be encrypted.");
     return {
-        authorId: uid, title, body, category: input.category,
+        authorId: uid, title, body, category: input.category, keywords: keywords(input.keywords || []),
         groupId: input.groupId || "", visibility: input.visibility || "public",
         imageFormat: input.imageFormat || "auto", imageFit: input.imageFit || "contain",
         imageX: input.imageX ?? 50, imageY: input.imageY ?? 50,

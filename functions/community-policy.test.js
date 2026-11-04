@@ -33,8 +33,21 @@ test("community content is normalized and media remains owner scoped", () => {
     }, "student-1", "post-1"), /belong/);
     assert.throws(() => validateCommunityPost({
         ...post, mediaURL: "https://firebasestorage.googleapis.com/x",
-        mediaPath: "community/student-1/post-1/attachment", mediaType: "video"
-    }, "student-1", "post-1"), /media/i);
+        mediaPath: "community/student-1/other/attachment", mediaType: "video"
+    }, "student-1", "post-1"), /belong/i);
+    const privateVideo = validateCommunityPost({
+        ...post, visibility: "friends",
+        mediaURL: "https://firebasestorage.googleapis.com/x",
+        mediaPath: "community-private/student-1/post-1/attachment",
+        mediaType: "video", mediaKey: `${"A".repeat(43)}=`, mediaIV: "A".repeat(16), mediaMime: "video/webm"
+    }, "student-1", "post-1");
+    assert.equal(privateVideo.mediaMime, "video/webm");
+    assert.throws(() => validateCommunityPost({
+        ...privateVideo, mediaMime: "image/png"
+    }, "student-1", "post-1"), /encrypted/i);
+    assert.throws(() => validateCommunityPost({
+        ...privateVideo, mediaKey: "", mediaIV: ""
+    }, "student-1", "post-1"), /encrypted/i);
 });
 
 test("community identifiers and report reasons reject untrusted values", () => {

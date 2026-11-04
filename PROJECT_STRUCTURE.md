@@ -182,7 +182,8 @@ Deploy the updated database rules before publishing the timestamped-like client.
 Post pictures over 2 MB are compressed with the shared account-photo helper
 before uploading or encrypting private media. PNG/JPEG/WebP sources up to 40 MB
 are accepted; smaller pictures stay unchanged. Re-encoding produces JPEG, with
-transparent areas painted white. Video uploads are disabled. Compression
+transparent areas painted white. MP4/WebM videos use the separate Explore
+20 MB/60-second validation described below. Compression
 failures stop publication and appear in the composer.
 Private-media download CORS failures are separate from upload size: the Storage
 bucket must allow the deployed site's origin to read encrypted attachment bytes.
@@ -197,8 +198,8 @@ The scaled preview uses the same crop as the feed without altering the original.
 destructive image edits. Legacy format/fit values remain stored but the display
 policy overrides format; saved fit choices and vertical positions are retained.
 Embedded profile feeds use the same display policy;
-Existing videos retain their sizing and playback controls, but new community
-uploads accept only PNG, JPEG and WebP pictures in both the composer and service.
+Existing videos retain their sizing and playback controls. New community
+uploads accept PNG, JPEG and WebP pictures or short MP4/WebM videos.
 Deploy framing rules before
 publishing the client.
 
@@ -392,6 +393,59 @@ uploads. Validate with `node --test toefl-sample/tutor.test.js`; run
 Enrollment and course previews still do not process payments.
 
 The Explore composer uses a single post-body field without a separate title.
+Explore's **Recommended** sort implements the uploaded algorithm design with
+Following (accepted, reciprocal message connections) and Global modes.
+Each ten-item cycle targets 60% primary posts, 20% discovery/network posts,
+10% practice partners, and 10% published courses. Empty pools borrow other
+eligible items without duplicates. Own posts are a last-resort Following fill,
+not a followed-account quota. Chronological/most-liked sorts and profile/group
+views preserve the existing post-only browsing behavior.
+
+`getExploreFeed` samples up to 100 public posts, connections, discoverable
+practice profiles, directory profiles, and published courses; up to 30 private
+posts per accepted connection in Following; and up to 200 likes/comments/signal
+accounts per public post. It returns up to 30 mixed items. Weights are view 5,
+save 4, share 3, comment 2, like 1; social-network weights omit views. Existing
+likes/comments are read directly, so they do not require a historical backfill.
+Saves, shares and qualifying views count once per account/post, while each
+sampled comment counts. Learning interest sums these weights for a post's
+selected topics; course categories match the same topics.
+
+Teachers/learners can choose up to three of the document's 40 post keywords.
+Practice matching is 40% goals, 30% proficiency, 20% skills, 10% learning styles;
+multi-select fields use intersection divided by union. Missing fields score zero.
+Practice preferences remain private unless the learner opts into discovery;
+hidden partner-directory profiles are not recommended. Viewing personalization
+is separately opt-in and off by default. The client records a post only after
+more than ten seconds of continuous visible, foreground viewing, or at video
+foreground video completion with at least 95% played. Blurring/hiding the page
+or refreshing its ranked cards resets pending dwell time. Disabling it stops new events and excludes
+prior view signals from that learner's interest score; historical aggregate
+engagement remains. Client-reported viewing is an interest hint, not proof of
+attendance, watch completion, payment, or a reward entitlement.
+
+Friends-only posts and their engagement never enter Global recommendations.
+Blocked accounts in either direction are excluded on the backend. Signals and
+discovery records are server-only, and own preferences/actions are
+owner-readable. Callables require registered, email-verified accounts.
+Limits per account/hour: 60 feed requests, 30 preference saves, 240 explicit/view
+interaction requests. Ranking refresh is on demand, with one-minute manual
+refresh spacing and five maximum function instances; no paid AI/ranking service
+or polling job is added. Live post CRUD/activity remains Firebase realtime.
+Failed ranking visibly falls back to accessible chronological posts with Retry.
+
+Explore supports MP4/WebM previews up to 20 MB (Storage-enforced) and 60 seconds
+(browser metadata validation). Videos have controls and do not autoplay.
+Friends-only videos use the existing AES-GCM encryption and protected keys;
+Storage accepts ciphertext with the 16-byte tag overhead. Duration is not a
+server-attested watch/completion or media-validation guarantee.
+Deploy database/Storage rules and the three Explore callables plus the updated
+`publishCommunityPost` before deploying Hosting. Validate with Functions policy
+tests, community units, Explore browser journeys, and callable/rules emulators.
+The browser journeys also check default-off viewing consent, foreground dwell,
+blur reset, deduplication, disabling tracking and keyword preservation after
+ranking failures. On constrained local machines, `--inspect-functions=<free-port>`
+serializes emulator function execution to avoid concurrent cold-start timeouts.
 A short body excerpt remains as required title metadata for storage and sharing;
 feed cards display the body without a duplicate heading. Upload-size guidance
 opens from the Lucide info button beside Photo and closes on another click,
