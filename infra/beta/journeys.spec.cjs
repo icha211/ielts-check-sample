@@ -828,6 +828,14 @@ test("moderator rejection errors stay next to the queue and a successful decisio
 test("learners browse and filter courses, open teacher details and enroll from the cart", async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem("beta-user", JSON.stringify({ uid: "student", email: "student@example.test", emailVerified: true })));
     await page.goto("/toefl-sample/tutor-check.html");
+    const filterLayout = await page.locator(".filter-panel").evaluate(node => ({
+        position: getComputedStyle(node).position,
+        overflowY: getComputedStyle(node).overflowY,
+        width: node.getBoundingClientRect().width
+    }));
+    expect(filterLayout.position).toBe(page.viewportSize().width > 780 ? "fixed" : "static");
+    expect(filterLayout.overflowY).toBe(page.viewportSize().width > 780 ? "auto" : "visible");
+    expect(filterLayout.width).toBeGreaterThan(200);
     await expect(page.locator("#courseSearch, #topCourseSearch, #teacherSignup, #favoritesButton")).toHaveCount(0);
     await page.locator('[name="rating"][value="5"]').check();
     await expect(page.locator("#courseGrid")).toContainText("No matching courses");
