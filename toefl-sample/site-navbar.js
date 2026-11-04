@@ -14,7 +14,7 @@
   const marketplaceParams = new URLSearchParams(location.search);
   const marketplaceStudioPage = marketplacePage && marketplaceParams.get("studio") === "1";
   const marketplaceClassesPage = marketplacePage && marketplaceParams.get("classes") === "1";
-  const pageKey = {
+  const shellPages = {
     "index.html": "dashboard",
     "study-plan.html": "today",
     "myprogress.html": "progress",
@@ -24,7 +24,8 @@
     "tutor-check.html": "tutor",
     "message.html": "message",
     "profile.html": "profile"
-  }[page] || "";
+  };
+  const pageKey = shellPages[page] || "";
 
   const now = new Date();
   const prefs = window.QCPrefs;
@@ -126,7 +127,7 @@
       renderIcons();
     } else {
       const s = doc.createElement("script");
-      s.src = "https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js";
+      s.src = "vendor/lucide/lucide.min.js";
       s.onload = renderIcons;
       doc.head.appendChild(s);
     }
@@ -245,7 +246,21 @@ ${dockFor(navRole)}</div>`;
 
   const doc = document;
   const body = doc.body;
+  // Only pages that render this shell opt in to cross-document view transitions.
+  window.addEventListener("pageswap", (event) => {
+    const transition = event.viewTransition;
+    if (!transition) return;
+    transition.ready.catch(() => {});
+    transition.updateCallbackDone.catch(() => {});
+    const destination = event.activation?.entry?.url ? new URL(event.activation.entry.url) : null;
+    const sameFolder = destination && destination.pathname.replace(/[^/]*$/, "") === location.pathname.replace(/[^/]*$/, "");
+    const destPage = destination ? (destination.pathname.split("/").pop() || "index.html").toLowerCase() : "";
+    if (!sameFolder || !(destPage in shellPages)) transition.skipTransition();
+  });
+  const collapsedKey = "qcnav-collapsed";
+  const storedCollapsed = (() => { try { return localStorage.getItem(collapsedKey) === "1"; } catch { return false; } })();
   body.classList.add("qcnav");
+  body.classList.toggle("qcnav-collapsed", storedCollapsed);
   body.dataset.qcRole = navRole;
   body.insertAdjacentHTML("afterbegin", html);
 
@@ -263,8 +278,9 @@ ${dockFor(navRole)}</div>`;
   import("./js/account-menu.js?v=20261030-prefs").then(({ initAccountMenu }) => initAccountMenu()).catch((error) => {
     console.error("[AccountMenu] Could not load account menu:", error);
   });
-  const setCollapsed = (value) => {
+  const setCollapsed = (value, persist = false) => {
     body.classList.toggle("qcnav-collapsed", value);
+    if (persist) { try { localStorage.setItem(collapsedKey, value ? "1" : "0"); } catch {} }
     const btn = doc.getElementById("qcnavCollapse");
     btn.innerHTML = `<i data-lucide="${value ? "panel-left-open" : "panel-left-close"}"></i>`;
     const label = tr(value ? "Expand sidebar" : "Collapse sidebar");
@@ -306,7 +322,8 @@ ${dockFor(navRole)}</div>`;
     doc.querySelectorAll(".qcnav-dock [data-tab]").forEach((b) => b.setAttribute("aria-expanded", String(b.dataset.tab === group)));
     doc.querySelectorAll(`.qcnav-fan[data-group="${group}"] a`).forEach((a) => { a.tabIndex = 0; });
   };
-  doc.getElementById("qcnavCollapse").addEventListener("click", () => setCollapsed(!body.classList.contains("qcnav-collapsed")));
+  if (storedCollapsed) setCollapsed(true);
+  doc.getElementById("qcnavCollapse").addEventListener("click", () => setCollapsed(!body.classList.contains("qcnav-collapsed"), true));
   doc.getElementById("qcnavMenuBtn").addEventListener("click", () => {
     const open = !doc.getElementById("qcnavSidebar").classList.contains("open");
     closeAll();

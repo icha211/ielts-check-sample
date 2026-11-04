@@ -166,7 +166,7 @@
                 color: #61778d !important;
                 font: 700 13px "Plus Jakarta Sans", sans-serif !important;
                 cursor: pointer !important;
-                transition: all 0.15s ease !important;
+                transition: color 0.15s cubic-bezier(.2,0,0,1), background-color 0.15s cubic-bezier(.2,0,0,1), border-color 0.15s cubic-bezier(.2,0,0,1), box-shadow 0.15s cubic-bezier(.2,0,0,1), transform 0.15s cubic-bezier(.2,0,0,1), opacity 0.15s cubic-bezier(.2,0,0,1) !important;
             }
             .developer-auth-tabs button.is-active {
                 background: #ffffff !important;

@@ -813,8 +813,31 @@ async function loadModeratorAccess(user, expectedVersion) {
         $("moderatorVerificationPanel").hidden = true;
     }
 }
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+function rememberScroll() {
+    history.replaceState({ ...(history.state || {}), scrollY: window.scrollY }, "");
+}
+function userHasFocus() {
+    const active = document.activeElement;
+    return Boolean(active && active !== document.body);
+}
+function revealView(view, heading, title, moveFocus) {
+    document.title = `${title ? `${title} | ` : ""}Marketplace | Quick Check`;
+    if (!reduceMotion.matches) {
+        view.classList.remove("view-enter");
+        void view.offsetWidth;
+        view.classList.add("view-enter");
+        view.addEventListener("animationend", () => view.classList.remove("view-enter"), { once: true });
+    }
+    if (!moveFocus || !heading || heading.closest("[hidden]")) return;
+    if (!heading.hasAttribute("tabindex")) heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
+}
 function showCourse(id, scroll = true) {
     if (!$("courseEditor").hidden) return requestEditorExit(() => showCourse(id, scroll));
+    const moveFocus = userHasFocus() && !$("coursePage").contains(document.activeElement);
+    const changing = $("coursePage").hidden || detailId !== id;
     detailProfileStop();
     if (courses[detailId]?.teacherId !== courses[id]?.teacherId) { detailProfile = {}; detailProfileReady = false; }
     detailId = id;
@@ -823,6 +846,7 @@ function showCourse(id, scroll = true) {
         url.searchParams.set("course", id);
         url.searchParams.delete("studio");
         url.searchParams.delete("classes");
+        rememberScroll();
         history.pushState({ marketplaceCourse: id }, "", url);
     }
     $("browseLayout").hidden = true;
@@ -831,6 +855,8 @@ function showCourse(id, scroll = true) {
     syncMarketplaceNavigation();
     renderDetail();
     if (scroll) $("coursePage").scrollIntoView({ block: "start" });
+    if (changing) revealView($("coursePage"), $("coursePage").querySelector(".detail-title") || $("backToCatalog"), courses[id]?.title, moveFocus);
+    else document.title = `${courses[id]?.title ? `${courses[id].title} | ` : ""}Marketplace | Quick Check`;
     const course = courses[id];
     if (course) {
         detailProfileStop = watchTeachingProfile(course.teacherId, profile => {
@@ -841,8 +867,10 @@ function showCourse(id, scroll = true) {
         }, err => error(`Teacher profile could not load. ${err.message}`));
     }
 }
-function showCatalog() {
-    if (!$("courseEditor").hidden) return requestEditorExit(showCatalog);
+function showCatalog(scroll = true) {
+    if (!$("courseEditor").hidden) return requestEditorExit(() => showCatalog(scroll));
+    const moveFocus = userHasFocus() && !$("browseLayout").contains(document.activeElement);
+    const wasHidden = $("browseLayout").hidden;
     detailProfileStop();
     detailProfileStop = () => {};
     detailId = "";
@@ -850,17 +878,23 @@ function showCatalog() {
     $("coursePage").hidden = true;
     $("browseLayout").hidden = false;
     syncMarketplaceNavigation();
-    $("browseLayout").scrollIntoView({ block: "start" });
+    if (scroll) $("browseLayout").scrollIntoView({ block: "start" });
+    if (wasHidden) revealView($("browseLayout"), $("marketplaceHeading"), "", moveFocus);
+    else document.title = "Marketplace | Quick Check";
 }
-function setStudioView(show, updateHistory = true) {
-    if (!$("courseEditor").hidden) return requestEditorExit(() => setStudioView(show, updateHistory));
+function setStudioView(show, updateHistory = true, scroll = true) {
+    if (!$("courseEditor").hidden) return requestEditorExit(() => setStudioView(show, updateHistory, scroll));
     if (show && role !== "teacher") return;
+    const target = $(show ? "teacherStudio" : "browseLayout");
+    const moveFocus = userHasFocus() && !target.contains(document.activeElement);
+    const wasHidden = target.hidden;
     if (updateHistory) {
         const url = new URL(location.href);
         url.searchParams.delete("course");
         url.searchParams.delete("classes");
         if (show) url.searchParams.set("studio", "1");
         else url.searchParams.delete("studio");
+        rememberScroll();
         history.pushState({ marketplaceStudio: show }, "", url);
     }
     detailProfileStop();
@@ -870,7 +904,8 @@ function setStudioView(show, updateHistory = true) {
     $("browseLayout").hidden = show;
     $("teacherStudio").hidden = !show;
     syncMarketplaceNavigation();
-    $(show ? "teacherStudio" : "browseLayout").scrollIntoView({ block: "start" });
+    if (scroll) target.scrollIntoView({ block: "start" });
+    if (wasHidden) revealView(target, $(show ? "studioTitle" : "marketplaceHeading"), show ? "Teacher studio" : "", moveFocus);
 }
 function showClasses() {
     if (!requireLogin()) return;
@@ -1232,6 +1267,10 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     target.append(detailLayout);
     selectDetailTab(selectedTab, false, target);
     if (focusedTab) target.querySelector(`[data-detail-tab="${focusedTab}"]`)?.focus({ preventScroll: true });
+    else if (focused?.classList.contains("detail-title")) {
+        const title = target.querySelector(".detail-title");
+        if (title) { title.tabIndex = -1; title.focus({ preventScroll: true }); }
+    }
     if (reviewFocus) {
         const field = target.querySelector(".review-form")?.elements.namedItem(reviewFocus.name);
         field?.focus();
@@ -2024,10 +2063,13 @@ $("backToCatalog").addEventListener("click", () => {
 window.addEventListener("popstate", () => {
     const params = new URLSearchParams(location.search);
     const courseId = params.get("course");
-    if (courseId) showCourse(courseId);
-    else if (params.get("studio") === "1" && role === "teacher") setStudioView(true, false);
+    const savedY = history.state?.scrollY;
+    const restore = typeof savedY === "number";
+    if (courseId) showCourse(courseId, !restore);
+    else if (params.get("studio") === "1" && role === "teacher") setStudioView(true, false, !restore);
     else if (params.get("classes") === "1") showClasses();
-    else showCatalog();
+    else showCatalog(!restore);
+    if (restore) requestAnimationFrame(() => window.scrollTo(0, savedY));
 });
 let catalogStop = () => {}, reviewsStop = () => {};
 function updateConnectionStatus() {

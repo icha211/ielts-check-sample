@@ -12,7 +12,7 @@
         if (lucideLoadPromise) return;
 
         const script = document.createElement("script");
-        script.src = "https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js";
+        script.src = "vendor/lucide/lucide.min.js";
         lucideLoadPromise = new Promise((resolve, reject) => {
             script.addEventListener("load", resolve, { once: true });
             script.addEventListener("error", () => reject(new Error("Lucide could not be loaded.")), { once: true });

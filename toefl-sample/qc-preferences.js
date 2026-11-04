@@ -13,6 +13,12 @@
 (() => {
   if (window.QCPrefs) return;
 
+  // Registered in <head> so it exists before the first render of a page reached via a cross-document view transition.
+  window.addEventListener("pagereveal", (event) => {
+    event.viewTransition?.ready.catch(() => {});
+    event.viewTransition?.updateCallbackDone.catch(() => {});
+  });
+
   const THEME_KEY = "qc_theme";
   const LANG_KEY = "qc_lang";
   const THEMES = ["light", "dark", "system"];

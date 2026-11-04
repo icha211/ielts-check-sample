@@ -310,6 +310,53 @@ test("navigation follows the account role across home, marketplace and Explore",
     ]);
 });
 
+test("page transitions keep the shell stable and marketplace views restore focus and scroll", async ({ page }, testInfo) => {
+    const mobile = testInfo.project.name === "mobile";
+    const lucideRequests = [];
+    page.on("request", request => { if (request.url().includes("lucide")) lucideRequests.push(new URL(request.url()).pathname); });
+    await page.addInitScript(() => localStorage.setItem("beta-user", JSON.stringify({ uid: "student", email: "student@example.test", emailVerified: true })));
+    await page.goto("/toefl-sample/message.html");
+    expect(await page.evaluate(() => {
+        const top = document.querySelector(".qcnav-topbar");
+        return Boolean(top && top.compareDocumentPosition(document.querySelector(".messages-page")) & Node.DOCUMENT_POSITION_FOLLOWING);
+    })).toBe(true);
+    expect(lucideRequests.every(path => path.includes("/toefl-sample/vendor/lucide/"))).toBe(true);
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector(".qcnav-topbar")).viewTransitionName)).toBe("qcnav-top");
+
+    if (!mobile) {
+        const gutter = () => page.evaluate(() => getComputedStyle(document.body).paddingLeft);
+        await page.goto("/toefl-sample/social.html");
+        await expect(page.locator("#qcnavSidebar")).toBeVisible();
+        const exploreGutter = await gutter();
+        await page.goto("/toefl-sample/tutor-check.html");
+        await expect(page.locator("#courseGrid")).toHaveAttribute("aria-busy", "false");
+        expect(await gutter()).toBe(exploreGutter);
+        await page.goto("/toefl-sample/message.html");
+        await page.locator("#qcnavCollapse").click();
+        await expect(page.locator("body")).toHaveClass(/qcnav-collapsed/);
+        await page.goto("/toefl-sample/profile.html");
+        await expect(page.locator("body")).toHaveClass(/qcnav-collapsed/);
+        await expect(page.locator("#qcnavCollapse")).toHaveAttribute("aria-label", "Expand sidebar");
+        await page.locator("#qcnavCollapse").click();
+    }
+
+    await page.goto("/toefl-sample/tutor-check.html");
+    await expect(page.locator("#courseGrid")).toHaveAttribute("aria-busy", "false");
+    await page.evaluate(() => {
+        document.body.style.minHeight = "4000px";
+        document.querySelector(".course-title").focus({ preventScroll: true });
+        window.scrollTo(0, 300);
+    });
+    await page.keyboard.press("Enter");
+    await expect(page.locator("#coursePage")).toBeVisible();
+    await expect(page).toHaveTitle("Beta listening course | Marketplace | Quick Check");
+    await expect(page.locator("#coursePage .detail-title")).toBeFocused();
+    await page.goBack();
+    await expect(page.locator("#browseLayout")).toBeVisible();
+    await expect(page).toHaveTitle("Marketplace | Quick Check");
+    await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(300);
+});
+
 test("teachers reach Explore from their dashboard and manage their own posts", async ({ page }, testInfo) => {
     await signIn(page);
     await page.evaluate(() => {

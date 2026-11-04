@@ -370,3 +370,28 @@ html[data-theme="dark"] .qcnav-badge { border-color: #0f1a1d; }
   html[data-theme="dark"] .qcnav-dock .qcnav-today { border-color: #0f1a1d; color: #fff; }
   html[data-theme="dark"] .qcnav-scrim { background: #000a0b99; }
 }
+/* ---------- page transitions (cross-document) ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+.qcnav-topbar { view-transition-name: qcnav-top; }
+.qcnav-sidebar { view-transition-name: qcnav-side; }
+.qcnav-dock { view-transition-name: qcnav-dock; }
+::view-transition-group(*) { animation-duration: 240ms; animation-timing-function: cubic-bezier(.2, 0, 0, 1); }
+::view-transition-old(root) { animation: qc-page-out 140ms cubic-bezier(.3, 0, 1, 1) both; }
+::view-transition-new(root) { animation: qc-page-in 240ms cubic-bezier(.2, 0, 0, 1) both; }
+@keyframes qc-page-out { to { opacity: 0; } }
+@keyframes qc-page-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* ---------- shared loading skeleton ---------- */
+:is(.skeleton, .acct-skeleton) { position: relative; overflow: hidden; }
+.acct-skeleton { display: block; }
+:is(.skeleton, .acct-skeleton)::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; transform: translateX(-100%);
+  background: linear-gradient(100deg, transparent 30%, #ffffff8c 50%, transparent 70%);
+}
+html[data-theme="dark"] :is(.skeleton, .acct-skeleton)::after { background: linear-gradient(100deg, transparent 30%, #ffffff14 50%, transparent 70%); }
+@media (prefers-reduced-motion: no-preference) {
+  :is(.skeleton, .acct-skeleton)::after { animation: qc-skeleton 1.4s cubic-bezier(.4, 0, .2, 1) infinite; }
+}
+@keyframes qc-skeleton { to { transform: translateX(100%); } }
