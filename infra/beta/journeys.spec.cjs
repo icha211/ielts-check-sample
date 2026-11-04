@@ -317,6 +317,7 @@ test("navigation follows the account role across home, marketplace and Explore",
     await expect(page.locator("#classesTab")).toHaveAttribute("aria-current", "page");
     await expect(page.locator("#myClasses")).toBeVisible();
     await expect(page.locator("#catalog")).toBeHidden();
+    await expect(page.locator(".qcnav-sidebar")).toBeHidden();
     await expect.poll(topLinks).toEqual([
         ["Home", "index.html", null], ["Marketplace", "tutor-check.html", "page"],
         ["Explore", "social.html#community", null]
@@ -340,13 +341,13 @@ test("page transitions keep the shell stable and marketplace views restore focus
     expect(await page.evaluate(() => getComputedStyle(document.querySelector(".qcnav-topbar")).viewTransitionName)).toBe("qcnav-top");
 
     if (!mobile) {
-        const gutter = () => page.evaluate(() => getComputedStyle(document.body).paddingLeft);
         await page.goto("/toefl-sample/social.html");
-        await expect(page.locator("#qcnavSidebar")).toBeVisible();
-        const exploreGutter = await gutter();
+        await expect(page.locator("#qcnavSidebar")).toBeHidden();
+        await expect(page.locator(".welcome video")).toHaveAttribute("src", /banner%20promo\.mp4|banner promo\.mp4/);
+        expect(await page.evaluate(() => getComputedStyle(document.body).paddingLeft)).toBe("0px");
         await page.goto("/toefl-sample/tutor-check.html");
         await expect(page.locator("#courseGrid")).toHaveAttribute("aria-busy", "false");
-        expect(await gutter()).toBe(exploreGutter);
+        await expect(page.locator(".course-hero video")).toHaveAttribute("src", /banner%20promo\.mp4|banner promo\.mp4/);
         await page.goto("/toefl-sample/message.html");
         await page.locator("#qcnavCollapse").click();
         await expect(page.locator("body")).toHaveClass(/qcnav-collapsed/);
@@ -826,9 +827,10 @@ test("moderator rejection errors stay next to the queue and a successful decisio
 test("learners browse and filter courses, open teacher details and enroll from the cart", async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem("beta-user", JSON.stringify({ uid: "student", email: "student@example.test", emailVerified: true })));
     await page.goto("/toefl-sample/tutor-check.html");
-    await page.locator("#courseSearch").fill("missing course");
+    await expect(page.locator("#courseSearch, #topCourseSearch, #teacherSignup, #favoritesButton")).toHaveCount(0);
+    await page.locator('[name="rating"][value="5"]').check();
     await expect(page.locator("#courseGrid")).toContainText("No matching courses");
-    await page.locator("#courseSearch").fill("listening");
+    await page.locator("#courseGrid").getByRole("button", { name: "Clear all filters", exact: true }).click();
     await page.locator(".course-title").click();
     await page.getByRole("tab", { name: "About teacher", exact: true }).click();
     await expect(page.getByRole("link", { name: "View teacher profile", exact: true })).toHaveAttribute("href", "profile.html?uid=teacher");

@@ -10,7 +10,7 @@ let courses = {}, reviews = {}, library = {}, requests = {}, inbox = {};
 let drafts = {}, editingDraftId = "";
 const editorSource = () => drafts[editingDraftId] || courses[editingId];
 let uid = "", role = "student", roleReady = false, authReady = false, version = 0, accountStop = () => {};
-let category = "", favoritesOnly = false, editingId = "", detailId = "";
+let category = "", editingId = "", detailId = "";
 let studioCourseFilter = "all";
 let selectedTeacher = new URLSearchParams(location.search).get("teacher") || "";
 let detailProfile = {}, detailProfileReady = false, detailProfileStop = () => {};
@@ -374,11 +374,9 @@ function renderFilterState() {
         add(teacher, () => { selectedTeacher = ""; $("teacherFilter").value = ""; });
     }
     if (category) add(TUTOR_CATEGORIES.find(([id]) => id === category)[1], () => category = "");
-    if ($("courseSearch").value.trim()) add(`Search: ${$("courseSearch").value.trim()}`, () => { $("courseSearch").value = ""; $("topCourseSearch").value = ""; });
     document.querySelectorAll('[name="price"]:checked').forEach(input => add(input.parentElement.innerText.trim().replace(/\s+/g, " "), () => input.checked = false));
     const rating = document.querySelector('[name="rating"]:checked');
     if (rating?.value) add(`${rating.value} stars${rating.value === "5" ? "" : " & up"}`, () => document.querySelector('[name="rating"][value=""]').checked = true);
-    if (favoritesOnly) add("Saved courses", () => { favoritesOnly = false; $("favoritesButton").setAttribute("aria-pressed", "false"); });
     const count = target.children.length;
     target.hidden = !count;
     $("filterCount").hidden = !count;
@@ -392,7 +390,6 @@ function renderFilterState() {
 }
 function renderCatalog() {
     $("manageButton").hidden = role !== "teacher";
-    $("teacherSignup").hidden = role === "teacher";
     syncMarketplaceNavigation();
     $("cartCount").textContent = Object.keys(library.cart || {}).length;
     const teacherOptions = $("teacherFilter");
@@ -410,19 +407,18 @@ function renderCatalog() {
     renderFilterState();
     if (!catalogReady || !reviewsReady || catalogFailure || reviewsFailure) return;
     const statistics = stats();
-    const filters = { teacher: selectedTeacher, category, search: $("courseSearch").value, sort: $("courseSort").value,
+    const filters = { teacher: selectedTeacher, category, search: "", sort: $("courseSort").value,
         rating: document.querySelector('[name="rating"]:checked')?.value || "",
         prices: [...document.querySelectorAll('[name="price"]:checked')].map(input => input.value) };
     const displayCourses = Object.fromEntries(Object.entries(courses).map(([id, course]) => [id, { ...course, teacherName: courseTeacher(course) }]));
     let rows = selectCourses(displayCourses, filters, statistics);
-    if (favoritesOnly) rows = rows.filter(course => library.favorites?.[course.id]);
     const grid = $("courseGrid");
     const focusedCard = document.activeElement?.closest(".course-card");
     const focusedCourse = focusedCard?.dataset.courseId;
     const focusKey = document.activeElement?.dataset.focusKey;
     grid.replaceChildren();
     grid.setAttribute("aria-busy", "false");
-    const resultText = `${rows.length} ${favoritesOnly ? "saved " : ""}course${rows.length === 1 ? "" : "s"}${$("filterCount").hidden ? " available" : " match your filters"}`;
+    const resultText = `${rows.length} course${rows.length === 1 ? "" : "s"}${$("filterCount").hidden ? " available" : " match your filters"}`;
     if ($("resultCount").textContent !== resultText) $("resultCount").textContent = resultText;
     if (!rows.length) {
         const empty = el("div", "empty-state");
@@ -477,7 +473,8 @@ function syncMarketplaceNavigation() {
     document.body.classList.toggle("tutor-home", teacher && !$("teacherStudio").hidden);
     const browsing = !$("browseLayout").hidden && $("courseEditor").hidden;
     document.body.classList.toggle("marketplace-browsing", browsing);
-    $("qcnavMarketplaceStudentSidebar").hidden = (browsing && !classesView) || teacher;
+    document.body.classList.toggle("marketplace-classes", browsing && classesView);
+    $("qcnavMarketplaceStudentSidebar").hidden = browsing || teacher;
     $("qcnavMarketplaceTeacherSidebar").hidden = browsing || !teacher;
     filterSidebar.hidden = !browsing || classesView;
     filterPanel.hidden = classesView;
@@ -2120,7 +2117,7 @@ $("checkoutButton").addEventListener("click", async () => {
     renderCart();
 });
 TUTOR_CATEGORIES.forEach(([id, label, glyph]) => {
-    const button = action("", "", () => { category = category === id ? "" : id; favoritesOnly = false; $("favoritesButton").setAttribute("aria-pressed", "false"); renderCatalog(); });
+    const button = action("", "", () => { category = category === id ? "" : id; renderCatalog(); });
     button.dataset.category = id; button.setAttribute("aria-pressed", "false");
     button.append(icon(glyph), el("span", "", label));
     $("categoryChoices").append(button);
@@ -2129,15 +2126,6 @@ TUTOR_CATEGORIES.forEach(([id, label, glyph]) => {
 Object.entries(TUTOR_TYPES).forEach(([id, label]) => {
     const option = el("option", "", label); option.value = id; $("editorType").append(option);
 });
-$("searchForm").addEventListener("submit", event => { event.preventDefault(); $("topCourseSearch").value = $("courseSearch").value; renderCatalog(); $("catalog").scrollIntoView({ block: "start" }); });
-$("topSearchForm").addEventListener("submit", event => {
-    event.preventDefault();
-    $("courseSearch").value = $("topCourseSearch").value;
-    renderCatalog();
-    $("catalog").scrollIntoView({ block: "start" });
-});
-$("courseSearch").addEventListener("input", () => { $("topCourseSearch").value = $("courseSearch").value; renderCatalog(); });
-$("topCourseSearch").addEventListener("input", () => { $("courseSearch").value = $("topCourseSearch").value; renderCatalog(); });
 $("courseSort").addEventListener("change", renderCatalog);
 $("teacherFilter").addEventListener("change", () => { selectedTeacher = $("teacherFilter").value; renderCatalog(); });
 document.querySelectorAll(".filter-panel input").forEach(input => input.addEventListener("change", () => {
@@ -2153,22 +2141,17 @@ compactFilters.addEventListener("change", syncFilterLayout);
 function resetFilters() {
     const recoverFocus = document.activeElement?.closest(".empty-state");
     const resetFocused = document.activeElement === $("resetFilters");
-    category = ""; selectedTeacher = ""; favoritesOnly = false;
-    $("courseSearch").value = ""; $("topCourseSearch").value = ""; $("courseSort").value = "newest";
+    category = ""; selectedTeacher = "";
+    $("courseSort").value = "newest";
     $("teacherFilter").value = "";
     document.querySelectorAll('[name="price"]').forEach(input => input.checked = false);
     document.querySelector('[name="rating"][value=""]').checked = true;
-    $("favoritesButton").setAttribute("aria-pressed", "false");
     renderCatalog();
-    if (recoverFocus) $("courseSearch").focus();
+    if (recoverFocus) $("resultCount").focus({ preventScroll: true });
     else if (resetFocused) $("filterHeading").focus({ preventScroll: true });
 }
 $("resetFilters").addEventListener("click", resetFilters);
 $("allCategories").addEventListener("click", () => { category = ""; renderCatalog(); });
-$("favoritesButton").addEventListener("click", () => {
-    if (!requireLogin()) return;
-    favoritesOnly = !favoritesOnly; $("favoritesButton").setAttribute("aria-pressed", String(favoritesOnly)); renderCatalog();
-});
 $("cartButton").addEventListener("click", () => { if (requireLogin()) { $("cartError").hidden = true; $("cartStatus").textContent = ""; renderCart(); openDialog("cartDialog"); } });
 $("browseTab").addEventListener("click", event => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.button) return;
@@ -2260,14 +2243,14 @@ const authStop = onAuthStateChanged(auth, user => {
     accountStop(); version++;
     pendingEnrollments.clear();
     authReady = true;
-    uid = user?.uid || ""; role = "student"; roleReady = false; library = {}; requests = {}; requestsReady = false; inbox = {}; drafts = {}; favoritesOnly = false;
+    uid = user?.uid || ""; role = "student"; roleReady = false; library = {}; requests = {}; requestsReady = false; inbox = {}; drafts = {};
     verificationStatus = { status: "loading" }; verificationLoading = false; verificationBusy = false; isMarketplaceModerator = false;
     $("verificationError").hidden = true;
     $("moderatorVerificationPanel").hidden = true;
     $("moderatorVerificationQueue").replaceChildren();
     document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close());
     if (!$("courseEditor").hidden) { closeEditor(); $("browseLayout").hidden = false; }
-    $("teacherStudio").hidden = true; $("favoritesButton").setAttribute("aria-pressed", "false");
+    $("teacherStudio").hidden = true;
     renderCatalog();
     if (!uid) return;
     const current = version;

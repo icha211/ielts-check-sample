@@ -46,14 +46,9 @@
     : link(homeHref(role), "house", "Home", pageKey === "dashboard", ' id="qcnavHomeLink"')
       + link("tutor-check.html", "shopping-bag", "Marketplace", marketplacePage)
       + link("social.html#community", "globe", "Explore", pageKey === "social");
-  const marketplaceSearch = marketplacePage
-    ? `<form id="topSearchForm" class="qcnav-market-search"><label class="sr-only" for="topCourseSearch">Search courses, teachers, or topics</label><i data-lucide="search"></i><input id="topCourseSearch" type="search" maxlength="200" placeholder="Search for courses, teachers, or topics..."></form>`
-    : "";
   const marketplaceActions = marketplacePage
     ? `<div class="qcnav-market-actions">
-         <a id="teacherSignup" href="signup.html?role=teacher" data-i18n>Teach a course</a>
          <button id="manageButton" type="button" aria-label="Open teacher studio" hidden><i data-lucide="school"></i><span id="manageLabel" data-i18n>Teacher studio</span></button>
-         <button id="favoritesButton" type="button" aria-label="Saved courses" title="Saved courses" aria-pressed="false"><i data-lucide="heart"></i></button>
          <button id="cartButton" type="button" aria-label="Cart"><i data-lucide="shopping-cart"></i><span id="cartCount" class="qcnav-market-cart-count">0</span></button>
        </div>`
     : "";
@@ -164,7 +159,6 @@
   <nav class="qcnav-links" aria-label="Main navigation" data-i18n-attr="aria-label">
     ${topLinks(navRole)}
   </nav>
-  ${marketplaceSearch}
   <div class="qcnav-actions">
     ${marketplaceActions}
     <a class="qcnav-upgrade" href="index.html#upgrade" data-i18n>Upgrade</a>

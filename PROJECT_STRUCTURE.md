@@ -240,8 +240,11 @@ publishing the client.
 
 `toefl-sample/tutor-check.html`, `tutor-check.css` and `tutor-check.js` implement
 the course marketplace using the shared Quick Check navigation component,
-adjusted on this page for marketplace search/actions and role-specific student
-or teacher navigation. Teacher home opens a separate live teaching dashboard;
+adjusted on this page for marketplace actions (cart and teacher studio) and
+role-specific student or teacher navigation. There is no keyword search, saved-only
+filter or "Teach a course" link; learners narrow courses with category, price,
+teacher and rating filters plus sort, and card hearts still save courses. The
+marketplace reuses Home's promo video banner and `background1.png` page background. Teacher home opens a separate live teaching dashboard;
 student home continues to use the learner dashboard.
 `js/tutor-model.js` contains validation, IDR pricing and filters;
 `js/tutor-service.js` owns Firebase subscriptions and writes. No demo listings
@@ -251,8 +254,8 @@ sidebar; detail and teacher-studio views restore role-specific navigation.
 Students reach their classes from the Marketplace "Browse courses / My classes"
 tabs (`?classes=1`), not a separate nav item or dialog. My classes groups
 enrollment requests into Active, Waiting for the teacher and Past, with inline
-cancel, open-course and message/profile actions; it shows the student sidebar
-instead of filters and supports Back/Forward. Teachers keep `?classes=1` as a
+cancel, open-course and message/profile actions; it hides the sidebar for a
+centered full-width list and supports Back/Forward. Teachers keep `?classes=1` as a
 shortcut to the studio learner inbox.
 Shell transitions: Lucide is self-hosted in `toefl-sample/vendor/lucide/`;
 `site-navbar.css` opts shell pages into cross-document view transitions
