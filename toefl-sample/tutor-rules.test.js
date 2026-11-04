@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const host = process.env.FIREBASE_DATABASE_EMULATOR_HOST;
+const storageHost = process.env.FIREBASE_STORAGE_EMULATOR_HOST;
 const stamp = { ".sv": "timestamp" };
 function token(uid) {
     const encode = value => Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -30,6 +31,30 @@ test("teacher self-registration cannot grant developer privileges; listing owner
     assert.equal((await request("tutor_courses/test-course", "stranger", "PATCH", { archived: false, updatedAt: stamp })).status, 401);
     assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PATCH", { archived: false, published: false, updatedAt: stamp })).status, 200);
     assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "DELETE")).status, 401);
+});
+test("unfinished drafts are private, owner-written and removed atomically only on successful publishing", { skip: !host }, async () => {
+    const uid = "draft-teacher", path = `tutor_drafts/${uid}/saved`;
+    await request(`tutor_roles/${uid}`, uid, "PUT", "teacher");
+    const draft = { teacherId: uid, courseId: "", teacherName: "Teacher", title: "", summary: "", whatYouLearn: "", curriculum: "", schedule: "", category: "ielts", type: "live", price: 0, originalPrice: 0, coverURL: "", previewURL: "", previewPath: "", previewType: "", published: false, createdAt: stamp, updatedAt: stamp };
+    assert.equal((await request(path, uid, "PUT", draft)).status, 200);
+    assert.equal((await request(`tutor_drafts/${uid}`, uid)).status, 200);
+    for (const actor of [null, "draft-stranger"]) {
+        assert.equal((await request(path, actor)).status, 401);
+        assert.equal((await request(path, actor, "PUT", draft)).status, 401);
+        assert.equal((await request(path, actor, "DELETE")).status, 401);
+    }
+    assert.equal((await request(path, uid, "PATCH", { published: true, updatedAt: stamp })).status, 401);
+    assert.equal((await request(path, uid, "PATCH", { unexpected: "field", updatedAt: stamp })).status, 401);
+    assert.equal((await request("", uid, "PATCH", { "tutor_courses/draft-published": { ...draft, published: true }, [path]: null })).status, 401);
+    assert.equal((await request(path, uid)).status, 200, "failed publishing keeps the private draft");
+    const complete = { ...draft, title: "Complete course", summary: "About", whatYouLearn: "Outcome", curriculum: "Lesson", schedule: "Monday", published: true };
+    delete complete.courseId;
+    assert.equal((await request("", uid, "PATCH", { "tutor_courses/draft-published": complete, [path]: null })).status, 200);
+    assert.equal(await (await request(path, uid)).json(), null);
+    assert.equal((await request("tutor_courses/draft-published", null)).status, 200);
+    assert.equal((await request("tutor_drafts/student/draft", "student", "PUT", { ...draft, teacherId: "student" })).status, 401);
+    assert.equal((await request(path, uid, "PUT", draft)).status, 200);
+    assert.equal((await request(path, uid, "DELETE")).status, 200);
 });
 test("public teaching backgrounds remain owner-written and require a teacher role", { skip: !host }, async () => {
     const profile = { experience: 8, qualification: "TESOL (self-reported)", about: "My teaching approach", imageURL: "", updatedAt: stamp };
@@ -92,4 +117,34 @@ test("public course totals expose only a count and public teacher identity is ba
     assert.equal((await request("tutor_course_stats/public-stats-test/students", "public-teacher-test", "PUT", 99)).status, 401);
     assert.equal((await request("tutor_public_teachers/public-teacher-test", null)).status, 200);
     assert.equal((await request("tutor_public_teachers/public-teacher-test", "public-teacher-test", "PUT", { displayName: "Fake" })).status, 401);
+});
+test("draft previews require the owner for upload, read and delete and enforce media limits", { skip: !storageHost }, async () => {
+    const uid = "draft-media-owner";
+    const object = `tutor-drafts/${uid}/${Date.now()}/preview.png`;
+    const collection = `http://${storageHost}/v0/b/demo-toefl-messaging.appspot.com/o`;
+    const objectURL = `${collection}/${encodeURIComponent(object)}`;
+    async function upload(actor, contentType, size = 3, name = object) {
+        const url = new URL(collection);
+        url.searchParams.set("uploadType", "media");
+        url.searchParams.set("name", name);
+        return fetch(url, {
+            method: "POST", headers: { Authorization: `Bearer ${token(actor)}`, "Content-Type": contentType },
+            body: new Uint8Array(size)
+        });
+    }
+    assert.equal((await upload("draft-media-stranger", "image/png")).status, 403);
+    assert.equal((await upload(uid, "text/html")).status, 403);
+    assert.equal((await upload(uid, "image/svg+xml")).status, 403);
+    assert.equal((await upload(uid, "image/png", 20 * 1024 * 1024 + 1)).status, 403);
+    assert.equal((await upload(uid, "image/png", 20 * 1024 * 1024)).status, 200);
+    assert.equal((await fetch(objectURL, {
+        method: "PATCH", headers: { Authorization: `Bearer ${token(uid)}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ metadata: { changed: "true" } })
+    })).status, 403, "draft preview metadata cannot be updated");
+    assert.equal((await upload(uid, "video/mp4", 3, object.replace(".png", ".mp4"))).status, 200);
+    assert.equal((await fetch(`${objectURL}?alt=media`, { headers: { Authorization: `Bearer ${token(uid)}` } })).status, 200);
+    assert.equal((await fetch(`${objectURL}?alt=media`)).status, 403);
+    assert.equal((await fetch(`${objectURL}?alt=media`, { headers: { Authorization: `Bearer ${token("draft-media-stranger")}` } })).status, 403);
+    assert.equal((await fetch(objectURL, { method: "DELETE", headers: { Authorization: `Bearer ${token("draft-media-stranger")}` } })).status, 403);
+    assert.equal((await fetch(objectURL, { method: "DELETE", headers: { Authorization: `Bearer ${token(uid)}` } })).status, 204);
 });

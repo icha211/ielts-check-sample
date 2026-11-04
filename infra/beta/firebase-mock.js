@@ -46,9 +46,26 @@ export const sendPasswordResetEmail = async () => {};
 export const sendSignInLinkToEmail = async () => {};
 export const updatePassword = async () => {};
 export const updateProfile = async () => {};
-export const uploadBytes = async () => { throw new Error("Media uploads are outside this beta mock"); };
-export const getDownloadURL = async () => "";
-export const deleteObject = async () => {};
+export const uploadBytes = async (target, file) => {
+    if (localStorage.getItem("beta-deny-media") === "upload") throw new Error("Mock media upload failed");
+    const media = JSON.parse(localStorage.getItem("beta-media") || "{}");
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    media[target.path] = { type: file.type, bytes: Array.from(bytes) };
+    localStorage.setItem("beta-media", JSON.stringify(media));
+};
+export const getDownloadURL = async target => `https://beta-media.example/${encodeURIComponent(target.path)}`;
+export const getBlob = async target => {
+    if (localStorage.getItem("beta-deny-media") === "download") throw new Error("Mock media download failed");
+    const media = JSON.parse(localStorage.getItem("beta-media") || "{}")[target.path];
+    if (!media) throw new Error("Mock media is missing");
+    return new Blob([new Uint8Array(media.bytes)], { type: media.type });
+};
+export const deleteObject = async target => {
+    if (localStorage.getItem("beta-deny-media") === "delete") throw new Error("Mock media cleanup failed");
+    const media = JSON.parse(localStorage.getItem("beta-media") || "{}");
+    delete media[target.path];
+    localStorage.setItem("beta-media", JSON.stringify(media));
+};
 export function onAuthStateChanged(_, callback) {
     authListeners.add(callback);
     queueMicrotask(() => callback(user()));
@@ -108,7 +125,14 @@ export async function set(target, value) {
     // Firebase listeners run after writes, not synchronously inside a form submit.
     setTimeout(notify, 0);
 }
-export const update = async (target, values) => set(target, { ...(valueAt(target) || {}), ...values });
+export const update = async (target, values) => {
+    if (target.path === "") {
+        if (localStorage.getItem("beta-deny-write") === "true") throw new Error("Mock database rejected the save");
+        for (const [path, value] of Object.entries(values)) await set({ path }, value);
+        return;
+    }
+    return set(target, { ...(valueAt(target) || {}), ...values });
+};
 export const remove = target => set(target, null);
 export const push = target => ({ path: `${target.path}/beta-${crypto.randomUUID()}`, get key() { return this.path.split("/").at(-1); } });
 export const serverTimestamp = () => Date.now();

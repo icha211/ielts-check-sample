@@ -31,6 +31,19 @@ test("catalog searches, filters IDR ranges, omits paused courses and sorts real 
     assert.deepEqual(ids({ sort: "price-low" }), ["a", "b"]);
     assert.equal(model.selectCourses(courses, { rating: "4" }, { a: { rating: 4.5 } }).length, 1);
 });
+test("private drafts accept unfinished text but keep money, media and publish validation strict", () => {
+    const incomplete = { ...course, title: "", summary: "", curriculum: "", whatYouLearn: "", schedule: "", price: 0, originalPrice: 0 };
+    const saved = model.validateCourse(incomplete, { draft: true });
+    assert.equal(saved.title, "");
+    assert.equal(saved.published, false);
+    assert.throws(() => model.validateCourse(incomplete));
+    for (const change of [{ title: "a".repeat(121) }, { price: -1 }, { type: "invalid" }, { coverURL: "http://example.com" }]) {
+        assert.throws(() => model.validateCourse({ ...incomplete, ...change }, { draft: true }));
+    }
+    const privateMedia = { ...course, previewURL: "", previewPath: "tutor-drafts/teacher/media/preview.png", previewType: "image" };
+    assert.equal(model.validateCourse(privateMedia, { draft: true }).previewPath, privateMedia.previewPath);
+    assert.throws(() => model.validateCourse(privateMedia), "private media must be copied before publishing");
+});
 test("ratings start empty and average actual learner reviews without invented statistics", () => {
     assert.equal(model.courseStats().rating, null);
     assert.equal(model.courseStats({ a: { rating: 5 }, b: { rating: 4 } }).rating, 4.5);
@@ -127,6 +140,7 @@ test("inline saves preserve media, remove it only on request, and keep failed ed
                 $: id => nodes[id], editingId: scenario === "create" ? "" : "one",
                 courses: scenario === "create" ? {} : { one: existing }, uid: "teacher", detailId: "one",
                 version: 1, editorBusy: false, removedPreview: scenario === "remove",
+                editingDraftId: "", editorSource: () => scenario === "create" ? undefined : existing,
                 teacherEditDirty: false, teacherEditBusy: false,
                 FormData: class extends Map { constructor() { super(Object.entries(course)); } },
                 validateCourse: model.validateCourse,
@@ -317,9 +331,9 @@ function fixture() {
         validateCourse: model.validateCourse,
         validateTeachingProfile: model.validateTeachingProfile,
         ref: (_, key) => ({ key }), query: (target, ...filters) => ({ ...target, filters }), orderByChild: value => value, equalTo: value => value,
-        serverTimestamp: () => 123, push: target => ({ key: "new-course", path: target.key }),
+        serverTimestamp: () => 123, push: target => ({ key: "new-course", path: `${target.key}/new-course` }),
         get: async target => ({ val: () => data[target.key], exists: () => data[target.key] !== undefined }),
-        set: async (target, value) => writes.push([target.key, value]),
+        set: async (target, value) => writes.push([target.path || target.key, value]),
         update: async (target, value) => writes.push([target.key, value]),
         onValue: () => () => {}
     });
@@ -327,6 +341,27 @@ function fixture() {
     vm.runInContext(source, context);
     return { context, data, writes };
 }
+test("draft persistence is owner-scoped and publication removes the draft atomically", async () => {
+    const { context, data, writes } = fixture();
+    data["tutor_roles/teacher"] = "teacher";
+    const incomplete = { ...course, summary: "", schedule: "" };
+    await context.saveCourseDraft(incomplete);
+    assert.equal(writes[0][0], "tutor_drafts/teacher/new-course");
+    assert.equal(writes[0][1].published, false);
+    assert.equal(writes[0][1].summary, "");
+    data["tutor_drafts/teacher/draft-one"] = { ...incomplete, courseId: "", createdAt: 100 };
+    await assert.rejects(context.saveCourse(incomplete, "", "draft-one"));
+    assert.equal(writes.length, 1, "invalid publication does not delete saved work");
+    await context.saveCourse(course, "", "draft-one");
+    assert.equal(writes[1][0], "");
+    assert.equal(writes[1][1]["tutor_drafts/teacher/draft-one"], null);
+    assert.equal(writes[1][1]["tutor_courses/new-course"].published, true);
+    await assert.rejects(context.saveCourse(course, "", "missing"));
+    data["tutor_courses/foreign"] = { ...course, teacherId: "other" };
+    await assert.rejects(context.saveCourseDraft(course, "", "foreign"));
+    context.auth.currentUser = null;
+    await assert.rejects(context.saveCourseDraft(incomplete));
+});
 test("public subscriptions retain missing counts and observe only public identity and totals", () => {
     const { context } = fixture();
     const subscriptions = [], values = [];

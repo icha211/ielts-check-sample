@@ -362,6 +362,18 @@ and rejects new enrollment requests. Catalogue data is public even when paused,
 so course fields must not include private material.
 
 `tutor_courses` and `tutor_reviews` are live public catalogues.
+Unfinished work belongs in owner-only `tutor_drafts/<uid>/<draftId>`, not in
+the public catalogue. **Save private draft** accepts empty course text fields,
+retains uploaded previews under owner-only `tutor-drafts/<uid>/`, and allows
+teachers to resume or delete saved drafts from their home, across devices.
+Draft saving is explicit, not autosave: work since the last save still requires
+the existing unsaved-change confirmation. Existing paused/archived catalogue
+records remain public for compatibility; pausing is not a privacy control.
+Publishing still requires complete course fields and copies any private preview
+to the public course-media path. The course write and draft removal are one
+atomic database update, so a failed publish retains the draft. Draft edits of an
+existing listing do not change the learner-facing course until published/saved.
+Deploy both database and Storage rules before deploying the draft editor.
 `tutor_library/<uid>/{cart,favorites}` is owner-only.
 `tutor_requests` is private and query-readable only by the student's `studentId`
 or teacher's `teacherId`. Requests snapshot the current IDR price and move from

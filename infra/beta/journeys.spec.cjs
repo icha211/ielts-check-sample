@@ -52,6 +52,7 @@ test.beforeEach(async ({ context, page }) => {
                 body: url.pathname.includes("lucide") ? "window.lucide = { createIcons() {} };" : ""
             });
         }
+        if (url.hostname === "beta-media.example") return route.fulfill({ contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64") });
         if (url.hostname === "identitytoolkit.googleapis.com" && url.pathname.endsWith("/accounts:signUp")) {
             return route.fulfill({ contentType: "application/json", body: JSON.stringify({ idToken: "beta-anonymous", expiresIn: 3600 }) });
         }
@@ -137,6 +138,79 @@ test("failed course saves keep the inline edit open; learners cannot see owner c
     await page.reload();
     await expect(page.locator("#courseDetail")).toContainText("Beta listening course");
     await expect(page.getByRole("button", { name: "Edit course title", exact: true })).toHaveCount(0);
+});
+test("private drafts save incomplete courses, survive reload and leave published listings untouched", async ({ page }) => {
+        await signIn(page);
+        await page.goto("/toefl-sample/tutor-check.html?course=beta");
+        await page.getByRole("button", { name: "Edit course title", exact: true }).click();
+        await page.locator('#courseForm [name="title"]').fill("Private replacement title");
+        await page.locator("#saveDraftButton").click();
+        await expect(page.locator("#courseEditor")).toBeHidden();
+        const draft = page.locator("#ownCourses .studio-course").filter({ hasText: "Private replacement title" });
+        await expect(draft).toContainText("Private draft");
+        const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("beta-db")));
+        expect(stored.tutor_courses.beta.title).toBe(course.title);
+        expect(Object.values(stored.tutor_drafts.teacher)).toHaveLength(1);
+        await page.reload();
+        await draft.getByRole("button", { name: "Resume draft" }).click();
+        await expect(page.locator('#courseForm [name="title"]')).toHaveValue("Private replacement title");
+        await page.locator("#saveCourseButton").click();
+        await expect(page.locator("#courseEditor")).toBeHidden();
+        await expect(page.locator("#courseDetail")).toContainText("Private replacement title");
+        expect(await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("beta-db")).tutor_drafts.teacher))).toEqual([]);
+
+        await page.goto("/toefl-sample/tutor-check.html?studio=1");
+        await page.locator("#newCourse").click();
+        await page.locator('#courseForm [name="title"]').fill("Unfinished course");
+        await page.evaluate(() => localStorage.setItem("beta-deny-write", "true"));
+        await page.locator("#saveDraftButton").click();
+        await expect(page.locator("#editorError")).toContainText("rejected");
+        await expect(page.locator('#courseForm [name="title"]')).toHaveValue("Unfinished course");
+        await page.evaluate(() => localStorage.removeItem("beta-deny-write"));
+        await page.locator("#saveDraftButton").click();
+        await expect(page.locator("#courseEditor")).toBeHidden();
+        await page.reload();
+        const unfinished = page.locator("#ownCourses .studio-course").filter({ hasText: "Unfinished course" });
+        await unfinished.getByRole("button", { name: "Resume draft" }).click();
+        await expect(page.locator('#courseForm [name="summary"]')).toHaveValue("");
+        await page.locator("#saveCourseButton").click();
+        await expect(page.locator("#courseEditor")).toBeVisible();
+        expect(await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem("beta-db")).tutor_courses).some(row => row.title === "Unfinished course"))).toBe(false);
+        await page.locator("#cancelCourseEdit").click();
+        page.once("dialog", dialog => dialog.accept());
+        await unfinished.getByRole("button", { name: "Delete draft" }).click();
+        await expect(unfinished).toHaveCount(0);
+});
+
+test("private draft previews restore after reload and become public only on publishing", async ({ page }) => {
+    await signIn(page);
+    await page.goto("/toefl-sample/tutor-check.html?course=beta");
+    await page.getByRole("button", { name: "Edit course title", exact: true }).click();
+    await page.locator('#courseForm [name="previewFile"]').setInputFiles({
+        name: "draft.png", mimeType: "image/png",
+        buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64")
+    });
+    await page.locator("#saveDraftButton").click();
+    await expect(page.locator("#courseEditor")).toBeHidden();
+    const draft = await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem("beta-db")).tutor_drafts.teacher)[0]);
+    expect(draft.previewPath).toMatch(/^tutor-drafts\/teacher\//);
+    expect(draft.previewURL).toBe("");
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("beta-db")).tutor_courses.beta.previewURL)).toBe("");
+    await page.reload();
+    await page.getByRole("button", { name: "Resume draft", exact: true }).click();
+    await expect(page.locator("#mediaPreview img")).toHaveAttribute("src", /^blob:/);
+    await page.evaluate(() => localStorage.setItem("beta-deny-write", "true"));
+    await page.locator("#saveCourseButton").click();
+    await expect(page.locator("#editorError")).toContainText("rejected");
+    expect(await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem("beta-db")).tutor_drafts.teacher))).toHaveLength(1);
+    expect(await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("beta-media"))))).toEqual([draft.previewPath]);
+    await page.evaluate(() => localStorage.removeItem("beta-deny-write"));
+    await page.locator("#saveCourseButton").click();
+    await expect(page.locator("#courseEditor")).toBeHidden();
+    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("beta-db")).tutor_courses.beta);
+    expect(saved.previewPath).toMatch(/^tutor-courses\/teacher\//);
+    expect(saved.previewURL).toMatch(/^https:/);
+    expect(await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem("beta-media"))))).toEqual([saved.previewPath]);
 });
 
 test("tutor home shows real teaching data, filters courses and keeps editing inline", async ({ page }, testInfo) => {

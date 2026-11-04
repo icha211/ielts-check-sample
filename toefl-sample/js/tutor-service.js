@@ -1,7 +1,7 @@
 import { auth, db } from "./firebase-config.js";
 import { ref, get, set, update, push, onValue, query, orderByChild, equalTo, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
-import { validateCourse, validateTeachingProfile } from "./tutor-model.js?v=20261101-crud";
+import { validateCourse, validateTeachingProfile } from "./tutor-model.js?v=20261104-private-drafts";
 
 const marketplaceFunctions = getFunctions(auth.app, "asia-southeast1");
 const callMarketplace = name => httpsCallable(marketplaceFunctions, name);
@@ -53,26 +53,58 @@ export function watchAccount(uid, callbacks, error) {
     const stops = [
         onValue(ref(db, `tutor_roles/${uid}`), snap => callbacks.role(snap.val() || "student"), error),
         onValue(ref(db, `tutor_library/${uid}`), snap => callbacks.library(snap.val() || {}), error),
+        ...(callbacks.drafts ? [onValue(ref(db, `tutor_drafts/${uid}`), snap => callbacks.drafts(snap.val() || {}), error)] : []),
         onValue(query(ref(db, "tutor_requests"), orderByChild("studentId"), equalTo(uid)), snap => callbacks.requests(snap.val() || {}), error),
         onValue(query(ref(db, "tutor_requests"), orderByChild("teacherId"), equalTo(uid)), snap => callbacks.inbox(snap.val() || {}), error)
     ];
     return () => stops.forEach(stop => stop());
 }
-export async function saveCourse(input, id) {
+export async function saveCourse(input, id, draftId = "") {
     const current = user();
     if ((await get(ref(db, `tutor_roles/${current.uid}`))).val() !== "teacher") throw new Error("Register as a teacher before publishing.");
     const course = validateCourse(input);
+    if (draftId) {
+        const draft = (await get(ref(db, `tutor_drafts/${current.uid}/${draftId}`))).val();
+        if (!draft || draft.courseId !== (id || "")) throw new Error("This draft changed or was deleted. Reopen it before publishing.");
+    }
     if (id) {
         const target = ref(db, `tutor_courses/${id}`);
         const existing = (await get(target)).val();
         if (!existing || existing.teacherId !== current.uid) throw new Error("You can only edit your own courses.");
         if (existing.archived) throw new Error("Restore this archived course before editing.");
-        await update(target, { ...course, updatedAt: serverTimestamp() });
+        if (draftId) {
+            await update(ref(db, ""), {
+                [`tutor_courses/${id}`]: { ...existing, ...course, updatedAt: serverTimestamp() },
+                [`tutor_drafts/${current.uid}/${draftId}`]: null
+            });
+        } else await update(target, { ...course, updatedAt: serverTimestamp() });
         return id;
     }
     const target = push(ref(db, "tutor_courses"));
-    await set(target, { ...course, teacherId: current.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    const value = { ...course, teacherId: current.uid, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+    if (draftId) {
+        await update(ref(db, ""), { [`tutor_courses/${target.key}`]: value, [`tutor_drafts/${current.uid}/${draftId}`]: null });
+    } else await set(target, value);
     return target.key;
+}
+export async function saveCourseDraft(input, id = "", courseId = "") {
+    const current = user();
+    if ((await get(ref(db, `tutor_roles/${current.uid}`))).val() !== "teacher") throw new Error("Only teachers can save course drafts.");
+    if (courseId) {
+        const course = (await get(ref(db, `tutor_courses/${courseId}`))).val();
+        if (!course || course.teacherId !== current.uid || course.archived) throw new Error("You can only draft changes to your own active courses.");
+    }
+    const data = validateCourse(input, { draft: true });
+    const target = id ? ref(db, `tutor_drafts/${current.uid}/${id}`) : push(ref(db, `tutor_drafts/${current.uid}`));
+    const existing = id ? (await get(target)).val() : null;
+    await set(target, {
+        ...data, courseId, teacherId: current.uid,
+        createdAt: existing?.createdAt || serverTimestamp(), updatedAt: serverTimestamp()
+    });
+    return id || target.key;
+}
+export async function deleteCourseDraft(id) {
+    await set(ref(db, `tutor_drafts/${user().uid}/${id}`), null);
 }
 export async function toggleLibrary(kind, id, enabled) {
     if (!["cart", "favorites"].includes(kind)) throw new Error("Invalid library action.");

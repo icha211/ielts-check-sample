@@ -1,12 +1,14 @@
 import { auth } from "./js/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse } from "./js/tutor-model.js?v=20261101-crud";
-import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStudents, watchAccount, saveCourse, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview, requestTutorVerification, getTutorVerificationStatus, listTutorVerificationRequests, reviewTutorVerification } from "./js/tutor-service.js?v=20261104-tutor-home";
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, getBlob, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse } from "./js/tutor-model.js?v=20261104-private-drafts";
+import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStudents, watchAccount, saveCourse, saveCourseDraft, deleteCourseDraft, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview, requestTutorVerification, getTutorVerificationStatus, listTutorVerificationRequests, reviewTutorVerification } from "./js/tutor-service.js?v=20261104-private-drafts";
 
 const $ = id => document.getElementById(id);
 $("editorFieldBank").append($("courseEditorFields").content.cloneNode(true));
 let courses = {}, reviews = {}, library = {}, requests = {}, inbox = {};
+let drafts = {}, editingDraftId = "";
+const editorSource = () => drafts[editingDraftId] || courses[editingId];
 let uid = "", role = "student", roleReady = false, authReady = false, version = 0, accountStop = () => {};
 let category = "", favoritesOnly = false, editingId = "", detailId = "";
 let studioCourseFilter = "all";
@@ -604,6 +606,33 @@ function renderStudio() {
         node.append(content);
         owned.append(node);
     });
+    if (studioCourseFilter === "all" || studioCourseFilter === "draft") {
+        Object.entries(drafts).sort(([, a], [, b]) => b.updatedAt - a.updatedAt).forEach(([id, draft]) => {
+            const node = el("article", "studio-course");
+            const content = el("div", "studio-course-copy");
+            content.append(el("span", "course-state", "Private draft"), el("h4", "", draft.title || "Untitled course"),
+                el("p", "muted", "Only you can see this saved work. Publishing requires complete course details."));
+            const actions = el("div", "row-actions");
+            actions.append(action("Resume draft", "text-button", () => openEditor(draft.courseId, { name: "title" }, id)),
+                action("Delete draft", "text-button", async () => {
+                    if (!window.confirm(`Delete the private draft "${draft.title || "Untitled course"}"? The published course will not change.`)) return;
+                    const current = version;
+                    await deleteCourseDraft(id);
+                    if (draft.previewPath?.startsWith("tutor-drafts/")) {
+                        try { await deleteObject(storageRef(storage, draft.previewPath)); }
+                        catch (failure) {
+                            console.error("[TutorCheck] Deleted draft media cleanup failed:", failure);
+                            if (current === version) error("Draft deleted, but its private preview could not be removed from storage.");
+                        }
+                    }
+                }));
+            content.append(actions);
+            node.append(content);
+            owned.append(node);
+        });
+        const count = visibleRows.length + Object.keys(drafts).length;
+        $("studioCourseCount").textContent = `${count} course${count === 1 ? "" : "s"}`;
+    }
     if (!owned.children.length) {
         const empty = el("div", "studio-empty");
         empty.append(icon("book-upload"), el("h4", "", ownedRows.length ? "No courses in this view" : "Your first course starts here"),
@@ -1393,7 +1422,7 @@ function renderMediaPreview(file, course) {
     } else {
         media.alt = "Course preview";
     }
-    target.append(media, el("span", "muted", file ? file.name : "Current course preview"));
+    target.append(media, el("span", "muted", file?.name || "Current course preview"));
 }
 async function validatePreviewFile(file) {
     const allowed = ["image/png", "image/jpeg", "image/webp", "video/mp4", "video/webm"];
@@ -1414,12 +1443,13 @@ async function validatePreviewFile(file) {
         URL.revokeObjectURL(previewURL);
     }
 }
-function openEditor(id = "", edit = { name: "title" }) {
+function openEditor(id = "", edit = { name: "title" }, draftId = "") {
     if (role !== "teacher") return error("Register as a teacher to create courses.");
     if (id && (!courses[id] || courses[id].teacherId !== uid || courses[id].archived)) {
         return error("You can only edit your own active courses. Restore archived courses first.");
     }
-    if (!$("courseEditor").hidden) return requestEditorExit(() => openEditor(id, edit));
+    if (draftId && !drafts[draftId]) return error("This draft is no longer available. Refresh to retry.");
+    if (!$("courseEditor").hidden) return requestEditorExit(() => openEditor(id, edit, draftId));
     if (id && ($("coursePage").hidden || detailId !== id)) showCourse(id);
     const activeTab = $("courseDetail").querySelector('[aria-selected="true"]')?.dataset.detailTab || "overview";
     const url = new URL(location.href);
@@ -1431,15 +1461,16 @@ function openEditor(id = "", edit = { name: "title" }) {
     editorProfileStop();
     if (!id) { detailProfile = {}; detailProfileReady = false; }
     editingId = id;
+    editingDraftId = draftId;
     const form = $("courseForm");
     $("editorFieldBank").append(...editorLabels);
     form.reset();
-    const course = courses[id];
+    const course = editorSource();
     for (const key of ["title", "category", "type", "price", "originalPrice", "summary", "whatYouLearn", "curriculum", "schedule"]) {
         form.elements.namedItem(key).value = course?.[key] ?? (key === "category" ? "ielts" : key === "type" ? "live" : key === "whatYouLearn" ? course?.curriculum || "" : "");
     }
     form.elements.namedItem("teacherName").value = auth.currentUser.displayName?.trim() || course?.teacherName || "";
-    form.elements.namedItem("published").checked = course ? course.published : true;
+    form.elements.namedItem("published").checked = draftId ? courses[id]?.published ?? true : course ? course.published : true;
     removedPreview = false;
     editorDirty = false;
     $("browseLayout").hidden = true;
@@ -1461,6 +1492,16 @@ function openEditor(id = "", edit = { name: "title" }) {
     selectDetailTab(activeTab, false, $("editorCanvas"));
     renderMediaPreview(null, course);
     $("editorError").hidden = true;
+    if (course?.previewPath?.startsWith("tutor-drafts/")) {
+        const current = version;
+        getBlob(storageRef(storage, course.previewPath), 20 * 1024 * 1024).then(blob => {
+            if (current !== version || editingDraftId !== draftId || $("courseEditor").hidden || removedPreview || form.elements.namedItem("previewFile").files?.length) return;
+            renderMediaPreview(blob, course);
+        }).catch(failure => {
+            console.error("[TutorCheck] Private draft preview could not load:", failure);
+            if (current === version && editingDraftId === draftId && !$("courseEditor").hidden) error("Your draft text was restored, but its preview could not load. Retry by reopening the draft.", $("editorError"));
+        });
+    }
     $("editorHeading").textContent = id ? "Unsaved course changes" : "New course";
     $("archiveEditorCourse").hidden = !id;
     updateEditorSummary();
@@ -1713,7 +1754,7 @@ function updateEditorSummary() {
     canvas.querySelector('[data-detail-panel="curriculum"] > .muted').textContent = `${count("curriculum")} course items`;
     const faq = canvas.querySelector(".detail-faq details:last-child p");
     faq.textContent = form.elements.namedItem("schedule").value || "Add schedule and access details in Overview.";
-    $("removeCoursePreview").hidden = !form.elements.namedItem("previewFile").files?.length && (removedPreview || !(courses[editingId]?.previewURL || courses[editingId]?.coverURL));
+    $("removeCoursePreview").hidden = !form.elements.namedItem("previewFile").files?.length && (removedPreview || !(editorSource()?.previewPath || editorSource()?.coverURL));
 }
 function closeEditor() {
     editorProfileStop();
@@ -1728,6 +1769,7 @@ function closeEditor() {
     $("editorCanvas").replaceChildren();
     $("courseForm").reset();
     editingId = "";
+    editingDraftId = "";
 }
 function requestEditorExit(callback) {
     if (editorBusy || teacherEditBusy) return;
@@ -1763,7 +1805,7 @@ $("archiveEditorCourse").addEventListener("click", () => {
 $("courseForm").addEventListener("input", () => {
     editorDirty = true;
     updateEditorSummary();
-    if (!$("courseForm").elements.namedItem("previewFile").files?.length && (removedPreview || !(courses[editingId]?.previewURL || courses[editingId]?.coverURL))) renderMediaPreview(null, null);
+    if (!$("courseForm").elements.namedItem("previewFile").files?.length && (removedPreview || !(editorSource()?.previewPath || editorSource()?.coverURL))) renderMediaPreview(null, null);
 });
 $("courseForm").addEventListener("invalid", event => {
     const panel = event.target.closest("[data-detail-panel]");
@@ -1776,7 +1818,7 @@ $("courseForm").addEventListener("invalid", event => {
 }, true);
 $("courseForm").elements.namedItem("previewFile").addEventListener("change", () => {
     removedPreview = false;
-    renderMediaPreview($("courseForm").elements.namedItem("previewFile").files?.[0] || null, courses[editingId]);
+    renderMediaPreview($("courseForm").elements.namedItem("previewFile").files?.[0] || null, editorSource());
     editorDirty = true;
     updateEditorSummary();
 });
@@ -1793,6 +1835,8 @@ document.addEventListener("click", event => {
 });
 $("courseForm").addEventListener("submit", async event => {
     event.preventDefault();
+    if (editorBusy) return;
+    const savingDraft = event.submitter?.id === "saveDraftButton";
     if (teacherEditDirty || teacherEditBusy) {
         return error("Save or cancel the teacher introduction changes before saving the course.", $("editorError"));
     }
@@ -1800,37 +1844,60 @@ $("courseForm").addEventListener("submit", async event => {
     const disabledStates = fields.map(field => field.disabled);
     const data = Object.fromEntries(new FormData(form));
     data.price = Number(data.price); data.originalPrice = Number(data.originalPrice || 0); data.published = form.elements.namedItem("published").checked;
-    const file = form.elements.namedItem("previewFile").files?.[0];
-    const existing = courses[editingId];
+    let file = form.elements.namedItem("previewFile").files?.[0];
+    const existing = editorSource();
     data.coverURL = removedPreview ? "" : existing?.coverURL || "";
     data.previewURL = removedPreview ? "" : existing?.previewURL || "";
     data.previewPath = removedPreview ? "" : existing?.previewPath || "";
     data.previewType = removedPreview ? "" : existing?.previewType || "";
     const current = version;
     const id = editingId;
+    const draftId = editingDraftId;
     editorBusy = true;
     fields.forEach(field => field.disabled = true);
     $("editorError").hidden = true;
     let uploadedRef = null;
     try {
-        validateCourse(data);
+        if (!savingDraft && !file && data.previewPath.startsWith("tutor-drafts/")) {
+            file = await getBlob(storageRef(storage, data.previewPath), 20 * 1024 * 1024);
+        }
+        // Private preview paths are validated as drafts until their public copy exists.
+        validateCourse(data, { draft: savingDraft || data.previewPath.startsWith("tutor-drafts/") });
+        if (!savingDraft) validateCourse({ ...data, previewPath: "", previewURL: "", previewType: "" });
         if (file) {
             await validatePreviewFile(file);
             if (current !== version) throw new Error("Your account changed. Reopen the course editor to continue.");
             const extension = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "video/mp4": "mp4", "video/webm": "webm" }[file.type];
-            const previewPath = `tutor-courses/${auth.currentUser.uid}/${crypto.randomUUID()}/preview.${extension}`;
+            const previewPath = `${savingDraft ? "tutor-drafts" : "tutor-courses"}/${auth.currentUser.uid}/${crypto.randomUUID()}/preview.${extension}`;
             uploadedRef = storageRef(storage, previewPath);
             await uploadBytes(uploadedRef, file, { contentType: file.type });
-            data.previewURL = await getDownloadURL(uploadedRef);
+            data.previewURL = savingDraft ? "" : await getDownloadURL(uploadedRef);
             data.previewPath = previewPath;
             data.previewType = file.type.startsWith("video/") ? "video" : "image";
         }
-        validateCourse(data);
+        validateCourse(data, { draft: savingDraft });
         if (current !== version) throw new Error("Your account changed. Reopen the course editor to continue.");
-        const savedId = await saveCourse(data, id);
+        if (savingDraft) {
+            const savedDraftId = await saveCourseDraft(data, draftId, id);
+            uploadedRef = null;
+            if (current !== version) return;
+            drafts[savedDraftId] = { ...validateCourse(data, { draft: true }), courseId: id, teacherId: uid, updatedAt: Date.now() };
+            closeEditor();
+            setStudioView(true);
+            $("marketStatus").textContent = "Private draft saved. Resume it from your course list, including after signing in on another device.";
+            if (existing?.previewPath?.startsWith("tutor-drafts/") && existing.previewPath !== data.previewPath) {
+                try { await deleteObject(storageRef(storage, existing.previewPath)); }
+                catch (failure) {
+                    console.error("[TutorCheck] Previous draft preview cleanup failed:", failure);
+                    if (current === version) error("Draft saved, but its previous private preview could not be removed from storage.");
+                }
+            }
+            return;
+        }
+        const savedId = await saveCourse(data, id, draftId);
         uploadedRef = null;
         if (current !== version) return;
-        courses[savedId] = { ...existing, ...validateCourse(data), teacherId: uid, createdAt: existing?.createdAt || Date.now(), updatedAt: Date.now() };
+        courses[savedId] = { ...courses[id], ...validateCourse(data), teacherId: uid, createdAt: courses[id]?.createdAt || Date.now(), updatedAt: Date.now() };
         const selectedTab = $("editorCanvas").querySelector('[aria-selected="true"]')?.dataset.detailTab;
         closeEditor();
         showCourse(savedId, false);
@@ -2010,7 +2077,7 @@ const authStop = onAuthStateChanged(auth, user => {
     accountStop(); version++;
     pendingEnrollments.clear();
     authReady = true;
-    uid = user?.uid || ""; role = "student"; roleReady = false; library = {}; requests = {}; inbox = {}; favoritesOnly = false;
+    uid = user?.uid || ""; role = "student"; roleReady = false; library = {}; requests = {}; inbox = {}; drafts = {}; favoritesOnly = false;
     verificationStatus = { status: "loading" }; verificationLoading = false; verificationBusy = false; isMarketplaceModerator = false;
     $("verificationError").hidden = true;
     $("moderatorVerificationPanel").hidden = true;
@@ -2037,7 +2104,8 @@ const authStop = onAuthStateChanged(auth, user => {
         }),
         library: guarded(data => { library = data; if (!$("coursePage").hidden) renderDetail(); }),
         requests: guarded(data => { requests = data; if (!$("coursePage").hidden) renderDetail(); }),
-        inbox: guarded(data => { inbox = data; if (!$("coursePage").hidden) renderDetail(); })
+        inbox: guarded(data => { inbox = data; if (!$("coursePage").hidden) renderDetail(); }),
+        drafts: guarded(data => { drafts = data; })
     }, err => { if (current === version) error(`Your marketplace account could not sync. Refresh to retry. ${err.message}`); });
 });
 window.addEventListener("pagehide", () => {

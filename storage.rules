@@ -37,6 +37,14 @@ service firebase.storage {
         && request.resource.contentType.matches('image/(png|jpeg|gif)');
     }
 
+    match /tutor-drafts/{uid}/{allPaths=**} {
+      allow read, delete: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && request.resource.size <= 20 * 1024 * 1024
+        && request.resource.contentType.matches('(image/(png|jpeg|webp)|video/(mp4|webm))');
+      allow update: if false;
+    }
+
     match /tutor-courses/{uid}/{allPaths=**} {
       allow read: if true;
       allow create: if isOwner(uid)
