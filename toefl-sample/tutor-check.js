@@ -167,7 +167,7 @@ const el = (tag, className = "", text = "") => {
     return node;
 };
 function icon(name) { const node = el("i", `ti ti-${name}`); node.setAttribute("aria-hidden", "true"); return node; }
-function error(message, target = ($("cartDialog")?.open && $("cartError")) || ($("courseEditor")?.hidden === false && $("editorError")) || (!$("coursePage").hidden && $("detailError")) || (classesView && !$("browseLayout").hidden && $("classesError")) || $("marketError")) {
+function error(message, target = ($("cartDialog")?.open && $("cartError")) || ($("courseEditor")?.hidden === false && $("editorError")) || (!$("coursePage").hidden && $("detailError")) || ($("myClasses")?.hidden === false && $("browseLayout")?.hidden === false && $("classesError")) || $("marketError")) {
     console.error("[TutorCheck]", message);
     const text = message instanceof Error ? message.message : String(message);
     if (target.textContent !== text) target.textContent = text;

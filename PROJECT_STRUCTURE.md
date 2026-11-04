@@ -166,8 +166,8 @@ permissions, media validation and rate limits as other members.
 
 Shared navigation (`site-navbar.js`) follows the account role on every page via
 `js/nav-role.js` (`tutor_roles/{uid}`; a localStorage hint avoids flicker and is
-not used for authorization). Students see Home (`index.html`), Marketplace,
-My Classes and Explore; teachers see Home (`tutor-check.html?studio=1`),
+not used for authorization). Students see Home (`index.html`), Marketplace
+and Explore; teachers see Home (`tutor-check.html?studio=1`),
 Marketplace, Explore and Messages, plus the teacher sidebar and a six-item
 teacher mobile dock outside Marketplace. Teachers do not see the student
 Upgrade link or the Explore "Become a Tutor" promotion.
@@ -248,6 +248,16 @@ student home continues to use the learner dashboard.
 are inserted; the catalogue starts empty until teachers publish real courses.
 On Marketplace browse only, filters replace navigation links inside the shared
 sidebar; detail and teacher-studio views restore role-specific navigation.
+Students reach their classes from the Marketplace "Browse courses / My classes"
+tabs (`?classes=1`), not a separate nav item or dialog. My classes groups
+enrollment requests into Active, Waiting for the teacher and Past, with inline
+cancel, open-course and message/profile actions; it shows the student sidebar
+instead of filters and supports Back/Forward. Teachers keep `?classes=1` as a
+shortcut to the studio learner inbox.
+Shell transitions: Lucide is self-hosted in `toefl-sample/vendor/lucide/`;
+`site-navbar.css` opts shell pages into cross-document view transitions
+(Chromium only, reduced-motion aware) and provides the shared skeleton shimmer;
+the sidebar collapse state persists in localStorage `qcnav-collapsed`.
 The navbar is retained. The Marketplace filter card stays fixed on the left
 on desktop without a collapse control, with Price Range, Teacher and Rating
 only. On mobile it stays expanded after the course introduction/categories,
