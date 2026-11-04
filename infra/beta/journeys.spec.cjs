@@ -264,6 +264,52 @@ test("returning Google accounts go to their dashboard without automatic onboardi
     await expect(page).toHaveURL(/tutor-check\.html\?studio=1$/);
 });
 
+test("navigation follows the account role across home, marketplace and Explore", async ({ page }, testInfo) => {
+    const mobile = testInfo.project.name === "mobile";
+    const topLinks = () => page.locator(".qcnav-links a").evaluateAll(links => links.map(link => [link.textContent.trim(), link.getAttribute("href"), link.getAttribute("aria-current")]));
+    await signIn(page);
+    await page.goto("/toefl-sample/social.html");
+    await expect.poll(topLinks).toEqual([
+        ["Home", "tutor-check.html?studio=1", null], ["Marketplace", "tutor-check.html", null],
+        ["Explore", "social.html#community", "page"], ["Messages", "message.html", null]
+    ]);
+    await expect(page.locator(".qcnav-brand")).toHaveAttribute("href", "tutor-check.html?studio=1");
+    await expect(page.locator('#qcnavTeacherSidebar a[href="tutor-check.html?studio=1&create=1"]')).toHaveCount(1);
+    await page.screenshot({ path: testInfo.outputPath("teacher-explore-navigation.png") });
+    await expect(page.locator(".tutor-promotion")).toBeHidden();
+    await expect(page.locator(".qcnav-upgrade")).toBeHidden();
+    if (mobile) {
+        const dock = page.locator(".qcnav-dock-teacher");
+        await expect(dock).toBeVisible();
+        await expect(dock.getByRole("link", { name: "Explore", exact: true })).toHaveAttribute("aria-current", "page");
+        await dock.getByRole("link", { name: "Home", exact: true }).click();
+    } else {
+        await page.locator(".qcnav-links").getByRole("link", { name: "Home", exact: true }).click();
+    }
+    await expect(page).toHaveURL(/tutor-check\.html\?studio=1$/);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+    await page.evaluate(() => {
+        const data = JSON.parse(localStorage.getItem("beta-db"));
+        data.tutor_roles.teacher = "student";
+        localStorage.setItem("beta-db", JSON.stringify(data));
+    });
+    await page.goto("/toefl-sample/social.html");
+    await expect.poll(topLinks).toEqual([
+        ["Home", "index.html", null], ["Marketplace", "tutor-check.html", null],
+        ["My Classes", "tutor-check.html?classes=1", null], ["Explore", "social.html#community", "page"]
+    ]);
+    await expect(page.locator("#qcnavTeacherSidebar")).toHaveCount(0);
+    await expect(page.locator('#qcnavSidebar a[href="tutor-check.html?classes=1"]')).toHaveCount(1);
+    if (!mobile) await expect(page.locator(".tutor-promotion")).toBeVisible();
+    if (mobile) await expect(page.locator(".qcnav-dock:not(.qcnav-dock-teacher)")).toBeVisible();
+    await page.goto("/toefl-sample/tutor-check.html");
+    await expect.poll(topLinks).toEqual([
+        ["Home", "index.html", null], ["Marketplace", "tutor-check.html", "page"],
+        ["My Classes", "tutor-check.html?classes=1", null], ["Explore", "social.html#community", null]
+    ]);
+});
+
 test("teachers reach Explore from their dashboard and manage their own posts", async ({ page }, testInfo) => {
     await signIn(page);
     await page.evaluate(() => {
@@ -283,9 +329,8 @@ test("teachers reach Explore from their dashboard and manage their own posts", a
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await explore.click();
     await expect(page).toHaveURL(/social\.html#community$/);
-    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
+    await expect(page.locator("#exploreControls")).toHaveAttribute("data-explore-state", "ready");
     await page.locator("#postBody").fill("Teacher tips for speaking practice.");
-    await page.locator("#postKeywords").selectOption(["Speaking"]);
     await page.locator("#publishButton").click();
     const post = page.locator(".post-card").filter({ hasText: "Teacher tips for speaking practice." });
     await expect(post).toBeVisible();
@@ -322,7 +367,7 @@ test("Explore mixes ranked posts, partners and courses and saves matching prefer
         ]));
     }, { course });
     await page.goto("/toefl-sample/social.html");
-    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
+    await expect(page.locator("#exploreControls")).toHaveAttribute("data-explore-state", "ready");
     await expect(page.locator("#postFeed > article")).toHaveCount(4);
     expect(await page.locator("#postFeed > article").evaluateAll(nodes => nodes.map(node => node.dataset.recommendation || "post"))).toEqual(["post", "partner", "course", "post"]);
     await expect(page.locator("#postFeed")).toContainText("70% practice match");
@@ -343,7 +388,7 @@ test("Explore mixes ranked posts, partners and courses and saves matching prefer
     await page.evaluate(() => document.documentElement.dataset.theme = "dark");
     await page.screenshot({ path: testInfo.outputPath("explore-recommendations-dark.png"), fullPage: true });
 });
-test("Explore recommendation errors expose retry and keyword limits preserve the composer", async ({ page }) => {
+test("Explore recommendation errors expose retry and the composer has no keyword picker or explanation", async ({ page }) => {
     await signIn(page);
     await page.evaluate(() => {
         const data = JSON.parse(localStorage.getItem("beta-db"));
@@ -357,16 +402,17 @@ test("Explore recommendation errors expose retry and keyword limits preserve the
     await expect(page.locator("#exploreStatus")).toContainText("chronologically");
     await page.evaluate(() => localStorage.removeItem("beta-deny-call"));
     await page.locator("#refreshExplore").click();
-    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
+    await expect(page.locator("#exploreControls")).toHaveAttribute("data-explore-state", "ready");
+    await expect(page.locator("#exploreStatus")).toBeHidden();
+    await expect(page.locator("#postKeywords")).toHaveCount(0);
+    await expect(page.locator("body")).not.toContainText("Learning keywords");
+    await expect(page.locator("body")).not.toContainText("Following uses your accepted connections");
+    await expect(page.locator("body")).not.toContainText("Recommendations use a recent");
+    await expect(page.getByRole("link", { name: "Edit learning preferences", exact: true })).toBeVisible();
     await page.locator("#postBody").fill("My English practice tips.");
-    await page.locator("#postKeywords").selectOption(["IELTS", "TOEFL", "Speaking", "Listening"]);
-    await page.locator("#publishButton").click();
-    await expect(page.locator("#composerError")).toContainText("three");
-    await expect(page.locator("#postBody")).toHaveValue("My English practice tips.");
-    await page.locator("#postKeywords").selectOption(["IELTS", "Speaking"]);
     await page.locator("#publishButton").click();
     await expect(page.locator("#postFeed")).toContainText("My English practice tips.");
-    await expect(page.locator("#postFeed")).toContainText("IELTS, Speaking");
+    expect(await page.evaluate(() => Object.values(JSON.parse(localStorage.getItem("beta-db")).community_posts).map(post => post.keywords || []))).toEqual([[]]);
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("beta-call-counts")).recordExploreInteraction || 0)).toBe(0);
 });
 
@@ -385,7 +431,7 @@ test("Explore keeps existing keywords when recommendations fail during post edit
     await expect(page.locator("#exploreError")).toContainText("unavailable");
     await page.locator("#post-one summary").click();
     await page.locator("#post-one").getByRole("button", { name: "Edit", exact: true }).click();
-    expect(await page.locator("#postKeywords").evaluate(select => [...select.selectedOptions].map(option => option.value))).toEqual(["IELTS", "Speaking"]);
+    await expect(page.locator("#postKeywords")).toHaveCount(0);
     await page.locator("#postBody").fill("Updated speaking practice.");
     await page.locator("#publishButton").click();
     await expect(page.locator("#post-one")).toContainText("Updated speaking practice.");
@@ -404,7 +450,7 @@ test("Explore viewing signals require consent and continuous foreground dwell wi
     });
     await page.clock.install();
     await page.goto("/toefl-sample/social.html");
-    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
+    await expect(page.locator("#exploreControls")).toHaveAttribute("data-explore-state", "ready");
     const views = () => page.evaluate(() => JSON.parse(localStorage.getItem("beta-call-counts") || "{}").recordExploreInteraction || 0);
     await page.locator("#post-one").scrollIntoViewIfNeeded();
     await page.clock.runFor(12000);
@@ -413,7 +459,7 @@ test("Explore viewing signals require consent and continuous foreground dwell wi
     await chooseLearningPreferences(page, { viewTracking: true });
     await page.locator("#setupNext").click();
     await expect(page).toHaveURL(/social\.html#community$/);
-    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
+    await expect(page.locator("#exploreControls")).toHaveAttribute("data-explore-state", "ready");
     await page.locator("#post-one").scrollIntoViewIfNeeded();
     await page.waitForTimeout(100);
     await page.clock.runFor(9000);
@@ -433,7 +479,7 @@ test("Explore viewing signals require consent and continuous foreground dwell wi
     await chooseLearningPreferences(page, { viewTracking: false });
     await page.locator("#setupNext").click();
     await expect(page).toHaveURL(/social\.html#community$/);
-    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
+    await expect(page.locator("#exploreControls")).toHaveAttribute("data-explore-state", "ready");
     await page.locator("#postBody").fill("A new post after disabling viewing.");
     await page.locator("#publishButton").click();
     const newPost = page.locator(".post-card").filter({ hasText: "A new post after disabling viewing." });

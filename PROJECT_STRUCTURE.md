@@ -163,6 +163,14 @@ Teachers reach the same Explore page from marketplace top navigation, the
 teacher sidebar or the tutor mobile dock. Registered, email-verified teachers
 can publish, edit and remove their own posts under the same community
 permissions, media validation and rate limits as other members.
+
+Shared navigation (`site-navbar.js`) follows the account role on every page via
+`js/nav-role.js` (`tutor_roles/{uid}`; a localStorage hint avoids flicker and is
+not used for authorization). Students see Home (`index.html`), Marketplace,
+My Classes and Explore; teachers see Home (`tutor-check.html?studio=1`),
+Marketplace, Explore and Messages, plus the teacher sidebar and a six-item
+teacher mobile dock outside Marketplace. Teachers do not see the student
+Upgrade link or the Explore "Become a Tutor" promotion.
 New email-link activations and new Google accounts continue to the interactive
 `learning-setup.html?welcome=1` flow after profile/role creation. Returning
 accounts retain their role-specific home and are not automatically prompted.
@@ -436,7 +444,10 @@ Saves, shares and qualifying views count once per account/post, while each
 sampled comment counts. Learning interest sums these weights for a post's
 selected topics; course categories match the same topics.
 
-Teachers/learners can choose up to three of the document's 40 post keywords.
+The Explore composer no longer shows a keyword picker, so new posts are saved
+without learning keywords; editing an older post preserves its existing keywords.
+Server validation still accepts up to three of the document's 40 keywords. The
+Explore controls omit explanatory copy and keep only status/errors when needed.
 Practice matching is 40% goals, 30% proficiency, 20% skills, 10% learning styles;
 multi-select fields use intersection divided by union. Missing fields score zero.
 Practice preferences remain private unless the learner opts into discovery;

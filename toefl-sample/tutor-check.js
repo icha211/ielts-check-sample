@@ -504,6 +504,7 @@ function syncMarketplaceNavigation() {
     }
 }
 window.addEventListener("hashchange", syncMarketplaceNavigation);
+window.addEventListener("qcnav:rolechange", syncMarketplaceNavigation);
 function row(title, description) {
     const node = el("div", "request-row");
     const text = el("div");

@@ -9,12 +9,7 @@ import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/
 window.QCPrefs?.addTranslations("id", {
     "Following": "Koneksi", "Global": "Global", "Recommended": "Rekomendasi",
     "Refresh recommendations": "Perbarui rekomendasi",
-    "Following uses your accepted connections. Recommendations also include practice partners and published courses.": "Following menggunakan koneksi yang telah diterima. Rekomendasi juga mencakup teman latihan dan kursus yang dipublikasikan.",
-    "Practice matching and privacy": "Kecocokan latihan dan privasi",
     "Edit learning preferences": "Edit preferensi belajar",
-    "Learning keywords (up to 3)": "Kata kunci belajar (maksimal 3)",
-    "Choose up to three topics so learners can discover your post.": "Pilih maksimal tiga topik agar pelajar dapat menemukan postingan Anda.",
-    "Choose up to three distinct learning keywords.": "Pilih maksimal tiga kata kunci belajar yang berbeda.",
     "Learning goals": "Tujuan belajar", "English proficiency level": "Tingkat kemampuan bahasa Inggris",
     "Practice skills": "Keterampilan latihan", "Learning style": "Gaya belajar",
     "Save preferences": "Simpan preferensi", "Save": "Simpan", "Saved": "Tersimpan",
@@ -22,7 +17,6 @@ window.QCPrefs?.addTranslations("id", {
     "View course": "Lihat kursus", "{score}% practice match": "Kecocokan latihan {score}%",
     "Based on your selected goals, level, skills and learning style.": "Berdasarkan tujuan, tingkat, keterampilan, dan gaya belajar yang Anda pilih.",
     "Loading recommendations...": "Memuat rekomendasi...",
-    "Recommendations use a recent, bounded sample. Refresh to update ranking.": "Rekomendasi menggunakan sampel terbaru yang terbatas. Perbarui untuk memperbarui urutan.",
     "Recommendations unavailable. Showing your accessible posts chronologically.": "Rekomendasi tidak tersedia. Postingan yang dapat Anda akses ditampilkan berdasarkan waktu.",
     "Wait one minute between recommendation refreshes.": "Tunggu satu menit sebelum memperbarui rekomendasi.",
     "Load recommendations before saving preferences.": "Muat rekomendasi sebelum menyimpan preferensi.",
@@ -176,7 +170,6 @@ if (embeddedProfile) {
     document.querySelector(".welcome").hidden = true;
     document.querySelector(".community-sidebar").hidden = true;
     document.querySelector(".feed-toolbar").hidden = true;
-    document.querySelector(".feed-limit").hidden = true;
     const reportHeight = () => window.parent.postMessage({ type: "qc:profile-feed-height", height: document.querySelector(".community-page").getBoundingClientRect().height + 2 }, location.origin);
     new ResizeObserver(reportHeight).observe(document.querySelector(".community-page"));
     window.addEventListener("message", (event) => {
@@ -262,15 +255,7 @@ const commentDrafts = new Map();
 const expandedPosts = new Set();
 const pending = new Set();
 const privateMedia = new Map();
-function fillExplorePreferences() {
-    const selected = [...$("postKeywords").selectedOptions].map(option => option.value);
-    $("postKeywords").replaceChildren(...exploreData.keywords.map(value => {
-        const option = element("option", "", value);
-        option.value = value;
-        option.selected = selected.includes(value);
-        return option;
-    }));
-}
+let composerKeywords = [];
 function setExploreBusy(busy) {
     exploreBusy = busy;
     $("refreshExplore").disabled = busy;
@@ -283,14 +268,15 @@ async function loadExplore(force = false) {
     setExploreBusy(true);
     $("exploreError").hidden = true;
     $("exploreStatus").textContent = tr("Loading recommendations...");
+    $("exploreControls").dataset.exploreState = "loading";
     try {
         const data = await getExploreFeed(exploreMode);
         if (version !== authVersion || request !== exploreRequest) return;
         if (!data || !Array.isArray(data.items) || !Array.isArray(data.keywords) || !data.preferences || !data.practiceOptions || !data.actions) throw new Error("Explore returned an invalid response. Retry recommendations.");
         exploreData = data;
         lastExploreRefresh = Date.now();
-        fillExplorePreferences();
-        $("exploreStatus").textContent = tr("Recommendations use a recent, bounded sample. Refresh to update ranking.");
+        $("exploreStatus").textContent = "";
+        $("exploreControls").dataset.exploreState = "ready";
         visiblePosts.clear();
         cards.forEach(entry => { viewObserver.unobserve(entry.node); entry.node.remove(); });
         cards.clear();
@@ -299,6 +285,7 @@ async function loadExplore(force = false) {
         if (version !== authVersion || request !== exploreRequest) return;
         exploreData = null;
         $("exploreStatus").textContent = tr("Recommendations unavailable. Showing your accessible posts chronologically.");
+        $("exploreControls").dataset.exploreState = "error";
         showError(error, $("exploreError"));
         renderFeed();
     } finally {
@@ -768,7 +755,7 @@ function resetComposer() {
     $("publishButton").textContent = tr("Post");
     composerCategory = "tips";
     composerGroupId = "";
-    [...$("postKeywords").options].forEach(option => { option.selected = false; });
+    composerKeywords = [];
     $("attachButton").disabled = !state.uid;
     updateComposerUI();
 }
@@ -780,13 +767,7 @@ function editPost(post) {
     composerCategory = post.category;
     composerGroupId = post.groupId || "";
     $("postVisibility").value = post.visibility || "public";
-    for (const value of post.keywords || []) {
-        if ([...$("postKeywords").options].some(option => option.value === value)) continue;
-        const option = element("option", "", value);
-        option.value = value;
-        $("postKeywords").append(option);
-    }
-    [...$("postKeywords").options].forEach(option => { option.selected = (post.keywords || []).includes(option.value); });
+    composerKeywords = Array.isArray(post.keywords) ? [...post.keywords] : [];
     if (post.mediaType === "image" && post.mediaURL) {
         $("imageFit").value = post.imageFit || "cover";
         $("imageY").value = post.imageY ?? 50;
@@ -976,7 +957,6 @@ const unsubscribe = subscribeCommunity(async (next) => {
         const version = ++authVersion;
         exploreRequest++; exploreData = null; setExploreBusy(false); lastExploreRefresh = 0;
         viewedPosts.clear(); visiblePosts.clear(); viewObserver.disconnect();
-        $("postKeywords").replaceChildren();
         $("exploreControls").hidden = embeddedProfile || !next.uid;
         stopProfileDetails?.();
         stopProfileDetails = null;
@@ -1074,11 +1054,6 @@ $("refreshExplore").addEventListener("click", () => {
         return;
     }
     loadExplore();
-});
-$("postKeywords").addEventListener("change", () => {
-    if ($("postKeywords").selectedOptions.length > 3) {
-        showError(new Error(tr("Choose up to three distinct learning keywords.")), $("composerError"));
-    } else $("composerError").hidden = true;
 });
 document.querySelectorAll("[data-compose]").forEach((node) => node.addEventListener("click", () => startComposer(node.dataset.compose)));
 $("postBody").addEventListener("focus", updateComposerUI);
@@ -1243,7 +1218,7 @@ $("postForm").addEventListener("submit", async (event) => {
     $("composerError").hidden = true;
     const fields = [...$("postForm").querySelectorAll("input, textarea, select, button")];
     const disabled = fields.map((field) => field.disabled);
-    const input = { title: $("postBody").value.trim().slice(0, 80).split("\n")[0], body: $("postBody").value, category: composerCategory, groupId: composerGroupId, visibility: $("postVisibility").value, keywords: [...$("postKeywords").selectedOptions].map(option => option.value), ...framingSettings() };
+    const input = { title: $("postBody").value.trim().slice(0, 80).split("\n")[0], body: $("postBody").value, category: composerCategory, groupId: composerGroupId, visibility: $("postVisibility").value, keywords: composerKeywords, ...framingSettings() };
     closeUploadInfo();
     fields.forEach((field) => { field.disabled = true; });
     try {
