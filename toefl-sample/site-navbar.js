@@ -38,7 +38,8 @@
   const marketplaceNav = marketplacePage
     ? `<a id="qcnavHomeLink" class="qcnav-link${marketplaceStudioPage ? " active" : ""}" href="${marketplaceHomeLink}"${marketplaceStudioPage ? ' aria-current="page"' : ""}><i data-lucide="house"></i><span data-i18n>Home</span></a>
        <a class="qcnav-link${!marketplaceClassesPage && !marketplaceStudioPage ? " active" : ""}" href="tutor-check.html"${!marketplaceClassesPage && !marketplaceStudioPage ? ' aria-current="page"' : ""}><i data-lucide="shopping-bag"></i><span data-i18n>Marketplace</span></a>
-       <a class="qcnav-link${marketplaceClassesPage ? " active" : ""}" href="tutor-check.html?classes=1"${marketplaceClassesPage ? ' aria-current="page"' : ""}><i data-lucide="book-open-check"></i><span data-i18n>My Classes</span></a>`
+       <a class="qcnav-link${marketplaceClassesPage ? " active" : ""}" href="tutor-check.html?classes=1"${marketplaceClassesPage ? ' aria-current="page"' : ""}><i data-lucide="book-open-check"></i><span data-i18n>My Classes</span></a>
+       <a class="qcnav-link" href="social.html#community"><i data-lucide="globe"></i><span data-i18n>Explore</span></a>`
     : `<a class="qcnav-link${cls("dashboard")}" href="index.html"${cur("dashboard")}><i data-lucide="house"></i><span data-i18n>Home</span></a>
        <a class="qcnav-link${cls("social")}" href="social.html#community"${cur("social")}><i data-lucide="globe"></i><span data-i18n>Explore</span></a>
        <a class="qcnav-link${cls("tutor")}" href="tutor-check.html"${cur("tutor")}><i data-lucide="graduation-cap"></i><span data-i18n>Tutor Check</span></a>`;
@@ -82,6 +83,7 @@
          <a class="qcnav-item" href="tutor-check.html?studio=1&create=1"><span class="qcnav-ico"><i data-lucide="circle-plus"></i></span><span class="qcnav-text" data-i18n>Create Course</span></a>
          <a class="qcnav-item" href="tutor-check.html?studio=1#teacherInbox"><span class="qcnav-ico"><i data-lucide="users-round"></i></span><span class="qcnav-text" data-i18n>Students</span></a>
          <a class="qcnav-item" href="message.html"><span class="qcnav-ico"><i data-lucide="message-circle"></i></span><span class="qcnav-text" data-i18n>Messages</span></a>
+         <a class="qcnav-item" href="social.html#community"><span class="qcnav-ico"><i data-lucide="globe"></i></span><span class="qcnav-text" data-i18n>Explore</span></a>
          <div class="qcnav-divider"></div>
          <div class="qcnav-label" data-i18n>Account</div>
          <a class="qcnav-item" href="profile.html"><span class="qcnav-ico"><i data-lucide="user-round"></i></span><span class="qcnav-text" data-i18n>Profile</span></a>

@@ -159,6 +159,10 @@ its layout gutter only on this page. A responsive left profile rail uses the
 current account photo/name, public community bio/location and saved learner
 level, with Profile/Message/Explore links and a signed-out invitation. It stacks
 above the feed on mobile and is hidden entirely in embedded profile feeds.
+Teachers reach the same Explore page from marketplace top navigation, the
+teacher sidebar or the tutor mobile dock. Registered, email-verified teachers
+can publish, edit and remove their own posts under the same community
+permissions, media validation and rate limits as other members.
 It shares the existing Firebase Auth account, opt-in `partnerDirectory` profiles
 and presence, and `message.html?to=<uid>` messaging flow. Study-buddy matches rank
 the learner's saved CEFR level; missing levels are not replaced by invented scores.

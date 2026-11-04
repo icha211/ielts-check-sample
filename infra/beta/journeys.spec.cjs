@@ -96,6 +96,47 @@ async function signIn(page) {
     await expect(page.locator("#courseGrid")).toHaveAttribute("aria-busy", "false");
 }
 
+test("teachers reach Explore from their dashboard and manage their own posts", async ({ page }, testInfo) => {
+    await signIn(page);
+    await page.evaluate(() => {
+        const data = JSON.parse(localStorage.getItem("beta-db"));
+        data[".info"] = { connected: true };
+        localStorage.setItem("beta-db", JSON.stringify(data));
+    });
+    await expect(page.locator("#qcnavMarketplaceTeacherSidebar").getByRole("link", { name: "Explore", exact: true })).toHaveAttribute("href", "social.html#community");
+    const navigation = page.locator(testInfo.project.name === "mobile" ? "#teacherMobileNav" : ".qcnav-links");
+    const explore = navigation.getByRole("link", { name: "Explore", exact: true });
+    await expect(explore).toBeVisible();
+    if (testInfo.project.name === "mobile") {
+        const box = await explore.boundingBox();
+        expect(box.width).toBeGreaterThanOrEqual(44);
+        expect(box.height).toBeGreaterThanOrEqual(44);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await explore.click();
+    await expect(page).toHaveURL(/social\.html#community$/);
+    await expect(page.locator("#exploreStatus")).toContainText("bounded sample");
+    await page.locator("#postBody").fill("Teacher tips for speaking practice.");
+    await page.locator("#postKeywords").selectOption(["Speaking"]);
+    await page.locator("#publishButton").click();
+    const post = page.locator(".post-card").filter({ hasText: "Teacher tips for speaking practice." });
+    await expect(post).toBeVisible();
+    await post.locator("summary").click();
+    await post.getByRole("button", { name: "Edit", exact: true }).click();
+    await page.locator("#postBody").fill("Updated teacher speaking tips.");
+    await page.locator("#publishButton").click();
+    const edited = page.locator(".post-card").filter({ hasText: "Updated teacher speaking tips." });
+    await expect(edited).toBeVisible();
+    await page.reload();
+    const restored = page.locator(".post-card").filter({ hasText: "Updated teacher speaking tips." });
+    await expect(restored).toBeVisible();
+    await restored.locator("summary").click();
+    await restored.getByRole("button", { name: "Remove", exact: true }).click();
+    await page.locator("#confirmDelete").click();
+    await expect(restored).toHaveCount(0);
+    await expect(page.locator("#postFeed")).toContainText("Start the conversation");
+});
+
 test("Explore mixes ranked posts, partners and courses and saves matching preferences", async ({ page }, testInfo) => {
     await signIn(page);
     await page.evaluate(({ course }) => {
