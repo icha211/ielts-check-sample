@@ -2,7 +2,7 @@ import { auth } from "./js/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, getBlob, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse } from "./js/tutor-model.js?v=20261104-private-drafts";
-import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStudents, watchAccount, saveCourse, saveCourseDraft, deleteCourseDraft, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview, requestTutorVerification, getTutorVerificationStatus, listTutorVerificationRequests, reviewTutorVerification } from "./js/tutor-service.js?v=20261104-private-drafts";
+import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStudents, watchAccount, saveCourse, saveCourseDraft, deleteCourseDraft, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview, requestTutorVerification, getTutorVerificationStatus, listTutorVerificationRequests, reviewTutorVerification } from "./js/tutor-service.js?v=20261107-classes";
 
 const $ = id => document.getElementById(id);
 $("editorFieldBank").append($("courseEditorFields").content.cloneNode(true));
@@ -75,6 +75,7 @@ let initialCourse = pageParams.get("course") || "";
 let initialStudio = pageParams.get("studio") === "1";
 let initialCreate = pageParams.get("create") === "1";
 let initialClasses = pageParams.get("classes") === "1";
+let classesView = false, requestsReady = false;
 let archiveId = "";
 let editorDirty = false, editorBusy = false, editorReturnCourse = "";
 let teacherEditDirty = false, teacherEditBusy = false;
@@ -111,8 +112,8 @@ $("teacherMobileCourses").addEventListener("click", () => {
 });
 $("teacherMobileCreate").addEventListener("click", () => openEditor());
 $("teacherMobileLearners").addEventListener("click", () => {
-    if ($("courseEditor").hidden) showClasses();
-    else requestEditorExit(showClasses);
+    if ($("courseEditor").hidden) showClasses(false);
+    else requestEditorExit(() => showClasses(false));
 });
 $("studioCourseFilters").addEventListener("click", event => {
     const button = event.target.closest("[data-studio-filter]");
@@ -166,7 +167,7 @@ const el = (tag, className = "", text = "") => {
     return node;
 };
 function icon(name) { const node = el("i", `ti ti-${name}`); node.setAttribute("aria-hidden", "true"); return node; }
-function error(message, target = ($("requestsDialog")?.open && $("requestsError")) || ($("cartDialog")?.open && $("cartError")) || ($("courseEditor")?.hidden === false && $("editorError")) || (!$("coursePage").hidden && $("detailError")) || $("marketError")) {
+function error(message, target = ($("cartDialog")?.open && $("cartError")) || ($("courseEditor")?.hidden === false && $("editorError")) || (!$("coursePage").hidden && $("detailError")) || (classesView && !$("browseLayout").hidden && $("classesError")) || $("marketError")) {
     console.error("[TutorCheck]", message);
     const text = message instanceof Error ? message.message : String(message);
     if (target.textContent !== text) target.textContent = text;
@@ -443,7 +444,7 @@ function renderCatalog() {
     }
     document.querySelectorAll("[data-category]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.category === category)));
     renderCart();
-    renderRequests();
+    renderClasses();
     renderStudio();
     if (initialCourse && authReady && (!uid || roleReady)) {
         const id = initialCourse;
@@ -459,10 +460,14 @@ function renderCatalog() {
         setStudioView(true, false);
         openEditor();
     }
-    if (initialClasses && uid && roleReady) {
+    if (initialClasses && authReady && (!uid || roleReady)) {
         initialClasses = false;
-        showClasses();
+        showClasses(false);
     }
+}
+function currentTab(tab, active) {
+    if (active) tab.setAttribute("aria-current", "page");
+    else tab.removeAttribute("aria-current");
 }
 function syncMarketplaceNavigation() {
     const teacher = role === "teacher";
@@ -472,9 +477,13 @@ function syncMarketplaceNavigation() {
     document.body.classList.toggle("tutor-home", teacher && !$("teacherStudio").hidden);
     const browsing = !$("browseLayout").hidden && $("courseEditor").hidden;
     document.body.classList.toggle("marketplace-browsing", browsing);
-    $("qcnavMarketplaceStudentSidebar").hidden = browsing || teacher;
+    $("qcnavMarketplaceStudentSidebar").hidden = (browsing && !classesView) || teacher;
     $("qcnavMarketplaceTeacherSidebar").hidden = browsing || !teacher;
-    filterSidebar.hidden = !browsing;
+    filterSidebar.hidden = !browsing || classesView;
+    filterPanel.hidden = classesView;
+    $("marketTabs").hidden = teacher;
+    currentTab($("browseTab"), !classesView);
+    currentTab($("classesTab"), classesView);
     const params = new URLSearchParams(location.search);
     const studio = teacher && params.get("studio") === "1";
     const classes = params.get("classes") === "1";
@@ -489,8 +498,7 @@ function syncMarketplaceNavigation() {
         homeLink.href = teacher ? "tutor-check.html?studio=1" : "index.html";
         currentLink(homeLink, studio);
     }
-    currentLink(document.querySelector('.qcnav-links a[href="tutor-check.html"]'), !studio && !classes);
-    currentLink(document.querySelector('.qcnav-links a[href="tutor-check.html?classes=1"]'), classes);
+    currentLink(document.querySelector('.qcnav-links a[href="tutor-check.html"]'), !studio);
     const teacherLinks = $("qcnavMarketplaceTeacherSidebar");
     if (teacherLinks) {
         teacherLinks.querySelectorAll(".qcnav-item").forEach(link => currentLink(link, false));
@@ -528,22 +536,108 @@ function renderCart() {
     $("cartTotal").textContent = `Total: ${rupiah(total)}`;
     $("checkoutButton").disabled = checkoutBusy || !validCount || !uid;
 }
-function renderRequests() {
-    const items = $("studentRequests");
-    items.replaceChildren();
-    Object.entries(requests).sort(([, a], [, b]) => b.createdAt - a.createdAt).forEach(([id, request]) => {
-        const course = courses[request.courseId];
-        const node = row(course?.title || "Course unavailable", `${request.status} | Requested price: ${rupiah(request.price)}`);
-        const buttons = el("div", "row-actions");
-        if (request.status === "pending") buttons.append(action("Cancel", "text-button", () => changeRequest(id, "cancelled"), $("requestsError")));
-        if (course) buttons.append(action("View course", "text-button", () => { $("requestsDialog").close(); showCourse(request.courseId); }));
-        const contact = el("a", "", "Teacher profile");
-        contact.href = `profile.html?uid=${encodeURIComponent(request.teacherId)}`;
-        buttons.append(contact);
-        node.append(buttons);
-        items.append(node);
+const CLASS_STATUS = {
+    accepted: ["Active", "class-status--active"],
+    pending: ["Waiting for teacher", "class-status--pending"],
+    declined: ["Declined", "class-status--closed"],
+    cancelled: ["Cancelled", "class-status--closed"]
+};
+function classCard(id, request) {
+    const course = courses[request.courseId];
+    const [label, tone] = CLASS_STATUS[request.status] || [request.status, "class-status--closed"];
+    const node = el("article", "class-card");
+    node.dataset.requestId = id;
+    const media = el("div", "class-card-media");
+    media.append(course ? cover(course) : el("div", "course-cover course-cover--fallback"));
+    const body = el("div", "class-card-body");
+    const top = el("div", "class-card-top");
+    top.append(el("span", `class-status ${tone}`, label), el("span", "class-card-date", new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" }).format(new Date(request.createdAt || 0))));
+    const teacher = course ? courseTeacher(course) : "";
+    body.append(top, el("h4", "", course?.title || "Course unavailable"));
+    if (teacher) body.append(el("p", "class-card-teacher", `with ${teacher}`));
+    if (request.status === "accepted" && course?.schedule) {
+        const schedule = el("p", "class-card-schedule");
+        schedule.append(icon("calendar-event"), el("span", "", course.schedule));
+        body.append(schedule);
+    } else if (request.status === "pending") body.append(el("p", "class-card-note", `Requested at ${rupiah(request.price)}. No payment has been collected.`));
+    const buttons = el("div", "row-actions");
+    if (course) {
+        const open = action(request.status === "accepted" ? "Open class" : "View course", request.status === "accepted" ? "primary" : "", () => showCourse(request.courseId));
+        open.dataset.focusKey = "open";
+        buttons.append(open);
+    }
+    if (request.status === "accepted") {
+        const message = el("a", "class-card-link", "Message teacher");
+        message.href = `message.html?to=${encodeURIComponent(request.teacherId)}`;
+        buttons.append(message);
+    } else {
+        const profile = el("a", "class-card-link", "Teacher profile");
+        profile.href = `profile.html?uid=${encodeURIComponent(request.teacherId)}`;
+        buttons.append(profile);
+    }
+    if (request.status === "pending") {
+        const cancel = action("Cancel request", "text-button class-card-cancel", () => changeRequest(id, "cancelled"), $("classesError"));
+        cancel.dataset.focusKey = "cancel";
+        buttons.append(cancel);
+    }
+    body.append(buttons);
+    node.append(media, body);
+    return node;
+}
+function renderClasses() {
+    const rows = Object.entries(requests).sort(([, a], [, b]) => (b.createdAt || 0) - (a.createdAt || 0));
+    const open = rows.filter(([, request]) => request.status === "accepted" || request.status === "pending").length;
+    $("classesCount").textContent = open ? String(open) : "";
+    $("classesCount").hidden = !open;
+    $("classesTab").setAttribute("aria-label", open ? `My classes, ${open} open` : "My classes");
+    if ($("myClasses").hidden) return;
+    const content = $("classesContent");
+    const focused = content.contains(document.activeElement) ? document.activeElement : null;
+    const focusRequest = focused?.closest(".class-card")?.dataset.requestId;
+    const focusKey = focused?.dataset.focusKey;
+    content.replaceChildren();
+    const emptyState = (glyph, title, text, linkText, href) => {
+        const empty = el("div", "empty-state");
+        empty.append(icon(glyph), el("h3", "", title), el("p", "muted", text));
+        const link = el("a", "primary class-empty-action", linkText);
+        link.href = href;
+        if (href === "tutor-check.html") link.addEventListener("click", event => { event.preventDefault(); $("browseTab").click(); });
+        empty.append(link);
+        return empty;
+    };
+    if (authReady && !uid) {
+        content.append(emptyState("lock", "Sign in to see your classes", "Your accepted classes and enrollment requests appear here after you sign in.", "Sign in", "signup.html"));
+        return;
+    }
+    if (!authReady || !requestsReady) {
+        content.setAttribute("aria-busy", "true");
+        content.append(el("div", "skeleton class-skeleton"), el("div", "skeleton class-skeleton"));
+        return;
+    }
+    content.setAttribute("aria-busy", "false");
+    if (!rows.length) {
+        content.append(emptyState("school", "No classes yet", "Find a course you like and send an enrollment request. Accepted classes appear here.", "Browse courses", "tutor-check.html"));
+        return;
+    }
+    [
+        ["Active classes", rows.filter(([, request]) => request.status === "accepted")],
+        ["Waiting for the teacher", rows.filter(([, request]) => request.status === "pending")],
+        ["Past requests", rows.filter(([, request]) => !["accepted", "pending"].includes(request.status))]
+    ].forEach(([title, group]) => {
+        if (!group.length) return;
+        const section = el("section", "class-group");
+        const heading = el("h3", "class-group-title", title);
+        heading.append(el("span", "class-group-count", String(group.length)));
+        const list = el("div", "class-list");
+        group.forEach(([id, request]) => list.append(classCard(id, request)));
+        section.append(heading, list);
+        content.append(section);
     });
-    if (!items.children.length) items.append(el("p", "muted", "No enrollment requests yet."));
+    if (focusRequest && focusKey) {
+        const card = [...content.querySelectorAll(".class-card")].find(node => node.dataset.requestId === focusRequest);
+        const control = card?.querySelector(`[data-focus-key="${focusKey}"]`);
+        (control && !control.disabled ? control : $("myClassesTitle")).focus({ preventScroll: true });
+    }
 }
 function renderStudio() {
     if (role !== "teacher") { $("teacherStudio").hidden = true; return; }
@@ -867,16 +961,22 @@ function showCourse(id, scroll = true) {
         }, err => error(`Teacher profile could not load. ${err.message}`));
     }
 }
+function setBrowseSection(showClassesSection) {
+    classesView = showClassesSection;
+    document.querySelectorAll(".course-hero,.category-section,#catalog").forEach(node => node.hidden = showClassesSection);
+    $("myClasses").hidden = !showClassesSection;
+}
 function showCatalog(scroll = true) {
     if (!$("courseEditor").hidden) return requestEditorExit(() => showCatalog(scroll));
-    const moveFocus = userHasFocus() && !$("browseLayout").contains(document.activeElement);
-    const wasHidden = $("browseLayout").hidden;
+    const moveFocus = userHasFocus() && !$("catalog").contains(document.activeElement) && !$("marketTabs").contains(document.activeElement);
+    const wasHidden = $("browseLayout").hidden || classesView;
     detailProfileStop();
     detailProfileStop = () => {};
     detailId = "";
     $("teacherStudio").hidden = true;
     $("coursePage").hidden = true;
     $("browseLayout").hidden = false;
+    setBrowseSection(false);
     syncMarketplaceNavigation();
     if (scroll) $("browseLayout").scrollIntoView({ block: "start" });
     if (wasHidden) revealView($("browseLayout"), $("marketplaceHeading"), "", moveFocus);
@@ -903,20 +1003,41 @@ function setStudioView(show, updateHistory = true, scroll = true) {
     $("coursePage").hidden = true;
     $("browseLayout").hidden = show;
     $("teacherStudio").hidden = !show;
+    if (!show) setBrowseSection(false);
     syncMarketplaceNavigation();
     if (scroll) target.scrollIntoView({ block: "start" });
     if (wasHidden) revealView(target, $(show ? "studioTitle" : "marketplaceHeading"), show ? "Teacher studio" : "", moveFocus);
 }
-function showClasses() {
-    if (!requireLogin()) return;
+function showClasses(updateHistory = true, scroll = true) {
     if (role === "teacher") {
         setStudioView(true, false);
         $("teacherInbox").scrollIntoView({ block: "start" });
-    } else {
-        showCatalog();
-        renderRequests();
-        openDialog("requestsDialog");
+        return;
     }
+    if (!$("courseEditor").hidden) return requestEditorExit(() => showClasses(updateHistory, scroll));
+    const moveFocus = userHasFocus() && !$("myClasses").contains(document.activeElement) && !$("marketTabs").contains(document.activeElement);
+    const wasHidden = $("browseLayout").hidden || !classesView;
+    if (updateHistory) {
+        const url = new URL(location.href);
+        url.searchParams.delete("course");
+        url.searchParams.delete("studio");
+        url.searchParams.set("classes", "1");
+        rememberScroll();
+        history.pushState({ marketplaceClasses: true }, "", url);
+    }
+    detailProfileStop();
+    detailProfileStop = () => {};
+    detailId = "";
+    $("teacherStudio").hidden = true;
+    $("coursePage").hidden = true;
+    $("browseLayout").hidden = false;
+    setBrowseSection(true);
+    $("classesError").hidden = true;
+    syncMarketplaceNavigation();
+    renderClasses();
+    if (scroll) $("browseLayout").scrollIntoView({ block: "start" });
+    if (wasHidden) revealView($("myClasses"), $("myClassesTitle"), "My classes", moveFocus);
+    else document.title = "My classes | Marketplace | Quick Check";
 }
 function renderDetail(target = $("courseDetail"), editorCourse = null) {
     if (!editorCourse && !$("courseEditor").hidden) return;
@@ -2023,7 +2144,7 @@ document.querySelectorAll(".filter-panel input").forEach(input => input.addEvent
 }));
 const compactFilters = matchMedia("(max-width:780px)");
 function syncFilterLayout() {
-    if (compactFilters.matches) document.querySelector(".browse-content").prepend(filterPanel);
+    if (compactFilters.matches) $("marketTabs").after(filterPanel);
     else filterSidebar.append(filterPanel);
 }
 syncFilterLayout();
@@ -2048,7 +2169,21 @@ $("favoritesButton").addEventListener("click", () => {
     favoritesOnly = !favoritesOnly; $("favoritesButton").setAttribute("aria-pressed", String(favoritesOnly)); renderCatalog();
 });
 $("cartButton").addEventListener("click", () => { if (requireLogin()) { $("cartError").hidden = true; $("cartStatus").textContent = ""; renderCart(); openDialog("cartDialog"); } });
-$("requestsButton").addEventListener("click", () => { if (requireLogin()) { $("requestsError").hidden = true; renderRequests(); openDialog("requestsDialog"); } });
+$("browseTab").addEventListener("click", event => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button) return;
+    event.preventDefault();
+    if (!classesView) return;
+    const url = new URL(location.href);
+    url.searchParams.delete("classes");
+    rememberScroll();
+    history.pushState({ marketplaceClasses: false }, "", url);
+    showCatalog();
+});
+$("classesTab").addEventListener("click", event => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.button) return;
+    event.preventDefault();
+    if (!classesView) showClasses();
+});
 $("manageButton").addEventListener("click", () => setStudioView($("teacherStudio").hidden));
 $("newCourse").addEventListener("click", () => openEditor());
 $("backToCatalog").addEventListener("click", () => {
@@ -2067,7 +2202,7 @@ window.addEventListener("popstate", () => {
     const restore = typeof savedY === "number";
     if (courseId) showCourse(courseId, !restore);
     else if (params.get("studio") === "1" && role === "teacher") setStudioView(true, false, !restore);
-    else if (params.get("classes") === "1") showClasses();
+    else if (params.get("classes") === "1") showClasses(false, !restore);
     else showCatalog(!restore);
     if (restore) requestAnimationFrame(() => window.scrollTo(0, savedY));
 });
@@ -2120,7 +2255,7 @@ const authStop = onAuthStateChanged(auth, user => {
     accountStop(); version++;
     pendingEnrollments.clear();
     authReady = true;
-    uid = user?.uid || ""; role = "student"; roleReady = false; library = {}; requests = {}; inbox = {}; drafts = {}; favoritesOnly = false;
+    uid = user?.uid || ""; role = "student"; roleReady = false; library = {}; requests = {}; requestsReady = false; inbox = {}; drafts = {}; favoritesOnly = false;
     verificationStatus = { status: "loading" }; verificationLoading = false; verificationBusy = false; isMarketplaceModerator = false;
     $("verificationError").hidden = true;
     $("moderatorVerificationPanel").hidden = true;
@@ -2129,10 +2264,7 @@ const authStop = onAuthStateChanged(auth, user => {
     if (!$("courseEditor").hidden) { closeEditor(); $("browseLayout").hidden = false; }
     $("teacherStudio").hidden = true; $("favoritesButton").setAttribute("aria-pressed", "false");
     renderCatalog();
-    if (!uid) {
-        if (initialClasses) { initialClasses = false; error("Sign in to see your classes."); }
-        return;
-    }
+    if (!uid) return;
     const current = version;
     loadModeratorAccess(user, current);
     const guarded = callback => data => { if (current === version) { callback(data); renderCatalog(); } };
@@ -2146,7 +2278,7 @@ const authStop = onAuthStateChanged(auth, user => {
             } else if (!$("coursePage").hidden) renderDetail();
         }),
         library: guarded(data => { library = data; if (!$("coursePage").hidden) renderDetail(); }),
-        requests: guarded(data => { requests = data; if (!$("coursePage").hidden) renderDetail(); }),
+        requests: guarded(data => { requests = data; requestsReady = true; if (!$("coursePage").hidden) renderDetail(); }),
         inbox: guarded(data => { inbox = data; if (!$("coursePage").hidden) renderDetail(); }),
         drafts: guarded(data => { drafts = data; })
     }, err => { if (current === version) error(`Your marketplace account could not sync. Refresh to retry. ${err.message}`); });

@@ -116,7 +116,7 @@ export async function requestEnrollment(course) {
     if (current.uid === course.teacherId) throw new Error("You cannot enroll in your own course.");
     const id = `${course.id}_${current.uid}`;
     const existing = (await get(query(ref(db, "tutor_requests"), orderByChild("studentId"), equalTo(current.uid)))).val() || {};
-    if (existing[id]) throw new Error("You already requested this course. Check My requests.");
+    if (existing[id]) throw new Error("You already requested this course. Check My classes in the Marketplace.");
     await set(ref(db, `tutor_requests/${id}`), {
         courseId: course.id, studentId: current.uid, teacherId: course.teacherId,
         studentName: (current.displayName || "Learner").slice(0, 100),

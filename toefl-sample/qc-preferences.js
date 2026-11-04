@@ -18,6 +18,10 @@
     event.viewTransition?.ready.catch(() => {});
     event.viewTransition?.updateCallbackDone.catch(() => {});
   });
+  window.addEventListener("unhandledrejection", (event) => {
+    const reason = event.reason;
+    if (reason?.name === "InvalidStateError" && /transition/i.test(String(reason.message))) event.preventDefault();
+  });
 
   const THEME_KEY = "qc_theme";
   const LANG_KEY = "qc_lang";

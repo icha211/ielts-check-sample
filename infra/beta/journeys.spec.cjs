@@ -24,7 +24,11 @@ const aiEndpoint = "https://ielts-api-gateway-753959270698.asia-southeast1.run.a
 test.beforeEach(async ({ context, page }) => {
     const errors = [];
     const unexpectedRequests = [];
-    page.on("pageerror", error => errors.push(error.message));
+    page.on("pageerror", error => {
+        // Chromium can reject an aborted cross-document view transition promise before page scripts run; it is cosmetic, not an app error.
+        if (/ViewTransition opt-in disabled|Transition was aborted/.test(error.message)) return;
+        errors.push(error.message);
+    });
     await context.addInitScript(({ course }) => {
         if (!localStorage.getItem("beta-db")) {
             localStorage.setItem("beta-db", JSON.stringify({
@@ -297,17 +301,29 @@ test("navigation follows the account role across home, marketplace and Explore",
     await page.goto("/toefl-sample/social.html");
     await expect.poll(topLinks).toEqual([
         ["Home", "index.html", null], ["Marketplace", "tutor-check.html", null],
-        ["My Classes", "tutor-check.html?classes=1", null], ["Explore", "social.html#community", "page"]
+        ["Explore", "social.html#community", "page"]
     ]);
     await expect(page.locator("#qcnavTeacherSidebar")).toHaveCount(0);
-    await expect(page.locator('#qcnavSidebar a[href="tutor-check.html?classes=1"]')).toHaveCount(1);
+    await expect(page.locator('a[href="tutor-check.html?classes=1"]')).toHaveCount(0);
     if (!mobile) await expect(page.locator(".tutor-promotion")).toBeVisible();
     if (mobile) await expect(page.locator(".qcnav-dock:not(.qcnav-dock-teacher)")).toBeVisible();
     await page.goto("/toefl-sample/tutor-check.html");
     await expect.poll(topLinks).toEqual([
         ["Home", "index.html", null], ["Marketplace", "tutor-check.html", "page"],
-        ["My Classes", "tutor-check.html?classes=1", null], ["Explore", "social.html#community", null]
+        ["Explore", "social.html#community", null]
     ]);
+    await page.locator("#classesTab").click();
+    await expect(page).toHaveURL(/classes=1/);
+    await expect(page.locator("#classesTab")).toHaveAttribute("aria-current", "page");
+    await expect(page.locator("#myClasses")).toBeVisible();
+    await expect(page.locator("#catalog")).toBeHidden();
+    await expect.poll(topLinks).toEqual([
+        ["Home", "index.html", null], ["Marketplace", "tutor-check.html", "page"],
+        ["Explore", "social.html#community", null]
+    ]);
+    await page.goBack();
+    await expect(page.locator("#catalog")).toBeVisible();
+    await expect(page.locator("#browseTab")).toHaveAttribute("aria-current", "page");
 });
 
 test("page transitions keep the shell stable and marketplace views restore focus and scroll", async ({ page }, testInfo) => {
@@ -751,14 +767,17 @@ test("enrollment cancellation errors stay inside the open dialog and can be retr
         localStorage.setItem("beta-deny-write", "true");
     });
     await page.goto("/toefl-sample/tutor-check.html?classes=1");
-    const dialog = page.locator("#requestsDialog");
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
-    await expect(dialog.getByRole("alert")).toBeVisible();
-    await expect(dialog.getByRole("alert")).toContainText("rejected");
+    const classes = page.locator("#myClasses");
+    await expect(classes).toBeVisible();
+    await expect(page.locator("#requestsDialog")).toHaveCount(0);
+    await expect(classes).toContainText("Waiting for the teacher");
+    await classes.getByRole("button", { name: "Cancel request", exact: true }).click();
+    await expect(classes.getByRole("alert")).toBeVisible();
+    await expect(classes.getByRole("alert")).toContainText("rejected");
     await page.evaluate(() => localStorage.removeItem("beta-deny-write"));
-    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
-    await expect(dialog.locator("#studentRequests")).toContainText("cancelled");
+    await classes.getByRole("button", { name: "Cancel request", exact: true }).click();
+    await expect(classes.locator(".class-group")).toContainText("Past requests");
+    await expect(classes).toContainText("Cancelled");
 });
 
 test("profile review preserves in-flight state during live updates and supports failed-status retry", async ({ page }) => {
@@ -822,12 +841,18 @@ test("learners browse and filter courses, open teacher details and enroll from t
     await expect(page.locator("#cartStatus")).toContainText("1 enrollment request sent. No payment was collected.");
     await expect(page.locator("#cartItems")).toContainText("Your cart is empty");
     await page.getByRole("button", { name: "Close cart", exact: true }).click();
-    await page.locator("#requestsButton").click();
-    await expect(page.locator("#studentRequests")).toContainText("Beta listening course");
-    await expect(page.locator("#studentRequests")).toContainText("pending");
+    await page.locator("#classesTab").click();
+    await expect(page.locator("#classesContent")).toContainText("Beta listening course");
+    await expect(page.locator("#classesContent")).toContainText("Waiting for teacher");
+    await expect(page.locator("#classesCount")).toHaveText("1");
     await page.reload();
-    await page.locator("#requestsButton").click();
-    await expect(page.locator("#studentRequests .request-row")).toHaveCount(1);
+    await expect(page.locator("#myClasses")).toBeVisible();
+    await expect(page.locator("#classesContent .class-card")).toHaveCount(1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.locator("#classesContent").getByRole("button", { name: "View course", exact: true }).click();
+    await expect(page.locator("#coursePage")).toBeVisible();
+    await page.goBack();
+    await expect(page.locator("#myClasses")).toBeVisible();
 });
 
 test("partial checkout keeps failed courses retryable and does not resend successful enrollments", async ({ page }) => {

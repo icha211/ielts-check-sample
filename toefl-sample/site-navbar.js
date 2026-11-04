@@ -13,7 +13,6 @@
   const marketplacePage = page === "tutor-check.html";
   const marketplaceParams = new URLSearchParams(location.search);
   const marketplaceStudioPage = marketplacePage && marketplaceParams.get("studio") === "1";
-  const marketplaceClassesPage = marketplacePage && marketplaceParams.get("classes") === "1";
   const shellPages = {
     "index.html": "dashboard",
     "study-plan.html": "today",
@@ -41,12 +40,11 @@
   const homeHref = (role) => role === "teacher" ? "tutor-check.html?studio=1" : "index.html";
   const topLinks = (role) => role === "teacher"
     ? link(homeHref(role), "house", "Home", marketplaceStudioPage, ' id="qcnavHomeLink"')
-      + link("tutor-check.html", "shopping-bag", "Marketplace", marketplacePage && !marketplaceStudioPage && !marketplaceClassesPage)
+      + link("tutor-check.html", "shopping-bag", "Marketplace", marketplacePage && !marketplaceStudioPage)
       + link("social.html#community", "globe", "Explore", pageKey === "social")
       + link("message.html", "message-circle", "Messages", pageKey === "message")
     : link(homeHref(role), "house", "Home", pageKey === "dashboard", ' id="qcnavHomeLink"')
-      + link("tutor-check.html", "shopping-bag", "Marketplace", marketplacePage && !marketplaceClassesPage)
-      + link("tutor-check.html?classes=1", "book-open-check", "My Classes", marketplaceClassesPage)
+      + link("tutor-check.html", "shopping-bag", "Marketplace", marketplacePage)
       + link("social.html#community", "globe", "Explore", pageKey === "social");
   const marketplaceSearch = marketplacePage
     ? `<form id="topSearchForm" class="qcnav-market-search"><label class="sr-only" for="topCourseSearch">Search courses, teachers, or topics</label><i data-lucide="search"></i><input id="topCourseSearch" type="search" maxlength="200" placeholder="Search for courses, teachers, or topics..."></form>`
@@ -55,7 +53,6 @@
     ? `<div class="qcnav-market-actions">
          <a id="teacherSignup" href="signup.html?role=teacher" data-i18n>Teach a course</a>
          <button id="manageButton" type="button" aria-label="Open teacher studio" hidden><i data-lucide="school"></i><span id="manageLabel" data-i18n>Teacher studio</span></button>
-         <button id="requestsButton" type="button" aria-label="My enrollment requests" title="My requests"><i data-lucide="bell"></i></button>
          <button id="favoritesButton" type="button" aria-label="Saved courses" title="Saved courses" aria-pressed="false"><i data-lucide="heart"></i></button>
          <button id="cartButton" type="button" aria-label="Cart"><i data-lucide="shopping-cart"></i><span id="cartCount" class="qcnav-market-cart-count">0</span></button>
        </div>`
@@ -80,7 +77,6 @@
        </nav>`;
   const studentSidebar = `${sideItem("index.html", "house", "Home", pageKey === "dashboard")}
        ${sideItem("tutor-check.html", "shopping-bag", "Marketplace", false)}
-       ${sideItem("tutor-check.html?classes=1", "book-open-check", "My Classes", false)}
        <div class="qcnav-divider"></div>
        <a class="qcnav-item${cls("today")}" href="study-plan.html"${cur("today")}><span class="qcnav-ico">${calendarIcon}</span><span class="qcnav-text" data-qcnav-today>${todayLabel}</span></a>
        <div class="qcnav-divider"></div>
@@ -107,7 +103,6 @@
          <a class="qcnav-item" href="MyProgress.html"><span class="qcnav-ico"><i data-lucide="chart-line"></i></span><span class="qcnav-text" data-i18n>Progress</span></a>
          <a class="qcnav-item" href="study-plan.html"><span class="qcnav-ico"><i data-lucide="calendar-days"></i></span><span class="qcnav-text" data-i18n>Calendar</span></a>
          <a class="qcnav-item active" href="tutor-check.html" aria-current="page"><span class="qcnav-ico"><i data-lucide="shopping-bag"></i></span><span class="qcnav-text" data-i18n>Marketplace</span></a>
-         <a class="qcnav-item" href="tutor-check.html?classes=1"><span class="qcnav-ico"><i data-lucide="book-open-check"></i></span><span class="qcnav-text" data-i18n>My Classes</span></a>
          <a class="qcnav-item" href="material-preview.html"><span class="qcnav-ico"><i data-lucide="book-open"></i></span><span class="qcnav-text" data-i18n>Study Materials</span></a>
          <div class="qcnav-divider"></div>
          <div class="qcnav-label" data-i18n>Community</div>
