@@ -439,7 +439,7 @@ test("Explore mixes ranked posts, partners and courses and saves matching prefer
     await page.getByRole("button", { name: "Following", exact: true }).click();
     await expect(page.getByRole("button", { name: "Following", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator("#explorePreferencesForm")).toHaveCount(0);
-    await page.getByRole("link", { name: "Edit learning preferences", exact: true }).click();
+    await page.goto("/toefl-sample/learning-setup.html?from=explore");
     await chooseLearningPreferences(page, { discoverable: true });
     await expect(page.locator('input[name="viewTracking"]')).not.toBeChecked();
     await page.locator("#setupNext").click();
@@ -472,7 +472,7 @@ test("Explore recommendation errors expose retry and the composer has no keyword
     await expect(page.locator("body")).not.toContainText("Learning keywords");
     await expect(page.locator("body")).not.toContainText("Following uses your accepted connections");
     await expect(page.locator("body")).not.toContainText("Recommendations use a recent");
-    await expect(page.getByRole("link", { name: "Edit learning preferences", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Edit learning preferences", exact: true })).toHaveCount(0);
     await page.locator("#postBody").fill("My English practice tips.");
     await page.locator("#publishButton").click();
     await expect(page.locator("#postFeed")).toContainText("My English practice tips.");
@@ -519,7 +519,7 @@ test("Explore viewing signals require consent and continuous foreground dwell wi
     await page.locator("#post-one").scrollIntoViewIfNeeded();
     await page.clock.runFor(12000);
     expect(await views()).toBe(0);
-    await page.getByRole("link", { name: "Edit learning preferences", exact: true }).click();
+    await page.goto("/toefl-sample/learning-setup.html?from=explore");
     await chooseLearningPreferences(page, { viewTracking: true });
     await page.locator("#setupNext").click();
     await expect(page).toHaveURL(/social\.html#community$/);
@@ -539,7 +539,7 @@ test("Explore viewing signals require consent and continuous foreground dwell wi
     await expect.poll(views).toBe(1);
     await page.clock.runFor(12000);
     expect(await views()).toBe(1);
-    await page.getByRole("link", { name: "Edit learning preferences", exact: true }).click();
+    await page.goto("/toefl-sample/learning-setup.html?from=explore");
     await chooseLearningPreferences(page, { viewTracking: false });
     await page.locator("#setupNext").click();
     await expect(page).toHaveURL(/social\.html#community$/);
