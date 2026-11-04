@@ -49,7 +49,6 @@
   const marketplaceActions = marketplacePage
     ? `<div class="qcnav-market-actions">
          <button id="manageButton" type="button" aria-label="Open teacher studio" hidden><i data-lucide="school"></i><span id="manageLabel" data-i18n>Teacher studio</span></button>
-         <button id="cartButton" type="button" aria-label="Cart"><i data-lucide="shopping-cart"></i><span id="cartCount" class="qcnav-market-cart-count">0</span></button>
        </div>`
     : "";
   const sideItem = (href, icon, label, active) => `<a class="qcnav-item${active ? " active" : ""}" href="${href}"${active ? ' aria-current="page"' : ""}><span class="qcnav-ico"><i data-lucide="${icon}"></i></span><span class="qcnav-text" data-i18n>${label}</span></a>`;

@@ -479,6 +479,7 @@ function syncMarketplaceNavigation() {
     filterSidebar.hidden = !browsing || classesView;
     filterPanel.hidden = classesView;
     $("marketTabs").hidden = teacher || !$("courseEditor").hidden || !$("teacherStudio").hidden;
+    $("cartButton").hidden = $("marketTabs").hidden;
     const classesShown = classesView && $("teacherStudio").hidden;
     currentTab($("browseTab"), !classesShown);
     currentTab($("classesTab"), classesShown);
