@@ -1,8 +1,9 @@
-import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, loadPrivateMedia } from "./js/community.js?v=20261101-photos-only";
+import { subscribeCommunity, subscribePostActivity, savePost, removePost, setPostLike, addComment, deleteComment, reportCommunityContent, setCommunityBlock, loadPrivateMedia } from "./js/community.js?v=20261102-community-safety";
 import { GROUPS, CATEGORIES, selectPosts, selectPeople, safeMediaURL, relativeTime, imageFrameLayout, imageDisplaySettings } from "./js/community-model.js?v=20261101-photo-height-cap";
 import { resolveDisplayName } from "./js/account-menu.js?v=20261030-prefs";
 import { db } from "./js/firebase-config.js";
-import { onValue, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { equalTo, limitToLast, onValue, orderByChild, query, ref } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 
 window.QCPrefs?.addTranslations("id", {
     "Photo": "Foto", "Photo uploads": "Unggahan foto",
@@ -31,7 +32,29 @@ window.QCPrefs?.addTranslations("id", {
     "Audience": "Audiens",
     "Public": "Publik",
     "Friends only": "Hanya teman",
-    "Anyone can read public posts, including signed-out visitors.": "Siapa pun dapat membaca postingan publik, termasuk pengunjung yang belum masuk.",
+    "Sign in to read public posts and participate.": "Masuk untuk membaca postingan publik dan berpartisipasi.",
+    "Report": "Laporkan", "Block account": "Blokir akun", "Unblock": "Buka blokir",
+    "Manage blocked accounts": "Kelola akun yang diblokir", "Blocked accounts": "Akun yang diblokir",
+    "You have not blocked any accounts.": "Anda belum memblokir akun apa pun.",
+    "Report community content": "Laporkan konten komunitas",
+    "Choose the reason that best describes the issue.": "Pilih alasan yang paling sesuai dengan masalah.",
+    "Reason": "Alasan", "Spam": "Spam", "Harassment or bullying": "Pelecehan atau perundungan",
+    "Inappropriate content": "Konten tidak pantas", "Scam or misleading content": "Penipuan atau konten menyesatkan",
+    "Other": "Lainnya", "Send report": "Kirim laporan", "Report submitted for moderator review.": "Laporan dikirim untuk ditinjau moderator.",
+    "You have already reported this content.": "Anda sudah melaporkan konten ini.",
+    "Block this account?": "Blokir akun ini?",
+    "Their posts will be hidden from your community feed, and neither of you can interact with the other's content.": "Postingan mereka akan disembunyikan dari komunitas Anda, dan kalian tidak dapat berinteraksi dengan konten satu sama lain.",
+    "Account blocked.": "Akun diblokir.", "Account unblocked.": "Blokir akun dibuka.",
+    "This account is blocked.": "Akun ini diblokir.",
+    "Community reports": "Laporan komunitas", "Latest 100 open reports": "100 laporan terbuka terbaru",
+    "No open reports.": "Tidak ada laporan terbuka.", "Dismiss": "Abaikan",
+    "Remove reported content": "Hapus konten yang dilaporkan", "Dismiss this report?": "Abaikan laporan ini?",
+    "Remove reported content?": "Hapus konten yang dilaporkan?",
+    "This action cannot be undone.": "Tindakan ini tidak dapat dibatalkan.",
+    "Report queue could not load. Refresh to retry.": "Antrean laporan tidak dapat dimuat. Muat ulang untuk mencoba lagi.",
+    "Moderation action could not be completed.": "Tindakan moderasi tidak dapat diselesaikan.",
+    "Reported account: {name}": "Akun yang dilaporkan: {name}",
+    "Report resolved.": "Laporan diselesaikan.",
     "Only you and friends with accepted message connections can read this post.": "Hanya Anda dan teman dengan koneksi pesan yang diterima dapat membaca postingan ini.",
     "Audience cannot be changed after publishing. Create a new post instead.": "Audiens tidak dapat diubah setelah diterbitkan. Buat postingan baru.",
     "Posting to everyone": "Posting untuk semua orang",
@@ -138,7 +161,7 @@ const button = (text, className, action) => {
     node.addEventListener("click", action);
     return node;
 };
-let state = { uid: null, user: null, loading: true, connected: false, profile: {}, profiles: {}, posts: {}, members: {} };
+let state = { uid: null, user: null, loading: true, connected: false, profile: {}, profiles: {}, posts: {}, members: {}, blocks: {} };
 let developer = false;
 let authVersion = 0;
 let category = "all";
@@ -148,6 +171,11 @@ let composerGroupId = "";
 let peopleMode = "buddies";
 let editingId = null;
 let deleteId = null;
+let reportTarget = null;
+let blockTarget = null;
+let moderationTarget = null;
+let moderationStop = null;
+let moderationUid = null;
 let file = null;
 let previewURL = "";
 let publishing = false;
@@ -247,7 +275,7 @@ function renderPeople() {
     if (!state.uid || state.loading) {
         list.append(element("p", "helper", tr(state.loading ? "Loading online learners..." : "Sign in to see online learners.")));
     } else {
-        const people = selectPeople(state.profiles, state.uid, { onlineOnly: true });
+        const people = selectPeople(state.profiles, state.uid, { onlineOnly: true }).filter((profile) => !state.blocks?.[profile.uid]);
         if (!people.length) list.append(element("p", "helper", tr("No other learners are online right now. Find a study buddy to connect later.")));
         people.slice(0, 5).forEach((profile) => list.append(personRow(profile)));
     }
@@ -258,7 +286,7 @@ function renderPeopleResults() {
         onlineOnly: peopleMode === "online",
         search: $("peopleSearch").value,
         level: person(state.uid).level
-    });
+    }).filter((profile) => !state.blocks?.[profile.uid]);
     $("peopleResults").replaceChildren(...people.map((profile) => personRow(profile, true)));
     if (!people.length) $("peopleResults").append(element("p", "helper", tr("No learners match your search. Try a different name or level.")));
 }
@@ -352,14 +380,22 @@ function makePost(post) {
     copy.append(authorName, time);
     copy.append(element("span", "post-audience", tr(post.visibility === "friends" ? "Friends only" : "Public")));
     header.append(avatar(author), copy, element("span", `category-badge category-${post.category}`, tr(CATEGORIES[post.category] || "Post")));
-    if (post.authorId === state.uid || (developer && post.visibility !== "friends")) {
+    if (state.uid) {
         const menu = element("details", "post-menu");
         const summary = element("summary");
         summary.setAttribute("aria-label", tr("Post actions"));
         summary.append(icon("dots-vertical"));
         const actions = element("div", "post-menu-content");
         if (post.authorId === state.uid) actions.append(button(tr("Edit"), "", () => editPost(post)));
-        actions.append(button(tr("Remove"), "", () => {
+        else {
+            actions.append(button(tr("Report"), "", () => reportContent(post.id, "post", post.id)));
+            const blocked = state.blocks?.[post.authorId] === true;
+            actions.append(button(tr(blocked ? "Unblock" : "Block account"), "", () => {
+                if (blocked) updateBlock(post.authorId, false);
+                else confirmBlock(post.authorId);
+            }));
+        }
+        if (post.authorId === state.uid || (developer && post.visibility !== "friends")) actions.append(button(tr("Remove"), "", () => {
             deleteId = post.id;
             $("deleteError").hidden = true;
             $("deleteDialog").showModal();
@@ -476,19 +512,30 @@ function paintActivity(id) {
     toggle.replaceChildren(icon("message-circle"), document.createTextNode(String(Object.keys(data.comments).length)));
     toggle.setAttribute("aria-label", tr("Comments"));
     const list = entry.node.querySelector(".comment-list");
-    const signature = JSON.stringify([data.comments, state.profiles, state.profile, locale()]);
+    const signature = JSON.stringify([data.comments, state.profiles, state.profile, state.blocks, locale()]);
     if (list.dataset.signature === signature) return;
     list.dataset.signature = signature;
     list.replaceChildren();
-    Object.entries(data.comments).sort((a, b) => a[1].createdAt - b[1].createdAt).forEach(([commentId, comment]) => {
+    Object.entries(data.comments).filter(([, comment]) => !state.blocks?.[comment.authorId])
+        .sort((a, b) => a[1].createdAt - b[1].createdAt).forEach(([commentId, comment]) => {
         const row = element("div", "comment");
         const copy = element("div", "comment-copy");
         copy.append(element("strong", "", person(comment.authorId).displayName), element("p", "", comment.body), element("small", "post-time", relativeTime(comment.createdAt, Date.now(), locale())));
         row.append(avatar(person(comment.authorId)), copy);
+        const controls = element("div", "comment-controls");
+        if (comment.authorId !== state.uid && state.uid) {
+            controls.append(button(tr("Report"), "text-button", () => reportContent(id, "comment", commentId)));
+            const blocked = state.blocks?.[comment.authorId] === true;
+            controls.append(button(tr(blocked ? "Unblock" : "Block account"), "text-button", () => {
+                if (blocked) updateBlock(comment.authorId, false);
+                else confirmBlock(comment.authorId);
+            }));
+        }
         if (comment.authorId === state.uid || developer) {
             const remove = button(tr("Remove"), "text-button", () => perform(remove, () => deleteComment(id, commentId), tr("Comment removed.")));
-            row.append(remove);
+            controls.append(remove);
         }
+        if (controls.childElementCount) row.append(controls);
         list.append(row);
     });
 }
@@ -535,7 +582,7 @@ function updateComposerUI() {
         ? "Audience cannot be changed after publishing. Create a new post instead."
         : $("postVisibility").value === "friends"
             ? "Only you and friends with accepted message connections can read this post."
-            : "Anyone can read public posts, including signed-out visitors.");
+            : "Sign in to read public posts and participate.");
 }
 function resetComposer() {
     $("postForm").reset();
@@ -611,6 +658,108 @@ function renderProfileCard() {
     if (!level.hidden) level.append(icon("school"), element("span", "", tr("Level {level}", { level: profile.level })));
     $("exploreProfileLink").href = href;
     $("exploreProfileLink").textContent = tr(signedIn ? "View your profile" : "Sign in");
+    $("manageBlocks").hidden = !signedIn || embeddedProfile;
+}
+function reportContent(postId, targetType, targetId) {
+    if (!state.uid) return showError(new Error(tr("Sign in to take part in the community.")));
+    if (!state.connected) return showError(new Error(tr("You are offline. Reconnect before making changes.")));
+    reportTarget = { postId, targetType, targetId };
+    $("reportError").hidden = true;
+    $("reportReason").value = "spam";
+    $("reportDialog").showModal();
+}
+async function updateBlock(uid, blocked) {
+    if (!state.uid) return showError(new Error(tr("Sign in to take part in the community.")));
+    if (!state.user?.emailVerified) return showError(new Error(tr("Verify your email before participating.")));
+    if (!state.connected) return showError(new Error(tr("You are offline. Reconnect before making changes.")));
+    try {
+        await setCommunityBlock(uid, blocked);
+        $("liveStatus").textContent = tr(blocked ? "Account blocked." : "Account unblocked.");
+        $("blockDialog").close();
+    } catch (error) { showError(error, $("blockError")); }
+}
+function confirmBlock(uid) {
+    if (uid === state.uid) return;
+    blockTarget = uid;
+    $("blockTitle").textContent = tr("Block this account?");
+    $("blockDescription").textContent = tr("Their posts will be hidden from your community feed, and neither of you can interact with the other's content.");
+    $("blockError").hidden = true;
+    $("confirmBlock").textContent = tr("Block account");
+    $("blockDialog").showModal();
+}
+function renderBlockedAccounts() {
+    const list = $("blockedAccounts");
+    if (!list) return;
+    const uids = Object.keys(state.blocks || {}).filter((uid) => state.blocks[uid] === true);
+    list.replaceChildren(...uids.map((uid) => {
+        const row = element("div", "blocked-account-row");
+        row.append(element("span", "", person(uid).displayName));
+        row.append(button(tr("Unblock"), "secondary-button", () => updateBlock(uid, false)));
+        return row;
+    }));
+    $("blockedEmpty").hidden = uids.length > 0;
+}
+function renderModerationQueue(reports) {
+    const queue = $("moderationReports");
+    const entries = Object.entries(reports || {}).filter(([, report]) => report?.status === "open")
+        .sort((a, b) => (b[1].createdAt || 0) - (a[1].createdAt || 0));
+    queue.replaceChildren(...entries.map(([reportId, report]) => {
+        const card = element("article", "moderation-report");
+        const heading = element("div", "moderation-report-heading");
+        heading.append(element("strong", "", tr(report.targetType === "comment" ? "Comment" : "Post")));
+        const reasonLabel = ({ spam: "Spam", harassment: "Harassment or bullying", inappropriate: "Inappropriate content", scam: "Scam or misleading content", other: "Other" })[report.reason] || "Other";
+        heading.append(element("span", "category-badge", tr(reasonLabel)));
+        const excerpt = element("p", "", report.excerpt || "");
+        const meta = element("p", "helper", tr("Reported account: {name}", { name: person(report.targetAuthorId).displayName }));
+        const actions = element("div", "moderation-actions");
+        actions.append(button(tr("Dismiss"), "secondary-button", () => resolveReport(reportId, "dismiss")));
+        actions.append(button(tr("Remove reported content"), "text-button", () => {
+            moderationTarget = reportId;
+            $("moderationDialog").showModal();
+        }));
+        card.append(heading, excerpt, meta, actions);
+        return card;
+    }));
+    $("moderationEmpty").hidden = entries.length > 0;
+    $("moderationError").hidden = true;
+}
+async function resolveReport(reportId, action) {
+    if (!state.user || !developer) return;
+    const buttonNode = $("confirmModeration");
+    if (action === "remove") buttonNode.disabled = true;
+    try {
+        const functions = getFunctions(state.user.app, "asia-southeast1");
+        await httpsCallable(functions, "moderateCommunityReport")({ reportId, action });
+        if (action === "remove") $("moderationDialog").close();
+        $("liveStatus").textContent = tr("Report resolved.");
+    } catch (error) {
+        $("moderationError").textContent = `${tr("Moderation action could not be completed.")} ${error.message || ""}`;
+        $("moderationError").hidden = false;
+    } finally {
+        if (action === "remove") buttonNode.disabled = false;
+    }
+}
+function syncModerationQueue() {
+    const shouldSubscribe = Boolean(state.uid && developer && !embeddedProfile);
+    if (!shouldSubscribe) {
+        moderationStop?.();
+        moderationStop = null;
+        moderationUid = null;
+        $("moderationQueue").hidden = true;
+        $("moderationReports").replaceChildren();
+        return;
+    }
+    if (moderationStop && moderationUid === state.uid) return;
+    moderationStop?.();
+    moderationUid = state.uid;
+    $("moderationQueue").hidden = false;
+    $("moderationError").hidden = true;
+    moderationStop = onValue(query(ref(db, "community_reports"), orderByChild("status"), equalTo("open"), limitToLast(100)), (snapshot) => {
+        renderModerationQueue(snapshot.val() || {});
+    }, (error) => {
+        $("moderationError").textContent = `${tr("Report queue could not load. Refresh to retry.")} ${error.message || ""}`;
+        $("moderationError").hidden = false;
+    });
 }
 function renderIdentity() {
     renderProfileCard();
@@ -680,6 +829,8 @@ const unsubscribe = subscribeCommunity(async (next) => {
         }
     }
     renderIdentity();
+    renderBlockedAccounts();
+    syncModerationQueue();
     $("publishButton").disabled = !state.uid || state.loading || !state.connected || publishing;
     $("postBody").disabled = !state.uid;
     $("attachButton").disabled = !state.uid || Boolean(editingId) || publishing;
@@ -733,6 +884,32 @@ $("postSort").addEventListener("change", renderFeed);
 $("clearGroup").addEventListener("click", () => { groupId = ""; renderFilters(); renderFeed(); });
 $("viewPeople").addEventListener("click", () => openPeople("online"));
 $("findBuddy").addEventListener("click", () => openPeople("buddies"));
+$("manageBlocks").addEventListener("click", () => {
+    renderBlockedAccounts();
+    $("blockedDialog").showModal();
+});
+$("reportForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!reportTarget) return;
+    const submit = $("submitReport");
+    submit.disabled = true;
+    $("reportError").hidden = true;
+    try {
+        await reportCommunityContent(reportTarget.postId, reportTarget.targetType, reportTarget.targetId, $("reportReason").value);
+        $("reportDialog").close();
+        $("liveStatus").textContent = tr("Report submitted for moderator review.");
+    } catch (error) { showError(error, $("reportError")); }
+    finally { submit.disabled = false; }
+});
+$("confirmBlock").addEventListener("click", () => {
+    if (blockTarget) updateBlock(blockTarget, true);
+});
+$("confirmModeration").addEventListener("click", () => {
+    if (moderationTarget) resolveReport(moderationTarget, "remove");
+});
+$("reportDialog").addEventListener("close", () => { reportTarget = null; });
+$("blockDialog").addEventListener("close", () => { blockTarget = null; });
+$("moderationDialog").addEventListener("close", () => { moderationTarget = null; });
 $("peopleSearch").addEventListener("input", renderPeopleResults);
 $("cancelEdit").addEventListener("click", resetComposer);
 $("attachButton").addEventListener("click", () => $("mediaInput").click());
@@ -885,6 +1062,7 @@ window.addEventListener("pagehide", (event) => {
     if (event.persisted) return;
     clearInterval(clock);
     stopProfileDetails?.();
+    moderationStop?.();
     privateMedia.forEach((_, id) => releasePrivateMedia(id));
     unsubscribe();
     subscriptions.forEach((stop) => stop());

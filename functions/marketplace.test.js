@@ -22,6 +22,7 @@ test("enrollment totals count accepted requests once and ignore stale/retried ev
 
 test("teacher identity publishes only profile name and safe photo, never private user fields", () => {
     assert.deepEqual(publicTeacher({ first_name: "Teacher", last_name: "Name", photoURL: "https://example.com/a.png", email: "private", subscription: "private" }),
-        { displayName: "Teacher Name", photoURL: "https://example.com/a.png" });
-    assert.deepEqual(publicTeacher({ displayName: "Teacher", photoURL: "javascript:alert(1)" }), { displayName: "Teacher", photoURL: "" });
+        { displayName: "Teacher Name", photoURL: "https://example.com/a.png", verified: false });
+    assert.deepEqual(publicTeacher({ displayName: "Teacher", photoURL: "javascript:alert(1)", verified: true }),
+        { displayName: "Teacher", photoURL: "", verified: true });
 });

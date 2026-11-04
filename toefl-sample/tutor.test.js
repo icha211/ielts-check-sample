@@ -313,6 +313,7 @@ function fixture() {
     const data = {}, writes = [];
     const context = vm.createContext({
         auth: { currentUser: { uid: "teacher", displayName: "Teacher" } }, db: {},
+        getFunctions: () => ({}), httpsCallable: () => async () => ({ data: { requests: [] } }),
         validateCourse: model.validateCourse,
         validateTeachingProfile: model.validateTeachingProfile,
         ref: (_, key) => ({ key }), query: (target, ...filters) => ({ ...target, filters }), orderByChild: value => value, equalTo: value => value,
@@ -380,12 +381,37 @@ test("public subscriptions retain missing counts and observe only public identit
     });
 test("teacher role is self-service but separate from developer claims; existing teachers stay teachers", async () => {
     const { context, data, writes } = fixture();
-    await context.registerMarketplaceRole("teacher");
+    assert.equal(await context.registerMarketplaceRole("teacher"), "teacher");
     assert.deepEqual(writes[0], ["tutor_roles/teacher", "teacher"]);
     data["tutor_roles/teacher"] = "teacher";
-    await context.registerMarketplaceRole("student");
+    assert.equal(await context.registerMarketplaceRole("student"), "teacher");
     assert.equal(writes.length, 1);
     await assert.rejects(context.registerMarketplaceRole("developer"));
+});
+test("student dashboard routes only current teacher accounts and exposes role lookup failures", async () => {
+    const source = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+    const marker = source.indexOf("const teachingRole = await get(");
+    const start = source.lastIndexOf("try {", marker);
+    const end = source.indexOf("if (user) {", marker);
+    const guard = source.slice(start, end);
+    for (const scenario of ["teacher", "student", "stale", "error"]) {
+        const routes = [], notices = [], logs = [];
+        const context = vm.createContext({
+            user: { uid: "account" }, db: {}, version: 1, partnerAuthVersion: scenario === "stale" ? 2 : 1,
+            get: async () => {
+                if (scenario === "error") throw new Error("Connection failed");
+                return { val: () => scenario === "student" ? "student" : "teacher" };
+            },
+            ref: (_, path) => { assert.equal(path, "tutor_roles/account"); return path; },
+            window: { location: { replace: url => routes.push(url) } },
+            document: { createElement: () => ({ setAttribute() {} }), body: { prepend: notice => notices.push(notice) } },
+            console: { error: (...args) => logs.push(args) }
+        });
+        await vm.runInContext(`(async () => { ${guard} })()`, context);
+        assert.deepEqual(routes, scenario === "teacher" ? ["tutor-check.html?studio=1"] : []);
+        assert.equal(notices.length, scenario === "error" ? 1 : 0);
+        assert.equal(logs.length, scenario === "error" ? 1 : 0);
+    }
 });
 test("only teacher accounts publish, only owners edit, and enrollment never processes payment", async () => {
     const { context, data, writes } = fixture();

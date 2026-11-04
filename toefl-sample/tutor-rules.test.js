@@ -43,6 +43,12 @@ test("public teaching backgrounds remain owner-written and require a teacher rol
     assert.equal((await request("tutor_profiles/profile-teacher", "stranger", "DELETE")).status, 401);
     assert.equal((await request("tutor_profiles/profile-teacher", "profile-teacher", "DELETE")).status, 200);
 });
+test("tutor review state is private and can only be changed by trusted backend code", { skip: !host }, async () => {
+    assert.equal((await request("tutor_verification/review-teacher", "review-teacher")).status, 401);
+    assert.equal((await request("tutor_verification/review-teacher", "review-teacher", "PUT", { status: "verified" })).status, 401);
+    assert.equal((await request("tutor_verification/review-teacher", null)).status, 401);
+    assert.equal((await request("tutor_security/review-teacher", "review-teacher", "PUT", { requests: 1 })).status, 401);
+});
 test("enrollment prices and transitions are protected, inboxes are private, only accepted learners review", { skip: !host }, async () => {
     const course = { teacherId: "enroll-teacher", teacherName: "Teacher", title: "Speaking", summary: "Practice", whatYouLearn: "Speaking", curriculum: "Speaking", schedule: "Monday WIB", category: "speaking", type: "live", price: 100000, originalPrice: 0, coverURL: "", previewURL: "", previewPath: "", previewType: "", published: true, createdAt: stamp, updatedAt: stamp };
     await request("tutor_roles/enroll-teacher", "enroll-teacher", "PUT", "teacher");

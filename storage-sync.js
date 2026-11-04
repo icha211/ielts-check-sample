@@ -9,6 +9,8 @@ const RTDB_PROBLEMS_PATH = "ielts_check/problems_v1";
 class StorageSync {
   constructor() {
     this.isRemoteAvailable = true;
+    this._lastStorageError = "";
+    this._problemsRevision = null;
   }
 
   _coerceModuleList(value) {
@@ -29,21 +31,30 @@ class StorageSync {
   async _rtdbGet(path) {
     const response = await fetch(this._buildRtdbUrl(path), {
       method: "GET",
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json", "X-Firebase-ETag": "true" }
     });
     if (!response.ok) {
       throw new Error(`RTDB GET failed (${response.status})`);
     }
-    return response.json();
+    const data = await response.json();
+    const revision = response.headers.get("ETag");
+    if (!revision) throw new Error("RTDB did not provide a revision; reload before saving.");
+    return { data, revision };
   }
 
-  async _rtdbPut(path, data) {
+  async _rtdbPut(path, data, revision) {
+    if (!revision) throw new Error("Reload the shared problem list before saving.");
     const response = await fetch(this._buildRtdbUrl(path), {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "If-Match": revision },
       body: JSON.stringify(data)
     });
     if (!response.ok) {
+      if (response.status === 412) {
+        const error = new Error("Another editor changed these problems. Reload before saving again.");
+        error.code = "STORAGE_CONFLICT";
+        throw error;
+      }
       throw new Error(`RTDB PUT failed (${response.status})`);
     }
     return response.json();
@@ -61,13 +72,17 @@ class StorageSync {
 
   async getAllProblems() {
     try {
-      const data = await this._rtdbGet(RTDB_PROBLEMS_PATH);
+      const { data, revision } = await this._rtdbGet(RTDB_PROBLEMS_PATH);
       const normalized = this._normalizeProblems(data || {});
+      this._problemsRevision = revision;
       this._saveProblemsToLocalStorage(normalized);
       this.isRemoteAvailable = true;
+      this._lastStorageError = "";
       return normalized;
     } catch (error) {
       this.isRemoteAvailable = false;
+      this._problemsRevision = null;
+      this._lastStorageError = error.message;
       console.warn("RTDB read failed, using localStorage fallback:", error.message);
     }
 
@@ -86,11 +101,15 @@ class StorageSync {
       await this._rtdbPut(RTDB_PROBLEMS_PATH, {
         ...normalized,
         updatedAt: new Date().toISOString()
-      });
+      }, this._problemsRevision);
+      this._problemsRevision = null;
       this.isRemoteAvailable = true;
+      this._lastStorageError = "";
     } catch (error) {
       this.isRemoteAvailable = false;
-      console.warn("RTDB write failed, using localStorage fallback:", error.message);
+      this._lastStorageError = error.message;
+      console.warn("Shared problems were not saved:", error.message);
+      throw error;
     }
 
     this._saveProblemsToLocalStorage(normalized);
@@ -98,37 +117,78 @@ class StorageSync {
   }
 
   async saveProblemsByModule(module, list) {
-    const all = await this.getAllProblems();
+    this._validateModule(module);
+    const all = this._getProblemsFromLocalStorage();
     const normalized = this._normalizeProblems(all);
     normalized[module] = Array.isArray(list) ? list : [];
     return this.saveAllProblems(normalized);
   }
 
   async addProblem(module, problemData) {
-    const list = await this.getProblemsByModule(module);
     const item = { ...problemData };
     if (!item.id) {
       item.id = `problem_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     }
-    list.unshift(item);
-    await this.saveProblemsByModule(module, list);
+    await this._mutateProblems(module, (list) => {
+      if (!list.some((problem) => problem.id === item.id)) list.unshift(item);
+      return list;
+    });
     return item;
   }
 
   async deleteProblem(module, problemId) {
-    const list = await this.getProblemsByModule(module);
-    const filtered = list.filter((p) => p.id !== problemId);
-    await this.saveProblemsByModule(module, filtered);
+    await this._mutateProblems(module, (list) => list.filter((p) => p.id !== problemId));
     return true;
   }
 
   async updateProblem(module, problemId, updatedData) {
-    const list = await this.getProblemsByModule(module);
-    const index = list.findIndex((p) => p.id === problemId);
-    if (index === -1) return false;
-    list[index] = updatedData;
-    await this.saveProblemsByModule(module, list);
+    let original = this._getProblemsFromLocalStorage()[module]?.find((p) => p.id === problemId);
+    await this._mutateProblems(module, (list) => {
+      const index = list.findIndex((p) => p.id === problemId);
+      if (index === -1) throw new Error("Problem no longer exists. Reload the list.");
+      if (original && JSON.stringify(original) !== JSON.stringify(list[index])) {
+        throw new Error("Another editor changed this problem. Reload before saving.");
+      }
+      if (!original) original = list[index];
+      list[index] = { ...updatedData, id: problemId };
+      return list;
+    });
     return true;
+  }
+
+  _validateModule(module) {
+    if (!["reading", "listening", "writing", "speaking"].includes(module)) {
+      throw new Error(`Unsupported problem module: ${module}`);
+    }
+  }
+
+  async _mutateProblems(module, mutate) {
+    this._validateModule(module);
+    try {
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data, revision } = await this._rtdbGet(RTDB_PROBLEMS_PATH);
+        const normalized = this._normalizeProblems(data);
+        normalized[module] = mutate(normalized[module]);
+        try {
+          await this._rtdbPut(RTDB_PROBLEMS_PATH, {
+            ...normalized, updatedAt: new Date().toISOString()
+          }, revision);
+        } catch (error) {
+          if (error.code === "STORAGE_CONFLICT" && attempt < 4) continue;
+          throw error;
+        }
+        this._saveProblemsToLocalStorage(normalized);
+        this._problemsRevision = null;
+        this.isRemoteAvailable = true;
+        this._lastStorageError = "";
+        return true;
+      }
+    } catch (error) {
+      this.isRemoteAvailable = false;
+      this._lastStorageError = error.message;
+      console.warn("Shared problem change was not saved:", error.message);
+      throw error;
+    }
   }
 
   async recordDailyTest(module, date, completed = true) {

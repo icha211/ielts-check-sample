@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import parse_cors_origins, settings
+from ai_runtime import AiBodyLimit
 from routes.chat import router as chat_router
 from routes.evaluation import router as evaluation_router
 from routes.health import router as health_router
@@ -10,6 +11,8 @@ from routes.explanation import router as explanation_router
 
 
 DEFAULT_ALLOWED_ORIGINS = [
+    "https://quickcheck-25590.web.app",
+    "https://quickcheck-25590.firebaseapp.com",
     "https://icha211.github.io",
     "http://localhost:3000",
     "http://localhost:8000",
@@ -28,6 +31,7 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         debug=settings.debug,
     )
+    app.add_middleware(AiBodyLimit)
 
     allowed_origins = parse_cors_origins(settings.cors_origins) or DEFAULT_ALLOWED_ORIGINS
     if settings.debug:
@@ -43,6 +47,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(health_router)
+    app.include_router(health_router, prefix=settings.api_prefix)
     app.include_router(chat_router, prefix=settings.api_prefix)
     app.include_router(evaluation_router, prefix=settings.api_prefix)
     app.include_router(developer_router, prefix=settings.api_prefix)

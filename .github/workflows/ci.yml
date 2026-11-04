@@ -30,16 +30,45 @@ jobs:
           python -m py_compile ai_review_server.py data_storage_server.py
           python -m py_compile apps/api-gateway/main.py apps/api-gateway/config.py apps/api-gateway/schemas.py apps/api-gateway/routes/chat.py apps/api-gateway/routes/evaluation.py apps/api-gateway/routes/health.py
 
+      - name: Gateway authorization tests
+        working-directory: apps/api-gateway
+        run: python -m unittest discover -s tests
+
+      - name: Public artifact tests
+        run: python -m unittest discover -s infra -p "test_*.py"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
-          cache-dependency-path: functions/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+
+      - name: Install browser test dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
 
       - name: Install functions dependencies
         working-directory: functions
         run: npm ci
+
+      - name: Developer gateway client tests
+        run: npm run test:beta:unit
+
+      - name: Local mocked beta browser journeys
+        run: npm run test:beta:browser
+
+      - name: Upload failed browser traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beta-browser-failures
+          path: test-results/beta
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Functions syntax checks
         working-directory: functions
@@ -48,6 +77,15 @@ jobs:
       - name: Functions tests
         working-directory: functions
         run: npm test
+
+      - name: Setup Java for Firebase emulators
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Callable authorization and database rules
+        run: npx --yes firebase-tools@15 emulators:exec --only database,functions,auth,storage --project demo-toefl-messaging "npm --prefix functions run test:emulator"
 
       - name: Dependency audit (runtime)
         working-directory: functions

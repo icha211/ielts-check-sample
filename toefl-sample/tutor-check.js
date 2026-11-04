@@ -2,16 +2,20 @@ import { auth } from "./js/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse } from "./js/tutor-model.js?v=20261101-crud";
-import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStudents, watchAccount, saveCourse, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview } from "./js/tutor-service.js?v=20261102-market-cards";
+import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStudents, watchAccount, saveCourse, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview, requestTutorVerification, getTutorVerificationStatus, listTutorVerificationRequests, reviewTutorVerification } from "./js/tutor-service.js?v=20261104-tutor-home";
 
 const $ = id => document.getElementById(id);
 $("editorFieldBank").append($("courseEditorFields").content.cloneNode(true));
 let courses = {}, reviews = {}, library = {}, requests = {}, inbox = {};
 let uid = "", role = "student", roleReady = false, authReady = false, version = 0, accountStop = () => {};
 let category = "", favoritesOnly = false, editingId = "", detailId = "";
+let studioCourseFilter = "all";
 let selectedTeacher = new URLSearchParams(location.search).get("teacher") || "";
 let detailProfile = {}, detailProfileReady = false, detailProfileStop = () => {};
 let catalogReady = false, reviewsReady = false, checkoutBusy = false;
+let catalogFailure = "", reviewsFailure = "";
+const pendingEnrollments = new Set();
+let verificationStatus = { status: "loading" }, verificationLoading = false, verificationBusy = false, isMarketplaceModerator = false;
 const teacherIdentities = {}, publicStudents = {};
 const teacherIdentityStops = new Map(), courseStudentStops = new Map();
 const filterPanel = document.querySelector(".filter-panel");
@@ -24,6 +28,12 @@ function elSidebarFilters() {
 }
 function courseTeacher(course) {
     return teacherIdentities[course.teacherId]?.displayName || course.teacherName;
+}
+function reviewedBadge(uid) {
+    if (teacherIdentities[uid]?.verified !== true) return null;
+    const badge = el("span", "verified-badge", "Profile reviewed");
+    badge.title = "A Quick Check moderator reviewed this tutor profile; it is not a guarantee of course quality.";
+    return badge;
 }
 function syncPublicCourseData() {
     const teacherIds = new Set(Object.values(courses).map(course => course.teacherId));
@@ -76,7 +86,63 @@ async function updateCourseState(id, state) {
     await setCourseState(id, state);
     if (current === version) $("marketStatus").textContent = `Course ${state}. Existing learner records are unchanged.`;
 }
+async function sendEnrollment(course) {
+    if (pendingEnrollments.has(course.id)) throw new Error("This enrollment request is already being sent.");
+    const current = version;
+    pendingEnrollments.add(course.id);
+    if (detailId === course.id && !$("coursePage").hidden) renderDetail();
+    try {
+        await requestEnrollment(course);
+    } finally {
+        if (current === version) {
+            pendingEnrollments.delete(course.id);
+            if (detailId === course.id && !$("coursePage").hidden) renderDetail();
+        }
+    }
+}
 $("teacherEnrollmentFilter").addEventListener("change", renderStudio);
+$("teacherMobileHome").addEventListener("click", () => setStudioView(true));
+$("teacherMobileCourses").addEventListener("click", () => {
+    const show = () => { setStudioView(true); $("ownCourses").scrollIntoView({ block: "start" }); };
+    if ($("courseEditor").hidden) show();
+    else requestEditorExit(show);
+});
+$("teacherMobileCreate").addEventListener("click", () => openEditor());
+$("teacherMobileLearners").addEventListener("click", () => {
+    if ($("courseEditor").hidden) showClasses();
+    else requestEditorExit(showClasses);
+});
+$("studioCourseFilters").addEventListener("click", event => {
+    const button = event.target.closest("[data-studio-filter]");
+    if (!button) return;
+    studioCourseFilter = button.dataset.studioFilter;
+    renderStudio();
+    $("studioCourseFilters").querySelector(`[data-studio-filter="${studioCourseFilter}"]`).focus();
+});
+$("requestVerificationButton").addEventListener("click", async event => {
+    if (verificationBusy || verificationLoading) return;
+    const current = version;
+    verificationBusy = true;
+    renderVerificationStatus();
+    $("verificationError").hidden = true;
+    try {
+        const result = await requestTutorVerification();
+        if (current !== version) return;
+        verificationStatus = { ...verificationStatus, ...result, requestedAt: Date.now() };
+    } catch (failure) {
+        if (current !== version) return;
+        console.error("[TutorCheck] Tutor profile review request failed:", failure);
+        $("verificationError").textContent = failure.message || "Your review request could not be sent.";
+        $("verificationError").hidden = false;
+    } finally {
+        if (current === version) {
+            verificationBusy = false;
+            renderVerificationStatus();
+        }
+    }
+});
+$("refreshVerificationButton").addEventListener("click", () => loadTutorVerificationStatus(version));
+$("refreshModeratorQueue").addEventListener("click", () => loadModeratorVerificationQueue(version));
 $("archiveCancel").addEventListener("click", () => $("archiveDialog").close());
 $("archiveConfirm").addEventListener("click", async () => {
     const current = version, id = archiveId;
@@ -98,13 +164,13 @@ const el = (tag, className = "", text = "") => {
     return node;
 };
 function icon(name) { const node = el("i", `ti ti-${name}`); node.setAttribute("aria-hidden", "true"); return node; }
-function error(message, target = ($("courseEditor")?.hidden === false && $("editorError")) || (!$("coursePage").hidden && $("detailError")) || $("marketError")) {
+function error(message, target = ($("requestsDialog")?.open && $("requestsError")) || ($("cartDialog")?.open && $("cartError")) || ($("courseEditor")?.hidden === false && $("editorError")) || (!$("coursePage").hidden && $("detailError")) || $("marketError")) {
     console.error("[TutorCheck]", message);
     const text = message instanceof Error ? message.message : String(message);
     if (target.textContent !== text) target.textContent = text;
     target.hidden = false;
 }
-function action(text, className, callback) {
+function action(text, className, callback, errorTarget) {
     const node = el("button", className, text);
     node.type = "button";
     node.addEventListener("click", async () => {
@@ -113,8 +179,9 @@ function action(text, className, callback) {
         const focusKey = node.dataset.focusKey;
         node.disabled = true;
         const current = version;
+        if (errorTarget) errorTarget.hidden = true;
         try { await callback(); }
-        catch (failure) { if (current === version) error(failure); }
+        catch (failure) { if (current === version) error(failure, errorTarget); }
         finally {
             if (node.isConnected) node.disabled = false;
             if (current === version && hadFocus && courseId && focusKey && !$("browseLayout").hidden && document.activeElement === document.body) {
@@ -249,7 +316,11 @@ function card(course, statistics) {
         avatar.addEventListener("error", () => avatar.replaceWith(el("span", "teacher-avatar", teacherName.trim().charAt(0).toUpperCase() || "T")), { once: true });
     }
     avatar.setAttribute("aria-hidden", "true");
-    teacherLine.append(avatar, teacher);
+    const teacherNameGroup = el("div", "teacher-name-wrap");
+    teacherNameGroup.append(teacher);
+    const badge = reviewedBadge(course.teacherId);
+    if (badge) teacherNameGroup.append(badge);
+    teacherLine.append(avatar, teacherNameGroup);
     const ratingLine = el("div", "course-rating-line");
     ratingLine.append(
         el("p", "rating", statistics.count ? `★ ${statistics.rating.toFixed(1)}` : "New course"),
@@ -334,7 +405,7 @@ function renderCatalog() {
     selectedTeacher = teacherRows.some(([id]) => id === teacherSelection) || (!catalogReady && !teacherRows.length) ? teacherSelection : "";
     teacherOptions.value = selectedTeacher;
     renderFilterState();
-    if (!catalogReady || !reviewsReady) return;
+    if (!catalogReady || !reviewsReady || catalogFailure || reviewsFailure) return;
     const statistics = stats();
     const filters = { teacher: selectedTeacher, category, search: $("courseSearch").value, sort: $("courseSort").value,
         rating: document.querySelector('[name="rating"]:checked')?.value || "",
@@ -393,6 +464,10 @@ function renderCatalog() {
 }
 function syncMarketplaceNavigation() {
     const teacher = role === "teacher";
+    document.body.classList.toggle("marketplace-teacher", teacher);
+    $("teacherMobileNav").hidden = !teacher;
+    $("teacherMobileHome").setAttribute("aria-current", !$("teacherStudio").hidden ? "page" : "false");
+    document.body.classList.toggle("tutor-home", teacher && !$("teacherStudio").hidden);
     const browsing = !$("browseLayout").hidden && $("courseEditor").hidden;
     document.body.classList.toggle("marketplace-browsing", browsing);
     $("qcnavMarketplaceStudentSidebar").hidden = browsing || teacher;
@@ -443,7 +518,7 @@ function renderCart() {
         const available = course?.published && !course.archived && course.teacherId !== uid;
         const node = row(course?.title || "Unavailable course", available ? rupiah(course.price) : "No longer open for enrollment");
         if (available) { total += course.price; validCount++; }
-        node.append(action("Remove", "text-button", () => toggleLibrary("cart", id, false)));
+        node.append(action("Remove", "text-button", () => toggleLibrary("cart", id, false), $("cartError")));
         items.append(node);
     });
     if (!items.children.length) items.append(el("p", "muted", "Your cart is empty. Add courses you would like to join."));
@@ -457,7 +532,7 @@ function renderRequests() {
         const course = courses[request.courseId];
         const node = row(course?.title || "Course unavailable", `${request.status} | Requested price: ${rupiah(request.price)}`);
         const buttons = el("div", "row-actions");
-        if (request.status === "pending") buttons.append(action("Cancel", "text-button", () => changeRequest(id, "cancelled")));
+        if (request.status === "pending") buttons.append(action("Cancel", "text-button", () => changeRequest(id, "cancelled"), $("requestsError")));
         if (course) buttons.append(action("View course", "text-button", () => { $("requestsDialog").close(); showCourse(request.courseId); }));
         const contact = el("a", "", "Teacher profile");
         contact.href = `profile.html?uid=${encodeURIComponent(request.teacherId)}`;
@@ -469,34 +544,51 @@ function renderRequests() {
 }
 function renderStudio() {
     if (role !== "teacher") { $("teacherStudio").hidden = true; return; }
+    renderVerificationStatus();
     const ownedRows = Object.entries(courses).filter(([, course]) => course.teacherId === uid);
     const ownedReviews = ownedRows.flatMap(([id]) => Object.values(reviews[id] || {}).filter(review => Number.isInteger(review.rating) && review.rating >= 1 && review.rating <= 5));
     const accepted = Object.values(inbox).filter(request => request.status === "accepted");
     const pending = Object.values(inbox).filter(request => request.status === "pending");
     const averageRating = ownedReviews.length ? ownedReviews.reduce((sum, review) => sum + review.rating, 0) / ownedReviews.length : null;
     $("studioTeacherName").textContent = auth.currentUser?.displayName?.trim().split(/\s+/)[0] || "teacher";
+    const today = new Date(), hour = today.getHours();
+    $("studioGreeting").textContent = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    $("studioDate").dateTime = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    $("studioDate").textContent = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" }).format(today);
     const metrics = $("studioMetrics");
     metrics.replaceChildren();
     [
-        ["Courses", ownedRows.filter(([, course]) => course.published && !course.archived).length, "Published listings", "book-2"],
-        ["Learners", accepted.length, "Accepted enrollments", "users"],
-        ["Requests", pending.length, "Waiting for your reply", "inbox"],
-        ["Average rating", averageRating === null ? "—" : averageRating.toFixed(1), `${ownedReviews.length} learner review${ownedReviews.length === 1 ? "" : "s"}`, "star"]
+        ["Active courses", ownedRows.filter(([, course]) => course.published && !course.archived).length, "Published listings", "book-2"],
+        ["Total students", new Set(accepted.map(request => request.studentId)).size, `${pending.length} pending request${pending.length === 1 ? "" : "s"}`, "users"],
+        ["Monthly earnings", "Not tracked", "No payments collected here", "wallet"],
+        ["Average rating", averageRating === null ? "No reviews" : `${averageRating.toFixed(1)} / 5`, `${ownedReviews.length} learner review${ownedReviews.length === 1 ? "" : "s"}`, "star"]
     ].forEach(([label, value, note, glyph]) => {
         const metric = el("article", "studio-metric");
+        metric.dataset.metric = glyph;
         metric.append(icon(glyph), el("p", "muted", label), el("strong", "", String(value)), el("span", "muted", note));
         metrics.append(metric);
     });
     const owned = $("ownCourses");
     owned.replaceChildren();
-    ownedRows.forEach(([id, course]) => {
+    const visibleRows = ownedRows.filter(([, course]) => studioCourseFilter === "all"
+        || studioCourseFilter === "archived" && course.archived
+        || studioCourseFilter === "published" && course.published && !course.archived
+        || studioCourseFilter === "draft" && !course.published && !course.archived);
+    $("studioCourseFilters").querySelectorAll("[data-studio-filter]").forEach(button => {
+        button.setAttribute("aria-pressed", String(button.dataset.studioFilter === studioCourseFilter));
+    });
+    $("studioCourseCount").textContent = `${visibleRows.length} course${visibleRows.length === 1 ? "" : "s"}`;
+    visibleRows.forEach(([id, course]) => {
         const node = el("article", "studio-course");
         node.append(cover(course));
         const content = el("div", "studio-course-copy");
+        const rating = stats()[id];
+        const learners = Object.values(inbox).filter(request => request.courseId === id && request.status === "accepted").length;
         content.append(
             el("span", `course-state${course.archived ? " is-archived" : course.published ? " is-published" : ""}`, course.archived ? "Archived" : course.published ? "Published" : "Draft"),
             el("h4", "", course.title),
-            el("p", "muted", `${rupiah(course.price)} · ${course.type === "live" ? "Live classes" : TUTOR_TYPES[course.type]}`)
+            el("p", "muted", `${learners} student${learners === 1 ? "" : "s"} | ${rating?.rating ? `${rating.rating.toFixed(1)} / 5` : "No reviews"}`),
+            price(course)
         );
         const actions = el("div", "row-actions");
         if (course.archived) actions.append(action("Restore as paused", "text-button", () => updateCourseState(id, "paused")));
@@ -514,10 +606,46 @@ function renderStudio() {
     });
     if (!owned.children.length) {
         const empty = el("div", "studio-empty");
-        empty.append(icon("book-upload"), el("h4", "", "Your first course starts here"), el("p", "muted", "Add a title, learning outcomes, curriculum, price and preview media to publish a course."));
-        empty.append(action("Create a course", "primary", () => openEditor()));
+        empty.append(icon("book-upload"), el("h4", "", ownedRows.length ? "No courses in this view" : "Your first course starts here"),
+            el("p", "muted", ownedRows.length ? "Choose another filter to see your courses." : "Use Create a course above to fill in your live course template."));
         owned.append(empty);
     }
+    const classes = $("studioClasses");
+    classes.replaceChildren();
+    const liveCourses = ownedRows.filter(([id, course]) => course.type === "live" && !course.archived
+        && accepted.some(request => request.courseId === id));
+    liveCourses.slice(0, 3).forEach(([id, course]) => {
+        const item = el("div", "studio-update");
+        item.append(icon("calendar-event"));
+        const text = el("div");
+        text.append(el("strong", "", course.title), el("p", "muted", course.schedule));
+        item.append(text, action("View", "text-button", () => showCourse(id)));
+        classes.append(item);
+    });
+    if (!classes.children.length) classes.append(el("p", "studio-empty-note", "No live classes with accepted learners yet."));
+    const activity = $("studioActivity");
+    activity.replaceChildren();
+    const events = Object.entries(inbox).map(([id, request]) => ({
+        at: request.updatedAt || request.createdAt, glyph: "user-plus", courseId: request.courseId, key: id,
+        text: `${request.studentName || "A learner"}: ${request.status} enrollment for ${courses[request.courseId]?.title || "a course"}.`
+    }));
+    ownedRows.forEach(([id, course]) => Object.entries(reviews[id] || {}).forEach(([reviewId, review]) => {
+        events.push({ at: review.updatedAt, glyph: "star", courseId: id, key: `${id}_${reviewId}`,
+            text: `${review.studentName || "A learner"} left a ${review.rating}-star review for ${course.title}.` });
+    }));
+    events.sort((a, b) => (b.at || 0) - (a.at || 0)).slice(0, 5).forEach(event => {
+        const item = el("div", "studio-update");
+        const text = el("div");
+        text.append(el("p", "", event.text));
+        if (Number.isFinite(event.at)) {
+            const time = el("time", "muted", new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(event.at));
+            time.dateTime = new Date(event.at).toISOString();
+            text.append(time);
+        }
+        item.append(icon(event.glyph), text);
+        activity.append(item);
+    });
+    if (!activity.children.length) activity.append(el("p", "studio-empty-note", "New requests and learner reviews will appear here."));
     const items = $("teacherInbox");
     items.replaceChildren();
     const enrollmentLabels = { "": "All enrollments", pending: "Pending requests", accepted: "Accepted learners", declined: "Declined requests", cancelled: "Cancelled requests" };
@@ -542,6 +670,118 @@ function renderStudio() {
         items.append(node);
     });
     if (!items.children.length) items.append(el("p", "muted", $("teacherEnrollmentFilter").value ? "No enrollments with this status." : "Enrollment requests will appear here in real time."));
+}
+function renderVerificationStatus() {
+    const status = verificationStatus.status;
+    const messages = {
+        loading: "Loading your profile review status...",
+        unavailable: "Profile review status is unavailable. Refresh to try again.",
+        not_requested: "Your public teacher profile has not been reviewed.",
+        pending: "Your request is waiting for moderator review.",
+        verified: "A Quick Check moderator reviewed this tutor profile. This badge is not a guarantee of course quality or payment protection.",
+        rejected: verificationStatus.reviewerNote
+            ? `Review not approved: ${verificationStatus.reviewerNote}`
+            : "Your profile review was not approved. Update your public teaching profile before requesting another review."
+    };
+    $("verificationStatus").textContent = verificationBusy ? "Sending your profile review request..." : messages[status] || "Profile review status is unavailable.";
+    const cooldown = Number.isFinite(verificationStatus.requestedAt) &&
+        Date.now() - verificationStatus.requestedAt < 24 * 60 * 60 * 1000;
+    const canRequest = status === "not_requested" || status === "rejected" && !cooldown;
+    $("requestVerificationButton").hidden = !canRequest;
+    $("requestVerificationButton").disabled = verificationBusy || verificationLoading;
+    $("refreshVerificationButton").disabled = verificationBusy || verificationLoading;
+    if (status === "rejected" && cooldown) $("verificationStatus").textContent += " You can request another review 24 hours after your previous request.";
+}
+async function loadTutorVerificationStatus(expectedVersion) {
+    if (verificationLoading || verificationBusy || expectedVersion !== version) return;
+    verificationLoading = true;
+    renderVerificationStatus();
+    try {
+        const status = await getTutorVerificationStatus();
+        if (expectedVersion !== version) return;
+        verificationStatus = status;
+        $("verificationError").hidden = true;
+    } catch (failure) {
+        if (expectedVersion !== version) return;
+        console.error("[TutorCheck] Tutor review status failed:", failure);
+        $("verificationError").textContent = `Profile review status could not load. ${failure.message}`;
+        $("verificationError").hidden = false;
+        verificationStatus = { status: "unavailable" };
+    } finally {
+        if (expectedVersion === version) {
+            verificationLoading = false;
+            renderVerificationStatus();
+        }
+    }
+}
+async function loadModeratorVerificationQueue(expectedVersion) {
+    if (expectedVersion !== version || !isMarketplaceModerator) return;
+    $("refreshModeratorQueue").disabled = true;
+    const queue = $("moderatorVerificationQueue");
+    queue.replaceChildren(el("p", "muted", "Loading review requests…"));
+    $("moderatorVerificationError").hidden = true;
+    try {
+        const requests = await listTutorVerificationRequests();
+        if (expectedVersion !== version) return;
+        queue.replaceChildren();
+        if (!requests.length) {
+            queue.append(el("p", "muted", "There are no pending tutor profile reviews."));
+            return;
+        }
+        requests.forEach(request => {
+            const item = el("article", "verification-queue-item");
+            item.append(el("h3", "", request.displayName));
+            const email = el("a", "", request.email || "No account email available");
+            if (request.email) email.href = `mailto:${request.email}`;
+            item.append(email);
+            if (request.qualification) item.append(el("p", "muted", request.qualification));
+            if (request.experience !== null) item.append(el("p", "muted", `${request.experience} years of experience (self-reported)`));
+            if (request.about) item.append(el("p", "muted", request.about));
+            const note = el("textarea", "verification-note");
+            note.maxLength = 500;
+            note.rows = 2;
+            note.placeholder = "Review note (rejection reasons are shared with the tutor)";
+            note.setAttribute("aria-label", `Moderator note for ${request.displayName}`);
+            const actions = el("div", "row-actions");
+            actions.append(
+                action("Approve profile review", "primary", async () => {
+                    if (expectedVersion !== version) return;
+                    await reviewTutorVerification(request.uid, "verified", note.value);
+                    await loadModeratorVerificationQueue(expectedVersion);
+                }, $("moderatorVerificationError")),
+                action("Reject", "", async () => {
+                    if (expectedVersion !== version) return;
+                    if (!note.value.trim()) throw new Error("Add a short reason before rejecting this request.");
+                    await reviewTutorVerification(request.uid, "rejected", note.value);
+                    await loadModeratorVerificationQueue(expectedVersion);
+                }, $("moderatorVerificationError"))
+            );
+            item.append(note, actions);
+            queue.append(item);
+        });
+    } catch (failure) {
+        if (expectedVersion !== version) return;
+        console.error("[TutorCheck] Tutor review queue failed:", failure);
+        queue.replaceChildren();
+        $("moderatorVerificationError").textContent = `Tutor review requests could not load. ${failure.message}`;
+        $("moderatorVerificationError").hidden = false;
+    } finally {
+        if (expectedVersion === version) $("refreshModeratorQueue").disabled = false;
+    }
+}
+async function loadModeratorAccess(user, expectedVersion) {
+    try {
+        const token = await user.getIdTokenResult();
+        if (expectedVersion !== version) return;
+        isMarketplaceModerator = token.claims.role === "developer" &&
+            token.claims.email === "quickcheck.edu@gmail.com" && user.emailVerified;
+        $("moderatorVerificationPanel").hidden = !isMarketplaceModerator;
+        if (isMarketplaceModerator) await loadModeratorVerificationQueue(expectedVersion);
+    } catch (failure) {
+        if (expectedVersion !== version) return;
+        console.error("[TutorCheck] Moderator access could not be checked:", failure);
+        $("moderatorVerificationPanel").hidden = true;
+    }
 }
 function showCourse(id, scroll = true) {
     if (!$("courseEditor").hidden) return requestEditorExit(() => showCourse(id, scroll));
@@ -617,6 +857,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     if (!editorCourse && !$("courseEditor").hidden) return;
     const savedCourse = editorCourse || courses[detailId];
     const course = savedCourse ? { ...savedCourse, teacherName: courseTeacher(savedCourse) } : null;
+    const courseId = detailId;
     const oldForm = target.querySelector("form");
     const draft = oldForm ? new FormData(oldForm) : null;
     const focused = target.contains(document.activeElement) ? document.activeElement : null;
@@ -664,7 +905,10 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     teacherLink.href = `profile.html?uid=${encodeURIComponent(course.teacherId)}`;
     const introTeacher = el("div", "detail-intro-teacher");
     const introTeacherCopy = el("div");
-    introTeacherCopy.append(teacherLink, el("p", "muted", detailProfile.qualification || "Independent English teacher"));
+    const detailBadge = reviewedBadge(course.teacherId);
+    introTeacherCopy.append(teacherLink);
+    if (detailBadge) introTeacherCopy.append(detailBadge);
+    introTeacherCopy.append(el("p", "muted", detailProfile.qualification || "Independent English teacher"));
     introTeacher.append(teacherAvatar(), introTeacherCopy);
     introCopy.append(introTeacher);
     const ratingText = courseStats.count
@@ -844,22 +1088,29 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
         purchase.append(offer);
     }
     const purchaseNotice = el("p", "purchase-note", course.archived ? "This listing is archived." : course.published ? "No payment is collected here." : "This listing is paused.");
-    const add = action(library.cart?.[detailId] ? "In cart" : "Add to cart", "primary purchase-action", async () => {
-        if (requireLogin()) await toggleLibrary("cart", detailId, true);
+    const add = action(library.cart?.[courseId] ? "In cart" : "Add to cart", "primary purchase-action", async () => {
+        if (requireLogin()) await toggleLibrary("cart", courseId, true);
     });
     add.prepend(icon("shopping-cart"));
-    add.disabled = !course.published || course.archived || course.teacherId === uid || Boolean(requests[`${detailId}_${uid}`]);
+    add.disabled = !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
     if (requests[`${detailId}_${uid}`]) add.textContent = "Already requested";
     purchase.append(add);
     const book = action("Book a class", "secondary purchase-action", async () => {
         if (!requireLogin()) return;
-        await requestEnrollment({ ...course, id: detailId });
+        const current = version;
+        try {
+            await sendEnrollment({ ...course, id: courseId });
+        } catch (failure) {
+            if (current === version) error(`${course.title}: ${failure.message}`, detailId === courseId ? $("detailError") : $("marketError"));
+            return;
+        }
+        if (current !== version) return;
         $("marketStatus").textContent = "Your class request was sent. The teacher will confirm the schedule.";
-        target.querySelector(".detail-feedback").textContent = "Request sent. The teacher will confirm the schedule.";
+        if (detailId === courseId) target.querySelector(".detail-feedback").textContent = "Request sent. The teacher will confirm the schedule.";
         renderCatalog();
     });
     book.prepend(icon("calendar-event"));
-    book.disabled = !course.published || course.archived || course.teacherId === uid || Boolean(requests[`${detailId}_${uid}`]);
+    book.disabled = !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
     if (requests[`${detailId}_${uid}`]) book.textContent = "Request sent";
     purchase.append(book);
     const saved = Boolean(library.favorites?.[detailId]);
@@ -1617,6 +1868,7 @@ $("checkoutButton").addEventListener("click", async () => {
     if (!requireLogin() || checkoutBusy) return;
     checkoutBusy = true; renderCart();
     $("cartError").hidden = true;
+    $("cartStatus").textContent = "Sending enrollment requests...";
     const current = version, ids = Object.keys(library.cart || {});
     const failures = [];
     let sent = 0;
@@ -1625,13 +1877,16 @@ $("checkoutButton").addEventListener("click", async () => {
         const course = courses[id];
         if (!course?.published || course.archived || course.teacherId === uid) { failures.push("An unavailable course was left in your cart."); continue; }
         try {
-            if (!requests[`${id}_${uid}`]) { await requestEnrollment({ ...course, id }); sent++; }
+            if (!requests[`${id}_${uid}`]) { await sendEnrollment({ ...course, id }); sent++; }
+            if (current !== version) break;
             await toggleLibrary("cart", id, false);
         } catch (err) { failures.push(`${course.title}: ${err.message}`); }
     }
     checkoutBusy = false;
     if (current !== version) return;
-    $("marketStatus").textContent = `${sent} enrollment request${sent === 1 ? "" : "s"} sent. No payment was collected.`;
+    const message = `${sent} enrollment request${sent === 1 ? "" : "s"} sent. No payment was collected.`;
+    $("marketStatus").textContent = message;
+    $("cartStatus").textContent = message;
     if (failures.length) error(failures.join("\n"), $("cartError"));
     renderCart();
 });
@@ -1661,7 +1916,7 @@ document.querySelectorAll(".filter-panel input").forEach(input => input.addEvent
 }));
 const compactFilters = matchMedia("(max-width:780px)");
 function syncFilterLayout() {
-    if (compactFilters.matches) document.querySelector(".browse-content").insertBefore(filterPanel, $("marketStatus"));
+    if (compactFilters.matches) document.querySelector(".browse-content").prepend(filterPanel);
     else filterSidebar.append(filterPanel);
 }
 syncFilterLayout();
@@ -1685,8 +1940,8 @@ $("favoritesButton").addEventListener("click", () => {
     if (!requireLogin()) return;
     favoritesOnly = !favoritesOnly; $("favoritesButton").setAttribute("aria-pressed", String(favoritesOnly)); renderCatalog();
 });
-$("cartButton").addEventListener("click", () => { if (requireLogin()) { $("cartError").hidden = true; renderCart(); openDialog("cartDialog"); } });
-$("requestsButton").addEventListener("click", () => { if (requireLogin()) { renderRequests(); openDialog("requestsDialog"); } });
+$("cartButton").addEventListener("click", () => { if (requireLogin()) { $("cartError").hidden = true; $("cartStatus").textContent = ""; renderCart(); openDialog("cartDialog"); } });
+$("requestsButton").addEventListener("click", () => { if (requireLogin()) { $("requestsError").hidden = true; renderRequests(); openDialog("requestsDialog"); } });
 $("manageButton").addEventListener("click", () => setStudioView($("teacherStudio").hidden));
 $("newCourse").addEventListener("click", () => openEditor());
 $("backToCatalog").addEventListener("click", () => {
@@ -1706,35 +1961,60 @@ window.addEventListener("popstate", () => {
     else if (params.get("classes") === "1") showClasses();
     else showCatalog();
 });
-const catalogStop = watchCatalog(data => {
-    courses = data; catalogReady = true; syncPublicCourseData(); renderCatalog();
-    if (!$("coursePage").hidden) renderDetail();
-    if ($("marketStatus").textContent === "Course connection failed.") {
-        $("marketError").hidden = true;
+let catalogStop = () => {}, reviewsStop = () => {};
+function updateConnectionStatus() {
+    const message = [catalogFailure, reviewsFailure].filter(Boolean).join(" ");
+    $("marketConnectionError").textContent = message;
+    $("marketConnectionError").hidden = !message;
+    $("retryMarketplace").hidden = !message;
+    $("marketStatus").textContent = message ? "Marketplace connection needs attention."
+        : catalogReady && reviewsReady ? "Live course listings. Prices are in Indonesian rupiah."
+            : "Connecting to live courses...";
+    if (message) {
+        $("courseGrid").setAttribute("aria-busy", "false");
+        $("courseGrid").replaceChildren(el("p", "muted", "Courses could not load completely. Retry the connection above."));
     }
-    $("marketStatus").textContent = "Live course listings. Prices are in Indonesian rupiah.";
-}, err => {
-    $("courseGrid").setAttribute("aria-busy", "false");
-    $("courseGrid").replaceChildren(el("p", "error", "Course listings could not load. Refresh to retry."));
-    $("marketStatus").textContent = "Course connection failed.";
-    error(`Courses could not sync. Refresh to retry. ${err.message}`);
-});
-const reviewsStop = watchReviews(data => {
-    reviews = data; reviewsReady = true; renderCatalog();
-    if (!$("coursePage").hidden) renderDetail();
-    if ($("marketStatus").textContent === "Review connection failed.") {
-        $("marketError").hidden = true;
-    }
-}, err => {
-    $("courseGrid").setAttribute("aria-busy", "false");
-    $("courseGrid").replaceChildren(el("p", "error", "Course ratings could not load. Refresh to retry."));
-    $("marketStatus").textContent = "Review connection failed.";
-    error(`Reviews could not sync. Refresh to retry. ${err.message}`);
-});
+}
+function connectMarketplace() {
+    catalogStop();
+    reviewsStop();
+    catalogFailure = ""; reviewsFailure = "";
+    catalogReady = false; reviewsReady = false;
+    $("courseGrid").setAttribute("aria-busy", "true");
+    $("courseGrid").replaceChildren(...Array.from({ length: 4 }, () => el("div", "skeleton")));
+    updateConnectionStatus();
+    catalogStop = watchCatalog(data => {
+        courses = data; catalogReady = true; catalogFailure = "";
+        updateConnectionStatus();
+        syncPublicCourseData(); renderCatalog();
+        if (!$("coursePage").hidden) renderDetail();
+    }, err => {
+        console.error("[TutorCheck] Course subscription failed:", err);
+        catalogFailure = `Courses could not sync. ${err.message}`;
+        updateConnectionStatus();
+    });
+    reviewsStop = watchReviews(data => {
+        reviews = data; reviewsReady = true; reviewsFailure = "";
+        updateConnectionStatus();
+        renderCatalog();
+        if (!$("coursePage").hidden) renderDetail();
+    }, err => {
+        console.error("[TutorCheck] Review subscription failed:", err);
+        reviewsFailure = `Course ratings could not sync. ${err.message}`;
+        updateConnectionStatus();
+    });
+}
+$("retryMarketplace").addEventListener("click", connectMarketplace);
+connectMarketplace();
 const authStop = onAuthStateChanged(auth, user => {
     accountStop(); version++;
+    pendingEnrollments.clear();
     authReady = true;
     uid = user?.uid || ""; role = "student"; roleReady = false; library = {}; requests = {}; inbox = {}; favoritesOnly = false;
+    verificationStatus = { status: "loading" }; verificationLoading = false; verificationBusy = false; isMarketplaceModerator = false;
+    $("verificationError").hidden = true;
+    $("moderatorVerificationPanel").hidden = true;
+    $("moderatorVerificationQueue").replaceChildren();
     document.querySelectorAll("dialog[open]").forEach(dialog => dialog.close());
     if (!$("courseEditor").hidden) { closeEditor(); $("browseLayout").hidden = false; }
     $("teacherStudio").hidden = true; $("favoritesButton").setAttribute("aria-pressed", "false");
@@ -1744,10 +2024,13 @@ const authStop = onAuthStateChanged(auth, user => {
         return;
     }
     const current = version;
+    loadModeratorAccess(user, current);
     const guarded = callback => data => { if (current === version) { callback(data); renderCatalog(); } };
     accountStop = watchAccount(uid, {
         role: guarded(data => {
+            const changed = !roleReady || role !== data;
             role = data; roleReady = true;
+            if (changed && role === "teacher") loadTutorVerificationStatus(current);
             if (role !== "teacher" && !$("courseEditor").hidden) {
                 closeEditor(); showCatalog(); error("Teacher access is required to edit courses.");
             } else if (!$("coursePage").hidden) renderDetail();

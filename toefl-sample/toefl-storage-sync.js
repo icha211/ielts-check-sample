@@ -53,6 +53,8 @@ class ToeflStorageSync {
     this._lastStorageError = "";
     this._lastUploadInfo = null;
     this._authPromise = null;
+    this._revisions = new Map();
+    this._snapshots = new Map();
   }
 
   _getPathsForTestType(testType = "mocktest") {
@@ -162,39 +164,8 @@ class ToeflStorageSync {
 
   // Archive instead of hard-delete (keeps data in Firebase for recovery)
   async softDeleteSetRecord(setId) {
-    if (!setId) return;
-    console.log(`[ToeflSync] Soft-deleting (archiving) ${setId}...`);
-    
-    try {
-      const archivedSet = {
-        setId,
-        _archived: true,
-        _archivedAt: new Date().toISOString()
-      };
-      
-      // Save to archive instead of deleting
-      await this._put(`toefl_itp/archive/sets_v2/${setId}`, archivedSet);
-      console.log(`[ToeflSync] ✅ ${setId} moved to archive (safe to restore)`);
-      
-      // Now remove from active list
-      const paths = this._getPathsForTestType(setId.startsWith("practicetest_") ? "practicetest" : "mocktest");
-      const activeSet = await this._get(paths.setsPath);
-      if (activeSet && activeSet[setId]) {
-        delete activeSet[setId];
-        activeSet._updatedAt = new Date().toISOString();
-        await this._put(paths.setsPath, activeSet);
-      }
-      
-      this.isRemoteAvailable = true;
-    } catch (e) {
-      this.isRemoteAvailable = false;
-      console.warn(`[ToeflSync] Soft-delete failed for ${setId}:`, e.message);
-    }
-    
-    // Remove from local storage
-    const localSets = this._safeParse(localStorage.getItem(this._mockTestSetsLocalKey), {});
-    delete localSets[setId];
-    localStorage.setItem(this._mockTestSetsLocalKey, JSON.stringify(localSets));
+    if (!setId) throw new Error("setId is required");
+    return this.deleteSetRecordWithType(setId, setId.startsWith("practicetest_") ? "practicetest" : "mocktest");
   }
 
   _url(path) {
@@ -283,7 +254,7 @@ class ToeflStorageSync {
   }
 
   async _get(path) {
-    const r = await this._request(this._url(path), { method: "GET" });
+    const r = await this._request(this._url(path), { method: "GET", headers: { "X-Firebase-ETag": "true" } });
     if (!r.ok) {
       if (r.status === 401 || r.status === 403) {
         this._lastStorageError = `Firebase GET failed (${r.status})`;
@@ -291,22 +262,60 @@ class ToeflStorageSync {
       throw new Error(`Firebase GET failed (${r.status})`);
     }
     this._markFirebaseRtdbEnabled();
-    return r.json();
+    const data = await r.json();
+    const revision = r.headers.get("ETag");
+    if (revision) this._revisions.set(path, revision);
+    this._snapshots.set(path, JSON.stringify(data));
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      for (const [key, value] of Object.entries(data)) {
+        this._snapshots.set(`${path}/${key}`, JSON.stringify(value));
+      }
+    }
+    return data;
   }
 
   async _put(path, data) {
+    let revision = this._revisions.get(path);
+    if (!revision) {
+      const previous = this._snapshots.get(path);
+      const current = await this._get(path);
+      if (previous !== undefined && previous !== JSON.stringify(current)) {
+        // Keep the stale baseline until the editor explicitly reloads.
+        this._revisions.delete(path);
+        this._snapshots.set(path, previous);
+        this._lastStorageError = "Another editor changed this content. Reload before saving again.";
+        const error = new Error(this._lastStorageError);
+        error.code = "STORAGE_CONFLICT";
+        throw error;
+      }
+      revision = this._revisions.get(path);
+    }
+    if (!revision) {
+      throw new Error("Firebase did not provide a revision. Reload before saving.");
+    }
     const r = await this._request(this._url(path), {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "If-Match": revision, "X-Firebase-ETag": "true" },
       body: JSON.stringify(data)
     });
     if (!r.ok) {
+      if (r.status === 412) {
+        this._lastStorageError = "Another editor changed this content. Reload before saving again.";
+        const error = new Error(this._lastStorageError);
+        error.code = "STORAGE_CONFLICT";
+        throw error;
+      }
       if (r.status === 401 || r.status === 403) {
         this._lastStorageError = `Firebase PUT failed (${r.status})`;
       }
       throw new Error(`Firebase PUT failed (${r.status})`);
     }
     this._markFirebaseRtdbEnabled();
+    const nextRevision = r.headers.get("ETag");
+    if (nextRevision) this._revisions.set(path, nextRevision);
+    else this._revisions.delete(path);
+    this._snapshots.set(path, JSON.stringify(data));
+    this._lastStorageError = "";
     return r.json();
   }
 
@@ -726,16 +735,18 @@ class ToeflStorageSync {
     const normalized = this._normalizeRecord(record, record?.setId);
     if (!normalized) throw new Error("Invalid set record");
     const payload = { ...normalized, _updatedAt: new Date().toISOString() };
+    const local = this._safeParse(localStorage.getItem(this._setsV2LocalKey), {});
+    local[normalized.setId] = normalized;
+    localStorage.setItem(this._setsV2LocalKey, JSON.stringify(local));
     try {
       await this._put(`${this._setsV2Path}/${normalized.setId}`, payload);
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
       console.warn(`[ToeflSync] Offline – ${normalized.setId} set saved locally only:`, e.message);
+      this._lastStorageError = e.message;
+      throw e;
     }
-    const local = this._safeParse(localStorage.getItem(this._setsV2LocalKey), {});
-    local[normalized.setId] = normalized;
-    localStorage.setItem(this._setsV2LocalKey, JSON.stringify(local));
     return normalized;
   }
 
@@ -744,15 +755,20 @@ class ToeflStorageSync {
       .map((item) => this._normalizeRecord(item, item?.setId))
       .filter(Boolean);
     const map = this._recordsToMap(normalized);
-    const payload = { ...map, _updatedAt: new Date().toISOString() };
+    const local = this._safeParse(localStorage.getItem(this._setsV2LocalKey), {});
+    localStorage.setItem(this._setsV2LocalKey, JSON.stringify({ ...local, ...map }));
     try {
-      await this._put(this._setsV2Path, payload);
+      for (const [setId, record] of Object.entries(map)) {
+        await this._put(`${this._setsV2Path}/${setId}`, { ...record, _updatedAt: new Date().toISOString() });
+      }
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
       console.warn("[ToeflSync] Offline – set records saved locally only:", e.message);
+      this._lastStorageError = e.message;
+      throw e;
     }
-    localStorage.setItem(this._setsV2LocalKey, JSON.stringify(map));
+    return true;
   }
 
   async deleteSetRecord(setId) {
@@ -762,8 +778,8 @@ class ToeflStorageSync {
     
     try {
       // Move to archive instead of hard delete
-      const setRecord = await this._get(`${this._setsV2Path}/${setId}`).catch(() => ({}));
-      const draftRecord = await this._get(`${this._draftsV2Path}/${setId}`).catch(() => ({}));
+      const setRecord = await this._get(`${this._setsV2Path}/${setId}`);
+      const draftRecord = await this._get(`${this._draftsV2Path}/${setId}`);
       
       // Save to archive with metadata
       const archivedSet = {
@@ -775,7 +791,7 @@ class ToeflStorageSync {
       
       await this._put(`toefl_itp/archive/sets_v2/${setId}`, archivedSet);
       
-      if (Object.keys(draftRecord).length > 0) {
+      if (draftRecord && Object.keys(draftRecord).length > 0) {
         const archivedDraft = {
           ...draftRecord,
           _archived: true,
@@ -787,19 +803,8 @@ class ToeflStorageSync {
       console.log(`[ToeflSync] ✅ ${setId} archived to backup (can be restored)`);
       
       // Now remove from active list
-      const activeSets = await this._get(this._setsV2Path).catch(() => ({}));
-      if (activeSets && activeSets[setId]) {
-        delete activeSets[setId];
-        activeSets._updatedAt = new Date().toISOString();
-        await this._put(this._setsV2Path, activeSets);
-      }
-      
-      const activeDrafts = await this._get(this._draftsV2Path).catch(() => ({}));
-      if (activeDrafts && activeDrafts[setId]) {
-        delete activeDrafts[setId];
-        activeDrafts._updatedAt = new Date().toISOString();
-        await this._put(this._draftsV2Path, activeDrafts);
-      }
+      if (draftRecord) await this._put(`${this._draftsV2Path}/${setId}`, null);
+      if (setRecord) await this._put(`${this._setsV2Path}/${setId}`, null);
       
       this.isRemoteAvailable = true;
     } catch (e) {
@@ -935,16 +940,18 @@ class ToeflStorageSync {
     await this.assertUniqueSetDate(normalized, testType);
     const paths = this._getPathsForTestType(testType);
     const payload = { ...normalized, _updatedAt: new Date().toISOString() };
+    const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    local[normalized.setId] = normalized;
+    localStorage.setItem(paths.setsLocalKey, JSON.stringify(local));
     try {
       await this._put(`${paths.setsPath}/${normalized.setId}`, payload);
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
       console.warn(`[ToeflSync] Offline – ${normalized.setId} set saved locally only:`, e.message);
+      this._lastStorageError = e.message;
+      throw e;
     }
-    const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
-    local[normalized.setId] = normalized;
-    localStorage.setItem(paths.setsLocalKey, JSON.stringify(local));
     return normalized;
   }
 
@@ -954,15 +961,20 @@ class ToeflStorageSync {
       .filter(Boolean);
     const paths = this._getPathsForTestType(testType);
     const map = this._recordsToMap(normalized);
-    const payload = { ...map, _updatedAt: new Date().toISOString() };
+    const local = this._safeParse(localStorage.getItem(paths.setsLocalKey), {});
+    localStorage.setItem(paths.setsLocalKey, JSON.stringify({ ...local, ...map }));
     try {
-      await this._put(paths.setsPath, payload);
+      for (const [setId, record] of Object.entries(map)) {
+        await this._put(`${paths.setsPath}/${setId}`, { ...record, _updatedAt: new Date().toISOString() });
+      }
       this.isRemoteAvailable = true;
     } catch (e) {
       this.isRemoteAvailable = false;
       console.warn(`[ToeflSync] Offline – ${testType} set records saved locally only:`, e.message);
+      this._lastStorageError = e.message;
+      throw e;
     }
-    localStorage.setItem(paths.setsLocalKey, JSON.stringify(map));
+    return true;
   }
 
   async deleteSetRecordWithType(setId, testType = "mocktest") {
@@ -977,8 +989,8 @@ class ToeflStorageSync {
     
     try {
       // Move to archive instead of hard delete
-      const setRecord = await this._get(`${paths.setsPath}/${setId}`).catch(() => ({}));
-      const draftRecord = await this._get(`${paths.draftsPath}/${setId}`).catch(() => ({}));
+      const setRecord = await this._get(`${paths.setsPath}/${setId}`);
+      const draftRecord = await this._get(`${paths.draftsPath}/${setId}`);
       
       // Save to archive with metadata
       const archivedSet = {
@@ -1003,19 +1015,8 @@ class ToeflStorageSync {
       console.log(`[ToeflSync] ✅ ${setId} archived to backup (can be restored)`);
       
       // Now remove from active list
-      const activeSets = await this._get(paths.setsPath).catch(() => ({}));
-      if (activeSets && activeSets[setId]) {
-        delete activeSets[setId];
-        activeSets._updatedAt = new Date().toISOString();
-        await this._put(paths.setsPath, activeSets);
-      }
-      
-      const activeDrafts = await this._get(paths.draftsPath).catch(() => ({}));
-      if (activeDrafts && activeDrafts[setId]) {
-        delete activeDrafts[setId];
-        activeDrafts._updatedAt = new Date().toISOString();
-        await this._put(paths.draftsPath, activeDrafts);
-      }
+      if (draftRecord) await this._put(`${paths.draftsPath}/${setId}`, null);
+      if (setRecord) await this._put(`${paths.setsPath}/${setId}`, null);
 
       console.log(`[ToeflSync] ✅ ${setId} removed from active ${testType} sets (website copy deleted)`);
 
@@ -1159,6 +1160,7 @@ class ToeflStorageSync {
          this.isRemoteAvailable = true;
        } catch (e) {
          this.isRemoteAvailable = false;
+         this._lastStorageError = e.message;
          console.warn(`[ToeflSync] Offline – ${testType} set draft ${setId} saved locally only:`, e.message);
          const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
          local[setId] = draft || {};
@@ -1168,6 +1170,7 @@ class ToeflStorageSync {
        const local = this._safeParse(localStorage.getItem(paths.draftsLocalKey), {});
        local[setId] = draft || {};
        localStorage.setItem(paths.draftsLocalKey, JSON.stringify(local));
+       this._lastStorageError = "";
        return true;
      }
 
@@ -1197,16 +1200,19 @@ class ToeflStorageSync {
          module: String(module || draft?.module || ""),
          _updatedAt: new Date().toISOString()
        };
+       const local = this._safeParse(localStorage.getItem(this._draftsV2LocalKey), {});
+       local[setId] = draft || {};
+       localStorage.setItem(this._draftsV2LocalKey, JSON.stringify(local));
        try {
          await this._put(`${this._draftsV2Path}/${setId}`, payload);
          this.isRemoteAvailable = true;
        } catch (e) {
          this.isRemoteAvailable = false;
          console.warn(`[ToeflSync] Offline – set draft ${setId} saved locally only:`, e.message);
+         this._lastStorageError = e.message;
+         return false;
        }
-       const local = this._safeParse(localStorage.getItem(this._draftsV2LocalKey), {});
-       local[setId] = draft || {};
-       localStorage.setItem(this._draftsV2LocalKey, JSON.stringify(local));
+       return true;
      }
 
      // ─── SETS (section metadata: date, difficulty) ────────────────────────────
@@ -1233,17 +1239,19 @@ class ToeflStorageSync {
       */
      async saveSetForModule(module, data) {
        const payload = { ...(data || {}), _updatedAt: new Date().toISOString() };
+       const local = this._safeParse(localStorage.getItem(this._setsLocalKey), {});
+       local[module] = data || {};
+       localStorage.setItem(this._setsLocalKey, JSON.stringify(local));
        try {
          await this._put(`${this._setsPath}/${module}`, payload);
          this.isRemoteAvailable = true;
        } catch (e) {
          this.isRemoteAvailable = false;
          console.warn(`[ToeflSync] Offline – ${module} set saved to localStorage only:`, e.message);
+         this._lastStorageError = e.message;
+         throw e;
        }
-       // Merge into local cache without wiping other modules
-       const local = this._safeParse(localStorage.getItem(this._setsLocalKey), {});
-       local[module] = data || {};
-       localStorage.setItem(this._setsLocalKey, JSON.stringify(local));
+       return true;
      }
 
      /**
@@ -1276,15 +1284,22 @@ class ToeflStorageSync {
 
      /** Save full sets map to Firebase (used only by developer dashboard import). */
      async saveSetsMap(map) {
-       const payload = { ...(map || {}), _updatedAt: new Date().toISOString() };
+       const local = this._safeParse(localStorage.getItem(this._setsLocalKey), {});
+       localStorage.setItem(this._setsLocalKey, JSON.stringify({ ...local, ...(map || {}) }));
        try {
-         await this._put(this._setsPath, payload);
+         for (const [module, record] of Object.entries(map || {})) {
+           if (!module.startsWith("_")) {
+             await this._put(`${this._setsPath}/${module}`, { ...record, _updatedAt: new Date().toISOString() });
+           }
+         }
          this.isRemoteAvailable = true;
        } catch (e) {
          this.isRemoteAvailable = false;
          console.warn("[ToeflSync] Offline – sets saved to localStorage only:", e.message);
+         this._lastStorageError = e.message;
+         throw e;
        }
-       localStorage.setItem(this._setsLocalKey, JSON.stringify(map || {}));
+       return true;
      }
 
      // ─── DRAFTS (full question/passage content) ────────────────────────────────
@@ -1316,14 +1331,17 @@ class ToeflStorageSync {
      /** Save draft for a module to Firebase and localStorage. */
      async saveDraft(module, draft) {
        const payload = { ...(draft || {}), _updatedAt: new Date().toISOString() };
+       localStorage.setItem(this._draftLocalKey(module), JSON.stringify(draft || {}));
        try {
          await this._put(`${this._draftsPath}/${module}`, payload);
          this.isRemoteAvailable = true;
        } catch (e) {
          this.isRemoteAvailable = false;
          console.warn(`[ToeflSync] Offline – ${module} draft saved to localStorage only:`, e.message);
+         this._lastStorageError = e.message;
+         return false;
        }
-       localStorage.setItem(this._draftLocalKey(module), JSON.stringify(draft || {}));
+       return true;
      }
 
      // ─── AUDIO FILES (Firebase Storage + RTDB URL index) ──────────────────────
@@ -1636,6 +1654,15 @@ class ToeflStorageSync {
        };
      }
 
+     async getDeveloperGatewayHeaders() {
+       if (localStorage.getItem("toefl_firebase_auth_mode") !== "developer"
+           || !localStorage.getItem("toefl_firebase_refresh_token")) {
+         throw new Error("Sign in with the verified developer account before uploading audio.");
+       }
+       const token = await this._getAuthToken(true);
+       return { Authorization: `Bearer ${token}` };
+     }
+
      async saveAudioViaGateway(setId, audioBlob, partId = 1) {
        if (!setId || !audioBlob) {
          this._lastStorageError = "Missing setId or audioBlob";
@@ -1650,6 +1677,7 @@ class ToeflStorageSync {
        const apiBase = this._getApiGatewayBase();
 
        try {
+         const authHeaders = await this.getDeveloperGatewayHeaders();
          let responseObjectKey = objectKey;
          let objectUrl = canonicalObjectUrl;
          let uploadedVia = "proxy-upload";
@@ -1667,6 +1695,7 @@ class ToeflStorageSync {
            const proxyRes = await Promise.race([
              fetch(`${apiBase}/api/developer/upload-proxy`, {
                method: "POST",
+               headers: authHeaders,
                body: form
              }),
              new Promise((_, reject) => setTimeout(() => reject(new Error("API gateway request timeout after 10s")), 10000))
@@ -1693,7 +1722,7 @@ class ToeflStorageSync {
 
            const presignRes = await fetch(`${apiBase}/api/developer/upload-url`, {
              method: "POST",
-             headers: { "Content-Type": "application/json" },
+             headers: { ...authHeaders, "Content-Type": "application/json" },
              body: JSON.stringify({
                objectKey,
                fileName,
@@ -2040,9 +2069,10 @@ class ToeflStorageSync {
 
      async transcribeAudioBySetPart(setId, partId = 1) {
        if (!setId) throw new Error("setId is required for transcription");
+       if (!window.toeflAi) throw new Error("AI authentication client is unavailable");
        let response;
        try {
-         response = await fetch(`${this._getLocalStorageServerBase()}/api/problems`, {
+         response = await window.toeflAi.request(`${this._getLocalStorageServerBase()}/api/problems`, {
            method: "POST",
            headers: { "Content-Type": "application/json" },
            body: JSON.stringify({
@@ -2073,6 +2103,8 @@ class ToeflStorageSync {
 
      async transcribeAudioBlob(audioBlob, fileName = "audio", mimeType = "audio/mpeg", partId = 1) {
        if (!audioBlob) throw new Error("audioBlob is required for transcription");
+       if (!window.toeflAi) throw new Error("AI authentication client is unavailable");
+       if (audioBlob.size > 2 * 1024 * 1024) throw new Error("Audio transcription supports files up to 2 MB in the beta");
 
        const base64Data = await new Promise((resolve, reject) => {
          const reader = new FileReader();
@@ -2084,7 +2116,7 @@ class ToeflStorageSync {
 
        let response;
        try {
-         response = await fetch(`${this._getLocalStorageServerBase()}/api/problems`, {
+         response = await window.toeflAi.request(`${this._getLocalStorageServerBase()}/api/problems`, {
            method: "POST",
            headers: { "Content-Type": "application/json" },
            body: JSON.stringify({

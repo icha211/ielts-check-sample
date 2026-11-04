@@ -3,7 +3,8 @@ function publicTeacher(user = {}) {
     const photoURL = String(user.photoURL || "");
     return {
         displayName: String(fullName || user.displayName || user.name || "Teacher").slice(0, 100),
-        photoURL: /^https:\/\//.test(photoURL) ? photoURL.slice(0, 2000) : ""
+        photoURL: /^https:\/\//.test(photoURL) ? photoURL.slice(0, 2000) : "",
+        verified: user.verified === true
     };
 }
 

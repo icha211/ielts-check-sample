@@ -26,10 +26,14 @@ test("database triggers publish live identity and private-ledger enrollment coun
         await db.ref().update({
             [`tutor_roles/${teacherId}`]: "teacher",
             [`users/${teacherId}`]: { first_name: "Profile", last_name: "Teacher", email: "private@example.test" },
-            [`tutor_courses/${courseId}`]: { teacherId }
+            [`tutor_courses/${courseId}`]: { teacherId },
+            [`tutor_verification/${teacherId}`]: { status: "pending", requestedAt: 1 }
         });
         const identity = await waitFor(`tutor_public_teachers/${teacherId}`, value => value?.displayName === "Profile Teacher");
-        assert.deepEqual(Object.keys(identity).sort(), ["displayName", "photoURL"]);
+        assert.deepEqual(Object.keys(identity).sort(), ["displayName", "photoURL", "verified"]);
+        assert.equal(identity.verified, false);
+        await db.ref(`tutor_verification/${teacherId}`).set({ status: "verified", requestedAt: 1, reviewedAt: 2 });
+        await waitFor(`tutor_public_teachers/${teacherId}`, value => value?.verified === true);
         await waitFor(`tutor_course_stats/${courseId}/students`, value => value === 0);
         await db.ref(`tutor_requests/${requestId}`).set({ courseId, teacherId, studentId: "learner", status: "pending", updatedAt: 1 });
         await waitFor(`tutor_course_stats/${courseId}/records/${requestId}`, value => value?.revision === 1);
@@ -53,6 +57,7 @@ test("database triggers publish live identity and private-ledger enrollment coun
             [`tutor_course_stats/${courseId}`]: null,
             [`tutor_roles/${teacherId}`]: null,
             [`users/${teacherId}`]: null,
+            [`tutor_verification/${teacherId}`]: null,
             [`tutor_public_teachers/${teacherId}`]: null
         });
         try { await auth.deleteUser(teacherId); }

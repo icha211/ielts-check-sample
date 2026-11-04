@@ -5,11 +5,16 @@ import socket
 import base64
 import smtplib
 import time
+import sys
+from types import SimpleNamespace
 from email.message import EmailMessage
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
-from google import genai
+sys.path.insert(0, str(Path(__file__).resolve().parent / "apps" / "api-gateway"))
+from fastapi import HTTPException
+from auth import require_signed_in
+from ai_runtime import MAX_JSON_BYTES, current_ai_uid, generate_text, validate_payload
 
 HOST = os.environ.get("AI_REVIEW_HOST", "0.0.0.0")
 PORT = int(os.environ.get("AI_REVIEW_PORT", "8787"))
@@ -74,35 +79,8 @@ def friendly_model_error(exc: Exception) -> str:
     return str(exc)
 
 
-def generate_with_retry(client: genai.Client, prompt: str):
-    models = [MODEL]
-    if FALLBACK_MODEL and FALLBACK_MODEL != MODEL:
-        models.append(FALLBACK_MODEL)
-
-    delays = [0.8, 1.6, 3.2, 6.0]
-    last_exc = None
-
-    for model_name in models:
-        for attempt in range(len(delays) + 1):
-            try:
-                return client.models.generate_content(model=model_name, contents=prompt)
-            except Exception as exc:
-                last_exc = exc
-                if not is_transient_model_error(exc):
-                    raise
-
-                if attempt >= len(delays):
-                    break
-
-                wait_seconds = delays[attempt]
-                retry_after = parse_retry_after_seconds(exc)
-                if retry_after is not None:
-                    # Respect provider backoff hints when available.
-                    wait_seconds = max(wait_seconds, min(retry_after + 0.25, 20.0))
-
-                time.sleep(wait_seconds)
-
-    raise last_exc if last_exc else RuntimeError("Model generation failed")
+def generate_with_retry(client, prompt: str):
+    return SimpleNamespace(text=generate_text(prompt))
 
 
 def get_lan_ip() -> str:
@@ -681,7 +659,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
         self.wfile.write(data)
@@ -692,7 +670,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/plain; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
         self.wfile.write(data)
@@ -707,11 +685,29 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "Not found"})
 
     def do_POST(self):
+        token = None
+        try:
+            if self.path != "/api/report-issue":
+                user = require_signed_in(self.headers.get("Authorization"))
+                token = current_ai_uid.set(user["uid"])
+            self._handle_post()
+        except HTTPException as exc:
+            self._send(exc.status_code, {"error": exc.detail})
+        finally:
+            if token is not None:
+                current_ai_uid.reset(token)
+
+    def _handle_post(self):
         try:
             length = int(self.headers.get("Content-Length", "0"))
+            if length <= 0 or length > MAX_JSON_BYTES:
+                self._send(413, {"error": "Request must contain JSON up to 32 KB"})
+                return
+            self.connection.settimeout(15)
             raw = self.rfile.read(length)
             payload = json.loads(raw.decode("utf-8"))
-        except Exception as exc:
+            validate_payload(payload)
+        except (ValueError, UnicodeDecodeError) as exc:
             self._send(400, {"error": f"Bad request: {exc}"})
             return
 
@@ -749,14 +745,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(500, {"error": str(exc)})
             return
 
-        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
-            self._send(500, {"error": "Set GEMINI_API_KEY or GOOGLE_API_KEY before starting the server."})
-            return
-
         if self.path == "/api/ai-review":
             try:
-                client = genai.Client(api_key=api_key)
+                client = None
                 prompt = build_prompt(payload)
                 response = generate_with_retry(client, prompt)
                 text = response.text or "{}"
@@ -764,11 +755,11 @@ class Handler(BaseHTTPRequestHandler):
                 review = sanitize_review(parsed)
                 self._send(200, review)
             except Exception as exc:
-                self._send(500, {"error": friendly_model_error(exc)})
+                self._send_ai_error(exc)
 
         elif self.path == "/api/toefl-explanation":
             try:
-                client = genai.Client(api_key=api_key)
+                client = None
                 prompt = build_explanation_prompt(payload)
                 response = generate_with_retry(client, prompt)
                 text = (response.text or "").strip()
@@ -786,7 +777,7 @@ class Handler(BaseHTTPRequestHandler):
 
                 self._send_text(200, text)
             except Exception as exc:
-                self._send(500, {"error": friendly_model_error(exc)})
+                self._send_ai_error(exc)
 
         elif self.path == "/api/toefl-explanation-json":
             try:
@@ -795,7 +786,7 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(400, {"error": "isolated_transcript_block is required and cannot be empty"})
                     return
 
-                client = genai.Client(api_key=api_key)
+                client = None
                 prompt = build_explanation_json_prompt(payload)
                 response = generate_with_retry(client, prompt)
                 text = (response.text or "").strip()
@@ -803,11 +794,11 @@ class Handler(BaseHTTPRequestHandler):
                 data = parse_json_from_text(text)
                 self._send(200, data)
             except Exception as exc:
-                self._send(500, {"error": friendly_model_error(exc)})
+                self._send_ai_error(exc)
 
         elif self.path == "/api/toefl-step-timeline":
             try:
-                client = genai.Client(api_key=api_key)
+                client = None
                 prompt = build_step_timeline_prompt(payload)
                 response = generate_with_retry(client, prompt)
                 text = (response.text or "").strip()
@@ -836,7 +827,7 @@ class Handler(BaseHTTPRequestHandler):
 
                 self._send(200, data)
             except Exception as exc:
-                self._send(500, {"error": friendly_model_error(exc)})
+                self._send_ai_error(exc)
 
         elif self.path == "/api/translate-explanation":
             try:
@@ -845,7 +836,7 @@ class Handler(BaseHTTPRequestHandler):
                     self._send(400, {"error": "explanationMarkdown is required"})
                     return
 
-                client = genai.Client(api_key=api_key)
+                client = None
                 prompt = build_translation_prompt(payload)
                 response = generate_with_retry(client, prompt)
                 text = (response.text or "").strip()
@@ -863,10 +854,17 @@ class Handler(BaseHTTPRequestHandler):
 
                 self._send_text(200, text)
             except Exception as exc:
-                self._send(500, {"error": friendly_model_error(exc)})
+                self._send_ai_error(exc)
 
         else:
             self._send(404, {"error": "Not found"})
+
+    def _send_ai_error(self, exc: Exception):
+        if isinstance(exc, HTTPException):
+            self._send(exc.status_code, {"error": exc.detail})
+        else:
+            print(f"[AI] Request failed: {type(exc).__name__}")
+            self._send(502, {"error": "AI could not complete the request"})
 
 
 if __name__ == "__main__":

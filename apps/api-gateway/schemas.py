@@ -13,10 +13,10 @@ class HealthResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     module: ModuleName
-    message: str = Field(min_length=1)
+    message: str = Field(min_length=1, max_length=8000)
     explanation_id: Optional[str] = None
     session_id: Optional[str] = None
-    history: List[str] = Field(default_factory=list)
+    history: List[str] = Field(default_factory=list, max_length=10)
 
 
 class ChatResponse(BaseModel):
@@ -27,18 +27,18 @@ class ChatResponse(BaseModel):
 class EvaluationRequest(BaseModel):
     module: ModuleName
     prompt_title: Optional[str] = None
-    submission_text: Optional[str] = None
-    transcript: Optional[str] = None
+    submission_text: Optional[str] = Field(default=None, max_length=12000)
+    transcript: Optional[str] = Field(default=None, max_length=12000)
     score: Optional[float] = None
     metadata: dict = Field(default_factory=dict)
 
 
 class EvaluationResponse(BaseModel):
     summary: str
-    estimated_band: Optional[float] = None
-    strengths: List[str] = Field(default_factory=list)
-    improvements: List[str] = Field(default_factory=list)
-    next_steps: List[str] = Field(default_factory=list)
+    estimated_band: Optional[float] = Field(default=None, ge=0, le=9)
+    strengths: List[str] = Field(default_factory=list, max_length=3)
+    improvements: List[str] = Field(default_factory=list, max_length=3)
+    next_steps: List[str] = Field(default_factory=list, max_length=3)
     route: str = "eval-service"
 
 

@@ -1,6 +1,10 @@
 import { auth, db } from "./firebase-config.js";
 import { ref, get, set, update, push, onValue, query, orderByChild, equalTo, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 import { validateCourse, validateTeachingProfile } from "./tutor-model.js?v=20261101-crud";
+
+const marketplaceFunctions = getFunctions(auth.app, "asia-southeast1");
+const callMarketplace = name => httpsCallable(marketplaceFunctions, name);
 
 function user() {
     if (!auth.currentUser) throw new Error("Sign in to continue.");
@@ -10,8 +14,9 @@ export async function registerMarketplaceRole(role) {
     if (!["student", "teacher"].includes(role)) throw new Error("Choose Student or Teacher.");
     const target = ref(db, `tutor_roles/${user().uid}`);
     const existing = await get(target);
-    if (existing.val() === "teacher" || existing.val() === role) return;
+    if (existing.val() === "teacher" || existing.val() === role) return existing.val();
     await set(target, role);
+    return role;
 }
 export const watchCatalog = (callback, error) => onValue(ref(db, "tutor_courses"), snap => callback(snap.val() || {}), error);
 export const watchReviews = (callback, error) => onValue(ref(db, "tutor_reviews"), snap => callback(snap.val() || {}), error);
@@ -19,6 +24,11 @@ export const watchCourseStudents = (id, callback, error) => onValue(ref(db, `tut
 export const watchTeacherIdentity = (uid, callback, error) => onValue(ref(db, `tutor_public_teachers/${uid}`), snap => callback(snap.val() || {}), error);
 export const watchTeachingRole = (uid, callback, error) => onValue(ref(db, `tutor_roles/${uid}`), snap => callback(snap.val() === "teacher"), error);
 export const watchTeachingProfile = (uid, callback, error) => onValue(ref(db, `tutor_profiles/${uid}`), snap => callback(snap.val() || {}), error);
+export const requestTutorVerification = async () => (await callMarketplace("requestTutorVerification")()).data;
+export const getTutorVerificationStatus = async () => (await callMarketplace("getTutorVerificationStatus")()).data;
+export const listTutorVerificationRequests = async () => (await callMarketplace("listTutorVerificationRequests")()).data.requests;
+export const reviewTutorVerification = async (uid, status, reviewerNote) =>
+    (await callMarketplace("reviewTutorVerification")({ uid, status, reviewerNote })).data;
 export async function saveTeachingProfile(input) {
     const current = user();
     if ((await get(ref(db, `tutor_roles/${current.uid}`))).val() !== "teacher") throw new Error("Only teachers can edit a teaching profile.");

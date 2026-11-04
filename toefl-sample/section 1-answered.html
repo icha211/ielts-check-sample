@@ -424,6 +424,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="app-config.js?v=20260802a"></script>
     <script src="toefl-storage-sync.js?v=20260802a"></script>
+    <script src="ai-client.js"></script>
     <script>
         function escapeHtml(v) {
             return String(v || '').replace(/[&<>"]/g, function (c) {
@@ -479,6 +480,11 @@
 
         async function fetchAiWithFallback(path, init) {
             var candidates = buildAiEndpointCandidates(path);
+            if (path !== '/api/report-issue') {
+                if (!candidates.length) throw new Error('No AI endpoint is configured');
+                var response = await window.toeflAi.request(candidates[0], init);
+                return { response: response, endpoint: candidates[0] };
+            }
             var lastError = null;
 
             for (var i = 0; i < candidates.length; i += 1) {
@@ -4548,8 +4554,7 @@
                 }
 
                 draft.parts[partId] = part;
-                await window.toeflStorage.saveDraftBySetIdAndType(reviewSetId, 'listening', draft, testType);
-                return true;
+                return await window.toeflStorage.saveDraftBySetIdAndType(reviewSetId, 'listening', draft, testType);
             }).catch(function(error) {
                 console.warn('[ExplanationSync] Firebase save failed:', error);
                 return false;

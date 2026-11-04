@@ -6371,6 +6371,22 @@ body {
                 return;
             }
 
+            try {
+                const teachingRole = await get(ref(db, `tutor_roles/${user.uid}`));
+                if (version !== partnerAuthVersion) return;
+                if (teachingRole.val() === "teacher") {
+                    window.location.replace("tutor-check.html?studio=1");
+                    return;
+                }
+            } catch (error) {
+                console.error("[Dashboard] Teaching role could not load:", error);
+                const notice = document.createElement("p");
+                notice.setAttribute("role", "alert");
+                notice.textContent = "Your teaching account could not load. Refresh to try again.";
+                document.body.prepend(notice);
+                return;
+            }
+
             if (user) {
                 // User is logged in
                 console.log("Logged in user:", user.email);

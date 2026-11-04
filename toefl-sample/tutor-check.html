@@ -11,13 +11,19 @@
     <script src="qc-preferences.js?v=20261031-explore"></script>
     <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
     <link rel="stylesheet" href="tutor-brand.css?v=20261101-add-course">
-    <link rel="stylesheet" href="tutor-check.css?v=20261103-context-edit">
+    <link rel="stylesheet" href="tutor-check.css?v=20261104-tutor-home">
 </head>
 <body class="tutor-page">
     <a class="skip-link" href="#catalog">Skip to courses</a>
     <script src="site-navbar.js?v=20261102-shared-nav"></script>
     <main class="marketplace">
         <h1 class="sr-only">Marketplace</h1>
+        <div class="market-notices">
+            <p id="marketStatus" class="market-status" role="status">Connecting to live courses...</p>
+            <p id="marketConnectionError" class="error" role="alert" hidden></p>
+            <button id="retryMarketplace" type="button" hidden>Retry course connection</button>
+            <p id="marketError" class="error" role="alert" hidden></p>
+        </div>
         <div id="browseLayout" class="browse-layout">
             <aside class="filter-panel panel" aria-label="Course filters">
                 <div id="courseFilters">
@@ -68,8 +74,6 @@
             <div id="categoryChoices" class="category-choices"></div>
             </div>
         </section>
-        <p id="marketStatus" class="market-status" role="status">Connecting to live courses...</p>
-        <p id="marketError" class="error" role="alert" hidden></p>
         <p id="marketActionStatus" class="sr-only" role="status" aria-atomic="true"></p>
             <section class="course-results" id="catalog" aria-label="Courses" tabindex="-1">
                 <div class="catalog-toolbar">
@@ -80,7 +84,7 @@
                 <div id="courseGrid" class="course-grid" aria-busy="true">
                     <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
                 </div>
-                <p class="muted">Reviews are from accepted learners. Teachers are self-registered, not platform-verified.</p>
+                <p class="muted">Reviews are from accepted learners. Tutors are self-registered; a Profile reviewed badge indicates moderator review, not a guarantee of course quality.</p>
             </section>
             </div>
         </div>
@@ -106,20 +110,81 @@
         <section id="teacherStudio" class="panel teacher-studio" hidden aria-labelledby="studioTitle">
             <div class="studio-welcome">
                 <div>
-                    <p class="studio-eyebrow">Teacher dashboard</p>
-                    <h2 id="studioTitle">Good to see you, <span id="studioTeacherName">teacher</span></h2>
-                    <p class="muted">Manage your courses and respond to learners in one place.</p>
+                    <h2 id="studioTitle"><span id="studioGreeting">Good morning</span>, <span id="studioTeacherName">teacher</span>!</h2>
+                    <p class="muted">Here's what's happening with your teaching today.</p>
                 </div>
-                <button id="newCourse" class="primary" type="button"><i class="ti ti-plus" aria-hidden="true"></i> Create a course</button>
+                <p class="studio-date"><i class="ti ti-calendar" aria-hidden="true"></i><time id="studioDate"></time></p>
             </div>
             <div id="studioMetrics" class="studio-metrics" aria-label="Teaching overview"></div>
-            <div class="section-heading studio-course-heading"><div><h3>Your courses</h3><p class="muted">Published listings appear in the marketplace.</p></div></div>
-            <div id="ownCourses" class="studio-courses"></div>
+            <div class="studio-layout">
+                <div class="studio-main">
+                    <section class="studio-create" aria-labelledby="studioCreateHeading">
+                        <div>
+                            <h3 id="studioCreateHeading">Ready to teach something new?</h3>
+                            <p>Create a course and reach more English learners.</p>
+                            <button id="newCourse" class="primary" type="button"><i class="ti ti-plus" aria-hidden="true"></i> Create a course</button>
+                        </div>
+                        <img src="tutor-illustration.png" width="292" height="159" alt="Teacher presenting an online lesson">
+                    </section>
+                    <div class="section-heading studio-course-heading">
+                        <h3>Your courses</h3>
+                        <div id="studioCourseFilters" class="studio-filters" role="group" aria-label="Filter your courses">
+                            <button type="button" data-studio-filter="all" aria-pressed="true">All courses</button>
+                            <button type="button" data-studio-filter="published" aria-pressed="false">Published</button>
+                            <button type="button" data-studio-filter="draft" aria-pressed="false">Drafts</button>
+                            <button type="button" data-studio-filter="archived" aria-pressed="false">Archived</button>
+                        </div>
+                    </div>
+                    <p id="studioCourseCount" class="sr-only" role="status" aria-live="polite"></p>
+                    <div id="ownCourses" class="studio-courses"></div>
+                </div>
+                <aside class="studio-side" aria-label="Teaching updates">
+                    <section class="studio-side-panel" aria-labelledby="studioClassesHeading">
+                        <div class="section-heading"><h3 id="studioClassesHeading">Upcoming classes</h3><a href="#teacherInbox">View learners <i class="ti ti-arrow-right" aria-hidden="true"></i></a></div>
+                        <p class="muted">Class times and meeting links are not tracked here. Confirm arrangements directly with your learners.</p>
+                        <div id="studioClasses"></div>
+                    </section>
+                    <section class="studio-side-panel" aria-labelledby="studioActivityHeading">
+                        <div class="section-heading"><h3 id="studioActivityHeading">Recent activity</h3><a href="#teacherInbox">View requests <i class="ti ti-arrow-right" aria-hidden="true"></i></a></div>
+                        <div id="studioActivity"></div>
+                    </section>
+                    <section class="studio-tips" aria-labelledby="studioTipsHeading">
+                        <i class="ti ti-bulb" aria-hidden="true"></i>
+                        <div><h3 id="studioTipsHeading">Teaching tips</h3><p>Add a clear preview, learning outcomes and curriculum to help learners choose your course.</p><a href="#studioCreateHeading">Start with your course template <i class="ti ti-arrow-right" aria-hidden="true"></i></a></div>
+                    </section>
+                </aside>
+            </div>
+            <section id="tutorVerificationPanel" class="verification-panel" aria-labelledby="verificationHeading">
+                <div>
+                    <h3 id="verificationHeading">Tutor profile review</h3>
+                    <p id="verificationStatus" class="muted" role="status" aria-live="polite"></p>
+                    <p class="muted">Authorized reviewers can see your account name, email and public teaching profile. Do not upload identity documents or sensitive numbers.</p>
+                    <p id="verificationError" class="error" role="alert" hidden></p>
+                </div>
+                <div class="row-actions">
+                    <button id="requestVerificationButton" class="primary" type="button" hidden>Request profile review</button>
+                    <button id="refreshVerificationButton" type="button">Refresh profile review status</button>
+                </div>
+            </section>
             <label>Show enrollments<select id="teacherEnrollmentFilter"><option value="">All enrollments</option><option value="pending">Pending requests</option><option value="accepted">Accepted learners</option><option value="declined">Declined requests</option><option value="cancelled">Cancelled requests</option></select></label>
             <h3>Enrollment requests and learners</h3><div id="teacherInbox"></div>
         </section>
+        <section id="moderatorVerificationPanel" class="panel teacher-studio" hidden aria-labelledby="moderatorVerificationHeading">
+            <h2 id="moderatorVerificationHeading">Tutor profile review queue</h2>
+            <p class="muted">Review the public profile and account details before approving. This badge indicates a profile review, not a guarantee of course quality or payment protection.</p>
+            <p id="moderatorVerificationError" class="error" role="alert" hidden></p>
+            <button id="refreshModeratorQueue" type="button">Refresh review queue</button>
+            <div id="moderatorVerificationQueue" aria-live="polite"></div>
+        </section>
         <footer class="market-footer">Enrollment requests do not process payments. Agree on payment and class arrangements directly with the teacher.</footer>
     </main>
+    <nav id="teacherMobileNav" class="teacher-mobile-nav" aria-label="Tutor navigation" hidden>
+        <button id="teacherMobileHome" type="button"><i class="ti ti-home" aria-hidden="true"></i><span>Home</span></button>
+        <button id="teacherMobileCourses" type="button"><i class="ti ti-books" aria-hidden="true"></i><span>Courses</span></button>
+        <button id="teacherMobileCreate" type="button" aria-label="Create a course"><i class="ti ti-plus" aria-hidden="true"></i><span>Create</span></button>
+        <button id="teacherMobileLearners" type="button"><i class="ti ti-users" aria-hidden="true"></i><span>Learners</span></button>
+        <a href="profile.html"><i class="ti ti-user" aria-hidden="true"></i><span>Profile</span></a>
+    </nav>
     <dialog id="archiveDialog" class="market-dialog" aria-labelledby="archiveHeading">
         <div class="dialog-heading"><h2 id="archiveHeading">Archive course?</h2><button type="button" data-close aria-label="Close archive confirmation">×</button></div>
         <p id="archiveCourseName"></p><p>The course will leave the marketplace. Existing enrollment requests and reviews remain. Restore it later as a paused course.</p>
@@ -138,11 +203,13 @@
         <p id="cartTotal" class="cart-total"></p>
         <p class="muted">No payment is collected. Send an enrollment request to each teacher.</p>
         <p id="cartError" class="error" role="alert" hidden></p>
+        <p id="cartStatus" role="status" aria-live="polite"></p>
         <button id="checkoutButton" class="primary" type="button">Request enrollment</button>
     </dialog>
     <dialog id="requestsDialog" class="market-dialog">
         <div class="dialog-heading"><h2>My enrollment requests</h2><button type="button" data-close aria-label="Close requests">×</button></div>
         <div id="studentRequests"></div>
+        <p id="requestsError" class="error" role="alert" hidden></p>
     </dialog>
     <template id="courseEditorFields">
             <label>Course title<input name="title" required maxlength="120" placeholder="Give your course a clear name"></label>
@@ -160,6 +227,6 @@
             <div id="mediaPreview" class="media-preview" hidden aria-live="polite"></div>
             <label class="checkbox-label"><input name="published" type="checkbox" checked> Published and open for enrollment</label>
     </template>
-    <script type="module" src="tutor-check.js?v=20261103-context-edit"></script>
+    <script type="module" src="tutor-check.js?v=20261104-tutor-home"></script>
 </body>
 </html>

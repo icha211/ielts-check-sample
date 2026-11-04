@@ -21,10 +21,14 @@ async function main() {
     }
     for (const [uid, role] of Object.entries(roles.val() || {})) {
         if (role !== "teacher") continue;
-        const user = await db.ref(`users/${uid}`).get();
-        const account = await getAuth().getUser(uid);
+        const [user, verification, account] = await Promise.all([
+            db.ref(`users/${uid}`).get(),
+            db.ref(`tutor_verification/${uid}`).get(),
+            getAuth().getUser(uid)
+        ]);
         await db.ref(`tutor_public_teachers/${uid}`).set(publicTeacher({
-            displayName: account.displayName, photoURL: account.photoURL, ...user.val()
+            displayName: account.displayName, photoURL: account.photoURL,
+            ...user.val(), verified: verification.val()?.status === "verified"
         }));
     }
     console.log("Marketplace enrollment totals and public teacher identities backfilled.");

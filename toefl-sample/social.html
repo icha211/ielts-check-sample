@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.34.0/dist/tabler-icons.min.css">
     <script src="qc-preferences.js?v=20261031-explore"></script>
     <link rel="stylesheet" href="site-navbar.css?v=20261030-prefs">
-    <link rel="stylesheet" href="social.css?v=20261101-tutor-check">
+    <link rel="stylesheet" href="social.css?v=20261102-community-safety">
 </head>
 <body class="explore-page">
     <script src="site-navbar.js?v=20261101-tutor-check"></script>
@@ -63,7 +63,7 @@
                                 </label>
                                 <span id="composerCount" class="composer-count">0 / 4000</span>
                             </div>
-                            <p id="postVisibilityHint" class="helper">Anyone can read public posts, including signed-out visitors.</p>
+                            <p id="postVisibilityHint" class="helper">Sign in to read public posts and participate.</p>
                             <div id="mediaPreview" class="media-preview" hidden></div>
                             <fieldset id="imageFraming" class="image-framing" hidden>
                                 <legend>Photo layout</legend>
@@ -102,6 +102,13 @@
                     <p id="editingHint" class="helper" hidden>Editing your post. <button type="button" id="cancelEdit" class="text-button">Cancel</button></p>
                 </form>
 
+                <section id="moderationQueue" class="card moderation-queue" aria-labelledby="moderationTitle" hidden>
+                    <div class="card-heading"><h2 id="moderationTitle">Community reports</h2><span class="helper">Latest 100 open reports</span></div>
+                    <div id="moderationReports" class="moderation-reports"></div>
+                    <p id="moderationEmpty" class="helper" hidden>No open reports.</p>
+                    <p id="moderationError" class="form-error" role="alert" hidden></p>
+                </section>
+
                 <div class="feed-toolbar">
                     <nav class="feed-tabs" aria-label="Post categories">
                         <button type="button" data-filter="all" aria-pressed="true">All Posts</button>
@@ -137,6 +144,7 @@
                     <i class="ti ti-users-group buddy-symbol" aria-hidden="true"></i>
                     <div><h2>Study Buddy Match</h2><p id="buddyCopy">Find the perfect study buddy based on your goals and learning level.</p><button type="button" class="secondary-button" id="findBuddy">Find Study Buddy</button></div>
                 </section>
+                <button type="button" class="secondary-button" id="manageBlocks" hidden>Manage blocked accounts</button>
             </aside>
         </div>
     </main>
@@ -153,7 +161,39 @@
         <p id="deleteError" class="form-error" role="alert" hidden></p>
         <div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog>Cancel</button><button class="primary-button" type="button" id="confirmDelete">Remove post</button></div>
     </dialog>
+    <dialog id="reportDialog" aria-labelledby="reportTitle">
+        <form id="reportForm">
+            <h2 id="reportTitle">Report community content</h2>
+            <p class="helper">Choose the reason that best describes the issue.</p>
+            <label for="reportReason">Reason</label>
+            <select id="reportReason" required>
+                <option value="spam">Spam</option>
+                <option value="harassment">Harassment or bullying</option>
+                <option value="inappropriate">Inappropriate content</option>
+                <option value="scam">Scam or misleading content</option>
+                <option value="other">Other</option>
+            </select>
+            <p id="reportError" class="form-error" role="alert" hidden></p>
+            <div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog>Cancel</button><button class="primary-button" type="submit" id="submitReport">Send report</button></div>
+        </form>
+    </dialog>
+    <dialog id="blockDialog" aria-labelledby="blockTitle">
+        <h2 id="blockTitle">Block this account?</h2>
+        <p id="blockDescription" class="helper">Their posts will be hidden from your community feed, and neither of you can interact with the other's content.</p>
+        <p id="blockError" class="form-error" role="alert" hidden></p>
+        <div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog>Cancel</button><button class="primary-button" type="button" id="confirmBlock">Block account</button></div>
+    </dialog>
+    <dialog id="blockedDialog" aria-labelledby="blockedTitle">
+        <div class="card-heading"><h2 id="blockedTitle">Blocked accounts</h2><button class="icon-button" type="button" data-close-dialog aria-label="Close"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+        <div id="blockedAccounts" class="blocked-accounts"></div>
+        <p id="blockedEmpty" class="helper" hidden>You have not blocked any accounts.</p>
+    </dialog>
+    <dialog id="moderationDialog" aria-labelledby="moderationDialogTitle">
+        <h2 id="moderationDialogTitle">Remove reported content?</h2>
+        <p class="helper">This action cannot be undone.</p>
+        <div class="dialog-actions"><button type="button" class="secondary-button" data-close-dialog>Cancel</button><button class="primary-button" type="button" id="confirmModeration">Remove reported content</button></div>
+    </dialog>
     <p id="liveStatus" class="sr-only" aria-live="polite"></p>
-    <script type="module" src="social.js?v=20261101-photos-only"></script>
+    <script type="module" src="social.js?v=20261102-community-safety"></script>
 </body>
 </html>

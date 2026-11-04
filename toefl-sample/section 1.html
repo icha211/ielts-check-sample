@@ -2441,6 +2441,7 @@
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="toefl-storage-sync.js?v=20261010b"></script>
+    <script src="ai-client.js"></script>
     <script src="toefl-test-history.js?v=20261028a"></script>
     <script src="mocknav-question.js"></script>
     <script>
@@ -3680,9 +3681,8 @@
         async function saveCompleteListeningDataToFirebase(setId, metadata, parts) {
             if (!setId || !metadata) return false;
             try {
-                const firebaseUrl = typeof TOEFL_FIREBASE_URL !== "undefined" ? TOEFL_FIREBASE_URL : window.TOEFL_FIREBASE_URL;
-                if (!firebaseUrl) {
-                    console.warn("[ListeningData] Firebase URL not available");
+                if (!window.toeflStorage || typeof window.toeflStorage._put !== "function") {
+                    console.warn("[ListeningData] Shared Firebase storage not available");
                     return false;
                 }
 
@@ -3728,16 +3728,7 @@
                 ];
 
                 for (const path of paths) {
-                    const url = `${firebaseUrl}/${path}.json`;
-                    const response = await fetch(url, {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(completeData)
-                    });
-                    if (!response.ok) {
-                        console.warn("[ListeningData] Failed to save to", path);
-                        return false;
-                    }
+                    await window.toeflStorage._put(path, completeData);
                 }
 
                 console.log("[ListeningData] Successfully saved complete listening data to Firebase for setId", setId);
@@ -6769,19 +6760,19 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
 
                 if (!setId) {
                     console.warn("[ListeningData] Draft save skipped: no stable setId yet.");
-                    return;
+                    throw new Error("Select a test set before saving. Your draft is kept locally.");
                 }
 
                 currentSetId = setId;
 
                 const draftSaved = await toeflStorage.saveDraftBySetIdAndType(setId, MODULE_ID, draft, currentTestType)
-                    .then(() => true)
                     .catch((error) => {
                         console.warn("[ToeflSync] draft save failed:", error);
                         return false;
                     });
                 if (!draftSaved) {
                     console.warn("[ToeflSync] Draft save to remote storage returned false; local draft updated.");
+                    throw new Error(toeflStorage._lastStorageError || "Cloud draft save failed. Your changes are kept locally.");
                 }
 
                 // Also save complete listening data to Firebase RTDB with audio URLs and content
@@ -6826,8 +6817,11 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
                 });
                 if (!completeDataSaved) {
                     console.warn("[ListeningData] Complete listening data save to Firebase returned false; local draft updated.");
+                    throw new Error("Listening data was not fully saved to Firebase. Your draft is kept locally.");
                 }
+                return true;
             }
+            throw new Error("Shared storage is unavailable. Your draft is kept locally.");
         }
 
         async function loadSectionDraft() {
@@ -7084,7 +7078,8 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
                 updatedAt: new Date().toISOString()
             };
             if (currentTestType === "practicetest" && getRequestedPracticePackage()) record.packageNumber = getRequestedPracticePackage();
-            if (window.toeflStorage && typeof toeflStorage.upsertSetRecord === "function") {
+            upsertLocalRecord(record);
+            if (window.toeflStorage && typeof toeflStorage.upsertSetRecordWithType === "function") {
                 try {
                     await toeflStorage.upsertSetRecordWithType(record, currentTestType);
                 } catch (error) {
@@ -7093,9 +7088,11 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
                         throw error;
                     }
                     console.warn("[ToeflSync] set save failed:", error);
+                    throw error;
                 }
+            } else {
+                throw new Error("Shared storage is unavailable. Your metadata is kept locally.");
             }
-            upsertLocalRecord(record);
             updateEditorUrl(setId, setDate);
             updatePackageLabel(setDate);
             try {
@@ -7768,7 +7765,7 @@ ${escapeHtml(correctText || "Correct answer")}</div></div>
                 try {
                     const response = await fetch(`${apiBase}/api/developer/ensure-audio-folder`, {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
+                        headers: { ...await window.toeflStorage.getDeveloperGatewayHeaders(), "Content-Type": "application/json" },
                         body: JSON.stringify({ setId, testType: currentTestType })
                     });
                     if (!response.ok) {
@@ -9816,7 +9813,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
             const response = await fetch(`${apiBase}/api/developer/align-transcript`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { ...await window.toeflStorage.getDeveloperGatewayHeaders(), 'Content-Type': 'application/json' },
                 body: JSON.stringify({ audioUrl: audioUrl, transcriptText: transcriptText })
             });
             if (!response.ok) {
@@ -9853,7 +9850,8 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                         draft.parts[partNumber] = draft.parts[partNumber] || {};
                         draft.parts[partNumber].transcriptSegments = alignment.segments;
                         localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-                        await window.toeflStorage?.saveDraftBySetIdAndType?.(currentSetId, MODULE_ID, draft, currentTestType);
+                        const saved = await window.toeflStorage?.saveDraftBySetIdAndType?.(currentSetId, MODULE_ID, draft, currentTestType);
+                        if (!saved) throw new Error("Alignment generated, but the draft was not saved. Your alignment is kept locally.");
                         console.log(`[Audio Alignment] Part ${partNumber} aligned with ${alignment.provider}.`);
                         const transcriptStatus = document.getElementById(`transcript-status-${partNumber}`);
                         if (transcriptStatus) {
@@ -9865,7 +9863,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     console.warn(`[Audio Alignment] Part ${partNumber} skipped:`, alignmentError?.message || alignmentError);
                     const transcriptStatus = document.getElementById(`transcript-status-${partNumber}`);
                     if (transcriptStatus) {
-                        transcriptStatus.textContent = 'Audio uploaded. Automatic WhisperX alignment unavailable; check the aligner configuration.';
+                        transcriptStatus.textContent = `Audio uploaded. Alignment was not fully saved: ${alignmentError?.message || "check the aligner configuration"}`;
                         transcriptStatus.style.color = '#b45309';
                     }
                 }
@@ -10051,6 +10049,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
                     const proxyResponse = await fetch(`${apiBase}/api/developer/upload-proxy`, {
                         method: 'POST',
+                        headers: await window.toeflStorage.getDeveloperGatewayHeaders(),
                         body: proxyFormData
                     });
                     if (!proxyResponse.ok) {
@@ -10066,7 +10065,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     try {
                         const uploadUrlResponse = await fetch(`${apiBase}/api/developer/upload-url`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { ...await window.toeflStorage.getDeveloperGatewayHeaders(), 'Content-Type': 'application/json' },
                             body: JSON.stringify({ objectKey, fileName: file.name, fileType })
                         });
                         if (!uploadUrlResponse.ok) {
@@ -10116,11 +10115,13 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 uploadedAt: new Date().toISOString()
             };
 
+            let audioIndexError = null;
             if (window.toeflStorage && typeof toeflStorage._put === 'function') {
                 try {
                     await toeflStorage._put(`toefl_itp/group_audio_urls/${currentSetId}/part_${normalizedPartNumber}/g_${group.key}`, groupAudioRecord);
                 } catch (fbError) {
                     console.warn('[Group Audio Upload] Firebase group audio save failed:', fbError.message);
+                    audioIndexError = fbError;
                 }
             }
 
@@ -10131,10 +10132,12 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             draft.parts[normalizedPartNumber].groupAudio[group.key] = groupAudioRecord;
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
 
+            if (audioIndexError) throw new Error(`Audio uploaded, but its Firebase link was not saved: ${audioIndexError.message}. Local changes are preserved.`);
             if (window.toeflStorage && typeof toeflStorage.saveDraftBySetIdAndType === 'function') {
-                toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, draft, currentTestType).catch((err) => {
-                    console.warn('[Group Audio Upload] Firebase draft save failed (non-blocking):', err.message);
-                });
+                const saved = await toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, draft, currentTestType);
+                if (!saved) throw new Error("Audio uploaded, but its group draft was not saved. Retry saving; local changes are preserved.");
+            } else {
+                throw new Error("Audio uploaded, but shared draft storage is unavailable.");
             }
 
             return { objectKey, objectUrl: canonicalObjectUrl, uploadMode };
@@ -10386,6 +10389,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
                     const proxyResponse = await fetch(`${apiBase}/api/developer/upload-proxy`, {
                         method: 'POST',
+                        headers: await window.toeflStorage.getDeveloperGatewayHeaders(),
                         body: proxyFormData
                     });
                     if (!proxyResponse.ok) {
@@ -10408,7 +10412,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     try {
                         const uploadUrlResponse = await fetch(`${apiBase}/api/developer/upload-url`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { ...await window.toeflStorage.getDeveloperGatewayHeaders(), 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 objectKey,
                                 fileName: file.name,
@@ -10465,11 +10469,13 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 uploadedAt: new Date().toISOString()
             };
 
+            let audioIndexError = null;
             if (window.toeflStorage && typeof toeflStorage._put === 'function') {
                 try {
                     await toeflStorage._put(`toefl_itp/question_audio_urls/${currentSetId}/part_${normalizedPartNumber}/q_${normalizedQuestionNumber}`, questionAudioRecord);
                 } catch (fbError) {
                     console.warn('[Question Audio Upload] Firebase question audio save failed:', fbError.message);
+                    audioIndexError = fbError;
                 }
             }
 
@@ -10480,10 +10486,12 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             draft.parts[normalizedPartNumber].questionAudio[normalizedQuestionNumber] = questionAudioRecord;
             localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
 
+            if (audioIndexError) throw new Error(`Audio uploaded, but its Firebase link was not saved: ${audioIndexError.message}. Local changes are preserved.`);
             if (window.toeflStorage && typeof toeflStorage.saveDraftBySetIdAndType === 'function') {
-                toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, draft, currentTestType).catch((err) => {
-                    console.warn('[Question Audio Upload] Firebase draft save failed (non-blocking):', err.message);
-                });
+                const saved = await toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, draft, currentTestType);
+                if (!saved) throw new Error("Audio uploaded, but its question draft was not saved. Retry saving; local changes are preserved.");
+            } else {
+                throw new Error("Audio uploaded, but shared draft storage is unavailable.");
             }
 
             return { objectKey, objectUrl: canonicalObjectUrl, uploadMode };
@@ -10523,6 +10531,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             try {
                 const proxyResponse = await fetch(`${apiBase}/api/developer/upload-proxy`, {
                     method: 'POST',
+                    headers: await window.toeflStorage.getDeveloperGatewayHeaders(),
                     body: proxyFormData
                 });
                 if (!proxyResponse.ok) {
@@ -10546,7 +10555,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                 // Step 2 fallback: signed URL flow, still enforcing canonical objectKey contract.
                 const uploadUrlResponse = await fetch(`${apiBase}/api/developer/upload-url`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { ...await window.toeflStorage.getDeveloperGatewayHeaders(), 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         objectKey,
                         fileName: file.name,
@@ -10586,6 +10595,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
 
             // Step 3: Save the returned objectUrl to Firebase at toefl_itp/audio_urls/{setId}/part_{n}
             // This matches the format expected by playback code
+            let audioIndexError = null;
             if (window.toeflStorage && typeof toeflStorage._put === 'function') {
                 try {
                     await toeflStorage._put(`toefl_itp/audio_urls/${currentSetId}/part_${partNumber}`, {
@@ -10603,7 +10613,7 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
                     console.log(`[Audio Upload] Part ${partNumber} saved to Firebase audio_urls: ${canonicalObjectUrl}`);
                 } catch (fbError) {
                     console.warn('[Audio Upload] Firebase audio_urls save failed:', fbError.message);
-                    // Continue anyway - local draft will still be updated below
+                    audioIndexError = fbError;
                 }
             }
 
@@ -10626,11 +10636,12 @@ ${existsCheck.error || "Object not reachable"}`, "#b91c1c");
             // Step 5: Also update the global audioUrlsByPart so saveSectionDraft() picks it up
             audioUrlsByPart[partNumber] = canonicalObjectUrl;
 
-            // Save draft to Firebase asynchronously (non-blocking)
+            if (audioIndexError) throw new Error(`Audio uploaded, but its Firebase link was not saved: ${audioIndexError.message}. Local changes are preserved.`);
             if (window.toeflStorage && typeof toeflStorage.saveDraftBySetIdAndType === 'function') {
-                toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, draft, currentTestType).catch((err) => {
-                    console.warn('[Audio Upload] Firebase draft save failed (non-blocking):', err.message);
-                });
+                const saved = await toeflStorage.saveDraftBySetIdAndType(currentSetId, MODULE_ID, draft, currentTestType);
+                if (!saved) throw new Error("Audio uploaded, but its draft was not saved. Retry saving; local changes are preserved.");
+            } else {
+                throw new Error("Audio uploaded, but shared draft storage is unavailable.");
             }
 
             console.log(`[Audio Upload] Part ${partNumber} saved (${uploadMode}): ${canonicalObjectUrl}`);

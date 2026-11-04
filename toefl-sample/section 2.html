@@ -2428,6 +2428,8 @@
                     console.warn("[ToeflSync] draft save failed:", error);
                     throw error;
                 }
+            } else {
+                throw new Error("Shared storage is unavailable. Your draft is kept locally.");
             }
         }
 
@@ -2637,7 +2639,8 @@
                 updatedAt: new Date().toISOString()
             };
             if (currentTestType === "practicetest" && getRequestedPracticePackage()) record.packageNumber = getRequestedPracticePackage();
-            if (window.toeflStorage && typeof toeflStorage.upsertSetRecord === "function") {
+            upsertLocalRecord(record);
+            if (window.toeflStorage && typeof toeflStorage.upsertSetRecordWithType === "function") {
                 try {
                     await toeflStorage.upsertSetRecordWithType(record, currentTestType);
                 } catch (error) {
@@ -2646,9 +2649,11 @@
                         throw error;
                     }
                     console.warn("[ToeflSync] set save failed:", error);
+                    throw error;
                 }
+            } else {
+                throw new Error("Shared storage is unavailable. Your metadata is kept locally.");
             }
-            upsertLocalRecord(record);
             updateEditorUrl(setId, setDate);
             updateExplanationLink();
         }

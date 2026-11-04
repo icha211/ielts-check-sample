@@ -2,6 +2,7 @@ import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { onValue, ref, query, orderByChild, limitToLast, push, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
 import { validatePost, GROUPS } from "./community-model.js?v=20261101-image-framing";
 import { compressImageToLimit } from "./image-compress.js?v=20261031-compress";
 
@@ -25,15 +26,21 @@ export function subscribeCommunity(callback, onError) {
         listeners.forEach((unsubscribe) => unsubscribe());
         listeners = [];
         postLocations.clear();
-        const state = { uid: user?.uid || null, user, loading: Boolean(user), connected: false, profile: {}, profiles: {}, posts: {}, members: {} };
+        const state = { uid: user?.uid || null, user, loading: Boolean(user), connected: false, profile: {}, profiles: {}, posts: {}, members: {}, blocks: {} };
         callback({ ...state });
+        if (!user) {
+            state.loading = false;
+            callback({ ...state });
+            return;
+        }
         const publicPosts = {};
         const privatePosts = new Map();
         const privateStops = new Map();
         const publish = () => {
             if (version !== generation) return;
             const merged = Object.assign({}, publicPosts.value || {}, ...privatePosts.values());
-            state.posts = Object.fromEntries(Object.entries(merged).sort(([, a], [, b]) => b.createdAt - a.createdAt).slice(0, 100));
+            const visible = Object.fromEntries(Object.entries(merged).filter(([, post]) => !state.blocks[post.authorId]));
+            state.posts = Object.fromEntries(Object.entries(visible).sort(([, a], [, b]) => b.createdAt - a.createdAt).slice(0, 100));
             postLocations.clear();
             Object.keys(publicPosts.value || {}).forEach((id) => postLocations.set(id, `community_posts/${id}`));
             privatePosts.forEach((posts, author) => Object.keys(posts).forEach((id) => postLocations.set(id, `community_private_posts/${author}/${id}`)));
@@ -42,10 +49,8 @@ export function subscribeCommunity(callback, onError) {
         listeners.push(onValue(query(ref(db, "community_posts"), orderByChild("createdAt"), limitToLast(100)), (snapshot) => {
             if (version !== generation) return;
             publicPosts.value = snapshot.val() || {};
-            if (!user) state.loading = false;
             publish();
         }, onError));
-        if (!user) return;
         const ready = new Set();
         listeners.push(onValue(ref(db, ".info/connected"), (snapshot) => {
             if (version !== generation) return;
@@ -55,13 +60,14 @@ export function subscribeCommunity(callback, onError) {
         [
             ["profile", ref(db, `users/${user.uid}`)],
             ["profiles", ref(db, "partnerDirectory")],
-            ["members", ref(db, "community_members")]
+            ["members", ref(db, "community_members")],
+            ["blocks", ref(db, `community_blocks/${user.uid}`)]
         ].forEach(([key, target]) => {
             listeners.push(onValue(target, (snapshot) => {
                 if (version !== generation) return;
                 state[key] = snapshot.val() || {};
                 ready.add(key);
-                state.loading = ready.size < 3;
+                state.loading = ready.size < 4;
                 publish();
             }, (error) => { if (version === generation) onError(error); }));
         });
@@ -170,7 +176,8 @@ export async function savePost(input, file, developer, editingId = null) {
             media.mediaURL = await getDownloadURL(uploaded);
             media.mediaType = "image";
         }
-        await set(target, { ...post, ...media, authorId: user.uid, createdAt: serverTimestamp() });
+        const functions = getFunctions(auth.app, "asia-southeast1");
+        await httpsCallable(functions, "publishCommunityPost")({ postId: target.key, post: { ...post, ...media } });
         postLocations.set(target.key, `${collection}/${target.key}`);
     } catch (error) {
         if (uploaded) {
@@ -192,11 +199,28 @@ export async function setPostLike(id, liked) {
     await set(ref(db, `${activityPath(id, "likes")}/${user.uid}`), liked ? serverTimestamp() : null);
 }
 export async function addComment(id, text) {
-    const user = requireUser();
+    requireUser();
     requireId(id);
     const body = String(text || "").trim();
     if (!body || body.length > 2000) throw new Error("Write a comment of 1 to 2,000 characters.");
-    await set(push(ref(db, activityPath(id, "comments"))), { authorId: user.uid, body, createdAt: serverTimestamp() });
+    const functions = getFunctions(auth.app, "asia-southeast1");
+    await httpsCallable(functions, "createCommunityComment")({ postId: id, postLocation: postPath(id), body });
+}
+export async function reportCommunityContent(id, targetType, targetId, reason) {
+    requireUser();
+    requireId(id);
+    if (!["post", "comment"].includes(targetType)) throw new Error("Choose a valid report target.");
+    if (targetType === "comment") requireId(targetId);
+    const functions = getFunctions(auth.app, "asia-southeast1");
+    await httpsCallable(functions, "createCommunityReport")({
+        postId: id, postLocation: postPath(id), targetType, targetId: targetType === "post" ? id : targetId, reason
+    });
+}
+export async function setCommunityBlock(uid, blocked) {
+    const user = requireUser();
+    requireId(uid);
+    if (uid === user.uid) throw new Error("You cannot block your own account.");
+    await set(ref(db, `community_blocks/${user.uid}/${uid}`), blocked ? true : null);
 }
 export async function deleteComment(postId, commentId) {
     requireUser();

@@ -343,8 +343,8 @@ export async function handleEmailAuth(event) {
                 await saveUserProfile(user);
             }
         }
-        await registerMarketplaceRole(marketplaceRoleInput.value);
-        window.location.assign(marketplaceRoleInput.value === "teacher" ? "tutor-check.html" : "index.html");
+        const role = await registerMarketplaceRole(marketplaceRoleInput.value);
+        window.location.assign(role === "teacher" ? "tutor-check.html?studio=1" : "index.html");
     } catch (error) {
         console.error(isSignUp ? "Sign-up error:" : "Sign-in error:", error);
         if (isCompletingSignUp && !activatedUser && ["auth/invalid-action-code", "auth/expired-action-code"].includes(error.code)) {
@@ -364,8 +364,8 @@ export async function handleGoogleSignIn() {
         const result = await signInWithPopup(auth, googleProvider);
         const user = result.user;
         await saveUserProfile(user);
-        await registerMarketplaceRole(marketplaceRoleInput.value);
-        window.location.assign(marketplaceRoleInput.value === "teacher" ? "tutor-check.html" : "index.html");
+        const role = await registerMarketplaceRole(marketplaceRoleInput.value);
+        window.location.assign(role === "teacher" ? "tutor-check.html?studio=1" : "index.html");
     } catch (error) {
         console.error("Google sign-in error:", error);
         showMessage(getErrorMessage(error));

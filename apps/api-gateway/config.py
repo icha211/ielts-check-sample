@@ -7,8 +7,19 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
     host: str = "127.0.0.1"
     port: int = 8000
-    debug: bool = True
+    debug: bool = False
     cors_origins: str | None = Field(default=None, validation_alias="IELTS_API_CORS_ORIGINS")
+    firebase_project_id: str | None = Field(default=None, validation_alias="FIREBASE_PROJECT_ID")
+    ai_enabled: bool = False
+    ai_daily_user_limit: int = Field(default=10, ge=1, le=100)
+    ai_daily_global_limit: int = Field(default=100, ge=1, le=10000)
+    ai_minute_user_limit: int = Field(default=2, ge=1, le=10)
+    ai_max_prompt_chars: int = Field(default=16000, ge=1000, le=32000)
+    ai_max_output_tokens: int = Field(default=2048, ge=128, le=4096)
+    ai_timeout_seconds: int = Field(default=60, ge=5, le=120)
+    ai_provider: str = Field(default="gemini", pattern="^(gemini|deepseek)$")
+    deepseek_benchmark_approved: bool = False
+    deepseek_model: str = "deepseek-flash"
 
     r2_account_id: str | None = Field(default=None, validation_alias="R2_ACCOUNT_ID")
     r2_bucket_name: str | None = Field(default=None, validation_alias="R2_BUCKET_NAME")

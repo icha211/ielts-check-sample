@@ -11,10 +11,12 @@ from urllib.parse import quote
 import boto3
 from botocore.client import Config
 from botocore.exceptions import BotoCoreError, ClientError
-from fastapi import APIRouter, File, Form, Header, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 
 from config import build_r2_endpoint, settings
+from auth import require_developer
+from ai_runtime import reserve_generation
 from schemas import (
     DeveloperEnsureAudioFolderRequest,
     DeveloperEnsureAudioFolderResponse,
@@ -102,7 +104,7 @@ def _request_whisperx_alignment(audio_url: str, transcript_text: str) -> dict | 
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=900) as response:
+        with urllib.request.urlopen(request, timeout=settings.ai_timeout_seconds) as response:
             result = json.loads(response.read().decode("utf-8"))
         return result if isinstance(result, dict) else None
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
@@ -110,11 +112,12 @@ def _request_whisperx_alignment(audio_url: str, transcript_text: str) -> dict | 
         return None
 
 
-@router.post("/align-transcript", response_model=AlignTranscriptResponse)
-def align_transcript(payload: AlignTranscriptRequest) -> AlignTranscriptResponse:
+@router.post("/align-transcript", response_model=AlignTranscriptResponse, dependencies=[Depends(require_developer)])
+def align_transcript(payload: AlignTranscriptRequest, user: dict = Depends(require_developer)) -> AlignTranscriptResponse:
     aligner_url = settings.whisperx_aligner_url or os.getenv("WHISPERX_ALIGNER_URL")
     if not aligner_url:
         raise HTTPException(status_code=503, detail="WHISPERX_ALIGNER_URL is not configured")
+    reserve_generation(user["uid"])
 
     request_body = json.dumps({
         "audio_url": payload.audio_url,
@@ -127,7 +130,7 @@ def align_transcript(payload: AlignTranscriptRequest) -> AlignTranscriptResponse
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=900) as response:
+        with urllib.request.urlopen(request, timeout=settings.ai_timeout_seconds) as response:
             result = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
@@ -261,7 +264,7 @@ def _build_proxy_audio_url(request: Request, object_key: str) -> str:
     return f"{base}{settings.api_prefix}/developer/audio-proxy?objectKey={quote(object_key)}"
 
 
-@router.post("/ensure-audio-folder", response_model=DeveloperEnsureAudioFolderResponse)
+@router.post("/ensure-audio-folder", response_model=DeveloperEnsureAudioFolderResponse, dependencies=[Depends(require_developer)])
 def ensure_audio_folder(payload: DeveloperEnsureAudioFolderRequest) -> DeveloperEnsureAudioFolderResponse:
     set_id = _sanitize_set_id(payload.set_id)
     if not set_id:
@@ -292,7 +295,7 @@ def ensure_audio_folder(payload: DeveloperEnsureAudioFolderRequest) -> Developer
     )
 
 
-@router.post("/upload-url", response_model=DeveloperUploadUrlResponse)
+@router.post("/upload-url", response_model=DeveloperUploadUrlResponse, dependencies=[Depends(require_developer)])
 def create_upload_url(payload: DeveloperUploadUrlRequest) -> DeveloperUploadUrlResponse:
     file_type = str(payload.file_type).strip().lower()
     if not file_type.startswith("audio/"):
@@ -326,8 +329,9 @@ def create_upload_url(payload: DeveloperUploadUrlRequest) -> DeveloperUploadUrlR
     )
 
 
-@router.post("/upload-proxy", response_model=DeveloperUploadProxyResponse)
+@router.post("/upload-proxy", response_model=DeveloperUploadProxyResponse, dependencies=[Depends(require_developer)])
 async def upload_audio_proxy(
+    user: dict = Depends(require_developer),
     file: UploadFile = File(...),
     object_key: str = Form(..., alias="objectKey"),
     file_name: str | None = Form(default=None, alias="fileName"),
@@ -344,6 +348,10 @@ async def upload_audio_proxy(
 
     # Canonical contract: objectKey comes from frontend mapping (set + part), never rewritten.
     canonical_object_key = _validate_allowed_audio_object_key(object_key)
+    if transcript_text and len(transcript_text) > settings.ai_max_prompt_chars:
+        raise HTTPException(status_code=413, detail="Alignment transcript is too large")
+    if transcript_text and (settings.whisperx_aligner_url or os.getenv("WHISPERX_ALIGNER_URL")):
+        reserve_generation(user["uid"])
 
     data = await file.read()
     if not data:

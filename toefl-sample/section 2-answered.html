@@ -241,6 +241,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
     <script src="toefl-storage-sync.js?v=20260916a"></script>
+    <script src="ai-client.js"></script>
     <script>
         var STEP_TIPS_IMAGE = '../asst/icon/tipsboxsetp-bystep.png';
         var reviewResultData = null;
@@ -2593,17 +2594,6 @@
         }
 
         async function requestGeminiAiQcReply(promptText) {
-            var apiKey = '';
-            try {
-                apiKey = String(window.TOEFL_GEMINI_API_KEY || localStorage.getItem('toefl_gemini_api_key') || '').trim();
-            } catch (_) {
-                apiKey = String(window.TOEFL_GEMINI_API_KEY || '').trim();
-            }
-
-            if (!apiKey) {
-                return 'Gemini belum aktif. Isi API key dulu dengan localStorage.setItem("toefl_gemini_api_key", "YOUR_KEY") lalu kirim ulang pertanyaan.';
-            }
-
             var question = reviewCurrentQuestion || {};
             var blueprint = deriveGrammarBlueprint(question);
             var context = [
@@ -2614,35 +2604,19 @@
                 'Main verb hint: ' + String((blueprint && blueprint.mainVerb) || '')
             ].join('\n');
 
-            var response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey), {
+            var response = await window.toeflAi.request('https://ielts-api-gateway-753959270698.asia-southeast1.run.app/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    contents: [{
-                        role: 'user',
-                        parts: [{
-                            text: 'Kamu adalah QC Tutor TOEFL. Jawab ringkas, jelas, dan fokus pada grammar structure question ini.\n\n' + context + '\n\nPertanyaan user: ' + promptText
-                        }]
-                    }],
-                    generationConfig: {
-                        temperature: 0.4,
-                        maxOutputTokens: 500
-                    }
+                    module: 'reading',
+                    message: 'Kamu adalah QC Tutor TOEFL. Jawab ringkas, jelas, dan fokus pada grammar structure question ini.\n\n' + context + '\n\nPertanyaan user: ' + promptText
                 })
             });
 
-            if (!response.ok) {
-                var errText = '';
-                try { errText = await response.text(); } catch (_) {}
-                return 'Gemini error: ' + (errText || ('HTTP ' + response.status));
-            }
-
             var data = await response.json();
-            var text = firstNonEmpty(
-                data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text,
-                data && data.output_text
-            );
-            return normalizeText(text) || 'Maaf, respons Gemini kosong. Coba ulangi pertanyaannya dengan kalimat lebih spesifik.';
+            var text = normalizeText(data.reply);
+            if (!text) throw new Error('AI returned an empty reply');
+            return text;
         }
 
         async function submitAiQcPrompt(event, directText) {
@@ -2655,7 +2629,7 @@
             appendAiQcMessage('user', text);
             if (input) input.value = '';
 
-            var waitingText = 'Sedang minta jawaban Gemini...';
+            var waitingText = 'Sedang minta jawaban AI...';
             appendAiQcMessage('assistant', waitingText);
             var thread = document.getElementById('aiqcThread');
             var waitingNode = thread ? thread.lastElementChild : null;
@@ -2665,7 +2639,7 @@
                 if (waitingNode) waitingNode.textContent = aiReply;
                 else appendAiQcMessage('assistant', aiReply);
             } catch (error) {
-                var fallback = 'Terjadi kendala saat menghubungi Gemini: ' + (error && error.message ? error.message : 'unknown error');
+                var fallback = 'Terjadi kendala saat menghubungi AI: ' + (error && error.message ? error.message : 'unknown error');
                 if (waitingNode) waitingNode.textContent = fallback;
                 else appendAiQcMessage('assistant', fallback);
             }

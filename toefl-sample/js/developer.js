@@ -411,7 +411,7 @@ async function loadSetsFromFirebase() {
     try {
         // Firebase is the source of truth: deletes remove records from both local storage and Firebase
         const records = await toeflStorage.getSetRecordsByTestType(currentTestType);
-        updateSyncStatus(toeflStorage.online);
+        updateSyncStatus(toeflStorage.isRemoteAvailable);
         return normalizeSetsMapToList(records);
     } catch (e) {
         updateSyncStatus(false);
@@ -496,7 +496,7 @@ async function filterSetsWithRealContent(records) {
     return list.filter((_, index) => keepFlags[index]);
 }
 
-function persistSets(records) {
+async function persistSets(records) {
     const payload = {};
     records.forEach((item) => {
         const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate, currentTestType, { focus: item.focus, difficulty: item.difficulty });
@@ -515,8 +515,15 @@ function persistSets(records) {
     const localKey = currentTestType === "practicetest" 
         ? "toefl_developer_practicetest_sets_v2" 
         : "toefl_developer_mocktest_sets_v2";
-    localStorage.setItem(localKey, JSON.stringify(payload));
-    toeflStorage.saveSetRecordsWithType(Object.values(payload), currentTestType).then(() => updateSyncStatus(toeflStorage.online));
+    const local = safeParse(localStorage.getItem(localKey), {});
+    localStorage.setItem(localKey, JSON.stringify({ ...local, ...payload }));
+    try {
+        await toeflStorage.saveSetRecordsWithType(Object.values(payload), currentTestType);
+        updateSyncStatus(true);
+    } catch (error) {
+        updateSyncStatus(false);
+        throw error;
+    }
 }
 
 function updateSyncStatus(online) {
@@ -550,7 +557,7 @@ async function deleteSet(setId, module, testType = currentTestType) {
         await toeflStorage.deleteSetRecordWithType(setId, testType);
         purgeLocalSetCaches(setId);
         practicePackageMutationInProgress = false;
-        updateSyncStatus(toeflStorage.online);
+        updateSyncStatus(toeflStorage.isRemoteAvailable);
         toast(`${moduleLabel} deleted. 🗑️`);
         await renderAll();
     } catch (error) {
@@ -897,9 +904,13 @@ async function handleLibrarySetDateChange(setId, moduleId, nextDate) {
     if (!normalized) return;
     sectionSets[targetIndex] = normalized;
 
-    persistSets(sectionSets);
-    await renderAll();
-    toast(selectedDate ? `Set date updated: ${normalized.displayDate}` : "Set date cleared");
+    try {
+        await persistSets([normalized]);
+        await renderAll();
+        toast(selectedDate ? `Set date updated: ${normalized.displayDate}` : "Set date cleared");
+    } catch (error) {
+        toast(`Date was not saved to Firebase: ${error.message}. Your edit is kept locally.`);
+    }
 }
 
 function renderMonthCalendar() {
@@ -1468,14 +1479,8 @@ async function importData(file) {
             toast("No valid section metadata found in file");
             return;
         }
-        const existing = getStoredSets();
-        const mergedMap = {};
-        [...existing, ...normalized].forEach((item) => {
-            const setId = item.setId || toeflStorage.createSetId(item.module, item.setDate, currentTestType, { focus: item.focus, difficulty: item.difficulty });
-            mergedMap[setId] = { ...item, setId };
-        });
-        persistSets(Object.values(mergedMap));
-        renderAll();
+        await persistSets(normalized);
+        await renderAll();
         toast("Imported section metadata");
     } catch (error) {
         toast(`Error importing file: ${error.message}`);

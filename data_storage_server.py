@@ -15,8 +15,12 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime
 from pathlib import Path
 
-from google import genai
-from google.genai import types
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "apps" / "api-gateway"))
+from fastapi import HTTPException
+from auth import require_signed_in
+from ai_runtime import generate_audio
 
 
 # Configuration
@@ -322,49 +326,10 @@ def normalize_transcript_text(transcript_text):
     return "\n".join(normalized_lines).strip()
 
 
-def transcribe_audio_with_gemini(audio_bytes, mime_type="audio/mpeg", part_id=1):
+def transcribe_audio_with_gemini(audio_bytes, mime_type="audio/mpeg", part_id=1, uid=""):
     """Transcribe audio bytes using Gemini multimodal API."""
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        raise RuntimeError("Set GEMINI_API_KEY or GOOGLE_API_KEY for auto transcription")
-
-    if not audio_bytes:
-        raise RuntimeError("Audio data is empty")
-
     prompt = build_transcribe_prompt(part_id)
-
-    client = genai.Client(api_key=api_key)
-    models_to_try = []
-    for model_name in [TRANSCRIBE_MODEL] + TRANSCRIBE_FALLBACK_MODELS:
-        if model_name and model_name not in models_to_try:
-            models_to_try.append(model_name)
-
-    last_error = None
-    for model_name in models_to_try:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=[
-                    types.Part.from_text(text=prompt),
-                    types.Part.from_bytes(data=audio_bytes, mime_type=str(mime_type or "audio/mpeg"))
-                ]
-            )
-            transcript = normalize_transcript_text(getattr(response, "text", ""))
-            if transcript:
-                return transcript
-            last_error = RuntimeError(f"Transcription returned empty result (model={model_name})")
-        except Exception as exc:
-            last_error = exc
-            err_text = str(exc)
-            # If quota is exhausted, continue trying next fallback model.
-            if "RESOURCE_EXHAUSTED" in err_text or "429" in err_text:
-                continue
-            # For non-quota errors, fail fast.
-            raise
-
-    if last_error:
-        raise RuntimeError(str(last_error))
-    raise RuntimeError("Transcription failed")
+    return normalize_transcript_text(generate_audio(audio_bytes, mime_type, prompt, uid))
 
 
 class StorageHandler(BaseHTTPRequestHandler):
@@ -380,7 +345,7 @@ class StorageHandler(BaseHTTPRequestHandler):
         """Set CORS headers for all responses"""
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         self.send_header('Content-Type', 'application/json')
     
     def do_GET(self):
@@ -459,10 +424,15 @@ class StorageHandler(BaseHTTPRequestHandler):
         """Handle POST requests"""
         try:
             content_length = int(self.headers.get('Content-Length', 0))
+            if content_length <= 0 or content_length > 64 * 1024 * 1024:
+                self._send(413, {"error": "Request must contain JSON up to 64 MB"})
+                return
             body = self.rfile.read(content_length).decode('utf-8')
             payload = json.loads(body) if body else {}
             
             action = payload.get('action', '')
+            if action in ('transcribe-audio', 'transcribe-audio-bytes'):
+                user = require_signed_in(self.headers.get("Authorization"))
             
             if action == 'save-problem':
                 # Save a single problem
@@ -531,17 +501,7 @@ class StorageHandler(BaseHTTPRequestHandler):
                     return
 
                 mime_type = mimetypes.guess_type(get_audio_file_path(set_id, part_id))[0] or "audio/mpeg"
-                try:
-                    transcript = transcribe_audio_with_gemini(audio_bytes, mime_type, part_id=part_id)
-                except Exception as exc:
-                    err_text = str(exc)
-                    if "RESOURCE_EXHAUSTED" in err_text or "429" in err_text or "quota" in err_text.lower():
-                        self._send(429, {
-                            "error": "Gemini quota exhausted for auto-transcribe. Wait and retry, switch API key/project, or enable billing.",
-                            "details": err_text
-                        })
-                        return
-                    raise
+                transcript = transcribe_audio_with_gemini(audio_bytes, mime_type, part_id=part_id, uid=user["uid"])
                 save_transcript_file(set_id, part_id, transcript)
                 self._send(200, {
                     "success": True,
@@ -559,24 +519,17 @@ class StorageHandler(BaseHTTPRequestHandler):
                 if not audio_data:
                     self._send(400, {"error": "audioData required"})
                     return
-
-                try:
-                    audio_bytes = base64.b64decode(str(audio_data))
-                except Exception:
-                    self._send(400, {"error": "Invalid base64 audioData"})
+                if len(str(audio_data)) > 2800000:
+                    self._send(413, {"error": "Audio transcription supports files up to 2 MB in the beta"})
                     return
 
                 try:
-                    transcript = transcribe_audio_with_gemini(audio_bytes, mime_type, part_id=part_id)
-                except Exception as exc:
-                    err_text = str(exc)
-                    if "RESOURCE_EXHAUSTED" in err_text or "429" in err_text or "quota" in err_text.lower():
-                        self._send(429, {
-                            "error": "Gemini quota exhausted for auto-transcribe. Wait and retry, switch API key/project, or enable billing.",
-                            "details": err_text
-                        })
-                        return
-                    raise
+                    audio_bytes = base64.b64decode(str(audio_data), validate=True)
+                except ValueError:
+                    self._send(400, {"error": "Invalid base64 audioData"})
+                    return
+
+                transcript = transcribe_audio_with_gemini(audio_bytes, mime_type, part_id=part_id, uid=user["uid"])
                 self._send(200, {
                     "success": True,
                     "fileName": file_name,
@@ -587,6 +540,8 @@ class StorageHandler(BaseHTTPRequestHandler):
             else:
                 self._send(400, {"error": "Unknown action"})
         
+        except HTTPException as e:
+            self._send(e.status_code, {"error": e.detail})
         except Exception as e:
             self._send(500, {"error": str(e)})
     

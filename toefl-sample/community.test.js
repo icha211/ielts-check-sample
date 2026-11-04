@@ -68,13 +68,13 @@ test("picture framing defaults to preserving the full image and validates saved 
 });
 test("picture framing persists for public/private posts and later owner edits", async () => {
     for (const visibility of ["public", "friends"]) {
-        const { context: service, writes } = serviceFixture();
+        const { context: service, calls, writes } = serviceFixture();
         await service.savePost({ ...post, visibility, imageFit: "cover", imageFormat: "square", imageX: 25, imageY: 75 }, null, false);
-        assert.equal(writes[0].value.imageFit, "cover");
-        assert.equal(writes[0].value.imageX, 25);
+        assert.equal(calls[0].data.post.imageFit, "cover");
+        assert.equal(calls[0].data.post.imageX, 25);
         await service.savePost({ ...post, visibility, imageFit: "contain", imageFormat: "portrait", imageX: 50, imageY: 50 }, null, false, "post1");
-        assert.equal(writes[1].value.imageFit, "contain");
-        assert.equal(writes[1].value.imageFormat, "portrait");
+        assert.equal(writes[0].value.imageFit, "contain");
+        assert.equal(writes[0].value.imageFormat, "portrait");
     }
 });
 test("community post validation trims content and enforces exact limits and categories", () => {
@@ -122,11 +122,17 @@ test("media URLs reject executable schemes and relative time responds to real ti
 
 function serviceFixture() {
     const writes = [];
+    const calls = [];
     const listeners = new Map();
     let authCallback;
     const context = vm.createContext({
         auth: { currentUser: { uid: "alice", app: {} } }, db: {},
         console, crypto: webcrypto, Blob, btoa, atob, Uint8Array,
+        getFunctions: () => ({}),
+        httpsCallable: (_, name) => async (data) => {
+            calls.push({ name, data });
+            return { data: { id: data.postId || "post1" } };
+        },
         compressImageToLimit: async (file) => ({ blob: file }),
         validatePost: model.validatePost, GROUPS: vm.runInContext("GROUPS", model),
         onAuthStateChanged(_, callback) { authCallback = callback; return () => {}; },
@@ -144,23 +150,31 @@ function serviceFixture() {
     const code = fs.readFileSync(path.join(__dirname, "js", "community.js"), "utf8").replace(/^import .*;\r?$/gm, "").replace(/^export /gm, "");
     vm.runInContext(code, context);
     return {
-        context, writes, listeners,
+        context, writes, calls, listeners,
         auth: (user) => authCallback(user),
         emit: (key, value) => listeners.get(key)?.({ val: () => value })
     };
 }
-test("community service persists real author, membership, likes and comments", async () => {
-    const { context: service, writes } = serviceFixture();
+test("community service sends content through callables and retains owner-scoped activity writes", async () => {
+    const { context: service, writes, calls } = serviceFixture();
     await service.savePost(post, null, false);
-    assert.equal(writes[0].value.authorId, "alice");
-    assert.equal(writes[0].value.mediaURL, "");
+    assert.equal(calls[0].name, "publishCommunityPost");
+    assert.equal(calls[0].data.post.authorId, undefined, "server assigns author identity");
+    assert.equal(calls[0].data.post.mediaURL, "");
     await service.setGroupMembership("reading", true);
-    assert.equal(writes[1].key, "community_members/reading/alice");
+    assert.equal(writes[0].key, "community_members/reading/alice");
     await service.setPostLike("post1", true);
-    assert.equal(writes[2].key, "community_likes/post1/alice");
-    assert.deepEqual(JSON.parse(JSON.stringify(writes[2].value)), { ".sv": "timestamp" });
+    assert.equal(writes[1].key, "community_likes/post1/alice");
+    assert.deepEqual(JSON.parse(JSON.stringify(writes[1].value)), { ".sv": "timestamp" });
     await service.addComment("post1", " Nice tip ");
-    assert.equal(writes[3].value.body, "Nice tip");
+    assert.equal(calls[1].name, "createCommunityComment");
+    assert.equal(calls[1].data.body, "Nice tip");
+    await service.reportCommunityContent("post1", "post", "post1", "spam");
+    assert.equal(calls[2].name, "createCommunityReport");
+    assert.equal(calls[2].data.postLocation, "community_posts/post1");
+    await service.setCommunityBlock("bob", true);
+    assert.equal(writes[2].key, "community_blocks/alice/bob");
+    assert.equal(writes[2].value, true);
     await assert.rejects(service.addComment("post1", "a".repeat(2001)));
     await assert.rejects(service.setGroupMembership("private", true));
     await assert.rejects(service.savePost(post, { type: "image/png", size: 40 * 1024 * 1024 + 1 }, false));
@@ -168,26 +182,26 @@ test("community service persists real author, membership, likes and comments", a
 });
 test("large pictures are compressed below 2 MB before public upload or private encryption", async () => {
     for (const visibility of ["public", "friends"]) {
-        const { context: service, writes } = serviceFixture();
+        const { context: service, calls } = serviceFixture();
         const original = new Blob([new Uint8Array(3 * 1024 * 1024)], { type: "image/png" });
         const compressed = new Blob(["compressed jpeg"], { type: "image/jpeg" });
         let uploaded;
-        let calls = 0;
+        let compressions = 0;
         service.compressImageToLimit = async (file, limit) => {
-            calls++;
+            compressions++;
             assert.equal(file, original);
             assert.equal(limit, 2 * 1024 * 1024);
             return { blob: compressed, type: "image/jpeg", compressed: true };
         };
         service.uploadBytes = async (_, blob, metadata) => { uploaded = { blob, metadata }; };
         await service.savePost({ ...post, visibility }, original, false);
-        assert.equal(calls, 1);
+        assert.equal(compressions, 1);
         assert.ok(uploaded.blob.size <= 2 * 1024 * 1024);
         if (visibility === "friends") {
             assert.equal(uploaded.metadata.contentType, "application/octet-stream");
-            assert.equal(writes[0].value.mediaMime, "image/jpeg");
+            assert.equal(calls[0].data.post.mediaMime, "image/jpeg");
             service.fetch = async () => ({ ok: true, arrayBuffer: () => uploaded.blob.arrayBuffer() });
-            const decrypted = await service.loadPrivateMedia(writes[0].value);
+            const decrypted = await service.loadPrivateMedia(calls[0].data.post);
             assert.equal(decrypted.type, "image/jpeg");
             assert.equal(await decrypted.text(), await compressed.text());
         } else {
@@ -252,7 +266,7 @@ test("community subscriptions reset all private state on account changes and dis
     const states = [];
     const stop = fixture.context.subscribeCommunity((state) => states.push(state), () => {});
     fixture.auth({ uid: "alice" });
-    for (const key of ["users/alice", "partnerDirectory", "community_posts", "community_members"]) fixture.emit(key, { example: true });
+    for (const key of ["users/alice", "partnerDirectory", "community_posts", "community_members", "community_blocks/alice"]) fixture.emit(key, { example: true });
     assert.equal(states.at(-1).loading, false);
     fixture.auth({ uid: "bob" });
     assert.equal(states.at(-1).uid, "bob");
@@ -260,11 +274,11 @@ test("community subscriptions reset all private state on account changes and dis
     assert.equal(fixture.listeners.has("users/alice"), false);
     fixture.auth(null);
     assert.equal(states.at(-1).uid, null);
-    assert.equal(fixture.listeners.size, 1, "signed-out visitors retain only the public feed subscription");
+    assert.equal(fixture.listeners.size, 0, "signed-out visitors cannot subscribe to the community feed");
     stop();
     assert.equal(fixture.listeners.size, 0);
 });
-test("audiences are validated and private feeds only subscribe to connected friends", () => {
+test("audiences, block filters and private feeds use only accessible connections", () => {
     assert.equal(model.validatePost(post).visibility, "public");
     assert.equal(model.validatePost({ ...post, visibility: "friends" }).visibility, "friends");
     assert.throws(() => model.validatePost({ ...post, visibility: "anyone" }));
@@ -276,14 +290,18 @@ test("audiences are validated and private feeds only subscribe to connected frie
     assert(fixture.listeners.has("community_private_posts/alice"));
     assert(fixture.listeners.has("community_private_posts/bob"));
     assert(!fixture.listeners.has("community_private_posts/charlie"));
-    fixture.emit("community_private_posts/bob", { secret: { ...post, visibility: "friends" } });
+    fixture.emit("community_private_posts/bob", { secret: { ...post, authorId: "bob", visibility: "friends" } });
     assert(states.at(-1).posts.secret);
+    fixture.emit("community_blocks/alice", { bob: true });
+    assert.equal(states.at(-1).posts.secret, undefined, "blocked authors disappear from the feed");
+    fixture.emit("community_blocks/alice", {});
+    assert(states.at(-1).posts.secret, "unblocking restores posts from accessible friends");
     fixture.emit("message_contacts/alice", {});
     assert(!states.at(-1).posts.secret);
     assert(!fixture.listeners.has("community_private_posts/bob"));
 });
 test("private attachments are encrypted and decrypted; private actions use protected paths", async () => {
-    const { context: service, writes } = serviceFixture();
+    const { context: service, writes, calls } = serviceFixture();
     let encrypted;
     service.uploadBytes = async (_, data, metadata) => {
         assert.equal(metadata.contentType, "application/octet-stream");
@@ -291,7 +309,7 @@ test("private attachments are encrypted and decrypted; private actions use prote
     };
     const file = new Blob(["private image bytes"], { type: "image/png" });
     await service.savePost({ ...post, visibility: "friends" }, file, false);
-    const saved = writes[0].value;
+    const saved = calls[0].data.post;
     assert.equal(saved.visibility, "friends");
     assert.equal(saved.mediaPath, "community-private/alice/post1/attachment");
     assert.equal(saved.mediaKey.length, 44);
@@ -300,9 +318,9 @@ test("private attachments are encrypted and decrypted; private actions use prote
     assert.equal(await (await service.loadPrivateMedia(saved)).text(), "private image bytes");
     await assert.rejects(service.loadPrivateMedia({ ...saved, mediaKey: btoa("x".repeat(32)) }));
     await service.setPostLike("post1", true);
-    assert.equal(writes[1].key, "community_private_likes/alice/post1/alice");
-    assert.deepEqual(JSON.parse(JSON.stringify(writes[1].value)), { ".sv": "timestamp" });
+    assert.equal(writes[0].key, "community_private_likes/alice/post1/alice");
+    assert.deepEqual(JSON.parse(JSON.stringify(writes[0].value)), { ".sv": "timestamp" });
     await service.savePost({ ...post, visibility: "friends" }, null, false, "post1");
-    assert.equal(writes[2].key, "community_private_posts/alice/post1");
+    assert.equal(writes[1].key, "community_private_posts/alice/post1");
     await assert.rejects(service.savePost(post, null, false, "post1"), /Audience cannot/);
 });
