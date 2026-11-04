@@ -366,6 +366,7 @@ test("page transitions keep the shell stable and marketplace views restore focus
     });
     await page.keyboard.press("Enter");
     await expect(page.locator("#coursePage")).toBeVisible();
+    await expect(page.locator(".qcnav-sidebar")).toBeHidden();
     await expect(page).toHaveTitle("Beta listening course | Marketplace | Quick Check");
     await expect(page.locator("#coursePage .detail-title")).toBeFocused();
     await page.goBack();
