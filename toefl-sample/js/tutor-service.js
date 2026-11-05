@@ -1,7 +1,7 @@
 import { auth, db } from "./firebase-config.js";
 import { ref, get, set, update, push, onValue, query, orderByChild, equalTo, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
-import { validateCourse, validateTeachingProfile } from "./tutor-model.js?v=20261104-private-drafts";
+import { validateCourse, validateTeachingProfile } from "./tutor-model.js?v=20261108-course-card";
 
 const marketplaceFunctions = getFunctions(auth.app, "asia-southeast1");
 const callMarketplace = name => httpsCallable(marketplaceFunctions, name);
@@ -20,7 +20,14 @@ export async function registerMarketplaceRole(role) {
 }
 export const watchCatalog = (callback, error) => onValue(ref(db, "tutor_courses"), snap => callback(snap.val() || {}), error);
 export const watchReviews = (callback, error) => onValue(ref(db, "tutor_reviews"), snap => callback(snap.val() || {}), error);
-export const watchCourseStudents = (id, callback, error) => onValue(ref(db, `tutor_course_stats/${id}/students`), snap => callback(snap.val()), error);
+export function watchCourseStats(id, callback, error) {
+    const stats = {};
+    const stops = ["students", "reserved"].map(key => onValue(ref(db, `tutor_course_stats/${id}/${key}`), snap => {
+        stats[key] = snap.val();
+        callback({ ...stats });
+    }, error));
+    return () => stops.forEach(stop => stop());
+}
 export const watchTeacherIdentity = (uid, callback, error) => onValue(ref(db, `tutor_public_teachers/${uid}`), snap => callback(snap.val() || {}), error);
 export const watchTeachingRole = (uid, callback, error) => onValue(ref(db, `tutor_roles/${uid}`), snap => callback(snap.val() === "teacher"), error);
 export const watchTeachingProfile = (uid, callback, error) => onValue(ref(db, `tutor_profiles/${uid}`), snap => callback(snap.val() || {}), error);
@@ -111,22 +118,13 @@ export async function toggleLibrary(kind, id, enabled) {
     await set(ref(db, `tutor_library/${user().uid}/${kind}/${id}`), enabled ? true : null);
 }
 export async function requestEnrollment(course) {
-    const current = user();
-    if (!course.published || course.archived) throw new Error("This course is no longer open for enrollment.");
-    if (current.uid === course.teacherId) throw new Error("You cannot enroll in your own course.");
-    const id = `${course.id}_${current.uid}`;
-    const existing = (await get(query(ref(db, "tutor_requests"), orderByChild("studentId"), equalTo(current.uid)))).val() || {};
-    if (existing[id]) throw new Error("You already requested this course. Check My classes in the Marketplace.");
-    await set(ref(db, `tutor_requests/${id}`), {
-        courseId: course.id, studentId: current.uid, teacherId: course.teacherId,
-        studentName: (current.displayName || "Learner").slice(0, 100),
-        price: course.price, status: "pending", createdAt: serverTimestamp(), updatedAt: serverTimestamp()
-    });
+    user();
+    return (await callMarketplace("createEnrollmentRequest")({ courseId: course.id })).data;
 }
 export async function changeRequest(id, status) {
     user();
     if (!["accepted", "declined", "cancelled"].includes(status)) throw new Error("Invalid request status.");
-    await update(ref(db, `tutor_requests/${id}`), { status, updatedAt: serverTimestamp() });
+    return (await callMarketplace("changeEnrollmentRequest")({ requestId: id, status })).data;
 }
 export async function submitReview(courseId, rating, text) {
     const current = user();

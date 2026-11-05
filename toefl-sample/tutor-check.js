@@ -1,8 +1,8 @@
 import { auth } from "./js/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, getBlob, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse } from "./js/tutor-model.js?v=20261104-private-drafts";
-import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStudents, watchAccount, saveCourse, saveCourseDraft, deleteCourseDraft, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview, requestTutorVerification, getTutorVerificationStatus, listTutorVerificationRequests, reviewTutorVerification } from "./js/tutor-service.js?v=20261107-classes";
+import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse } from "./js/tutor-model.js?v=20261108-course-card";
+import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStats, watchAccount, saveCourse, saveCourseDraft, deleteCourseDraft, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview, requestTutorVerification, getTutorVerificationStatus, listTutorVerificationRequests, reviewTutorVerification } from "./js/tutor-service.js?v=20261108-capacity";
 
 const $ = id => document.getElementById(id);
 $("editorFieldBank").append($("courseEditorFields").content.cloneNode(true));
@@ -18,7 +18,7 @@ let catalogReady = false, reviewsReady = false, checkoutBusy = false;
 let catalogFailure = "", reviewsFailure = "";
 const pendingEnrollments = new Set();
 let verificationStatus = { status: "loading" }, verificationLoading = false, verificationBusy = false, isMarketplaceModerator = false;
-const teacherIdentities = {}, publicStudents = {};
+const teacherIdentities = {}, publicStudents = {}, publicReserved = {};
 const teacherIdentityStops = new Map(), courseStudentStops = new Map();
 const filterPanel = document.querySelector(".filter-panel");
 const filterSidebar = elSidebarFilters();
@@ -54,16 +54,18 @@ function syncPublicCourseData() {
         }));
     }
     for (const [id, stop] of courseStudentStops) {
-        if (!(id in courses)) { stop(); courseStudentStops.delete(id); delete publicStudents[id]; }
+        if (!(id in courses)) { stop(); courseStudentStops.delete(id); delete publicStudents[id]; delete publicReserved[id]; }
     }
     for (const id of Object.keys(courses)) {
         if (courseStudentStops.has(id)) continue;
-        courseStudentStops.set(id, watchCourseStudents(id, count => {
-            publicStudents[id] = Number.isSafeInteger(count) && count >= 0 ? count : null;
+        courseStudentStops.set(id, watchCourseStats(id, stats => {
+            publicStudents[id] = Number.isSafeInteger(stats.students) && stats.students >= 0 ? stats.students : null;
+            publicReserved[id] = Number.isSafeInteger(stats.reserved) && stats.reserved >= 0 ? stats.reserved : null;
             renderCatalog();
             if (!$("coursePage").hidden) renderDetail();
         }, failure => {
             publicStudents[id] = null;
+            publicReserved[id] = null;
             renderCatalog();
             console.error("[TutorCheck] Public student totals sync failed:", failure);
             error("Some course details could not sync. You can still browse courses. Refresh to retry.");
@@ -280,7 +282,6 @@ function card(course, statistics) {
     node.dataset.courseId = course.id;
     const artwork = el("div", "course-artwork");
     artwork.append(cover(course));
-    if (course.originalPrice > course.price) artwork.append(el("span", "course-badge", "Course offer"));
     const detail = action("", "course-open", () => showCourse(course.id));
     detail.append(icon("arrow-up-right"));
     detail.setAttribute("aria-label", `View ${course.title}`);
@@ -299,7 +300,12 @@ function card(course, statistics) {
         save.dataset.focusKey = className.includes("card-favorite") ? "favorite" : "cover-favorite";
         return save;
     };
-    artwork.append(favoriteButton("save-button course-save"));
+    const courseBadge = el("span", "course-type-badge", "Course");
+    courseBadge.prepend(icon("school"));
+    const ratingBadge = el("div", "course-rating-badge");
+    const rating = statistics.count ? statistics.rating.toFixed(1) : "New";
+    ratingBadge.append(icon("star-filled"), el("strong", "", rating), el("span", "", `(${statistics.count} review${statistics.count === 1 ? "" : "s"})`));
+    artwork.append(courseBadge, ratingBadge);
     node.append(artwork);
     const content = el("div", "course-content");
     const teacherName = courseTeacher(course);
@@ -320,39 +326,43 @@ function card(course, statistics) {
     }
     avatar.setAttribute("aria-hidden", "true");
     const teacherNameGroup = el("div", "teacher-name-wrap");
+    teacherNameGroup.append(el("span", "course-fact-label", "Teacher"));
     teacherNameGroup.append(teacher);
     const badge = reviewedBadge(course.teacherId);
     if (badge) teacherNameGroup.append(badge);
     teacherLine.append(avatar, teacherNameGroup);
-    const ratingLine = el("div", "course-rating-line");
-    ratingLine.append(
-        el("p", "rating", statistics.count ? `★ ${statistics.rating.toFixed(1)}` : "New course"),
-        el("span", "review-count", `(${statistics.count} review${statistics.count === 1 ? "" : "s"})`)
-    );
-    const count = publicStudents[course.id];
-    const countText = Number.isSafeInteger(count)
-        ? `${count} student${count === 1 ? "" : "s"}`
-        : course.teacherId === uid ? `${statistics.students} student${statistics.students === 1 ? "" : "s"}` : "Student count unavailable";
-    const learners = el("span", "learner-count", countText);
-    learners.title = "Number of accepted enrollments; student records remain private.";
-    ratingLine.append(learners);
-    content.append(teacherLine, ratingLine, heading);
+    const formatTime = value => String(value || "").replace(":", ".");
+    const startDate = course.startDate
+        ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${course.startDate}T00:00:00`))
+        : "To be arranged";
+    const facts = el("div", "course-facts");
+    const addFact = (iconName, label, value, tone) => {
+        const fact = el("div", `course-fact ${tone}`);
+        const heading = el("div", "course-fact-heading");
+        heading.append(icon(iconName), el("span", "course-fact-label", label));
+        const copy = el("div", "course-fact-copy");
+        copy.append(el("strong", "course-fact-value", value));
+        fact.append(heading, copy);
+        facts.append(fact);
+    };
+    addFact("clock", "Jam", course.startTime && course.endTime ? `${formatTime(course.startTime)} – ${formatTime(course.endTime)}` : "To be arranged", "course-fact--time");
+    addFact("calendar", "Hari", course.scheduleDays || "Flexible", "course-fact--days");
+    addFact("calendar-check", "Mulai", startDate, "course-fact--start");
+    addFact("device-laptop", "Mode", course.mode === "online" ? "Online" : course.mode === "offline" ? "In person" : "Not specified", "course-fact--mode");
+    const learners = publicStudents[course.id] ?? statistics.students;
+    const reserved = publicReserved[course.id];
+    const seatsTaken = Math.max(Number.isSafeInteger(reserved) ? reserved : 0, Number.isSafeInteger(learners) ? learners : 0);
+    const capacity = Number.isSafeInteger(course.maxStudents) ? course.maxStudents : 0;
+    const quota = capacity ? `${Math.min(seatsTaken, capacity)} / ${capacity}` : "No limit";
+    addFact("users-group", "Kuota", quota, "course-fact--quota");
+    if (capacity && seatsTaken >= capacity) node.dataset.full = "true";
+    content.append(heading, teacherLine, facts);
     content.append(price(course));
     const bottom = el("div", "card-bottom");
-    const inCart = Boolean(library.cart?.[course.id]);
-    const cart = action(inCart ? "In cart" : "Add to cart", "primary", async () => {
-        if (!requireLogin()) return;
-        await toggleLibrary("cart", course.id, !inCart);
-        $("marketActionStatus").textContent = `${course.title} ${inCart ? "removed from" : "added to"} your cart.`;
-    });
-    cart.dataset.focusKey = "cart";
-    cart.setAttribute("aria-label", `${inCart ? "Remove from cart:" : "Add to cart:"} ${course.title}`);
-    cart.disabled = uid === course.teacherId || Boolean(requests[`${course.id}_${uid}`]);
-    if (uid === course.teacherId) cart.textContent = "Your course";
-    else if (cart.disabled) cart.textContent = "Requested";
-    if (cart.disabled) cart.setAttribute("aria-label", `${cart.textContent}: ${course.title}`);
-    cart.prepend(icon("shopping-cart"));
-    bottom.append(cart, favoriteButton("save-button card-favorite"));
+    const viewDetail = action("View Detail", "primary card-view-detail", () => showCourse(course.id));
+    viewDetail.prepend(icon("file-description"));
+    viewDetail.dataset.focusKey = "detail";
+    bottom.append(viewDetail, favoriteButton("save-button card-favorite"));
     content.append(bottom);
     node.append(content);
     return node;
@@ -377,6 +387,8 @@ function renderFilterState() {
     document.querySelectorAll('[name="price"]:checked').forEach(input => add(input.parentElement.innerText.trim().replace(/\s+/g, " "), () => input.checked = false));
     const rating = document.querySelector('[name="rating"]:checked');
     if (rating?.value) add(`${rating.value} stars${rating.value === "5" ? "" : " & up"}`, () => document.querySelector('[name="rating"][value=""]').checked = true);
+    const search = $("courseSearch").value.trim();
+    if (search) add(`Search: ${search}`, () => $("courseSearch").value = "");
     const count = target.children.length;
     target.hidden = !count;
     $("filterCount").hidden = !count;
@@ -407,7 +419,7 @@ function renderCatalog() {
     renderFilterState();
     if (!catalogReady || !reviewsReady || catalogFailure || reviewsFailure) return;
     const statistics = stats();
-    const filters = { teacher: selectedTeacher, category, search: "", sort: $("courseSort").value,
+    const filters = { teacher: selectedTeacher, category, search: $("courseSearch").value, sort: $("courseSort").value,
         rating: document.querySelector('[name="rating"]:checked')?.value || "",
         prices: [...document.querySelectorAll('[name="price"]:checked')].map(input => input.value) };
     const displayCourses = Object.fromEntries(Object.entries(courses).map(([id, course]) => [id, { ...course, teacherName: courseTeacher(course) }]));
@@ -962,7 +974,7 @@ function showCourse(id, scroll = true) {
 }
 function setBrowseSection(showClassesSection) {
     classesView = showClassesSection;
-    document.querySelectorAll(".course-hero,.category-section,#catalog").forEach(node => node.hidden = showClassesSection);
+    document.querySelectorAll(".course-hero,.market-search,.category-section,#catalog").forEach(node => node.hidden = showClassesSection);
     $("myClasses").hidden = !showClassesSection;
 }
 function showCatalog(scroll = true) {
@@ -1273,11 +1285,17 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
         purchase.append(offer);
     }
     const purchaseNotice = el("p", "purchase-note", course.archived ? "This listing is archived." : course.published ? "No payment is collected here." : "This listing is paused.");
-    const add = action(library.cart?.[courseId] ? "In cart" : "Add to cart", "primary purchase-action", async () => {
+    const capacity = Number.isSafeInteger(course.maxStudents) ? course.maxStudents : 0;
+    const seatsTaken = Math.max(
+        Number.isSafeInteger(publicReserved[courseId]) ? publicReserved[courseId] : 0,
+        Number.isSafeInteger(publicStudents[courseId]) ? publicStudents[courseId] : 0
+    );
+    const courseFull = capacity > 0 && seatsTaken >= capacity;
+    const add = action(courseFull ? "Course full" : library.cart?.[courseId] ? "In cart" : "Add to cart", "primary purchase-action", async () => {
         if (requireLogin()) await toggleLibrary("cart", courseId, true);
     });
     add.prepend(icon("shopping-cart"));
-    add.disabled = !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
+    add.disabled = courseFull || !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
     if (requests[`${detailId}_${uid}`]) add.textContent = "Already requested";
     purchase.append(add);
     const book = action("Book a class", "secondary purchase-action", async () => {
@@ -1295,7 +1313,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
         renderCatalog();
     });
     book.prepend(icon("calendar-event"));
-    book.disabled = !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
+    book.disabled = courseFull || !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
     if (requests[`${detailId}_${uid}`]) book.textContent = "Request sent";
     purchase.append(book);
     const saved = Boolean(library.favorites?.[detailId]);
@@ -1626,8 +1644,9 @@ function openEditor(id = "", edit = { name: "title" }, draftId = "") {
     $("editorFieldBank").append(...editorLabels);
     form.reset();
     const course = editorSource();
-    for (const key of ["title", "category", "type", "price", "originalPrice", "summary", "whatYouLearn", "curriculum", "schedule"]) {
-        form.elements.namedItem(key).value = course?.[key] ?? (key === "category" ? "ielts" : key === "type" ? "live" : key === "whatYouLearn" ? course?.curriculum || "" : "");
+    for (const key of ["title", "category", "type", "price", "originalPrice", "summary", "whatYouLearn", "curriculum", "schedule", "scheduleDays", "startTime", "endTime", "startDate", "mode", "maxStudents"]) {
+        const value = course?.[key] ?? (key === "category" ? "ielts" : key === "type" ? "live" : key === "whatYouLearn" ? course?.curriculum || "" : "");
+        form.elements.namedItem(key).value = key === "maxStudents" && Number(value) === 0 ? "" : value;
     }
     form.elements.namedItem("teacherName").value = auth.currentUser.displayName?.trim() || course?.teacherName || "";
     form.elements.namedItem("published").checked = draftId ? courses[id]?.published ?? true : course ? course.published : true;
@@ -1646,6 +1665,7 @@ function openEditor(id = "", edit = { name: "title" }, draftId = "") {
     draft.title ||= "Your course title";
     draft.price = Number(draft.price);
     draft.originalPrice = Number(draft.originalPrice);
+    draft.maxStudents = Number(draft.maxStudents || 0);
     draft.published = form.elements.namedItem("published").checked;
     renderDetail($("editorCanvas"), { ...course, ...draft });
     arrangeCourseEditor();
@@ -2003,7 +2023,7 @@ $("courseForm").addEventListener("submit", async event => {
     const form = $("courseForm"), fields = [...form.elements];
     const disabledStates = fields.map(field => field.disabled);
     const data = Object.fromEntries(new FormData(form));
-    data.price = Number(data.price); data.originalPrice = Number(data.originalPrice || 0); data.published = form.elements.namedItem("published").checked;
+    data.price = Number(data.price); data.originalPrice = Number(data.originalPrice || 0); data.maxStudents = Number(data.maxStudents || 0); data.published = form.elements.namedItem("published").checked;
     let file = form.elements.namedItem("previewFile").files?.[0];
     const existing = editorSource();
     data.coverURL = removedPreview ? "" : existing?.coverURL || "";
@@ -2128,6 +2148,7 @@ Object.entries(TUTOR_TYPES).forEach(([id, label]) => {
     const option = el("option", "", label); option.value = id; $("editorType").append(option);
 });
 $("courseSort").addEventListener("change", renderCatalog);
+$("courseSearch").addEventListener("input", renderCatalog);
 $("teacherFilter").addEventListener("change", () => { selectedTeacher = $("teacherFilter").value; renderCatalog(); });
 document.querySelectorAll(".filter-panel input").forEach(input => input.addEventListener("change", () => {
     renderCatalog();
@@ -2143,6 +2164,7 @@ function resetFilters() {
     const recoverFocus = document.activeElement?.closest(".empty-state");
     const resetFocused = document.activeElement === $("resetFilters");
     category = ""; selectedTeacher = "";
+    $("courseSearch").value = "";
     $("courseSort").value = "newest";
     $("teacherFilter").value = "";
     document.querySelectorAll('[name="price"]').forEach(input => input.checked = false);

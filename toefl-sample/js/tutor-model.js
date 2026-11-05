@@ -38,7 +38,28 @@ export function validateCourse(input, { draft = false } = {}) {
     if (!["", "image", "video"].includes(previewType) ||
         (previewType === "" && (previewURL || previewPath)) ||
         (previewType !== "" && (!previewPath || (!previewURL && !(draft && previewPath.startsWith("tutor-drafts/")))))) throw new Error("Upload an image or video preview for this course.");
-    return { ...course, category: input.category, type: input.type, price: input.price, originalPrice: input.originalPrice, coverURL, previewURL, previewPath, previewType, published: !draft && input.published === true };
+    const scheduleDays = String(input.scheduleDays || "").trim();
+    const startTime = String(input.startTime || "");
+    const endTime = String(input.endTime || "");
+    const startDate = String(input.startDate || "");
+    const mode = String(input.mode || "");
+    const maxStudents = input.maxStudents === "" || input.maxStudents == null ? 0 : Number(input.maxStudents);
+    if (scheduleDays.length > 100) throw new Error("Class days must be 100 characters or fewer.");
+    if (![startTime, endTime].every(value => !value || /^([01]\d|2[0-3]):[0-5]\d$/.test(value)) ||
+        (startTime && endTime && endTime <= startTime)) throw new Error("Enter a valid class start and end time.");
+    if (startDate) {
+        const parsedDate = new Date(`${startDate}T00:00:00.000Z`);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== startDate) {
+            throw new Error("Choose a valid class start date.");
+        }
+    }
+    if (mode && !["online", "offline"].includes(mode)) throw new Error("Choose online or in-person classes.");
+    if (!Number.isSafeInteger(maxStudents) || maxStudents < 0 || maxStudents > 500) throw new Error("Set course capacity from 1 to 500, or leave it blank for no limit.");
+    return {
+        ...course, category: input.category, type: input.type, price: input.price, originalPrice: input.originalPrice,
+        coverURL, previewURL, previewPath, previewType, scheduleDays, startTime, endTime, startDate, mode, maxStudents,
+        published: !draft && input.published === true
+    };
 }
 export function courseStats(reviews = {}, requests = {}) {
     const ratings = Object.values(reviews).filter(row => Number.isInteger(row.rating) && row.rating >= 1 && row.rating <= 5);

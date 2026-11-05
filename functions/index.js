@@ -6,6 +6,7 @@ const logger = require("firebase-functions/logger");
 const { publicTeacher, enrollmentStats } = require("./marketplace");
 const communityModeration = require("./community-moderation");
 const marketplaceVerification = require("./marketplace-verification");
+const marketplaceEnrollment = require("./marketplace-enrollment");
 const communityExplore = require("./community-explore");
 
 initializeApp();
@@ -63,6 +64,8 @@ exports.requestTutorVerification = marketplaceVerification.requestTutorVerificat
 exports.getTutorVerificationStatus = marketplaceVerification.getTutorVerificationStatus;
 exports.listTutorVerificationRequests = marketplaceVerification.listTutorVerificationRequests;
 exports.reviewTutorVerification = marketplaceVerification.reviewTutorVerification;
+exports.createEnrollmentRequest = marketplaceEnrollment.createEnrollmentRequest;
+exports.changeEnrollmentRequest = marketplaceEnrollment.changeEnrollmentRequest;
 exports.getExploreFeed = communityExplore.getExploreFeed;
 exports.getExploreSetup = communityExplore.getExploreSetup;
 exports.saveExplorePreferences = communityExplore.saveExplorePreferences;

@@ -21,6 +21,55 @@ export const httpsCallable = (_, name) => async input => {
     const delay = Number(localStorage.getItem("beta-call-delay") || 0);
     if (delay) await new Promise(resolve => setTimeout(resolve, delay));
     if (localStorage.getItem("beta-deny-call") === name) throw new Error("Mock service unavailable. Please retry.");
+    if (name === "createEnrollmentRequest") {
+        const data = readDb(), current = user(), courseId = String(input.courseId || "");
+        const course = data.tutor_courses?.[courseId], requestId = `${courseId}_${current?.uid}`;
+        if (!course?.published || course.archived) throw new Error("This course is no longer open for enrollment.");
+        if (course.teacherId === current?.uid) throw new Error("You cannot enroll in your own course.");
+        if (data.tutor_requests?.[requestId]) throw new Error("You already requested this course. Check My classes in the Marketplace.");
+        if (localStorage.getItem("beta-deny-write") === "true" || localStorage.getItem("beta-deny-write-path") === `tutor_requests/${requestId}`) {
+            throw new Error("Mock database rejected the save");
+        }
+        const stats = ((data.tutor_course_stats ||= {})[courseId] ||= {});
+        const reservations = { ...(stats.reservations || {}) };
+        const reserved = new Set([
+            ...Object.keys(reservations),
+            ...Object.entries(stats.records || {}).filter(([, record]) => record?.accepted).map(([id]) => id),
+            ...Object.entries(data.tutor_requests || {}).filter(([, row]) => row?.courseId === courseId && ["pending", "accepted"].includes(row.status)).map(([id]) => id)
+        ]);
+        if (course.maxStudents > 0 && reserved.size >= course.maxStudents) throw new Error("This course is full and cannot accept more enrollment requests.");
+        reservations[requestId] = true;
+        stats.reservations = reservations;
+        stats.reserved = new Set([...Object.keys(reservations), ...Object.entries(stats.records || {}).filter(([, record]) => record?.accepted).map(([id]) => id)]).size;
+        const now = Date.now();
+        ((data.tutor_requests ||= {})[requestId] = {
+            courseId, studentId: current.uid, teacherId: course.teacherId, studentName: current.displayName || "Learner",
+            price: course.price, status: "pending", createdAt: now, updatedAt: now
+        });
+        localStorage.setItem("beta-db", JSON.stringify(data));
+        setTimeout(() => window.dispatchEvent(new Event("beta-db-updated")), 0);
+        return { data: { requestId } };
+    }
+    if (name === "changeEnrollmentRequest") {
+        const data = readDb(), current = user(), requestId = String(input.requestId || ""), row = data.tutor_requests?.[requestId];
+        const status = String(input.status || "");
+        if (!row) throw new Error("This enrollment request no longer exists.");
+        if (row.status !== "pending") throw new Error("This enrollment request is no longer pending.");
+        if (status === "cancelled" ? row.studentId !== current?.uid : row.teacherId !== current?.uid) throw new Error("You cannot change this enrollment request.");
+        row.status = status;
+        row.updatedAt = Date.now();
+        const stats = ((data.tutor_course_stats ||= {})[row.courseId] ||= {});
+        const reservations = { ...(stats.reservations || {}) };
+        if (status === "declined" || status === "cancelled") delete reservations[requestId];
+        stats.reservations = reservations;
+        stats.reserved = new Set([
+            ...Object.keys(reservations),
+            ...Object.entries(stats.records || {}).filter(([, record]) => record?.accepted).map(([id]) => id)
+        ]).size;
+        localStorage.setItem("beta-db", JSON.stringify(data));
+        setTimeout(() => window.dispatchEvent(new Event("beta-db-updated")), 0);
+        return { data: { status } };
+    }
     if (name === "getExploreSetup") {
         const data = readDb(), uid = user()?.uid;
         return { data: {

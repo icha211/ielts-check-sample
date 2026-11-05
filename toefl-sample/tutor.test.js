@@ -44,6 +44,24 @@ test("private drafts accept unfinished text but keep money, media and publish va
     assert.equal(model.validateCourse(privateMedia, { draft: true }).previewPath, privateMedia.previewPath);
     assert.throws(() => model.validateCourse(privateMedia), "private media must be copied before publishing");
 });
+test("course schedule fields are optional for older listings and validate time, date, mode and capacity", () => {
+    const saved = model.validateCourse(course);
+    assert.equal(saved.maxStudents, 0);
+    assert.equal(saved.scheduleDays, "");
+    assert.deepEqual(
+        ["startTime", "endTime", "startDate", "mode"].map(key => saved[key]),
+        ["", "", "", ""]
+    );
+    const scheduled = model.validateCourse({
+        ...course, scheduleDays: "Mon, Wed", startTime: "08:00", endTime: "10:00",
+        startDate: "2026-11-05", mode: "online", maxStudents: 5
+    });
+    assert.equal(scheduled.maxStudents, 5);
+    for (const change of [
+        { startTime: "25:00" }, { startTime: "10:00", endTime: "09:00" },
+        { startDate: "2026-02-31" }, { mode: "hybrid" }, { maxStudents: 501 }, { maxStudents: 1.5 }
+    ]) assert.throws(() => model.validateCourse({ ...course, ...change }));
+});
 test("ratings start empty and average actual learner reviews without invented statistics", () => {
     assert.equal(model.courseStats().rating, null);
     assert.equal(model.courseStats({ a: { rating: 5 }, b: { rating: 4 } }).rating, 4.5);
@@ -324,10 +342,23 @@ test("card actions recover focus after a live replacement without stealing focus
     }
 });
 function fixture() {
-    const data = {}, writes = [];
+    const data = {}, writes = [], calls = [];
     const context = vm.createContext({
         auth: { currentUser: { uid: "teacher", displayName: "Teacher" } }, db: {},
-        getFunctions: () => ({}), httpsCallable: () => async () => ({ data: { requests: [] } }),
+        getFunctions: () => ({}), httpsCallable: (_, name) => async input => {
+            calls.push([name, input]);
+            if (name === "createEnrollmentRequest") {
+                const current = context.auth.currentUser;
+                const course = data[`tutor_courses/${input.courseId}`];
+                if (!course?.published || course.archived) throw new Error("This course is no longer open for enrollment.");
+                if (course.teacherId === current.uid) throw new Error("You cannot enroll in your own course.");
+                const requestId = `${input.courseId}_${current.uid}`;
+                if (data[`tutor_requests/${requestId}`]) throw new Error("You already requested this course.");
+                data[`tutor_requests/${requestId}`] = { courseId: input.courseId, studentId: current.uid, teacherId: course.teacherId, price: course.price, status: "pending" };
+                return { data: { requestId } };
+            }
+            return { data: { requests: [] } };
+        },
         validateCourse: model.validateCourse,
         validateTeachingProfile: model.validateTeachingProfile,
         ref: (_, key) => ({ key }), query: (target, ...filters) => ({ ...target, filters }), orderByChild: value => value, equalTo: value => value,
@@ -339,10 +370,10 @@ function fixture() {
     });
     const source = fs.readFileSync(path.join(__dirname, "js", "tutor-service.js"), "utf8").replace(/^import .*;\r?\n/gm, "").replace(/^export /gm, "");
     vm.runInContext(source, context);
-    return { context, data, writes };
+    return { context, data, writes, calls };
 }
 test("draft persistence is owner-scoped and publication removes the draft atomically", async () => {
-    const { context, data, writes } = fixture();
+    const { context, data, writes, calls } = fixture();
     data["tutor_roles/teacher"] = "teacher";
     const incomplete = { ...course, summary: "", schedule: "" };
     await context.saveCourseDraft(incomplete);
@@ -362,7 +393,7 @@ test("draft persistence is owner-scoped and publication removes the draft atomic
     context.auth.currentUser = null;
     await assert.rejects(context.saveCourseDraft(incomplete));
 });
-test("public subscriptions retain missing counts and observe only public identity and totals", () => {
+test("public subscriptions retain missing course stats and observe public teacher identity", () => {
     const { context } = fixture();
     const subscriptions = [], values = [];
     const onError = () => {};
@@ -372,18 +403,19 @@ test("public subscriptions retain missing counts and observe only public identit
     };
     context.testValues = values;
     context.testOnError = onError;
-    const stopCount = vm.runInContext('watchCourseStudents("course-id", value => testValues.push(value), testOnError)', context);
+    const stopStats = vm.runInContext('watchCourseStats("course-id", value => testValues.push(value), testOnError)', context);
     const stopTeacher = vm.runInContext('watchTeacherIdentity("teacher-id", value => testValues.push(value), testOnError)', context);
-    assert.equal(subscriptions[0].target.key, "tutor_course_stats/course-id/students");
-    assert.equal(subscriptions[1].target.key, "tutor_public_teachers/teacher-id");
+    assert.deepEqual(subscriptions.slice(0, 2).map(row => row.target.key), [
+        "tutor_course_stats/course-id/students", "tutor_course_stats/course-id/reserved"
+    ]);
+    assert.equal(subscriptions[2].target.key, "tutor_public_teachers/teacher-id");
     assert.equal(subscriptions[0].error, onError);
     assert.equal(subscriptions[1].error, onError);
-    subscriptions[0].callback({ val: () => null });
     subscriptions[0].callback({ val: () => 0 });
-    subscriptions[0].callback({ val: () => 12 });
-    subscriptions[1].callback({ val: () => ({ displayName: "Updated teacher" }) });
-    assert.deepEqual(values, [null, 0, 12, { displayName: "Updated teacher" }]);
-    stopCount();
+    subscriptions[1].callback({ val: () => 2 });
+    subscriptions[2].callback({ val: () => ({ displayName: "Updated teacher" }) });
+    assert.deepEqual(JSON.parse(JSON.stringify(values)), [{ students: 0 }, { students: 0, reserved: 2 }, { displayName: "Updated teacher" }]);
+    stopStats();
     stopTeacher();
     assert.ok(subscriptions.every(({ target }) => target.stopped));
 });
@@ -449,22 +481,22 @@ test("student dashboard routes only current teacher accounts and exposes role lo
     }
 });
 test("only teacher accounts publish, only owners edit, and enrollment never processes payment", async () => {
-    const { context, data, writes } = fixture();
+    const { context, data, writes, calls } = fixture();
     await assert.rejects(context.saveCourse(course), /teacher/);
     data["tutor_roles/teacher"] = "teacher";
     await context.saveCourse(course);
     assert.equal(writes[0][1].teacherId, "teacher");
     data["tutor_courses/other"] = { teacherId: "other" };
     await assert.rejects(context.saveCourse(course, "other"), /own courses/);
+    data["tutor_courses/one"] = { ...course, id: "one", teacherId: "teacher", published: true };
     await assert.rejects(context.requestEnrollment({ ...course, id: "one", teacherId: "teacher" }), /own course/);
     context.auth.currentUser.uid = "student";
     await context.requestEnrollment({ ...course, id: "one", teacherId: "teacher" });
-    const request = writes.at(-1);
-    assert.equal(request[0], "tutor_requests/one_student");
-    assert.equal(request[1].status, "pending");
-    assert.equal(request[1].price, 100000);
-    assert.equal(request[1].paid, undefined);
-    data.tutor_requests = { one_student: request[1] };
+    const request = data["tutor_requests/one_student"];
+    assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1))), ["createEnrollmentRequest", { courseId: "one" }]);
+    assert.equal(request.status, "pending");
+    assert.equal(request.price, 100000);
+    assert.equal(request.paid, undefined);
     await assert.rejects(context.requestEnrollment({ ...course, id: "one", teacherId: "teacher" }), /already requested/);
 });
 test("clearing teaching details and archiving courses preserve learner records and require ownership", async () => {
@@ -483,7 +515,9 @@ test("clearing teaching details and archiving courses preserve learner records a
     data["tutor_courses/one"].archived = true;
     await assert.rejects(context.saveCourse(course, "one"), /Restore/);
     await assert.rejects(context.setCourseState("one", "published"), /Restore/);
+    data["tutor_courses/one"] = { ...course, teacherId: "other", published: true, archived: true };
     await assert.rejects(context.requestEnrollment({ ...course, id: "one", teacherId: "other", archived: true }), /no longer open/);
+    data["tutor_courses/one"] = { ...course, teacherId: "teacher", published: false, archived: false };
     const archivedSummary = model.teachingSummary({ one: { ...course, teacherId: "teacher", archived: true } }, { one: { learner: { rating: 5 } } }, "teacher");
     assert.equal(archivedSummary.courses.length, 0);
     assert.equal(archivedSummary.reviews.length, 1);

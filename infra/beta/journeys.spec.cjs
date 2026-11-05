@@ -9,6 +9,8 @@ const course = {
     summary: "Practice identifying the evidence in short dialogues.",
     whatYouLearn: "Identify relevant evidence", curriculum: "Listening foundations",
     schedule: "Self-paced access", coverURL: "", previewURL: "", previewPath: "", previewType: "",
+    scheduleDays: "Mon, Wed, Fri", startTime: "08:00", endTime: "10:00",
+    startDate: "2026-11-05", mode: "online", maxStudents: 5,
     published: true, archived: false, createdAt: 1, updatedAt: 1
 };
 const practiceResult = {
@@ -828,6 +830,24 @@ test("moderator rejection errors stay next to the queue and a successful decisio
 test("learners browse and filter courses, open teacher details and enroll from the cart", async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem("beta-user", JSON.stringify({ uid: "student", email: "student@example.test", emailVerified: true })));
     await page.goto("/toefl-sample/tutor-check.html");
+    const courseCard = page.locator(".course-card").first();
+    await expect(courseCard.locator(".course-facts .course-fact-label")).toHaveText(["Jam", "Hari", "Mulai", "Mode", "Kuota"]);
+    await expect(courseCard).toContainText("08.00 – 10.00");
+    await expect(courseCard).toContainText("Mon, Wed, Fri");
+    await expect(courseCard).toContainText("0 / 5");
+    const timeFact = courseCard.locator(".course-fact").first();
+    await expect(timeFact.locator(".course-fact-heading .course-fact-label")).toHaveText("Jam");
+    await expect(timeFact.locator(".course-fact-copy .course-fact-value")).toHaveText("08.00 – 10.00");
+    const factLayout = await timeFact.evaluate(node => ({
+        heading: getComputedStyle(node.querySelector(".course-fact-heading")).display,
+        headingTop: node.querySelector(".course-fact-heading").getBoundingClientRect().top,
+        valueTop: node.querySelector(".course-fact-value").getBoundingClientRect().top
+    }));
+    expect(factLayout.heading).toBe("flex");
+    expect(factLayout.valueTop).toBeGreaterThan(factLayout.headingTop);
+    const courseGridColumns = await page.locator(".course-grid").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length);
+    if (page.viewportSize().width >= 1200) expect(courseGridColumns).toBe(4);
+    else if (page.viewportSize().width > 640) expect(courseGridColumns).toBeGreaterThanOrEqual(2);
     const filterLayout = await page.locator(".filter-panel").evaluate(node => ({
         position: getComputedStyle(node).position,
         overflowY: getComputedStyle(node).overflowY,
@@ -836,7 +856,15 @@ test("learners browse and filter courses, open teacher details and enroll from t
     expect(filterLayout.position).toBe(page.viewportSize().width > 780 ? "fixed" : "static");
     expect(filterLayout.overflowY).toBe(page.viewportSize().width > 780 ? "auto" : "visible");
     expect(filterLayout.width).toBeGreaterThan(200);
-    await expect(page.locator("#courseSearch, #topCourseSearch, #teacherSignup, #favoritesButton")).toHaveCount(0);
+    await expect(page.getByRole("searchbox", { name: "Search courses and teachers" })).toBeVisible();
+    await expect(page.locator("#topCourseSearch, #teacherSignup, #favoritesButton")).toHaveCount(0);
+    const courseSearch = page.getByRole("searchbox", { name: "Search courses and teachers" });
+    await courseSearch.fill("Beta listening");
+    await expect(courseCard).toContainText("Beta listening course");
+    await courseSearch.fill("no matching course");
+    await expect(page.locator("#courseGrid")).toContainText("No matching courses");
+    await courseSearch.fill("");
+    await expect(courseCard).toContainText("Beta listening course");
     await page.locator('[name="rating"][value="5"]').check();
     await expect(page.locator("#courseGrid")).toContainText("No matching courses");
     await page.locator("#courseGrid").getByRole("button", { name: "Clear all filters", exact: true }).click();
@@ -853,6 +881,7 @@ test("learners browse and filter courses, open teacher details and enroll from t
     await expect(page.locator("#cartItems")).toContainText("Your cart is empty");
     await page.getByRole("button", { name: "Close cart", exact: true }).click();
     await page.locator("#classesTab").click();
+    await expect(page.locator(".market-search")).toBeHidden();
     await expect(page.locator("#classesContent")).toContainText("Beta listening course");
     await expect(page.locator("#classesContent")).toContainText("Waiting for teacher");
     await expect(page.locator("#classesCount")).toHaveText("1");
