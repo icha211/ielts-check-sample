@@ -303,8 +303,11 @@ function card(course, statistics) {
     const courseBadge = el("span", "course-type-badge", "Course");
     courseBadge.prepend(icon("school"));
     const ratingBadge = el("div", "course-rating-badge");
-    const rating = statistics.count ? statistics.rating.toFixed(1) : "New";
-    ratingBadge.append(icon("star-filled"), el("strong", "", rating), el("span", "", `(${statistics.count} review${statistics.count === 1 ? "" : "s"})`));
+    const hasReviews = statistics.count > 0;
+    const rating = hasReviews ? statistics.rating.toFixed(1) : "0";
+    ratingBadge.append(icon("star-filled"), el("strong", "", rating));
+    if (hasReviews) ratingBadge.append(el("span", "", `(${statistics.count} review${statistics.count === 1 ? "" : "s"})`));
+    ratingBadge.setAttribute("aria-label", hasReviews ? `${rating} average from ${statistics.count} reviews` : "0 reviews");
     artwork.append(courseBadge, ratingBadge);
     node.append(artwork);
     const content = el("div", "course-content");
@@ -339,10 +342,10 @@ function card(course, statistics) {
     const addFact = (iconName, label, value, tone) => {
         const fact = el("div", `course-fact ${tone}`);
         const heading = el("div", "course-fact-heading");
-        heading.append(icon(iconName), el("span", "course-fact-label", label));
+        heading.append(el("span", "course-fact-label", label));
         const copy = el("div", "course-fact-copy");
         copy.append(el("strong", "course-fact-value", value));
-        fact.append(heading, copy);
+        fact.append(icon(iconName), heading, copy);
         facts.append(fact);
     };
     addFact("clock", "Jam", course.startTime && course.endTime ? `${formatTime(course.startTime)} – ${formatTime(course.endTime)}` : "To be arranged", "course-fact--time");

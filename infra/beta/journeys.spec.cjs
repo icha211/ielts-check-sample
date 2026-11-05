@@ -832,6 +832,9 @@ test("learners browse and filter courses, open teacher details and enroll from t
     await page.goto("/toefl-sample/tutor-check.html");
     const courseCard = page.locator(".course-card").first();
     await expect(courseCard.locator(".course-facts .course-fact-label")).toHaveText(["Jam", "Hari", "Mulai", "Mode", "Kuota"]);
+    await expect(courseCard.locator(".course-rating-badge strong")).toHaveText("0");
+    await expect(courseCard.locator(".course-rating-badge")).not.toContainText("New");
+    await expect(courseCard.locator(".course-rating-badge span")).toHaveCount(0);
     await expect(courseCard).toContainText("08.00 – 10.00");
     await expect(courseCard).toContainText("Mon, Wed, Fri");
     await expect(courseCard).toContainText("0 / 5");
@@ -841,10 +844,15 @@ test("learners browse and filter courses, open teacher details and enroll from t
     const factLayout = await timeFact.evaluate(node => ({
         heading: getComputedStyle(node.querySelector(".course-fact-heading")).display,
         headingTop: node.querySelector(".course-fact-heading").getBoundingClientRect().top,
-        valueTop: node.querySelector(".course-fact-value").getBoundingClientRect().top
+        headingLeft: node.querySelector(".course-fact-heading").getBoundingClientRect().left,
+        valueTop: node.querySelector(".course-fact-value").getBoundingClientRect().top,
+        valueLeft: node.querySelector(".course-fact-value").getBoundingClientRect().left,
+        iconLeft: node.querySelector(":scope > .ti").getBoundingClientRect().left
     }));
-    expect(factLayout.heading).toBe("flex");
+    expect(factLayout.heading).toBe("block");
     expect(factLayout.valueTop).toBeGreaterThan(factLayout.headingTop);
+    expect(factLayout.iconLeft).toBeLessThan(factLayout.headingLeft);
+    expect(Math.abs(factLayout.valueLeft - factLayout.headingLeft)).toBeLessThan(1);
     const courseGridColumns = await page.locator(".course-grid").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length);
     if (page.viewportSize().width >= 1200) expect(courseGridColumns).toBe(4);
     else if (page.viewportSize().width > 640) expect(courseGridColumns).toBeGreaterThanOrEqual(2);
