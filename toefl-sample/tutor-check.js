@@ -1177,6 +1177,38 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     });
     if (!outcomeLines.length) overview.append(el("p", "muted", "The teacher has not added learning outcomes yet."));
     overview.append(outcomes);
+    const overviewFacts = el("section", "overview-course-facts");
+    overviewFacts.append(el("h3", "", "Course details"));
+    const overviewFactGrid = el("div", "overview-course-fact-grid");
+    const formatFactTime = value => String(value || "").replace(":", ".");
+    const startDateText = course.startDate
+        ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${course.startDate}T00:00:00`))
+        : "To be arranged";
+    const acceptedStudents = Number.isSafeInteger(publicStudents[courseId]) ? publicStudents[courseId] : courseStats.students;
+    const factSeatsTaken = Math.max(acceptedStudents, Number.isSafeInteger(publicReserved[courseId]) ? publicReserved[courseId] : 0);
+    const factCapacity = Number.isSafeInteger(course.maxStudents) ? course.maxStudents : 0;
+    const addOverviewFact = (field, glyph, label, value) => {
+        const fact = el("div", "overview-course-fact");
+        fact.dataset.courseFact = field;
+        fact.dataset.editField = field;
+        const copy = el("div", "overview-course-fact-copy");
+        copy.append(el("span", "overview-course-fact-label", label));
+        const valueNode = el("strong", "overview-course-fact-value", value);
+        if (field === "maxStudents") valueNode.dataset.currentSeats = String(factSeatsTaken);
+        fact.append(icon(glyph), copy, valueNode);
+        overviewFactGrid.append(fact);
+    };
+    const timeValue = course.startTime && course.endTime
+        ? `${formatFactTime(course.startTime)} – ${formatFactTime(course.endTime)}`
+        : course.startTime ? `From ${formatFactTime(course.startTime)}`
+            : course.endTime ? `Until ${formatFactTime(course.endTime)}` : "To be arranged";
+    addOverviewFact("startTime", "clock", "Jam", timeValue);
+    addOverviewFact("scheduleDays", "calendar", "Hari", course.scheduleDays || "Flexible");
+    addOverviewFact("startDate", "calendar-check", "Mulai", startDateText);
+    addOverviewFact("mode", "device-laptop", "Mode", course.mode === "online" ? "Online" : course.mode === "offline" ? "In person" : "Not specified");
+    addOverviewFact("maxStudents", "users-group", "Kuota", factCapacity ? `${Math.min(factSeatsTaken, factCapacity)} / ${factCapacity}` : "No limit");
+    overviewFacts.append(overviewFactGrid);
+    overview.append(overviewFacts);
     const curriculumPreview = el("section", "curriculum-preview panel");
     const curriculumHeading = el("div", "detail-side-heading");
     curriculumHeading.append(el("h3", "", "Course curriculum"), el("span", "muted", `${curriculumLines.length} course items`),
@@ -1513,6 +1545,13 @@ function addCourseEditControls(target) {
         node.classList.add("course-editable-display");
         node.append(editIcon(`Edit ${label}`, () => edit(name)));
     }
+    for (const [field, label] of [
+        ["startTime", "class time"], ["scheduleDays", "class days"], ["startDate", "first class date"],
+        ["mode", "class mode"], ["maxStudents", "class capacity"]
+    ]) {
+        const fact = target.querySelector(`[data-course-fact="${field}"]`);
+        fact?.append(editIcon(`Edit ${label}`, () => edit(field)));
+    }
     for (const [selector, name, noun] of [
         [".learning-outcomes", "whatYouLearn", "outcome"],
         ['[data-detail-panel="curriculum"] .curriculum-list', "curriculum", "lesson"],
@@ -1749,6 +1788,23 @@ function inlineCourseControl(names, display, labelText) {
             display.textContent = `${TUTOR_CATEGORIES.find(([id]) => id === field.value)?.[1]} · ${TUTOR_TYPES[$("editorType").value]}`;
         } else if (names[0] === "published") {
             display.textContent = field.checked ? "Published and open for enrollment" : "Paused";
+        } else if (names[0] === "startTime") {
+            const start = $("courseForm").elements.namedItem("startTime").value;
+            const end = $("courseForm").elements.namedItem("endTime").value;
+            display.textContent = start && end ? `${start.replace(":", ".")} – ${end.replace(":", ".")}`
+                : start ? `From ${start.replace(":", ".")}` : end ? `Until ${end.replace(":", ".")}` : "To be arranged";
+        } else if (names[0] === "scheduleDays") {
+            display.textContent = field.value || "Flexible";
+        } else if (names[0] === "startDate") {
+            display.textContent = field.value
+                ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${field.value}T00:00:00`))
+                : "To be arranged";
+        } else if (names[0] === "mode") {
+            display.textContent = field.value === "online" ? "Online" : field.value === "offline" ? "In person" : "Not specified";
+        } else if (names[0] === "maxStudents") {
+            const seats = Number(display.dataset.currentSeats || 0);
+            const capacity = Number(field.value || 0);
+            display.textContent = capacity ? `${Math.min(seats, capacity)} / ${capacity}` : "No limit";
         } else {
             display.textContent = field.value || `Add ${labelText}`;
         }
@@ -1767,7 +1823,7 @@ function activateCourseField(edit) {
         canvas.querySelector(`${edit.teacherPanel ? ".teacher-detail-panel .detail-copy" : ".detail-side-about"} .course-edit-icon`)?.click();
         return;
     }
-    const tab = edit.name === "curriculum" ? "curriculum" : ["summary", "whatYouLearn", "schedule"].includes(edit.name) ? "overview" : null;
+    const tab = edit.name === "curriculum" ? "curriculum" : ["summary", "whatYouLearn", "schedule", "startTime", "scheduleDays", "startDate", "mode", "maxStudents"].includes(edit.name) ? "overview" : null;
     if (tab) selectDetailTab(tab, false, canvas);
     if (["whatYouLearn", "curriculum"].includes(edit.name)) {
         const section = canvas.querySelector(`.editor-${edit.name}`).closest(".editor-list");
@@ -1792,6 +1848,15 @@ function arrangeCourseEditor() {
     const copy = overview.querySelectorAll(".detail-copy");
     moveField("summary", copy[0]);
     moveField("schedule", copy[1]);
+    for (const [fields, name, label] of [
+        [["startTime", "endTime"], "startTime", "class time"],
+        [["scheduleDays"], "scheduleDays", "class days"],
+        [["startDate"], "startDate", "first class date"],
+        [["mode"], "mode", "class mode"],
+        [["maxStudents"], "maxStudents", "class capacity"]
+    ]) {
+        inlineCourseControl(fields, overview.querySelector(`[data-course-fact="${name}"] .overview-course-fact-value`), label);
+    }
     createEditorList("whatYouLearn", overview.querySelector(".learning-outcomes"), "outcome");
     createEditorList("curriculum", canvas.querySelector('[data-detail-panel="curriculum"] .curriculum-list'), "lesson");
     const emptyOutcomes = overview.querySelector(".editor-list").previousElementSibling;

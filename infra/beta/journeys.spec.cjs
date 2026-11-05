@@ -576,9 +576,26 @@ test("sign-in errors stay visible; successful login edits the live course and su
     await page.locator("#saveCourseButton").click();
     await expect(page.locator("#courseEditor")).toBeHidden();
     await expect(page.locator("#courseDetail")).toContainText("Updated beta course");
+    const overviewFacts = page.locator("#courseDetail .overview-course-facts");
+    await expect(overviewFacts).toContainText("08.00 – 10.00");
+    await expect(overviewFacts.getByRole("button", { name: "Edit class days" })).toBeVisible();
+    await page.getByRole("button", { name: "Edit class time" }).click();
+    await expect(page.locator('#courseForm [name="startTime"]')).toHaveValue("08:00");
+    await page.locator('#courseForm [name="startTime"]').fill("09:00");
+    await page.locator('#courseForm [name="endTime"]').fill("11:00");
+    await page.locator('.course-inline-control[data-edit-field="startTime"]').getByRole("button", { name: "Done" }).click();
+    await page.locator("#saveCourseButton").click();
+    await expect(page.locator("#courseDetail .overview-course-facts")).toContainText("09.00 – 11.00");
+    await page.getByRole("button", { name: "Edit class capacity" }).click();
+    await page.locator('#courseForm [name="maxStudents"]').fill("8");
+    await page.locator('.course-inline-control[data-edit-field="maxStudents"]').getByRole("button", { name: "Done" }).click();
+    await page.locator("#saveCourseButton").click();
+    await expect(page.locator("#courseDetail .overview-course-facts")).toContainText("0 / 8");
     expect(page.url()).toBe(before);
     await page.reload();
     await expect(page.locator("#courseDetail")).toContainText("Updated beta course");
+    await expect(page.locator("#courseDetail .overview-course-facts")).toContainText("09.00 – 11.00");
+    await expect(page.locator("#courseDetail .overview-course-facts")).toContainText("0 / 8");
 });
 
 test("failed course saves keep the inline edit open; learners cannot see owner controls", async ({ page }) => {
