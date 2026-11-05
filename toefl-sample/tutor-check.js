@@ -300,8 +300,10 @@ function card(course, statistics) {
         save.dataset.focusKey = className.includes("card-favorite") ? "favorite" : "cover-favorite";
         return save;
     };
-    const courseBadge = el("span", "course-type-badge", "Course");
-    courseBadge.prepend(icon("school"));
+    const courseMode = course.mode === "online" ? "Online" : course.mode === "offline" ? "Offline" : "Not specified";
+    const courseModeIcon = course.mode === "online" ? "device-laptop" : course.mode === "offline" ? "map-pin" : "school";
+    const courseBadge = el("span", "course-type-badge", courseMode);
+    courseBadge.prepend(icon(courseModeIcon));
     const ratingBadge = el("div", "course-rating-badge");
     const hasReviews = statistics.count > 0;
     const rating = hasReviews ? statistics.rating.toFixed(1) : "0";
@@ -351,7 +353,6 @@ function card(course, statistics) {
     addFact("clock", "Jam", course.startTime && course.endTime ? `${formatTime(course.startTime)} – ${formatTime(course.endTime)}` : "To be arranged", "course-fact--time");
     addFact("calendar", "Hari", course.scheduleDays || "Flexible", "course-fact--days");
     addFact("calendar-check", "Mulai", startDate, "course-fact--start");
-    addFact("device-laptop", "Mode", course.mode === "online" ? "Online" : course.mode === "offline" ? "In person" : "Not specified", "course-fact--mode");
     const learners = publicStudents[course.id] ?? statistics.students;
     const reserved = publicReserved[course.id];
     const seatsTaken = Math.max(Number.isSafeInteger(reserved) ? reserved : 0, Number.isSafeInteger(learners) ? learners : 0);
@@ -1119,18 +1120,60 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     ratingLine.append(el("span", "", ratingText));
     introCopy.append(ratingLine);
     if (Number.isSafeInteger(publicStudents[detailId])) ratingLine.append(el("span", "detail-student-count", `| ${publicStudents[detailId]} students`));
-    const quickStats = el("div", "quick-stats");
-    [
-        ["presentation", TUTOR_TYPES[course.type], "Course format"],
-        ["stack-2", String(curriculumLines.length), "Curriculum items"],
-        ["target-arrow", String(outcomeLines.length), "Learning outcomes"]
-    ].forEach(([glyph, value, label]) => {
-        const metric = el("div", "quick-stat");
-        metric.append(icon(glyph), el("strong", "", value), el("span", "", label));
-        quickStats.append(metric);
-    });
-    introCopy.append(quickStats);
     intro.append(media, introCopy);
+
+    const courseFacts = el("section", "course-detail-facts");
+    courseFacts.setAttribute("aria-label", "Course details");
+    const courseFactGrid = el("div", "course-detail-fact-grid");
+    const formatFactTime = value => String(value || "").replace(":", ".");
+    const startDateText = course.startDate
+        ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${course.startDate}T00:00:00`))
+        : "To be arranged";
+    const acceptedStudents = Number.isSafeInteger(publicStudents[courseId]) ? publicStudents[courseId] : courseStats.students;
+    const factSeatsTaken = Math.max(acceptedStudents, Number.isSafeInteger(publicReserved[courseId]) ? publicReserved[courseId] : 0);
+    const factCapacity = Number.isSafeInteger(course.maxStudents) ? course.maxStudents : 0;
+    const timeValue = course.startTime && course.endTime
+        ? `${formatFactTime(course.startTime)} – ${formatFactTime(course.endTime)}`
+        : course.startTime ? `From ${formatFactTime(course.startTime)}`
+            : course.endTime ? `Until ${formatFactTime(course.endTime)}` : "To be arranged";
+    const startMinutes = course.startTime ? course.startTime.split(":").reduce((total, part) => total * 60 + Number(part), 0) : NaN;
+    const endMinutes = course.endTime ? course.endTime.split(":").reduce((total, part) => total * 60 + Number(part), 0) : NaN;
+    const durationMinutes = endMinutes - startMinutes;
+    const durationNote = Number.isFinite(durationMinutes) && durationMinutes > 0
+        ? `${Math.floor(durationMinutes / 60)}${durationMinutes % 60 ? ` jam ${durationMinutes % 60} menit` : " jam"} / sesi`
+        : "Durasi belum ditentukan";
+    const addCourseFact = (field, glyph, label, value, note) => {
+        const fact = el("div", "course-detail-fact");
+        fact.dataset.courseFact = field;
+        fact.dataset.editField = field;
+        const copy = el("div", "course-detail-fact-copy");
+        copy.append(el("span", "course-detail-fact-label", label));
+        const valueNode = el("strong", "course-detail-fact-value", value);
+        if (field === "maxStudents") valueNode.dataset.currentSeats = String(factSeatsTaken);
+        fact.append(icon(glyph), copy, valueNode);
+        if (field === "maxStudents" && factCapacity) {
+            const progress = el("div", "course-capacity-progress");
+            progress.setAttribute("role", "progressbar");
+            progress.setAttribute("aria-label", "Class capacity");
+            progress.setAttribute("aria-valuemin", "0");
+            progress.setAttribute("aria-valuemax", String(factCapacity));
+            progress.setAttribute("aria-valuenow", String(Math.min(factSeatsTaken, factCapacity)));
+            const fill = el("span", "course-capacity-fill");
+            fill.style.width = `${Math.min(factSeatsTaken / factCapacity, 1) * 100}%`;
+            progress.append(fill);
+            fact.append(progress);
+        }
+        courseFactGrid.append(fact);
+    };
+    addCourseFact("scheduleDays", "calendar", "Hari", course.scheduleDays || "Flexible", course.scheduleDays ? "Jadwal kelas mingguan" : "Jadwal fleksibel");
+    addCourseFact("startTime", "clock", "Jam", timeValue, durationNote);
+    addCourseFact("startDate", "calendar-check", "Mulai", startDateText, course.startDate ? "Kelas akan dimulai" : "Tanggal belum ditentukan");
+    addCourseFact("mode", "device-laptop", "Mode", course.mode === "online" ? "Online" : course.mode === "offline" ? "In person" : "Not specified", course.schedule || "Detail akses belum ditambahkan");
+    const seatsRemaining = factCapacity ? Math.max(factCapacity - factSeatsTaken, 0) : null;
+    addCourseFact("maxStudents", "users-group", "Kuota", factCapacity ? `${Math.min(factSeatsTaken, factCapacity)} / ${factCapacity}` : "No limit",
+        factCapacity ? seatsRemaining ? `${seatsRemaining} kursi lagi` : "Kuota penuh" : "Pendaftaran terbuka");
+    courseFacts.append(courseFactGrid);
+    introCopy.append(courseFacts);
     detailMain.append(intro);
 
     const tabs = el("nav", "detail-tabs");
@@ -1177,38 +1220,6 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     });
     if (!outcomeLines.length) overview.append(el("p", "muted", "The teacher has not added learning outcomes yet."));
     overview.append(outcomes);
-    const overviewFacts = el("section", "overview-course-facts");
-    overviewFacts.append(el("h3", "", "Course details"));
-    const overviewFactGrid = el("div", "overview-course-fact-grid");
-    const formatFactTime = value => String(value || "").replace(":", ".");
-    const startDateText = course.startDate
-        ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${course.startDate}T00:00:00`))
-        : "To be arranged";
-    const acceptedStudents = Number.isSafeInteger(publicStudents[courseId]) ? publicStudents[courseId] : courseStats.students;
-    const factSeatsTaken = Math.max(acceptedStudents, Number.isSafeInteger(publicReserved[courseId]) ? publicReserved[courseId] : 0);
-    const factCapacity = Number.isSafeInteger(course.maxStudents) ? course.maxStudents : 0;
-    const addOverviewFact = (field, glyph, label, value) => {
-        const fact = el("div", "overview-course-fact");
-        fact.dataset.courseFact = field;
-        fact.dataset.editField = field;
-        const copy = el("div", "overview-course-fact-copy");
-        copy.append(el("span", "overview-course-fact-label", label));
-        const valueNode = el("strong", "overview-course-fact-value", value);
-        if (field === "maxStudents") valueNode.dataset.currentSeats = String(factSeatsTaken);
-        fact.append(icon(glyph), copy, valueNode);
-        overviewFactGrid.append(fact);
-    };
-    const timeValue = course.startTime && course.endTime
-        ? `${formatFactTime(course.startTime)} – ${formatFactTime(course.endTime)}`
-        : course.startTime ? `From ${formatFactTime(course.startTime)}`
-            : course.endTime ? `Until ${formatFactTime(course.endTime)}` : "To be arranged";
-    addOverviewFact("startTime", "clock", "Jam", timeValue);
-    addOverviewFact("scheduleDays", "calendar", "Hari", course.scheduleDays || "Flexible");
-    addOverviewFact("startDate", "calendar-check", "Mulai", startDateText);
-    addOverviewFact("mode", "device-laptop", "Mode", course.mode === "online" ? "Online" : course.mode === "offline" ? "In person" : "Not specified");
-    addOverviewFact("maxStudents", "users-group", "Kuota", factCapacity ? `${Math.min(factSeatsTaken, factCapacity)} / ${factCapacity}` : "No limit");
-    overviewFacts.append(overviewFactGrid);
-    overview.append(overviewFacts);
     const curriculumPreview = el("section", "curriculum-preview panel");
     const curriculumHeading = el("div", "detail-side-heading");
     curriculumHeading.append(el("h3", "", "Course curriculum"), el("span", "muted", `${curriculumLines.length} course items`),
@@ -1760,6 +1771,7 @@ function openEditor(id = "", edit = { name: "title" }, draftId = "") {
     }, err => error(`Teacher profile could not load. ${err.message}`, $("editorError")));
 }
 function inlineCourseControl(names, display, labelText) {
+    if (!display) throw new Error(`Cannot create inline editor for ${labelText}: display element was not found.`);
     const group = el("div", "course-inline-control");
     group.dataset.editField = names[0];
     const view = el("div", "course-inline-display");
@@ -1855,7 +1867,7 @@ function arrangeCourseEditor() {
         [["mode"], "mode", "class mode"],
         [["maxStudents"], "maxStudents", "class capacity"]
     ]) {
-        inlineCourseControl(fields, overview.querySelector(`[data-course-fact="${name}"] .overview-course-fact-value`), label);
+        inlineCourseControl(fields, canvas.querySelector(`[data-course-fact="${name}"] .course-detail-fact-value`), label);
     }
     createEditorList("whatYouLearn", overview.querySelector(".learning-outcomes"), "outcome");
     createEditorList("curriculum", canvas.querySelector('[data-detail-panel="curriculum"] .curriculum-list'), "lesson");
@@ -1975,12 +1987,6 @@ function createEditorList(name, target, noun) {
 function updateEditorSummary() {
     const form = $("courseForm"), canvas = $("editorCanvas");
     const count = name => form.elements.namedItem(name).value.split(/\r?\n/).filter(line => line.trim()).length;
-    const metrics = canvas.querySelectorAll(".quick-stat strong");
-    if (metrics.length) {
-        metrics[0].textContent = TUTOR_TYPES[form.elements.namedItem("type").value];
-        metrics[1].textContent = String(count("curriculum"));
-        metrics[2].textContent = String(count("whatYouLearn"));
-    }
     const price = form.elements.namedItem("price").valueAsNumber;
     const original = form.elements.namedItem("originalPrice").valueAsNumber;
     const priceDisplay = canvas.querySelector('[data-edit-field="price"] .course-price');
