@@ -852,6 +852,8 @@ test("learners browse and filter courses, open teacher details and enroll from t
     await page.addInitScript(() => localStorage.setItem("beta-user", JSON.stringify({ uid: "student", email: "student@example.test", emailVerified: true })));
     await page.goto("/toefl-sample/tutor-check.html");
     const courseCard = page.locator(".course-card").first();
+    const courseCover = await courseCard.locator(".course-artwork").boundingBox();
+    expect(courseCover.height / courseCover.width).toBeGreaterThan(0.55);
     await expect(courseCard.locator(".course-facts .course-fact-label")).toHaveText(["Jam", "Hari", "Mulai", "Kuota"]);
     await expect(courseCard.locator(".course-type-badge")).toContainText("Online");
     await expect(courseCard.locator(".course-rating-badge strong")).toHaveText("0");
