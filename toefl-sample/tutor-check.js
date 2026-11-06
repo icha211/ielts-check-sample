@@ -2228,7 +2228,7 @@ $("teacherFilter").addEventListener("change", () => { selectedTeacher = $("teach
 document.querySelectorAll(".filter-panel input").forEach(input => input.addEventListener("change", () => {
     renderCatalog();
 }));
-const compactFilters = matchMedia("(max-width:780px)");
+const compactFilters = matchMedia("(max-width:1023px)");
 function syncFilterLayout() {
     if (compactFilters.matches) document.querySelector(".browse-content").prepend(filterPanel);
     else filterSidebar.append(filterPanel);

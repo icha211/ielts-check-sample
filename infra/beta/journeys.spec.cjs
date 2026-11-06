@@ -80,6 +80,88 @@ test.afterEach(async ({ page }) => {
     expect(page.betaUnexpectedRequests, "Unmocked external requests were blocked").toEqual([]);
 });
 
+test("TOEFL sizing stays consistent across phone, tablet and desktop without an Explore sidebar", async ({ page, context }) => {
+    test.setTimeout(120000);
+    await context.addInitScript(() => {
+        localStorage.setItem("beta-user", JSON.stringify({ uid: "student", email: "student@example.test", displayName: "Student", role: "student" }));
+        localStorage.removeItem("qcnav-collapsed");
+        const data = JSON.parse(localStorage.getItem("beta-db"));
+        for (let index = 1; index <= 4; index++) data.tutor_courses[`sizing-${index}`] = { ...data.tutor_courses.beta };
+        localStorage.setItem("beta-db", JSON.stringify(data));
+    });
+    const pages = [
+        ["history.html", ".history-main", ".history-content"],
+        ["MyProgress.html", "main.main", "main.main"],
+        ["tutor-check.html", ".marketplace", ".marketplace"],
+        ["social.html", ".community-page", ".community-page"]
+    ];
+    for (const width of [390, 768, 820, 1023, 1024, 1440, 1920]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (const [file, shell, content] of pages) {
+            await page.goto(`/toefl-sample/${file}`);
+            await expect(page.locator("body")).toHaveClass(/qcnav/);
+            if (file === "tutor-check.html") await expect(page.locator("#courseGrid")).toHaveAttribute("aria-busy", "false");
+            const explore = file === "social.html";
+            const compact = width <= 1023;
+            const metrics = await page.evaluate(({ shell, content }) => {
+                const outer = getComputedStyle(document.querySelector(shell));
+                const inner = document.querySelector(content);
+                const style = getComputedStyle(inner);
+                const body = getComputedStyle(document.body);
+                return {
+                    left: parseFloat(body.paddingLeft),
+                    gutter: parseFloat(outer.paddingLeft),
+                    content: inner.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+                    viewport: document.documentElement.getBoundingClientRect().width,
+                    overflow: document.documentElement.scrollWidth > innerWidth
+                };
+            }, { shell, content });
+            const gutter = width <= 480 ? 12 : compact ? 16 : 24;
+            expect(metrics.left, `${file} at ${width}: navigation offset`).toBe(explore || compact ? 0 : 235);
+            expect(metrics.gutter, `${file} at ${width}: gutter`).toBe(gutter);
+            expect(metrics.content, `${file} at ${width}: content width`).toBeCloseTo(Math.min(1232, metrics.viewport - metrics.left - 2 * gutter), 0);
+            expect(metrics.overflow, `${file} at ${width}: horizontal overflow`).toBe(false);
+            await expect(page.locator(".qcnav-dock")).toBeVisible({ visible: compact });
+            if (explore) {
+                await expect(page.locator(".qcnav-sidebar")).toBeHidden();
+                await expect(page.locator("#qcnavMenuBtn")).toBeHidden();
+            }
+            if (file === "tutor-check.html") {
+                await expect(page.locator(compact ? ".browse-content > .filter-panel" : "#marketplaceSidebarFilters > .filter-panel")).toBeVisible();
+                const cards = await page.locator("#courseGrid .course-card").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().width));
+                expect(cards.length).toBeGreaterThan(3);
+                expect(Math.min(...cards), `Readable catalog cards at ${width}`).toBeGreaterThanOrEqual(260);
+            }
+            if (file === "tutor-check.html" || file === "MyProgress.html") {
+                const tinyText = await page.locator("main").evaluate(root => {
+                    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+                    const failures = [];
+                    while (walker.nextNode()) {
+                        const node = walker.currentNode;
+                        const el = node.parentElement;
+                        if (!node.textContent.trim() || el.closest('[aria-hidden="true"], script, style, option, svg')) continue;
+                        const css = getComputedStyle(el);
+                        if (!el.getClientRects().length || css.visibility === "hidden") continue;
+                        if (parseFloat(css.fontSize) < 12) failures.push(`${node.textContent.trim().slice(0, 40)}: ${css.fontSize}`);
+                    }
+                    return failures;
+                });
+                expect(tinyText, `${file} at ${width}: text below 12px`).toEqual([]);
+            }
+        }
+    }
+    await page.goto("/toefl-sample/history.html");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.locator("#qcnavCollapse").click();
+    await expect(page.locator("body")).toHaveCSS("padding-left", "76px");
+    await page.setViewportSize({ width: 820, height: 900 });
+    await expect(page.locator("body")).toHaveCSS("padding-left", "0px");
+    await page.locator("#qcnavMenuBtn").click();
+    await expect(page.locator("#qcnavSidebar")).toHaveClass(/open/);
+    await page.locator("#qcnavScrim").click({ position: { x: 700, y: 200 } });
+    await expect(page.locator("#qcnavSidebar")).not.toHaveClass(/open/);
+});
+
 test("the local server exposes frontend assets but not backend, fixtures or directory listings", async ({ request }) => {
     const publicPage = await request.get("/toefl-sample/history.html");
     expect(publicPage.status()).toBe(200);
