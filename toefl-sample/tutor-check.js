@@ -1121,6 +1121,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     introCopy.append(ratingLine);
     if (Number.isSafeInteger(publicStudents[detailId])) ratingLine.append(el("span", "detail-student-count", `| ${publicStudents[detailId]} students`));
     intro.append(media, introCopy);
+    detailMain.append(intro);
 
     const courseFacts = el("section", "course-detail-facts");
     courseFacts.setAttribute("aria-label", "Course details");
@@ -1163,6 +1164,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
             progress.append(fill);
             fact.append(progress);
         }
+        fact.append(el("span", "course-detail-fact-note", note));
         courseFactGrid.append(fact);
     };
     addCourseFact("scheduleDays", "calendar", "Hari", course.scheduleDays || "Flexible", course.scheduleDays ? "Jadwal kelas mingguan" : "Jadwal fleksibel");
@@ -1174,7 +1176,6 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
         factCapacity ? seatsRemaining ? `${seatsRemaining} kursi lagi` : "Kuota penuh" : "Pendaftaran terbuka");
     courseFacts.append(courseFactGrid);
     introCopy.append(courseFacts);
-    detailMain.append(intro);
 
     const tabs = el("nav", "detail-tabs");
     tabs.setAttribute("aria-label", "Course information");

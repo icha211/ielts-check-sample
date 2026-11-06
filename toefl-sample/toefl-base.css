@@ -1,0 +1,88 @@
+/*
+ * Shared sizing baseline for every TOEFL page.
+ * Load AFTER the page's own styles and site-navbar.css.
+ * Part 1 removes browser differences (Chrome / Edge / Safari / mobile).
+ * Part 2 gives all navbar pages one type scale and one content width.
+ */
+
+:root {
+  --tf-font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --tf-text-size: 14px;
+  --tf-text-leading: 1.6;
+  --tf-content-max: 1232px;
+  --tf-gutter: 24px;
+}
+
+/* Part 1: browser normalisation */
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Chrome shows a classic scrollbar, Edge/Win11 an overlay one: reserve the same width in both. */
+  scrollbar-gutter: stable;
+  font-size: 16px;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
+}
+
+button, input, select, textarea, optgroup {
+  font-family: inherit;
+  letter-spacing: inherit;
+}
+
+img, svg, video, canvas { max-width: 100%; }
+
+/* Part 2: one type scale and one content width on every navbar page */
+html body.qcnav {
+  font-family: var(--tf-font);
+  font-size: var(--tf-text-size);
+  line-height: var(--tf-text-leading);
+}
+
+/* Containers that carry their own side padding */
+body.qcnav .page,
+body.qcnav main.main,
+body.qcnav .messages-page,
+body.qcnav .community-page,
+body.qcnav .profile-page,
+body.qcnav .marketplace,
+body.qcnav main.shell {
+  width: 100%;
+  max-width: calc(var(--tf-content-max) + 2 * var(--tf-gutter));
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--tf-gutter);
+  padding-right: var(--tf-gutter);
+}
+
+/* Inner wrappers whose parent already supplies the side padding */
+body.qcnav .history-content,
+body.qcnav .summary-content {
+  width: 100%;
+  max-width: var(--tf-content-max);
+}
+
+body.qcnav .history-main,
+body.qcnav .summary-main {
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+  padding-left: var(--tf-gutter);
+  padding-right: var(--tf-gutter);
+}
+
+/* Narrow account-settings form stays narrower, but shares the same gutters */
+body.qcnav .acct-page { width: min(760px, 100% - 2 * var(--tf-gutter)); }
+
+@media (max-width: 780px) {
+  :root { --tf-gutter: 16px; }
+}
+
+@media (max-width: 480px) {
+  :root { --tf-gutter: 12px; }
+}

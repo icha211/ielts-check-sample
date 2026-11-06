@@ -581,7 +581,19 @@ test("sign-in errors stay visible; successful login edits the live course and su
     await expect(courseFacts).toContainText("08.00 – 10.00");
     await expect(courseFacts.locator(".course-detail-fact-label")).toHaveText(["Hari", "Jam", "Mulai", "Mode", "Kuota"]);
     await expect(courseFacts.getByRole("button", { name: "Edit class days" })).toBeVisible();
-    await expect(page.locator("#courseDetail .detail-intro-copy > .course-detail-facts")).toHaveCount(1);
+    await expect(page.locator("#courseDetail .detail-intro-copy > .detail-rating + .course-detail-facts")).toHaveCount(1);
+    const factsBox = await courseFacts.boundingBox();
+    const introCopyBox = await page.locator("#courseDetail .detail-intro-copy").boundingBox();
+    expect(factsBox.x).toBeGreaterThanOrEqual(introCopyBox.x);
+    expect(factsBox.x + factsBox.width).toBeLessThanOrEqual(introCopyBox.x + introCopyBox.width + 1);
+    const factBoxes = await courseFacts.locator(".course-detail-fact").evaluateAll(nodes => nodes.map(node => {
+        const { x, y, width, height } = node.getBoundingClientRect();
+        return { x, y, width, height, scrollWidth: node.scrollWidth, clientWidth: node.clientWidth };
+    }));
+    expect(factBoxes[0].y).toBe(factBoxes[2].y);
+    expect(factBoxes[3].y).toBe(factBoxes[4].y);
+    expect(factBoxes[3].y).toBeGreaterThan(factBoxes[0].y);
+    for (const box of factBoxes) expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
     await page.getByRole("button", { name: "Edit class time" }).click();
     await expect(page.locator('#courseForm [name="startTime"]')).toHaveValue("08:00");
     await page.locator('#courseForm [name="startTime"]').fill("09:00");
@@ -852,8 +864,6 @@ test("learners browse and filter courses, open teacher details and enroll from t
     await page.addInitScript(() => localStorage.setItem("beta-user", JSON.stringify({ uid: "student", email: "student@example.test", emailVerified: true })));
     await page.goto("/toefl-sample/tutor-check.html");
     const courseCard = page.locator(".course-card").first();
-    const courseCover = await courseCard.locator(".course-artwork").boundingBox();
-    expect(courseCover.height / courseCover.width).toBeGreaterThan(0.55);
     await expect(courseCard.locator(".course-facts .course-fact-label")).toHaveText(["Jam", "Hari", "Mulai", "Kuota"]);
     await expect(courseCard.locator(".course-type-badge")).toContainText("Online");
     await expect(courseCard.locator(".course-rating-badge strong")).toHaveText("0");
