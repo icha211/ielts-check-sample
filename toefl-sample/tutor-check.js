@@ -2298,9 +2298,6 @@ function updateConnectionStatus() {
     $("marketConnectionError").textContent = message;
     $("marketConnectionError").hidden = !message;
     $("retryMarketplace").hidden = !message;
-    $("marketStatus").textContent = message ? "Marketplace connection needs attention."
-        : catalogReady && reviewsReady ? "Live course listings. Prices are in Indonesian rupiah."
-            : "Connecting to live courses...";
     if (message) {
         $("courseGrid").setAttribute("aria-busy", "false");
         $("courseGrid").replaceChildren(el("p", "muted", "Courses could not load completely. Retry the connection above."));

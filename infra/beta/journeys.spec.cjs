@@ -359,7 +359,7 @@ test("navigation follows the account role across home, marketplace and Explore",
     await page.goto("/toefl-sample/social.html");
     await expect.poll(topLinks).toEqual([
         ["Home", "tutor-check.html?studio=1", null], ["Marketplace", "tutor-check.html", null],
-        ["Explore", "social.html#community", "page"], ["Messages", "message.html", null]
+        ["Explore", "social.html#community", "page"]
     ]);
     await expect(page.locator(".qcnav-brand")).toHaveAttribute("href", "tutor-check.html?studio=1");
     await expect(page.locator('#qcnavTeacherSidebar a[href="tutor-check.html?studio=1&create=1"]')).toHaveCount(1);

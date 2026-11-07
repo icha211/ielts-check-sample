@@ -42,7 +42,6 @@
     ? link(homeHref(role), "house", "Home", marketplaceStudioPage, ' id="qcnavHomeLink"')
       + link("tutor-check.html", "shopping-bag", "Marketplace", marketplacePage && !marketplaceStudioPage)
       + link("social.html#community", "globe", "Explore", pageKey === "social")
-      + link("message.html", "message-circle", "Messages", pageKey === "message")
     : link(homeHref(role), "house", "Home", pageKey === "dashboard", ' id="qcnavHomeLink"')
       + link("tutor-check.html", "shopping-bag", "Marketplace", marketplacePage)
       + link("social.html#community", "globe", "Explore", pageKey === "social");
