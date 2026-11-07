@@ -1098,84 +1098,67 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     const media = el("div", "detail-media");
     media.append(existingVideo?.getAttribute("src") === course.previewURL && course.previewType === "video" ? existingVideo : cover(course, true));
     const introCopy = el("div", "detail-intro-copy");
-    introCopy.append(
-        el("span", "course-kicker", `${TUTOR_CATEGORIES.find(([id]) => id === course.category)?.[1] || "English"} · ${TUTOR_TYPES[course.type]}`),
-        el("h3", "detail-title", course.title)
-    );
     const teacherLink = el("a", "detail-teacher-link", course.teacherName);
     teacherLink.href = `profile.html?uid=${encodeURIComponent(course.teacherId)}`;
     const introTeacher = el("div", "detail-intro-teacher");
     const introTeacherCopy = el("div");
+    const introTeacherName = el("div", "detail-teacher-name");
     const detailBadge = reviewedBadge(course.teacherId);
-    introTeacherCopy.append(teacherLink);
-    if (detailBadge) introTeacherCopy.append(detailBadge);
-    introTeacherCopy.append(el("p", "muted", detailProfile.qualification || "Independent English teacher"));
+    introTeacherName.append(teacherLink);
+    if (detailBadge) {
+        detailBadge.replaceChildren(icon("rosette-discount-check-filled"), el("span", "sr-only", "Profile reviewed"));
+        introTeacherName.append(detailBadge);
+    }
+    introTeacherCopy.append(introTeacherName);
     introTeacher.append(teacherAvatar(), introTeacherCopy);
     introCopy.append(introTeacher);
-    const ratingText = courseStats.count
-        ? `${courseStats.rating.toFixed(1)} · ${courseStats.count} review${courseStats.count === 1 ? "" : "s"}`
-        : "New course · No reviews yet";
     const ratingLine = el("p", "detail-rating");
-    if (courseStats.count) ratingLine.append(icon("star-filled"));
-    ratingLine.append(el("span", "", ratingText));
-    introCopy.append(ratingLine);
-    if (Number.isSafeInteger(publicStudents[detailId])) ratingLine.append(el("span", "detail-student-count", `| ${publicStudents[detailId]} students`));
+    if (courseStats.count) {
+        ratingLine.append(
+            el("strong", "", courseStats.rating.toFixed(1)),
+            el("span", "", `(${courseStats.count} review${courseStats.count === 1 ? "" : "s"})`)
+        );
+    } else ratingLine.append(el("span", "", "No reviews yet"));
+    introTeacherCopy.append(ratingLine);
+    const introTags = el("div", "course-kicker");
+    introTags.append(
+        el("span", "detail-category-pill", TUTOR_CATEGORIES.find(([id]) => id === course.category)?.[1] || "English"),
+        el("span", "detail-category-pill", TUTOR_TYPES[course.type])
+    );
+    introCopy.append(el("h3", "detail-title", course.title), el("p", "detail-intro-summary", course.summary), introTags);
     intro.append(media, introCopy);
     detailMain.append(intro);
 
     const courseFacts = el("section", "course-detail-facts");
     courseFacts.setAttribute("aria-label", "Course details");
     const courseFactGrid = el("div", "course-detail-fact-grid");
-    const formatFactTime = value => String(value || "").replace(":", ".");
+    const formatFactTime = value => String(value || "");
     const startDateText = course.startDate
-        ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${course.startDate}T00:00:00`))
+        ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${course.startDate}T00:00:00`))
         : "To be arranged";
-    const acceptedStudents = Number.isSafeInteger(publicStudents[courseId]) ? publicStudents[courseId] : courseStats.students;
-    const factSeatsTaken = Math.max(acceptedStudents, Number.isSafeInteger(publicReserved[courseId]) ? publicReserved[courseId] : 0);
     const factCapacity = Number.isSafeInteger(course.maxStudents) ? course.maxStudents : 0;
     const timeValue = course.startTime && course.endTime
         ? `${formatFactTime(course.startTime)} – ${formatFactTime(course.endTime)}`
         : course.startTime ? `From ${formatFactTime(course.startTime)}`
             : course.endTime ? `Until ${formatFactTime(course.endTime)}` : "To be arranged";
-    const startMinutes = course.startTime ? course.startTime.split(":").reduce((total, part) => total * 60 + Number(part), 0) : NaN;
-    const endMinutes = course.endTime ? course.endTime.split(":").reduce((total, part) => total * 60 + Number(part), 0) : NaN;
-    const durationMinutes = endMinutes - startMinutes;
-    const durationNote = Number.isFinite(durationMinutes) && durationMinutes > 0
-        ? `${Math.floor(durationMinutes / 60)}${durationMinutes % 60 ? ` jam ${durationMinutes % 60} menit` : " jam"} / sesi`
-        : "Durasi belum ditentukan";
-    const addCourseFact = (field, glyph, label, value, note) => {
+    const addCourseFact = (field, glyph, label, value) => {
         const fact = el("div", "course-detail-fact");
         fact.dataset.courseFact = field;
         fact.dataset.editField = field;
         const copy = el("div", "course-detail-fact-copy");
         copy.append(el("span", "course-detail-fact-label", label));
         const valueNode = el("strong", "course-detail-fact-value", value);
-        if (field === "maxStudents") valueNode.dataset.currentSeats = String(factSeatsTaken);
+        if (field === "mode") valueNode.dataset.mode = course.mode || "";
         fact.append(icon(glyph), copy, valueNode);
-        if (field === "maxStudents" && factCapacity) {
-            const progress = el("div", "course-capacity-progress");
-            progress.setAttribute("role", "progressbar");
-            progress.setAttribute("aria-label", "Class capacity");
-            progress.setAttribute("aria-valuemin", "0");
-            progress.setAttribute("aria-valuemax", String(factCapacity));
-            progress.setAttribute("aria-valuenow", String(Math.min(factSeatsTaken, factCapacity)));
-            const fill = el("span", "course-capacity-fill");
-            fill.style.width = `${Math.min(factSeatsTaken / factCapacity, 1) * 100}%`;
-            progress.append(fill);
-            fact.append(progress);
-        }
-        fact.append(el("span", "course-detail-fact-note", note));
         courseFactGrid.append(fact);
     };
-    addCourseFact("scheduleDays", "calendar", "Hari", course.scheduleDays || "Flexible", course.scheduleDays ? "Jadwal kelas mingguan" : "Jadwal fleksibel");
-    addCourseFact("startTime", "clock", "Jam", timeValue, durationNote);
-    addCourseFact("startDate", "calendar-check", "Mulai", startDateText, course.startDate ? "Kelas akan dimulai" : "Tanggal belum ditentukan");
-    addCourseFact("mode", "device-laptop", "Mode", course.mode === "online" ? "Online" : course.mode === "offline" ? "In person" : "Not specified", course.schedule || "Detail akses belum ditambahkan");
-    const seatsRemaining = factCapacity ? Math.max(factCapacity - factSeatsTaken, 0) : null;
-    addCourseFact("maxStudents", "users-group", "Kuota", factCapacity ? `${Math.min(factSeatsTaken, factCapacity)} / ${factCapacity}` : "No limit",
-        factCapacity ? seatsRemaining ? `${seatsRemaining} kursi lagi` : "Kuota penuh" : "Pendaftaran terbuka");
+    addCourseFact("scheduleDays", "calendar", "Day", course.scheduleDays || "Flexible");
+    addCourseFact("startTime", "clock", "Time", timeValue);
+    addCourseFact("startDate", "calendar", "Start Date", startDateText);
+    addCourseFact("mode", "device-laptop", "Mode", course.mode === "online" ? "Online" : course.mode === "offline" ? "In person" : "Not specified");
+    addCourseFact("maxStudents", "users-group", "Quota", factCapacity ? `${factCapacity} Students` : "No limit");
     courseFacts.append(courseFactGrid);
-    introCopy.append(courseFacts);
+    detailMain.append(courseFacts);
 
     const tabs = el("nav", "detail-tabs");
     tabs.setAttribute("aria-label", "Course information");
@@ -1548,6 +1531,7 @@ function addCourseEditControls(target) {
     const edit = (name, options = {}) => openEditor(detailId, { name, ...options });
     for (const [selector, name, label] of [
         [".detail-title", "title", "course title"], [".course-kicker", "category", "category and format"],
+        [".detail-intro-summary", "summary", "course description"],
         [".purchase-panel > .course-price", "price", "course price"],
         ['[data-detail-panel="overview"] > .detail-copy:first-of-type', "summary", "course description"],
         ['[data-detail-panel="overview"] > .detail-copy:last-of-type', "schedule", "schedule"],
@@ -1798,28 +1782,32 @@ function inlineCourseControl(names, display, labelText) {
                 originalPrice: Number($("courseForm").elements.namedItem("originalPrice").value || 0)
             }).childNodes);
         } else if (names[0] === "category") {
-            display.textContent = `${TUTOR_CATEGORIES.find(([id]) => id === field.value)?.[1]} · ${TUTOR_TYPES[$("editorType").value]}`;
+            display.replaceChildren(
+                el("span", "detail-category-pill", TUTOR_CATEGORIES.find(([id]) => id === field.value)?.[1]),
+                el("span", "detail-category-pill", TUTOR_TYPES[$("editorType").value])
+            );
         } else if (names[0] === "published") {
             display.textContent = field.checked ? "Published and open for enrollment" : "Paused";
         } else if (names[0] === "startTime") {
             const start = $("courseForm").elements.namedItem("startTime").value;
             const end = $("courseForm").elements.namedItem("endTime").value;
-            display.textContent = start && end ? `${start.replace(":", ".")} – ${end.replace(":", ".")}`
-                : start ? `From ${start.replace(":", ".")}` : end ? `Until ${end.replace(":", ".")}` : "To be arranged";
+            display.textContent = start && end ? `${start} – ${end}`
+                : start ? `From ${start}` : end ? `Until ${end}` : "To be arranged";
         } else if (names[0] === "scheduleDays") {
             display.textContent = field.value || "Flexible";
         } else if (names[0] === "startDate") {
             display.textContent = field.value
-                ? new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${field.value}T00:00:00`))
+                ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${field.value}T00:00:00`))
                 : "To be arranged";
         } else if (names[0] === "mode") {
             display.textContent = field.value === "online" ? "Online" : field.value === "offline" ? "In person" : "Not specified";
+            display.dataset.mode = field.value;
         } else if (names[0] === "maxStudents") {
-            const seats = Number(display.dataset.currentSeats || 0);
             const capacity = Number(field.value || 0);
-            display.textContent = capacity ? `${Math.min(seats, capacity)} / ${capacity}` : "No limit";
+            display.textContent = capacity ? `${capacity} Students` : "No limit";
         } else {
             display.textContent = field.value || `Add ${labelText}`;
+            if (names[0] === "summary") $("editorCanvas").querySelector(".detail-intro-summary").textContent = field.value;
         }
         fields.hidden = true;
         view.hidden = false;

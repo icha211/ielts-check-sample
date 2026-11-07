@@ -68,6 +68,65 @@ test("ratings start empty and average actual learner reviews without invented st
     assert.equal(model.courseStats({ bad: { rating: 8 } }).count, 0);
     assert.equal(model.courseStats({}, { a: { status: "accepted" }, b: { status: "pending" } }).students, 1);
 });
+test("course intro uses real teacher, rating, title, summary and category pills in reference order", () => {
+    const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
+    const el = (tag, className = "", textContent = "") => ({
+        tag, className, textContent, children: [],
+        append(...nodes) { this.children.push(...nodes); }
+    });
+    const intro = el("section"), media = el("div");
+    const context = vm.createContext({
+        el, intro, media, course: { ...course, teacherId: "teacher" },
+        courseStats: { count: 2, rating: 4.5 }, reviewedBadge: () => null,
+        teacherAvatar: () => el("img"), TUTOR_CATEGORIES: [["speaking", "Speaking"]],
+        TUTOR_TYPES: { live: "Live Classes" }
+    });
+    const introSource = source.slice(source.indexOf('    const introCopy = el('), source.indexOf("\n    detailMain.append(intro)"));
+    vm.runInContext(`{${introSource}}`, context);
+    const copy = intro.children[1];
+    assert.deepEqual(copy.children.map(node => node.className),
+        ["detail-intro-teacher", "detail-title", "detail-intro-summary", "course-kicker"]);
+    const teacherCopy = copy.children[0].children[1];
+    assert.equal(teacherCopy.children[0].children[0].textContent, course.teacherName);
+    assert.deepEqual(teacherCopy.children[1].children.map(node => node.textContent), ["4.5", "(2 reviews)"]);
+    assert.equal(copy.children[1].textContent, course.title);
+    assert.equal(copy.children[2].textContent, course.summary);
+    assert.deepEqual(copy.children[3].children.map(node => node.textContent), ["Speaking", "Live Classes"]);
+    context.courseStats = { count: 0, rating: null };
+    vm.runInContext(`{${introSource}}`, context);
+    assert.equal(intro.children[3].children[0].children[1].children[1].children[0].textContent, "No reviews yet");
+});
+test("course facts render a five-item strip below the intro without notes or a capacity bar", () => {
+    const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
+    const el = (tag, className = "", textContent = "") => ({
+        tag, className, textContent, dataset: {}, children: [],
+        append(...nodes) { this.children.push(...nodes); },
+        setAttribute(name, value) { this[name] = value; }
+    });
+    const detailMain = el("div");
+    detailMain.append(el("section", "detail-intro"));
+    const context = vm.createContext({
+        el, icon: glyph => el("i", `ti ti-${glyph}`), detailMain,
+        course: {
+            scheduleDays: "Monday - Friday", startTime: "16:00", endTime: "17:00",
+            startDate: "2026-11-10", mode: "online", maxStudents: 20
+        }
+    });
+    const factsSource = source.slice(source.indexOf('    const courseFacts = el('), source.indexOf('\n    const tabs = el("nav", "detail-tabs")'));
+    vm.runInContext(factsSource, context);
+    const strip = detailMain.children[1];
+    assert.equal(strip.className, "course-detail-facts");
+    const facts = strip.children[0].children;
+    assert.deepEqual(facts.map(fact => fact.children[1].children[0].textContent), ["Day", "Time", "Start Date", "Mode", "Quota"]);
+    assert.deepEqual(facts.map(fact => fact.children[2].textContent), ["Monday - Friday", "16:00 – 17:00", "Nov 10, 2026", "Online", "20 Students"]);
+    assert.ok(facts.every(fact => fact.children.length === 3));
+    assert.equal(facts[3].children[2].dataset.mode, "online");
+    assert.ok(source.indexOf("detailMain.append(courseFacts)") < source.indexOf("detailMain.append(tabs)"));
+    context.course = {};
+    vm.runInContext(`{${factsSource}}`, context);
+    assert.deepEqual(detailMain.children[2].children[0].children.map(fact => fact.children[2].textContent),
+        ["Flexible", "To be arranged", "To be arranged", "Not specified", "No limit"]);
+});
 test("course detail tabs expose one panel and one keyboard tab stop", () => {
     const source = fs.readFileSync(path.join(__dirname, "tutor-check.js"), "utf8");
     const buttons = ["overview", "curriculum", "reviews", "teacher", "faq"].map(id => ({
