@@ -1163,7 +1163,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     const tabs = el("nav", "detail-tabs");
     tabs.setAttribute("aria-label", "Course information");
     tabs.setAttribute("role", "tablist");
-    const tabNames = [["overview", "Overview"], ["curriculum", "Curriculum"], ["reviews", "Reviews"], ["teacher", "About teacher"], ["faq", "FAQ"]];
+    const tabNames = [["overview", "Overview"], ["curriculum", "Curriculum"], ["teacher", "About Teacher"], ["reviews", "Reviews"], ["faq", "FAQ"]];
     tabNames.forEach(([id, label]) => {
         const button = el("button", "detail-tab", label);
         button.type = "button";
@@ -1194,17 +1194,20 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     overview.setAttribute("role", "tabpanel");
     overview.setAttribute("aria-labelledby", "course-tab-overview");
     overview.dataset.detailPanel = "overview";
-    overview.append(el("h3", "", "About this course"), el("p", "detail-copy", course.summary));
-    overview.append(el("h3", "", "What you'll learn"));
+    const aboutSection = el("section", "detail-section-card panel");
+    aboutSection.dataset.courseSection = "summary";
+    aboutSection.append(el("h3", "", "About this course"), el("p", "detail-copy", course.summary));
+    const outcomesSection = el("section", "detail-section-card panel");
+    outcomesSection.append(el("h3", "", "What you'll learn"));
     const outcomes = el("ul", "learning-outcomes");
     outcomeLines.forEach(line => {
         const item = el("li");
         item.append(icon("circle-check"), el("span", "", line));
         outcomes.append(item);
     });
-    if (!outcomeLines.length) overview.append(el("p", "muted", "The teacher has not added learning outcomes yet."));
-    overview.append(outcomes);
-    const curriculumPreview = el("section", "curriculum-preview panel");
+    if (!outcomeLines.length) outcomesSection.append(el("p", "muted", "The teacher has not added learning outcomes yet."));
+    outcomesSection.append(outcomes);
+    const curriculumPreview = el("section", "curriculum-preview detail-section-card panel");
     const curriculumHeading = el("div", "detail-side-heading");
     curriculumHeading.append(el("h3", "", "Course curriculum"), el("span", "muted", `${curriculumLines.length} course items`),
         action("View detailed curriculum →", "text-link", () => selectDetailTab("curriculum", true, target)));
@@ -1215,10 +1218,13 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
         curriculumPreviewList.append(item);
     });
     curriculumPreview.append(curriculumHeading, curriculumPreviewList);
-    overview.append(curriculumPreview, el("h3", "", "Schedule and access"), el("p", "detail-copy", course.schedule));
+    const scheduleSection = el("section", "detail-section-card panel");
+    scheduleSection.dataset.courseSection = "schedule";
+    scheduleSection.append(el("h3", "", "Schedule and access"), el("p", "detail-copy", course.schedule));
+    overview.append(aboutSection, outcomesSection, curriculumPreview, scheduleSection);
     panels.append(overview);
 
-    const curriculumPanel = el("section", "detail-tab-panel");
+    const curriculumPanel = el("section", "detail-tab-panel detail-section-card panel");
     curriculumPanel.id = "course-panel-curriculum";
     curriculumPanel.setAttribute("role", "tabpanel");
     curriculumPanel.setAttribute("aria-labelledby", "course-tab-curriculum");
@@ -1233,7 +1239,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     curriculumPanel.append(curriculumList);
     panels.append(curriculumPanel);
 
-    const reviewsPanel = el("section", "detail-tab-panel");
+    const reviewsPanel = el("section", "detail-tab-panel detail-section-card panel");
     reviewsPanel.id = "course-panel-reviews";
     reviewsPanel.setAttribute("role", "tabpanel");
     reviewsPanel.setAttribute("aria-labelledby", "course-tab-reviews");
@@ -1275,7 +1281,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     }
     panels.append(reviewsPanel);
 
-    const teacherPanel = el("section", "detail-tab-panel teacher-detail-panel");
+    const teacherPanel = el("section", "detail-tab-panel teacher-detail-panel detail-section-card panel");
     teacherPanel.id = "course-panel-teacher";
     teacherPanel.setAttribute("role", "tabpanel");
     teacherPanel.setAttribute("aria-labelledby", "course-tab-teacher");
@@ -1291,7 +1297,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     teacherPanel.append(teacherImage, teacherInfo);
     panels.append(teacherPanel);
 
-    const faqPanel = el("section", "detail-tab-panel detail-faq");
+    const faqPanel = el("section", "detail-tab-panel detail-faq detail-section-card panel");
     faqPanel.id = "course-panel-faq";
     faqPanel.setAttribute("role", "tabpanel");
     faqPanel.setAttribute("aria-labelledby", "course-tab-faq");
@@ -1311,7 +1317,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     purchase.append(price(course));
     if (course.originalPrice > course.price) {
         const offer = el("div", "offer-note");
-        offer.append(icon("tag"), el("span", "", "Course offer · Save " + rupiah(course.originalPrice - course.price)));
+        offer.append(icon("tag"), el("span", "", "Course offer - Save " + rupiah(course.originalPrice - course.price)));
         purchase.append(offer);
     }
     const purchaseNotice = el("p", "purchase-note", course.archived ? "This listing is archived." : course.published ? "No payment is collected here." : "This listing is paused.");
@@ -1321,14 +1327,14 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
         Number.isSafeInteger(publicStudents[courseId]) ? publicStudents[courseId] : 0
     );
     const courseFull = capacity > 0 && seatsTaken >= capacity;
-    const add = action(courseFull ? "Course full" : library.cart?.[courseId] ? "In cart" : "Add to cart", "primary purchase-action", async () => {
+    const add = action(courseFull ? "Course full" : library.cart?.[courseId] ? "In cart" : "Add to Cart", "primary purchase-action", async () => {
         if (requireLogin()) await toggleLibrary("cart", courseId, true);
     });
     add.prepend(icon("shopping-cart"));
     add.disabled = courseFull || !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
     if (requests[`${detailId}_${uid}`]) add.textContent = "Already requested";
     purchase.append(add);
-    const book = action("Book a class", "secondary purchase-action", async () => {
+    const book = action("Book a Class", "secondary purchase-action", async () => {
         if (!requireLogin()) return;
         const current = version;
         try {
@@ -1347,10 +1353,10 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     if (requests[`${detailId}_${uid}`]) book.textContent = "Request sent";
     purchase.append(book);
     const saved = Boolean(library.favorites?.[detailId]);
-    const wishlist = action(saved ? "Saved to wishlist" : "Add to wishlist", "wishlist-action", async () => {
+    const wishlist = action(saved ? "Saved to Wishlist" : "Add to Wishlist", "wishlist-action", async () => {
         if (requireLogin()) await toggleLibrary("favorites", detailId, !saved);
     });
-    wishlist.append(icon(saved ? "heart-filled" : "heart"));
+    wishlist.prepend(icon(saved ? "heart-filled" : "heart"));
     wishlist.setAttribute("aria-pressed", String(saved));
     purchase.append(wishlist);
     const share = action("Share this course", "text-button share-action", async () => {
@@ -1395,9 +1401,8 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
         shareLinks.append(link);
     });
     shareLinks.append(share);
-    const shareSection = el("div", "course-share");
-    shareSection.append(el("p", "muted", "Share this course:"), shareLinks);
-    purchase.append(purchaseNotice, shareSection);
+    const shareSection = el("div", "course-share detail-side-card panel");
+    shareSection.append(purchaseNotice, el("p", "muted", "Share this course:"), shareLinks);
     const feedback = el("p", "detail-feedback", previousFeedback);
     feedback.setAttribute("role", "status");
     purchase.append(feedback);
@@ -1408,7 +1413,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     purchase.append(detailError);
 
     const detailSidebar = el("aside", "detail-sidebar");
-    detailSidebar.append(purchase);
+    detailSidebar.append(purchase, shareSection);
     const teacherSummary = el("section", "detail-side-card panel");
     const teacherHeading = el("div", "detail-side-heading");
     teacherHeading.append(el("h3", "", "Meet your teacher"));
@@ -1533,8 +1538,8 @@ function addCourseEditControls(target) {
         [".detail-title", "title", "course title"], [".course-kicker", "category", "category and format"],
         [".detail-intro-summary", "summary", "course description"],
         [".purchase-panel > .course-price", "price", "course price"],
-        ['[data-detail-panel="overview"] > .detail-copy:first-of-type', "summary", "course description"],
-        ['[data-detail-panel="overview"] > .detail-copy:last-of-type', "schedule", "schedule"],
+        ['[data-course-section="summary"] > .detail-copy', "summary", "course description"],
+        ['[data-course-section="schedule"] > .detail-copy', "schedule", "schedule"],
         [".detail-media", "previewFile", "course preview"]
     ]) {
         const node = target.querySelector(selector);
