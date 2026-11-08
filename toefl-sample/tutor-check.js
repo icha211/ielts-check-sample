@@ -260,7 +260,8 @@ function cover(course, detail = false) {
     return node;
 }
 function price(course) {
-    const node = el("p", "course-price", rupiah(course.price));
+    const node = el("p", "course-price");
+    node.append(el("span", "course-price-amount", rupiah(course.price)));
     if (course.originalPrice > course.price) {
         node.append(el("del", "", rupiah(course.originalPrice)), el("span", "discount", `${Math.round((1 - course.price / course.originalPrice) * 100)}% OFF`));
     }
