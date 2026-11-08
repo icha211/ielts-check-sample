@@ -297,15 +297,17 @@ function card(course, statistics) {
         save.dataset.focusKey = className.includes("card-favorite") ? "favorite" : "cover-favorite";
         return save;
     };
-    const courseMode = course.mode === "online" ? "Online" : course.mode === "offline" ? "Offline" : "Not specified";
+    const courseMode = course.mode === "online" ? "Online" : course.mode === "offline" ? "In person" : "Mode to be confirmed";
     const courseModeIcon = course.mode === "online" ? "device-laptop" : course.mode === "offline" ? "map-pin" : "school";
     const courseBadge = el("span", "course-type-badge", courseMode);
     courseBadge.prepend(icon(courseModeIcon));
     const ratingBadge = el("div", "course-rating-badge");
     const hasReviews = statistics.count > 0;
     const rating = hasReviews ? statistics.rating.toFixed(1) : "0";
-    ratingBadge.append(icon("star-filled"), el("strong", "", rating));
-    if (hasReviews) ratingBadge.append(el("span", "", `(${statistics.count} review${statistics.count === 1 ? "" : "s"})`));
+    if (hasReviews) {
+        ratingBadge.append(icon("star-filled"), el("strong", "", rating));
+        ratingBadge.title = `${statistics.count} learner review${statistics.count === 1 ? "" : "s"}`;
+    } else ratingBadge.append(el("span", "", "No reviews yet"));
     ratingBadge.setAttribute("aria-label", hasReviews ? `${rating} average from ${statistics.count} reviews` : "0 reviews");
     artwork.append(courseBadge, ratingBadge);
     node.append(artwork);
@@ -356,11 +358,16 @@ function card(course, statistics) {
     const capacity = Number.isSafeInteger(course.maxStudents) ? course.maxStudents : 0;
     const quota = capacity ? `${Math.min(seatsTaken, capacity)} / ${capacity}` : "No limit";
     addFact("users-group", "Kuota", quota, "course-fact--quota");
-    if (capacity && seatsTaken >= capacity) node.dataset.full = "true";
+    if (capacity && seatsTaken >= capacity) {
+        node.dataset.full = "true";
+        courseBadge.textContent = "Class full";
+        courseBadge.prepend(icon("users-group"));
+    }
     content.append(heading, teacherLine, facts);
     content.append(price(course));
     const bottom = el("div", "card-bottom");
-    const viewDetail = action("View Detail", "primary card-view-detail", () => showCourse(course.id));
+    const viewDetail = action("View course", "primary card-view-detail", () => showCourse(course.id));
+    viewDetail.setAttribute("aria-label", `View course: ${course.title}`);
     viewDetail.prepend(icon("file-description"));
     viewDetail.dataset.focusKey = "detail";
     bottom.append(viewDetail, favoriteButton("save-button card-favorite"));
@@ -2219,9 +2226,18 @@ document.querySelectorAll(".filter-panel input").forEach(input => input.addEvent
     renderCatalog();
 }));
 const compactFilters = matchMedia("(max-width:1023px)");
+function setFiltersExpanded(expanded) {
+    $("filterControls").hidden = !expanded;
+    $("toggleFilters").setAttribute("aria-expanded", String(expanded));
+    $("toggleFilters").textContent = expanded ? "Hide filters" : "Show filters";
+}
+$("toggleFilters").addEventListener("click", () => setFiltersExpanded($("filterControls").hidden));
 function syncFilterLayout() {
+    const focusedControl = document.activeElement;
     if (compactFilters.matches) document.querySelector(".browse-content").prepend(filterPanel);
     else filterSidebar.append(filterPanel);
+    setFiltersExpanded(!compactFilters.matches);
+    if (compactFilters.matches && $("filterControls").contains(focusedControl)) $("toggleFilters").focus({ preventScroll: true });
 }
 syncFilterLayout();
 compactFilters.addEventListener("change", syncFilterLayout);
