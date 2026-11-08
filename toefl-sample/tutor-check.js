@@ -227,26 +227,15 @@ function stats() {
 function cover(course, detail = false) {
     const url = course.previewURL || course.coverURL;
     if (course.previewType === "video" && url) {
-        if (detail) {
-            const node = el("video", "course-cover detail-cover");
-            node.src = url;
-            node.controls = true;
-            node.preload = "metadata";
-            node.playsInline = true;
-            if (course.coverURL) node.poster = course.coverURL;
-            node.setAttribute("aria-label", `${course.title} video preview`);
-            return node;
-        }
-        if (course.coverURL) {
-            const node = el("img", "course-cover");
-            node.src = course.coverURL;
-            node.alt = `${course.title} video preview thumbnail`;
-            node.loading = "lazy";
-            node.addEventListener("error", () => node.replaceWith(el("div", "course-cover course-cover--video", "Video thumbnail unavailable")), { once: true });
-            return node;
-        }
-        const node = el("div", "course-cover course-cover--video");
-        node.append(icon("player-play"), el("span", "", "Video preview"));
+        const node = el("video", `course-cover${detail ? " detail-cover" : ""}`);
+        node.src = url;
+        node.controls = true;
+        node.preload = "metadata";
+        node.playsInline = true;
+        if (!detail) node.muted = true;
+        if (course.coverURL) node.poster = course.coverURL;
+        node.setAttribute("aria-label", `${course.title} video preview`);
+        node.addEventListener("error", () => node.replaceWith(el("div", "course-cover muted", "Course video unavailable")), { once: true });
         return node;
     }
     if (!url) {
@@ -286,7 +275,15 @@ function card(course, statistics) {
     detail.append(icon("arrow-up-right"));
     detail.setAttribute("aria-label", `View ${course.title}`);
     detail.dataset.focusKey = "preview";
-    artwork.append(detail);
+    if (!artwork.querySelector("video")) artwork.append(detail);
+    if (role === "teacher" && course.teacherId === uid && !course.archived) {
+        const editMedia = action("", "course-media-edit", () => openEditor(course.id, { name: "previewFile" }));
+        editMedia.append(icon("pencil"));
+        editMedia.setAttribute("aria-label", `Edit picture or video for ${course.title}`);
+        editMedia.title = "Edit picture or video";
+        editMedia.dataset.focusKey = "edit-media";
+        artwork.append(editMedia);
+    }
     const saved = Boolean(library.favorites?.[course.id]);
     const favoriteButton = className => {
         const save = action("", className, async () => {
