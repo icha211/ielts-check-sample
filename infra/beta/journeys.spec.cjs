@@ -142,6 +142,92 @@ test("course agreements save, restore and snapshot confirmed terms without activ
     await expect(page.locator("#teacherInbox .course-agreement")).toContainText("5 sessions, 60 minutes each");
 });
 
+test("course FAQs can be created edited removed saved and viewed by learners", async ({ page, context }) => {
+    await context.addInitScript(() => {
+        if (!localStorage.getItem("beta-user")) localStorage.setItem("beta-user", JSON.stringify({ uid: "teacher", displayName: "Beta Teacher", role: "teacher" }));
+    });
+    await page.goto("/toefl-sample/tutor-check.html?course=beta");
+    await page.getByRole("tab", { name: "FAQ", exact: true }).click();
+    await page.getByRole("button", { name: "Edit FAQ 1", exact: true }).click();
+    const editor = page.locator("#courseEditor");
+    await editor.getByLabel("FAQ 1 question", { exact: true }).fill("Are materials included?");
+    await editor.getByLabel("FAQ 1 answer", { exact: true }).fill("Yes.\nDownload them after joining.");
+    await editor.locator(".faq-editor-item").first().getByRole("button", { name: "Done", exact: true }).click();
+    await editor.getByRole("button", { name: "Add FAQ", exact: true }).click();
+    await editor.getByLabel("FAQ 4 question", { exact: true }).fill("Can I ask for feedback?");
+    await editor.getByLabel("FAQ 4 answer", { exact: true }).fill("Ask during the lesson.");
+    await editor.locator(".faq-editor-item").last().getByRole("button", { name: "Done", exact: true }).click();
+    await editor.getByRole("button", { name: "Remove FAQ 2", exact: true }).click();
+    await page.evaluate(() => localStorage.setItem("beta-deny-write", "true"));
+    await page.locator("#saveCourseButton").click();
+    await expect(page.locator("#editorError")).toBeVisible();
+    await expect(editor).toBeVisible();
+    await page.evaluate(() => localStorage.removeItem("beta-deny-write"));
+    await page.locator("#saveCourseButton").click();
+    await expect(editor).toBeHidden();
+    await page.reload();
+    await page.getByRole("tab", { name: "FAQ", exact: true }).click();
+    const faq = page.locator("#courseDetail .detail-faq");
+    await expect(faq.locator("details")).toHaveCount(3);
+    await expect(faq).toContainText("Are materials included?");
+    await expect(faq).toContainText("Can I ask for feedback?");
+    await page.getByRole("button", { name: "Edit FAQ 1", exact: true }).click();
+    await editor.getByLabel("FAQ 1 question", { exact: true }).fill("Unsaved question");
+    await page.locator("#cancelCourseEdit").click();
+    await page.locator("#discardCourseEdit").click();
+    await expect(faq).not.toContainText("Unsaved question");
+    await page.evaluate(() => localStorage.setItem("beta-user", JSON.stringify({ uid: "student", displayName: "Student", role: "student" })));
+    await page.reload();
+    await page.getByRole("tab", { name: "FAQ", exact: true }).click();
+    await expect(faq).toContainText("Are materials included?");
+    await expect(faq.getByRole("button")).toHaveCount(0);
+    await page.evaluate(() => localStorage.setItem("beta-user", JSON.stringify({ uid: "teacher", displayName: "Beta Teacher", role: "teacher" })));
+    await page.reload();
+    await page.getByRole("tab", { name: "FAQ", exact: true }).click();
+    await page.getByRole("button", { name: "Remove FAQ 1", exact: true }).click();
+    await editor.getByRole("button", { name: "Remove FAQ 1", exact: true }).click();
+    await editor.getByRole("button", { name: "Remove FAQ 1", exact: true }).click();
+    await page.locator("#saveCourseButton").click();
+    await expect(editor).toBeHidden();
+    await page.reload();
+    await page.getByRole("tab", { name: "FAQ", exact: true }).click();
+    await expect(faq.locator("details")).toHaveCount(0);
+    await expect(faq).toContainText("The teacher has not added FAQs yet.");
+    expect(page.betaErrors).toEqual([]);
+});
+
+test("course FAQ drafts restore unfinished entries without changing the published course", async ({ page, context }) => {
+    await context.addInitScript(() => {
+        if (!localStorage.getItem("beta-user")) localStorage.setItem("beta-user", JSON.stringify({ uid: "teacher", displayName: "Beta Teacher", role: "teacher" }));
+    });
+    await page.goto("/toefl-sample/tutor-check.html?course=beta");
+    await page.getByRole("tab", { name: "FAQ", exact: true }).click();
+    await page.getByRole("button", { name: "Add FAQ", exact: true }).click();
+    const editor = page.locator("#courseEditor");
+    await editor.getByLabel("FAQ 4 question", { exact: true }).fill("How can I prepare?");
+    await editor.getByRole("tab", { name: "Overview", exact: true }).click();
+    await page.locator("#saveCourseButton").click();
+    await expect(editor).toBeVisible();
+    await expect(editor.getByRole("tab", { name: "FAQ", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(editor.getByLabel("FAQ 4 answer", { exact: true })).toBeFocused();
+    await page.locator("#saveDraftButton").click();
+    await expect(editor).toBeHidden();
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("beta-db")).tutor_courses.beta.faqCustomized)).toBeUndefined();
+    await page.goto("/toefl-sample/tutor-check.html?studio=1");
+    await page.getByRole("button", { name: "Resume draft", exact: true }).click();
+    await editor.getByRole("tab", { name: "FAQ", exact: true }).click();
+    await editor.getByRole("button", { name: "Edit FAQ 4", exact: true }).click();
+    await expect(editor.getByLabel("FAQ 4 question", { exact: true })).toHaveValue("How can I prepare?");
+    await expect(editor.getByLabel("FAQ 4 answer", { exact: true })).toHaveValue("");
+    await editor.getByLabel("FAQ 4 answer", { exact: true }).fill("Read the lesson notes.");
+    await page.locator("#saveCourseButton").click();
+    await expect(editor).toBeHidden();
+    await page.goto("/toefl-sample/tutor-check.html?course=beta");
+    await page.getByRole("tab", { name: "FAQ", exact: true }).click();
+    await expect(page.locator("#courseDetail .detail-faq")).toContainText("Read the lesson notes.");
+    expect(page.betaErrors).toEqual([]);
+});
+
 test("four-card laptop grid fits long prices and keeps filtered card widths", async ({ page, context }) => {
     await context.addInitScript(() => {
         localStorage.setItem("beta-user", JSON.stringify({ uid: "student", displayName: "Student", role: "student" }));

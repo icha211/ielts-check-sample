@@ -6,6 +6,26 @@ export const TUTOR_CATEGORIES = [
     ["others", "Others", "category"]
 ];
 export const TUTOR_TYPES = { live: "Live Classes", self: "Self-Paced", package: "Packages" };
+export function courseFaq(input, { draft = false } = {}) {
+    if (input.faqCustomized !== true) return [
+        { question: "How do I join this course?", answer: "Choose Book a Class to send an enrollment request. The teacher will follow up about the schedule." },
+        { question: "Do I pay on this page?", answer: "No. This marketplace does not process payments. Confirm payment and class arrangements directly with the teacher." },
+        { question: "Where can I see the schedule?", answer: input.schedule || "The teacher has not added schedule details yet." }
+    ];
+    const source = input.faq ?? {};
+    if (typeof source !== "object" || Object.keys(source).length > 20) throw new Error("Add no more than 20 FAQ entries.");
+    return Object.entries(source).sort(([a], [b]) => Number(a) - Number(b)).map(([key, item], index) => {
+        if (!/^(?:[0-9]|1[0-9])$/.test(key) || !item || typeof item !== "object" ||
+            Object.keys(item).some(name => !["question", "answer"].includes(name))) throw new Error("Enter valid FAQ questions and answers.");
+        const row = {};
+        for (const [name, max] of [["question", 200], ["answer", 2000]]) {
+            if (typeof item[name] !== "string") throw new Error(`Enter FAQ ${index + 1} ${name}.`);
+            row[name] = item[name].trim();
+            if ((!draft && !row[name]) || row[name].length > max) throw new Error(`Enter FAQ ${index + 1} ${name} (${draft ? 0 : 1}-${max} characters).`);
+        }
+        return row;
+    });
+}
 export function courseAgreement(input, { draft = false } = {}) {
     if (input.agreementEnabled !== true) return null;
     const agreement = {
@@ -83,12 +103,17 @@ export function validateCourse(input, { draft = false } = {}) {
     if (mode && !["online", "offline"].includes(mode)) throw new Error("Choose online or in-person classes.");
     if (!Number.isSafeInteger(maxStudents) || maxStudents < 0 || maxStudents > 500) throw new Error("Set course capacity from 1 to 500, or leave it blank for no limit.");
     const agreement = courseAgreement(input, { draft });
+    if (input.faqCustomized != null && typeof input.faqCustomized !== "boolean") throw new Error("Choose a valid FAQ configuration.");
+    if (input.faq != null && input.faqCustomized !== true) throw new Error("Enable custom FAQs before saving FAQ entries.");
+    const faq = courseFaq(input, { draft });
     return {
         ...course, category: input.category, type: input.type, price: input.price, originalPrice: input.originalPrice,
         coverURL, previewURL, previewPath, previewType, scheduleDays, startTime, endTime, startDate, mode, maxStudents,
         agreementEnabled: agreement !== null,
         sessionCount: agreement?.sessionCount || 0, sessionDurationMinutes: agreement?.sessionDurationMinutes || 0,
         completionDeadline: agreement?.completionDeadline || "", cancellationTerms: agreement?.cancellationTerms || "",
+        faqCustomized: input.faqCustomized === true,
+        faq: input.faqCustomized === true && faq.length ? Object.fromEntries(faq.map((item, index) => [index, item])) : null,
         published: !draft && input.published === true
     };
 }

@@ -6,6 +6,27 @@ const { test } = require("node:test");
 const model = vm.createContext({ URL, Intl });
 vm.runInContext(fs.readFileSync(path.join(__dirname, "js", "tutor-model.js"), "utf8").replace(/^export /gm, ""), model);
 const course = { title: "IELTS Speaking", teacherName: "A teacher", summary: "Speaking practice", whatYouLearn: "Build speaking fluency", curriculum: "Part 1\nPart 2", schedule: "Saturdays, 10:00 WIB", category: "speaking", type: "live", price: 100000, originalPrice: 150000, coverURL: "", previewURL: "", previewPath: "", previewType: "", published: true };
+test("course FAQs validate custom entries, legacy defaults and intentionally empty FAQs", () => {
+    assert.equal(model.courseFaq(course).length, 3);
+    assert.equal(model.courseFaq(course)[2].answer, course.schedule);
+    const custom = { ...course, faqCustomized: true, faq: [{ question: " Materials? ", answer: " Included. " }] };
+    const saved = model.validateCourse(custom);
+    assert.equal(saved.faq[0].question, "Materials?");
+    assert.equal(saved.faq[0].answer, "Included.");
+    assert.equal(model.courseFaq(saved).length, 1);
+    assert.equal(model.courseFaq({ ...course, faqCustomized: true }).length, 0);
+    assert.equal(model.validateCourse({ ...course, faqCustomized: true, faq: [] }).faq, null);
+    for (const faq of [
+        [{ question: "", answer: "Answer" }], [{ question: "Question", answer: "  " }],
+        [{ question: "a".repeat(201), answer: "Answer" }], [{ question: "Question", answer: "a".repeat(2001) }],
+        [{ question: "Question", answer: 42 }], [{ question: "Question", answer: "Answer", extra: true }],
+        Array.from({ length: 21 }, () => ({ question: "Question", answer: "Answer" })),
+        { invalid: { question: "Question", answer: "Answer" } }, "invalid"
+    ]) assert.throws(() => model.validateCourse({ ...custom, faq }));
+    const unfinished = { ...custom, faq: [{ question: "", answer: "" }] };
+    assert.equal(model.validateCourse(unfinished, { draft: true }).faq[0].answer, "");
+    assert.equal(model.validateCourse(course).faqCustomized, false);
+});
 test("session agreements validate complete terms and preserve legacy and private draft behavior", () => {
     const terms = { ...course, agreementEnabled: true, sessionCount: 5, sessionDurationMinutes: 60, completionDeadline: "2027-01-31", cancellationTerms: "Reschedule missed sessions with 24 hours notice." };
     assert.equal(model.validateCourse(terms).sessionCount, 5);
@@ -228,6 +249,7 @@ test("inline saves preserve media, remove it only on request, and keep failed ed
                 courses: scenario === "create" ? {} : { one: existing }, uid: "teacher", detailId: "one",
                 version: 1, editorBusy: false, removedPreview: scenario === "remove",
                 editingDraftId: "", editorSource: () => scenario === "create" ? undefined : existing,
+                editorFaqCustomized: true, editorFaq: [{ question: "Materials?", answer: "Included." }],
                 teacherEditDirty: false, teacherEditBusy: false,
                 FormData: class extends Map { constructor() { super(Object.entries(course)); } },
                 validateCourse: model.validateCourse, courseAgreement: model.courseAgreement,
@@ -255,6 +277,8 @@ test("inline saves preserve media, remove it only on request, and keep failed ed
                 return;
             }
             const saved = calls.find(([name]) => name === "save")[1];
+            assert.equal(saved.faqCustomized, true);
+            assert.equal(saved.faq[0].answer, "Included.");
             assert.equal(saved.price, course.price);
             assert.equal(saved.curriculum, course.curriculum);
             assert.equal(saved.whatYouLearn, course.whatYouLearn);

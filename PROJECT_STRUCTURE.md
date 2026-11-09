@@ -46,6 +46,15 @@ The current amount is 16px; the secondary struck-through amount is 11px.
 Shared rows preserve alignment across different title lengths; longer content
 can still expand.
 
+Course owners can add, edit and remove FAQs directly in the course page's FAQ
+tab, using the existing course save/discard and private draft flow. Each course
+supports up to 20 entries, with questions up to 200 characters and answers up
+to 2,000 characters. Listings require complete entries; private drafts may keep
+unfinished ones. Legacy courses retain the default FAQ until customized.
+Removing every entry keeps the FAQ empty rather than restoring the defaults.
+Database rules restrict FAQ writes to the course owner and validate both fields;
+deploy the updated rules alongside the frontend.
+
 Teachers can enable a session agreement in the course editor: 1-100 sessions,
 1-480 minutes per session, a completion date (inclusive through the end of that
 UTC date), and up to 2,000 characters of cancellation/rescheduling terms.

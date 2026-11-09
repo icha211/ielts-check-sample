@@ -23,6 +23,16 @@ test("teacher self-registration cannot grant developer privileges; listing owner
     const course = { teacherId: "tutor-teacher", teacherName: "Teacher", title: "IELTS", summary: "Practice", whatYouLearn: "Speaking", curriculum: "Speaking", schedule: "Monday WIB", scheduleDays: "Mon, Wed", startTime: "08:00", endTime: "10:00", startDate: "2026-11-05", mode: "online", maxStudents: 5, category: "ielts", type: "live", price: 100000, originalPrice: 0, coverURL: "", previewURL: "", previewPath: "", previewType: "", published: true, createdAt: stamp, updatedAt: stamp };
     assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PUT", course)).status, 200);
     assert.equal((await request("tutor_courses/test-course", null)).status, 200);
+    const faq = { faqCustomized: true, faq: { 0: { question: "Are materials included?", answer: "Yes." } }, updatedAt: stamp };
+    assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PATCH", faq)).status, 200);
+    assert.equal((await request("tutor_courses/test-course", "stranger", "PATCH", faq)).status, 401);
+    for (const entries of [
+        { 0: { question: "", answer: "Answer" } }, { 0: { question: "Question", answer: " " } },
+        { 0: { question: "a".repeat(201), answer: "Answer" } }, { 0: { question: "Question", answer: "a".repeat(2001) } },
+        { 0: { question: "Question", answer: "Answer", extra: true } },
+        Object.fromEntries(Array.from({ length: 21 }, (_, index) => [index, { question: "Question", answer: "Answer" }]))
+    ]) assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PATCH", { ...faq, faq: entries })).status, 401);
+    assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PATCH", { faq: null, faqCustomized: true, updatedAt: stamp })).status, 200);
     const agreement = { agreementEnabled: true, sessionCount: 5, sessionDurationMinutes: 60, completionDeadline: "2027-12-31", cancellationTerms: "Make up missed sessions with 24 hours notice.", updatedAt: stamp };
     assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PATCH", { agreementEnabled: true, updatedAt: stamp })).status, 401, "enabled agreements require complete terms");
     assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PATCH", agreement)).status, 200);
@@ -45,6 +55,7 @@ test("unfinished drafts are private, owner-written and removed atomically only o
     await request(`tutor_roles/${uid}`, uid, "PUT", "teacher");
     const draft = { teacherId: uid, courseId: "", teacherName: "Teacher", title: "", summary: "", whatYouLearn: "", curriculum: "", schedule: "", category: "ielts", type: "live", price: 0, originalPrice: 0, coverURL: "", previewURL: "", previewPath: "", previewType: "", published: false, createdAt: stamp, updatedAt: stamp };
     assert.equal((await request(path, uid, "PUT", draft)).status, 200);
+    assert.equal((await request(path, uid, "PATCH", { faqCustomized: true, faq: { 0: { question: "", answer: "" } }, updatedAt: stamp })).status, 200);
     assert.equal((await request(`tutor_drafts/${uid}`, uid)).status, 200);
     for (const actor of [null, "draft-stranger"]) {
         assert.equal((await request(path, actor)).status, 401);

@@ -40,11 +40,11 @@
   const homeHref = (role) => role === "teacher" ? "tutor-check.html?studio=1" : "index.html";
   const topLinks = (role) => role === "teacher"
     ? link(homeHref(role), "house", "Home", marketplaceStudioPage, ' id="qcnavHomeLink"')
-      + link("tutor-check.html", "shopping-bag", "Marketplace", marketplacePage && !marketplaceStudioPage)
       + link("social.html#community", "globe", "Explore", pageKey === "social")
+      + link("tutor-check.html", "shopping-bag", "My Tutor", marketplacePage && !marketplaceStudioPage)
     : link(homeHref(role), "house", "Home", pageKey === "dashboard", ' id="qcnavHomeLink"')
-      + link("tutor-check.html", "shopping-bag", "Marketplace", marketplacePage)
-      + link("social.html#community", "globe", "Explore", pageKey === "social");
+      + link("social.html#community", "globe", "Explore", pageKey === "social")
+      + link("tutor-check.html", "shopping-bag", "My Tutor", marketplacePage);
   const marketplaceActions = marketplacePage
     ? `<div class="qcnav-market-actions">
          <button id="manageButton" type="button" aria-label="Open teacher studio" hidden><i data-lucide="school"></i><span id="manageLabel" data-i18n>Teacher studio</span></button>

@@ -1,8 +1,8 @@
 import { auth } from "./js/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, getBlob, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse, courseAgreement } from "./js/tutor-model.js?v=20261109-course-agreement";
-import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStats, watchAccount, saveCourse, saveCourseDraft, deleteCourseDraft, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview, requestTutorVerification, getTutorVerificationStatus, listTutorVerificationRequests, reviewTutorVerification } from "./js/tutor-service.js?v=20261109-course-agreement";
+import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse, courseAgreement, courseFaq } from "./js/tutor-model.js?v=20261109-course-faq";
+import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStats, watchAccount, saveCourse, saveCourseDraft, deleteCourseDraft, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview, requestTutorVerification, getTutorVerificationStatus, listTutorVerificationRequests, reviewTutorVerification } from "./js/tutor-service.js?v=20261109-course-faq";
 
 const $ = id => document.getElementById(id);
 $("editorFieldBank").append($("courseEditorFields").content.cloneNode(true));
@@ -89,6 +89,8 @@ let initialClasses = pageParams.get("classes") === "1";
 let classesView = false, requestsReady = false;
 let archiveId = "";
 let editorDirty = false, editorBusy = false, editorReturnCourse = "";
+let editorFaq = [];
+let editorFaqCustomized = false;
 let teacherEditDirty = false, teacherEditBusy = false;
 let editorProfileStop = () => {};
 let removedPreview = false;
@@ -1340,15 +1342,12 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     faqPanel.setAttribute("role", "tabpanel");
     faqPanel.setAttribute("aria-labelledby", "course-tab-faq");
     faqPanel.dataset.detailPanel = "faq";
-    [
-        ["How do I join this course?", "Choose Book a Class to send an enrollment request. The teacher will follow up about the schedule."],
-        ["Do I pay on this page?", "No. This marketplace does not process payments. Confirm payment and class arrangements directly with the teacher."],
-        ["Where can I see the schedule?", course.schedule]
-    ].forEach(([question, answer]) => {
-        const disclosure = document.createElement("details");
-        disclosure.append(el("summary", "", question), el("p", "", answer));
+    courseFaq(course, { draft: Boolean(editorCourse) }).forEach(({ question, answer }, index) => {
+        const disclosure = faqDisclosure(question, answer);
+        disclosure.dataset.faqIndex = String(index);
         faqPanel.append(disclosure);
     });
+    if (!faqPanel.children.length) faqPanel.append(el("p", "muted", "The teacher has not added FAQs yet."));
     panels.append(faqPanel);
     detailMain.append(panels);
 
@@ -1600,6 +1599,16 @@ function addCourseEditControls(target) {
         list.after(action(`Add ${noun}`, "text-link course-add-item", () => edit(name, { add: true })));
     }
     const purchase = target.querySelector(".purchase-panel");
+    const faq = target.querySelector(".detail-faq");
+    faq.querySelectorAll("details").forEach((item, index) => {
+        const row = el("div", "faq-owner-item");
+        const controls = el("div", "row-actions");
+        controls.append(editIcon(`Edit FAQ ${index + 1}`, () => edit("faq", { index })),
+            editIcon(`Remove FAQ ${index + 1}`, () => edit("faq", { index, remove: true }), "trash"));
+        item.replaceWith(row);
+        row.append(item, controls);
+    });
+    faq.append(action("Add FAQ", "text-link course-add-item", () => edit("faq", { add: true })));
     purchase.append(action(courses[detailId].published ? "Pause course" : "Publish course", "text-button", () => edit("published")));
     purchase.append(action("Archive course", "text-button", () => {
         archiveId = detailId;
@@ -1719,6 +1728,8 @@ function openEditor(id = "", edit = { name: "title" }, draftId = "") {
     $("editorFieldBank").append(...editorLabels);
     form.reset();
     const course = editorSource();
+    editorFaqCustomized = course?.faqCustomized === true;
+    editorFaq = courseFaq(course || {}, { draft: true });
     for (const key of ["title", "category", "type", "price", "originalPrice", "summary", "whatYouLearn", "curriculum", "schedule", "scheduleDays", "startTime", "endTime", "startDate", "mode", "maxStudents", "sessionCount", "sessionDurationMinutes", "completionDeadline", "cancellationTerms"]) {
         const value = course?.[key] ?? (key === "category" ? "ielts" : key === "type" ? "live" : key === "whatYouLearn" ? course?.curriculum || "" : "");
         form.elements.namedItem(key).value = ["maxStudents", "sessionCount", "sessionDurationMinutes"].includes(key) && Number(value) === 0 ? "" : value;
@@ -1857,6 +1868,12 @@ function inlineCourseControl(names, display, labelText) {
 }
 function activateCourseField(edit) {
     const canvas = $("editorCanvas");
+    if (edit.name === "faq") {
+        selectDetailTab("faq", false, canvas);
+        if (edit.add) canvas.querySelector(".detail-faq .course-add-item").click();
+        else canvas.querySelectorAll(".faq-editor-item")[edit.index ?? 0]?.querySelector(edit.remove ? '[data-faq-action="remove"]' : ".course-edit-icon").click();
+        return;
+    }
     if (["sessionCount", "sessionDurationMinutes", "completionDeadline", "cancellationTerms"].includes(edit.name)) {
         selectDetailTab("overview", false, canvas);
         const field = $("courseForm").elements.namedItem(edit.name);
@@ -1913,6 +1930,7 @@ function arrangeCourseEditor() {
     }
     createEditorList("whatYouLearn", overview.querySelector(".learning-outcomes"), "outcome");
     createEditorList("curriculum", canvas.querySelector('[data-detail-panel="curriculum"] .curriculum-list'), "lesson");
+    createFaqEditor(canvas.querySelector(".detail-faq"));
     const emptyOutcomes = overview.querySelector(".editor-list").previousElementSibling;
     if (emptyOutcomes?.matches(".muted")) emptyOutcomes.remove();
     const curriculumShortcut = action("Edit curriculum", "text-link", () => selectDetailTab("curriculum", false, canvas));
@@ -2026,6 +2044,87 @@ function createEditorList(name, target, noun) {
     section.append(list, add);
     target.replaceWith(section);
 }
+function faqDisclosure(question, answer) {
+    const disclosure = document.createElement("details");
+    disclosure.append(el("summary", "", question || "New question"), el("p", "", answer || "Add an answer"));
+    return disclosure;
+}
+function createFaqEditor(panel) {
+    const list = el("div", "faq-editor-list");
+    const sync = () => {
+        editorFaqCustomized = true;
+        editorDirty = true;
+        updateEditorSummary();
+    };
+    const renumber = () => {
+        [...list.children].forEach((item, index) => {
+            item.querySelector("input").setAttribute("aria-label", `FAQ ${index + 1} question`);
+            item.querySelector("textarea").setAttribute("aria-label", `FAQ ${index + 1} answer`);
+            item.querySelector(".course-edit-icon").setAttribute("aria-label", `Edit FAQ ${index + 1}`);
+            item.querySelector('[data-faq-action="remove"]').setAttribute("aria-label", `Remove FAQ ${index + 1}`);
+        });
+        add.disabled = editorFaq.length >= 20;
+    };
+    const addRow = (row, focus = false) => {
+        const item = el("div", "faq-editor-item");
+        const preview = faqDisclosure(row.question, row.answer);
+        const fields = el("div", "faq-editor-fields course-inline-inputs");
+        fields.hidden = !focus;
+        preview.hidden = focus;
+        for (const [name, tag, max] of [["question", "input", 200], ["answer", "textarea", 2000]]) {
+            const label = el("label", "", name === "question" ? "Question" : "Answer");
+            const input = el(tag);
+            input.value = row[name];
+            input.maxLength = max;
+            input.required = true;
+            if (tag === "textarea") input.rows = 4;
+            input.addEventListener("input", () => { row[name] = input.value; sync(); });
+            label.append(input);
+            fields.append(label);
+        }
+        const controls = el("div", "row-actions");
+        const edit = editIcon("Edit FAQ", () => {
+            preview.hidden = true;
+            fields.hidden = false;
+            fields.querySelector("input").focus({ preventScroll: true });
+        });
+        const remove = editIcon("Remove FAQ", () => {
+            editorFaq.splice(editorFaq.indexOf(row), 1);
+            item.remove();
+            renumber();
+            sync();
+            add.focus({ preventScroll: true });
+        }, "trash");
+        remove.dataset.faqAction = "remove";
+        controls.append(edit, remove);
+        const done = action("Done", "text-link", () => {
+            for (const input of fields.querySelectorAll("input,textarea")) {
+                input.setCustomValidity(input.value.trim() ? "" : "Enter a question and answer.");
+                if (!input.reportValidity()) return;
+            }
+            preview.querySelector("summary").textContent = row.question;
+            preview.querySelector("p").textContent = row.answer;
+            fields.hidden = true;
+            preview.hidden = false;
+            edit.focus({ preventScroll: true });
+        });
+        fields.addEventListener("input", event => event.target.setCustomValidity(""));
+        fields.append(done);
+        item.append(preview, controls, fields);
+        list.append(item);
+        if (focus) fields.querySelector("input").focus({ preventScroll: true });
+    };
+    const add = action("Add FAQ", "text-link course-add-item", () => {
+        const row = { question: "", answer: "" };
+        editorFaq.push(row);
+        addRow(row, true);
+        renumber();
+        sync();
+    });
+    editorFaq.forEach(row => addRow(row));
+    panel.replaceChildren(list, add, el("p", "muted", "Add up to 20 questions. Changes are visible to learners only after you save the course."));
+    renumber();
+}
 function updateEditorSummary() {
     const form = $("courseForm"), canvas = $("editorCanvas");
     const count = name => form.elements.namedItem(name).value.split(/\r?\n/).filter(line => line.trim()).length;
@@ -2048,8 +2147,13 @@ function updateEditorSummary() {
     });
     canvas.querySelector(".curriculum-preview .detail-side-heading .muted").textContent = `${count("curriculum")} course items`;
     canvas.querySelector('[data-detail-panel="curriculum"] > .muted').textContent = `${count("curriculum")} course items`;
-    const faq = canvas.querySelector(".detail-faq details:last-child p");
-    faq.textContent = form.elements.namedItem("schedule").value || "Add schedule and access details in Overview.";
+    if (!editorFaqCustomized) {
+        const answer = form.elements.namedItem("schedule").value || "The teacher has not added schedule details yet.";
+        editorFaq[2].answer = answer;
+        const faq = canvas.querySelectorAll(".faq-editor-item")[2];
+        faq.querySelector("textarea").value = answer;
+        faq.querySelector("details p").textContent = answer;
+    }
     $("removeCoursePreview").hidden = !form.elements.namedItem("previewFile").files?.length && (removedPreview || !(editorSource()?.previewPath || editorSource()?.coverURL));
 }
 function closeEditor() {
@@ -2107,6 +2211,11 @@ $("courseForm").addEventListener("invalid", event => {
     const panel = event.target.closest("[data-detail-panel]");
     if (panel) selectDetailTab(panel.dataset.detailPanel, false, $("editorCanvas"));
     const control = event.target.closest(".course-inline-control");
+    const faqFields = event.target.closest(".faq-editor-fields");
+    if (faqFields) {
+        faqFields.hidden = false;
+        faqFields.parentElement.querySelector("details").hidden = true;
+    }
     if (control) {
         control.querySelector(".course-inline-display").hidden = true;
         control.querySelector(".course-inline-inputs").hidden = false;
@@ -2139,6 +2248,8 @@ $("courseForm").addEventListener("submit", async event => {
     const form = $("courseForm"), fields = [...form.elements];
     const disabledStates = fields.map(field => field.disabled);
     const data = Object.fromEntries(new FormData(form));
+    data.faqCustomized = editorFaqCustomized;
+    data.faq = editorFaqCustomized ? editorFaq.map(row => ({ ...row })) : null;
     data.price = Number(data.price); data.originalPrice = Number(data.originalPrice || 0); data.maxStudents = Number(data.maxStudents || 0); data.published = form.elements.namedItem("published").checked;
     data.agreementEnabled = form.elements.namedItem("agreementEnabled").checked;
     let file = form.elements.namedItem("previewFile").files?.[0];
