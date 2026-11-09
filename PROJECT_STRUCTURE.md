@@ -27,6 +27,33 @@ The `/api/**` Cloud Run rewrite is unchanged.
 
 ## Shared content save reliability
 
+### Marketplace course agreements
+
+The marketplace catalog uses four equal columns at browser viewport widths of
+1280 CSS pixels and above. At 1280-1439px it uses compact card padding and gaps;
+smaller screens retain the automatic 260px-minimum responsive grid. Filtering
+to fewer results preserves the column width rather than stretching a single card.
+
+Teachers can enable a session agreement in the course editor: 1-100 sessions,
+1-480 minutes per session, a completion date (inclusive through the end of that
+UTC date), and up to 2,000 characters of cancellation/rescheduling terms.
+Existing listings without agreements retain their enrollment behavior, and
+private drafts can retain incomplete terms. Enabled agreements must be complete
+when saved as listings.
+
+Students confirm the terms before sending enrollment requests, including from
+the cart. The enrollment callable validates the current terms, rejects expired
+deadlines or stale confirmations (including changed prices), and saves a
+server-authored snapshot under `tutor_requests/{id}/agreement`. Course edits do
+not change that snapshot. Both the learner class view and teacher inbox show it.
+The contract is documented in `shared/schemas/course-agreement.schema.json`.
+
+This is agreement setup only: payments, session attendance, automatic payouts,
+and refunds are not implemented. Deploy the updated database rules and
+enrollment functions together with the frontend before enabling agreements.
+Run `node --test toefl-sample/tutor.test.js functions/marketplace-enrollment-policy.test.js`
+for unit tests; database/callable integration tests require Firebase emulators.
+
 Shared Firebase PUT requests use ETag/If-Match conditional requests. A stale editor is
 rejected rather than overwriting newer content; reload the affected editor before
 retrying. TOEFL draft saves return `false` on cloud failure while retaining the

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Course agreement enrollment snapshot",
+  "description": "Server-authored terms accepted at enrollment. Completion deadline is inclusive through the end of that UTC date. Not a payment, attendance or refund record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "sessionCount", "sessionDurationMinutes", "completionDeadline", "cancellationTerms", "courseTitle", "teacherId", "price", "currency", "acceptedAt"],
+  "properties": {
+    "version": { "const": 1 },
+    "sessionCount": { "type": "integer", "minimum": 1, "maximum": 100 },
+    "sessionDurationMinutes": { "type": "integer", "minimum": 1, "maximum": 480 },
+    "completionDeadline": { "type": "string", "format": "date" },
+    "cancellationTerms": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "courseTitle": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "teacherId": { "type": "string", "minLength": 1 },
+    "price": { "type": "integer", "minimum": 0, "maximum": 100000000 },
+    "currency": { "const": "IDR" },
+    "acceptedAt": { "type": "integer", "minimum": 0 }
+  }
+}

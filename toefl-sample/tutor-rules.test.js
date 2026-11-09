@@ -23,6 +23,12 @@ test("teacher self-registration cannot grant developer privileges; listing owner
     const course = { teacherId: "tutor-teacher", teacherName: "Teacher", title: "IELTS", summary: "Practice", whatYouLearn: "Speaking", curriculum: "Speaking", schedule: "Monday WIB", scheduleDays: "Mon, Wed", startTime: "08:00", endTime: "10:00", startDate: "2026-11-05", mode: "online", maxStudents: 5, category: "ielts", type: "live", price: 100000, originalPrice: 0, coverURL: "", previewURL: "", previewPath: "", previewType: "", published: true, createdAt: stamp, updatedAt: stamp };
     assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PUT", course)).status, 200);
     assert.equal((await request("tutor_courses/test-course", null)).status, 200);
+    const agreement = { agreementEnabled: true, sessionCount: 5, sessionDurationMinutes: 60, completionDeadline: "2027-12-31", cancellationTerms: "Make up missed sessions with 24 hours notice.", updatedAt: stamp };
+    assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PATCH", { agreementEnabled: true, updatedAt: stamp })).status, 401, "enabled agreements require complete terms");
+    assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PATCH", agreement)).status, 200);
+    for (const change of [{ sessionCount: 0 }, { sessionCount: 101 }, { sessionDurationMinutes: 481 }, { cancellationTerms: "" }, { completionDeadline: "" }]) {
+        assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PATCH", { ...change, updatedAt: stamp })).status, 401, "invalid agreement edits are rejected");
+    }
     assert.equal((await request("tutor_courses/test-course", "tutor-teacher", "PATCH", { maxStudents: 501, updatedAt: stamp })).status, 401);
     assert.equal((await request("tutor_requests/test-course_student", "student", "PUT", { courseId: "test-course", studentId: "student", teacherId: "tutor-teacher", studentName: "Student", price: 100000, status: "pending", createdAt: stamp, updatedAt: stamp })).status, 401);
     assert.equal((await request("tutor_courses/test-course", "stranger", "PATCH", { price: 0, updatedAt: stamp })).status, 401);

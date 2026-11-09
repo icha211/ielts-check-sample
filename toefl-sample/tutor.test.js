@@ -6,6 +6,16 @@ const { test } = require("node:test");
 const model = vm.createContext({ URL, Intl });
 vm.runInContext(fs.readFileSync(path.join(__dirname, "js", "tutor-model.js"), "utf8").replace(/^export /gm, ""), model);
 const course = { title: "IELTS Speaking", teacherName: "A teacher", summary: "Speaking practice", whatYouLearn: "Build speaking fluency", curriculum: "Part 1\nPart 2", schedule: "Saturdays, 10:00 WIB", category: "speaking", type: "live", price: 100000, originalPrice: 150000, coverURL: "", previewURL: "", previewPath: "", previewType: "", published: true };
+test("session agreements validate complete terms and preserve legacy and private draft behavior", () => {
+    const terms = { ...course, agreementEnabled: true, sessionCount: 5, sessionDurationMinutes: 60, completionDeadline: "2027-01-31", cancellationTerms: "Reschedule missed sessions with 24 hours notice." };
+    assert.equal(model.validateCourse(terms).sessionCount, 5);
+    assert.equal(model.courseAgreement(course), null);
+    assert.equal(model.validateCourse(course).agreementEnabled, false);
+    for (const change of [{ sessionCount: 0 }, { sessionCount: 101 }, { sessionCount: 1.5 }, { sessionDurationMinutes: 481 }, { completionDeadline: "2027-02-30" }, { cancellationTerms: "" }, { cancellationTerms: "a".repeat(2001) }, { startDate: "2027-02-01" }]) {
+        assert.throws(() => model.validateCourse({ ...terms, ...change }));
+    }
+    assert.equal(model.validateCourse({ ...terms, sessionCount: "", sessionDurationMinutes: "", completionDeadline: "", cancellationTerms: "" }, { draft: true }).sessionCount, 0);
+});
 test("course publishing validates money, fields, types and safe cover URLs", () => {
     assert.equal(model.validateCourse(course).price, 100000);
     for (const change of [{ price: -1 }, { price: 0.5 }, { originalPrice: 50000 }, { originalPrice: -1 }, { category: "invalid" }, { type: "invalid" }, { title: "" }, { curriculum: "a".repeat(5001) }, { whatYouLearn: "" }, { whatYouLearn: "a".repeat(1201) }, { coverURL: "javascript:alert(1)" }, { coverURL: "http://example.com" }]) {
@@ -202,7 +212,7 @@ test("inline saves preserve media, remove it only on request, and keep failed ed
                 previewURL: "https://example.test/preview.jpg", previewPath: "tutor-courses/teacher/media/preview.jpg", previewType: "image"
             };
             const fields = Object.entries(course).map(([name, value]) => ({ name, value, disabled: false }));
-            fields.push({ name: "previewFile", files: [], disabled: false }, { name: "archive", disabled: true });
+            fields.push({ name: "previewFile", files: [], disabled: false }, { name: "agreementEnabled", checked: false, disabled: false }, { name: "archive", disabled: true });
             fields.find(field => field.name === "published").checked = true;
             fields.namedItem = name => fields.find(field => field.name === name);
             let submit;
@@ -220,7 +230,7 @@ test("inline saves preserve media, remove it only on request, and keep failed ed
                 editingDraftId: "", editorSource: () => scenario === "create" ? undefined : existing,
                 teacherEditDirty: false, teacherEditBusy: false,
                 FormData: class extends Map { constructor() { super(Object.entries(course)); } },
-                validateCourse: model.validateCourse,
+                validateCourse: model.validateCourse, courseAgreement: model.courseAgreement,
                 saveCourse: async (data, id) => {
                     if (scenario === "failure") throw new Error("Connection failed");
                     calls.push(["save", data, id]);
@@ -418,7 +428,7 @@ function fixture() {
             }
             return { data: { requests: [] } };
         },
-        validateCourse: model.validateCourse,
+        validateCourse: model.validateCourse, courseAgreement: model.courseAgreement,
         validateTeachingProfile: model.validateTeachingProfile,
         ref: (_, key) => ({ key }), query: (target, ...filters) => ({ ...target, filters }), orderByChild: value => value, equalTo: value => value,
         serverTimestamp: () => 123, push: target => ({ key: "new-course", path: `${target.key}/new-course` }),
@@ -552,11 +562,25 @@ test("only teacher accounts publish, only owners edit, and enrollment never proc
     context.auth.currentUser.uid = "student";
     await context.requestEnrollment({ ...course, id: "one", teacherId: "teacher" });
     const request = data["tutor_requests/one_student"];
-    assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1))), ["createEnrollmentRequest", { courseId: "one" }]);
+    assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1))), ["createEnrollmentRequest", { courseId: "one", agreement: null }]);
     assert.equal(request.status, "pending");
     assert.equal(request.price, 100000);
     assert.equal(request.paid, undefined);
     await assert.rejects(context.requestEnrollment({ ...course, id: "one", teacherId: "teacher" }), /already requested/);
+});
+test("enrollment confirmation forwards the displayed terms and price for server validation", async () => {
+    const { context, data, calls } = fixture();
+    context.auth.currentUser.uid = "student";
+    const agreedCourse = { ...course, id: "terms", teacherId: "teacher", agreementEnabled: true,
+        sessionCount: 5, sessionDurationMinutes: 60, completionDeadline: "2027-12-31", cancellationTerms: "Make up missed sessions." };
+    data["tutor_courses/terms"] = agreedCourse;
+    await context.requestEnrollment(agreedCourse);
+    const confirmation = calls.at(-1)[1];
+    assert.equal(confirmation.agreement.sessionCount, 5);
+    assert.equal(confirmation.agreement.courseTitle, course.title);
+    assert.equal(confirmation.agreement.price, course.price);
+    assert.equal(confirmation.agreement.teacherId, "teacher");
+    assert.equal(confirmation.agreement.acceptedAt, undefined, "acceptance timestamps are server-authored");
 });
 test("clearing teaching details and archiving courses preserve learner records and require ownership", async () => {
     const { context, data, writes } = fixture();

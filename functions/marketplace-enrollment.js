@@ -1,6 +1,6 @@
 const { getDatabase } = require("firebase-admin/database");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { releaseSeat, reserveSeat } = require("./marketplace-enrollment-policy");
+const { releaseSeat, reserveSeat, enrollmentAgreement } = require("./marketplace-enrollment-policy");
 
 const FUNCTION_REGION = "asia-southeast1";
 const db = () => getDatabase();
@@ -39,6 +39,13 @@ exports.createEnrollmentRequest = onCall({ region: FUNCTION_REGION, maxInstances
     const course = (await db().ref(`tutor_courses/${courseId}`).get()).val();
     if (!course?.published || course.archived) throw new HttpsError("failed-precondition", "This course is no longer open for enrollment.");
     if (course.teacherId === auth.uid) throw new HttpsError("permission-denied", "You cannot enroll in your own course.");
+    const now = Date.now();
+    let agreement;
+    try {
+        agreement = enrollmentAgreement(course, request.data?.agreement, now);
+    } catch (failure) {
+        throw new HttpsError("failed-precondition", failure.message);
+    }
 
     const requestId = `${courseId}_${auth.uid}`;
     const requestRef = db().ref(`tutor_requests/${requestId}`);
@@ -46,11 +53,11 @@ exports.createEnrollmentRequest = onCall({ region: FUNCTION_REGION, maxInstances
     const capacity = Number.isSafeInteger(course.maxStudents) && course.maxStudents > 0 ? course.maxStudents : 0;
     await reserveCourseSeat(courseId, requestId, capacity);
 
-    const now = Date.now();
     const result = await requestRef.transaction(current => current || {
         courseId, studentId: auth.uid, teacherId: course.teacherId,
         studentName: String(auth.token.name || "Learner").slice(0, 100),
-        price: course.price, status: "pending", createdAt: now, updatedAt: now
+        price: course.price, status: "pending", createdAt: now, updatedAt: now,
+        ...(agreement ? { agreement } : {})
     }, undefined, false);
     if (result.committed) return { requestId };
     if (result.snapshot.exists()) throw new HttpsError("already-exists", "You already requested this course. Check My classes in the Marketplace.");

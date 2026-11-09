@@ -73,6 +73,11 @@
           "startDate": { ".validate": "newData.isString() && (newData.val() === '' || (newData.val().length === 10 && newData.val().matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))" },
           "mode": { ".validate": "newData.val() === '' || newData.val() === 'online' || newData.val() === 'offline'" },
           "maxStudents": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 500" },
+          "agreementEnabled": { ".validate": "newData.isBoolean()" },
+          "sessionCount": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100" },
+          "sessionDurationMinutes": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 480" },
+          "completionDeadline": { ".validate": "newData.isString() && (newData.val() === '' || newData.val().matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'))" },
+          "cancellationTerms": { ".validate": "newData.isString() && newData.val().length <= 2000" },
           "published": { ".validate": "newData.val() === false" },
           "createdAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
           "updatedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
@@ -85,7 +90,7 @@
       ".indexOn": ["teacherId", "published"],
       "$course": {
         ".write": "auth != null && root.child('tutor_roles').child(auth.uid).val() === 'teacher' && newData.exists() && newData.child('teacherId').val() === auth.uid && (!data.exists() || data.child('teacherId').val() === auth.uid)",
-        ".validate": "newData.hasChildren(['teacherId','teacherName','title','summary','whatYouLearn','curriculum','schedule','category','type','price','originalPrice','coverURL','previewURL','previewPath','previewType','published','createdAt','updatedAt']) && (newData.child('archived').val() !== true || newData.child('published').val() === false)",
+        ".validate": "newData.hasChildren(['teacherId','teacherName','title','summary','whatYouLearn','curriculum','schedule','category','type','price','originalPrice','coverURL','previewURL','previewPath','previewType','published','createdAt','updatedAt']) && (newData.child('archived').val() !== true || newData.child('published').val() === false) && (newData.child('agreementEnabled').val() !== true || (newData.hasChildren(['sessionCount','sessionDurationMinutes','completionDeadline','cancellationTerms']) && newData.child('sessionCount').val() >= 1 && newData.child('sessionDurationMinutes').val() >= 1 && newData.child('completionDeadline').val() !== '' && newData.child('cancellationTerms').val().length > 0))",
         "teacherId": { ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())" },
         "teacherName": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100" },
         "title": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120" },
@@ -107,6 +112,11 @@
         "startDate": { ".validate": "newData.isString() && (newData.val() === '' || (newData.val().length === 10 && newData.val().matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')))" },
         "mode": { ".validate": "newData.val() === '' || newData.val() === 'online' || newData.val() === 'offline'" },
         "maxStudents": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 500" },
+        "agreementEnabled": { ".validate": "newData.isBoolean()" },
+        "sessionCount": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 100" },
+        "sessionDurationMinutes": { ".validate": "newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 480" },
+        "completionDeadline": { ".validate": "newData.isString() && (newData.val() === '' || newData.val().matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'))" },
+        "cancellationTerms": { ".validate": "newData.isString() && newData.val().length <= 2000" },
         "published": { ".validate": "newData.isBoolean()" },
         "archived": { ".validate": "newData.isBoolean() && (newData.val() === false || newData.parent().child('published').val() === false)" },
         "createdAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
@@ -137,6 +147,9 @@
         "studentName": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 100 && (!data.exists() || newData.val() === data.val())" },
         "price": { ".validate": "newData.isNumber() && (!data.exists() || newData.val() === data.val())" },
         "status": { ".validate": "newData.val() === 'pending' || newData.val() === 'accepted' || newData.val() === 'declined' || newData.val() === 'cancelled'" },
+        "agreement": {
+          ".validate": "newData.hasChildren(['version','sessionCount','sessionDurationMinutes','completionDeadline','cancellationTerms','courseTitle','teacherId','price','currency','acceptedAt'])"
+        },
         "createdAt": { ".validate": "newData.isNumber() && (data.exists() ? newData.val() === data.val() : newData.val() === now)" },
         "updatedAt": { ".validate": "newData.isNumber() && newData.val() === now" },
         "$other": { ".validate": false }

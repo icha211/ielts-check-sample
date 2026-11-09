@@ -27,6 +27,8 @@ export const httpsCallable = (_, name) => async input => {
         if (!course?.published || course.archived) throw new Error("This course is no longer open for enrollment.");
         if (course.teacherId === current?.uid) throw new Error("You cannot enroll in your own course.");
         if (data.tutor_requests?.[requestId]) throw new Error("You already requested this course. Check My classes in the Marketplace.");
+        const now = Date.now();
+        const agreement = enrollmentAgreement(course, input.agreement, now);
         if (localStorage.getItem("beta-deny-write") === "true" || localStorage.getItem("beta-deny-write-path") === `tutor_requests/${requestId}`) {
             throw new Error("Mock database rejected the save");
         }
@@ -41,10 +43,10 @@ export const httpsCallable = (_, name) => async input => {
         reservations[requestId] = true;
         stats.reservations = reservations;
         stats.reserved = new Set([...Object.keys(reservations), ...Object.entries(stats.records || {}).filter(([, record]) => record?.accepted).map(([id]) => id)]).size;
-        const now = Date.now();
         ((data.tutor_requests ||= {})[requestId] = {
             courseId, studentId: current.uid, teacherId: course.teacherId, studentName: current.displayName || "Learner",
-            price: course.price, status: "pending", createdAt: now, updatedAt: now
+            price: course.price, status: "pending", createdAt: now, updatedAt: now,
+            ...(agreement ? { agreement } : {})
         });
         localStorage.setItem("beta-db", JSON.stringify(data));
         setTimeout(() => window.dispatchEvent(new Event("beta-db-updated")), 0);

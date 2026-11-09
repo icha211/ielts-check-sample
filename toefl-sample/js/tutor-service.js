@@ -1,7 +1,7 @@
 import { auth, db } from "./firebase-config.js";
 import { ref, get, set, update, push, onValue, query, orderByChild, equalTo, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
-import { validateCourse, validateTeachingProfile } from "./tutor-model.js?v=20261108-course-card";
+import { validateCourse, validateTeachingProfile, courseAgreement } from "./tutor-model.js?v=20261109-course-agreement";
 
 const marketplaceFunctions = getFunctions(auth.app, "asia-southeast1");
 const callMarketplace = name => httpsCallable(marketplaceFunctions, name);
@@ -119,7 +119,11 @@ export async function toggleLibrary(kind, id, enabled) {
 }
 export async function requestEnrollment(course) {
     user();
-    return (await callMarketplace("createEnrollmentRequest")({ courseId: course.id })).data;
+    const agreement = courseAgreement(course);
+    return (await callMarketplace("createEnrollmentRequest")({
+        courseId: course.id,
+        agreement: agreement ? { ...agreement, courseTitle: course.title, teacherId: course.teacherId, price: course.price } : null
+    })).data;
 }
 export async function changeRequest(id, status) {
     user();

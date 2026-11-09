@@ -2,7 +2,8 @@ const { test, expect } = require("@playwright/test");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const firebase = fs.readFileSync(path.join(__dirname, "firebase-mock.js"), "utf8");
+const { enrollmentAgreement } = require("../../functions/marketplace-enrollment-policy");
+const firebase = fs.readFileSync(path.join(__dirname, "firebase-mock.js"), "utf8") + "\n" + enrollmentAgreement.toString();
 const course = {
     title: "Beta listening course", teacherId: "teacher", teacherName: "Beta Teacher",
     category: "listening", type: "self", price: 100000, originalPrice: 0,
@@ -80,6 +81,100 @@ test.afterEach(async ({ page }) => {
     expect(page.betaUnexpectedRequests, "Unmocked external requests were blocked").toEqual([]);
 });
 
+test("course agreements save, restore and snapshot confirmed terms without activating payments", async ({ page, context }) => {
+    await context.addInitScript(() => {
+        if (!localStorage.getItem("beta-user")) localStorage.setItem("beta-user", JSON.stringify({ uid: "teacher", displayName: "Beta Teacher", role: "teacher" }));
+    });
+    await page.goto("/toefl-sample/tutor-check.html?course=beta");
+    await page.getByRole("button", { name: "Edit course agreement", exact: true }).click();
+    const editor = page.locator("#courseEditor");
+    await expect(editor.getByLabel("Number of agreed sessions")).toBeDisabled();
+    await page.locator("#saveCourseButton").click();
+    await expect(editor).toBeHidden();
+    await page.getByRole("button", { name: "Edit course agreement", exact: true }).click();
+    await expect(editor.getByLabel("Number of agreed sessions")).toHaveValue("");
+    await editor.getByLabel("Define a session agreement").check();
+    await editor.getByLabel("Number of agreed sessions").fill("5");
+    await editor.getByLabel("Minutes per session").fill("60");
+    await editor.getByLabel("Complete all sessions by").fill("2027-12-31");
+    await editor.getByLabel("Cancellation and rescheduling terms").fill("Give 24 hours notice. Make up all missed sessions before the deadline.");
+    await page.locator("#saveCourseButton").click();
+    await expect(editor).toBeHidden();
+    await expect(page.locator("#courseDetail .course-agreement")).toContainText("5 sessions, 60 minutes each");
+    await page.reload();
+    await page.getByRole("button", { name: "Edit course agreement", exact: true }).click();
+    await expect(editor.getByLabel("Number of agreed sessions")).toHaveValue("5");
+    await expect(editor.getByLabel("Define a session agreement")).toBeChecked();
+    await page.locator("#cancelCourseEdit").click();
+    await page.evaluate(() => {
+        localStorage.setItem("beta-user", JSON.stringify({ uid: "student", displayName: "Student", role: "student" }));
+    });
+    await page.reload();
+    const book = page.getByRole("button", { name: "Book a Class", exact: true });
+    page.once("dialog", async dialog => {
+        expect(dialog.message()).toContain("5 sessions, 60 minutes each");
+        await dialog.dismiss();
+    });
+    await book.click();
+    await expect(page.locator("#detailError")).toContainText("not confirmed");
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("beta-db")).tutor_requests)).toBeUndefined();
+    page.once("dialog", dialog => dialog.accept());
+    await book.click();
+    await expect(page.locator(".detail-feedback")).toContainText("Request sent");
+    const snapshot = await page.evaluate(() => {
+        const db = JSON.parse(localStorage.getItem("beta-db"));
+        const terms = db.tutor_requests.beta_student.agreement;
+        db.tutor_courses.beta.sessionCount = 8;
+        localStorage.setItem("beta-db", JSON.stringify(db));
+        return terms;
+    });
+    expect(snapshot.sessionCount).toBe(5);
+    expect(snapshot.price).toBe(100000);
+    await page.goto("/toefl-sample/tutor-check.html?classes=1");
+    await expect(page.locator("#classesContent .course-agreement")).toContainText("5 sessions, 60 minutes each");
+    await page.evaluate(() => {
+        localStorage.setItem("beta-user", JSON.stringify({ uid: "teacher", displayName: "Beta Teacher", role: "teacher" }));
+    });
+    await page.goto("/toefl-sample/tutor-check.html?studio=1");
+    await expect(page.locator("#teacherInbox .course-agreement")).toContainText("5 sessions, 60 minutes each");
+});
+
+test("four-card laptop grid fits long prices and keeps filtered card widths", async ({ page, context }) => {
+    await context.addInitScript(() => {
+        localStorage.setItem("beta-user", JSON.stringify({ uid: "student", displayName: "Student", role: "student" }));
+        const db = JSON.parse(localStorage.getItem("beta-db"));
+        for (let index = 0; index < 5; index++) {
+            db.tutor_courses[`laptop-${index}`] = { ...db.tutor_courses.beta,
+                title: `Laptop course ${index} with a longer title`,
+                price: 99000000, originalPrice: 100000000, startTime: "09:59", endTime: "10:10",
+                startDate: "2027-11-25" };
+        }
+        localStorage.setItem("beta-db", JSON.stringify(db));
+    });
+    for (const width of [1279, 1280, 1366, 1440, 1920]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto("/toefl-sample/tutor-check.html");
+        await expect(page.locator("#courseGrid")).toHaveAttribute("aria-busy", "false");
+        const metrics = await page.locator("#courseGrid").evaluate(grid => {
+            const cards = [...grid.querySelectorAll(".course-card")];
+            return {
+                columns: getComputedStyle(grid).gridTemplateColumns.split(" ").length,
+                cardWidth: cards[0].getBoundingClientRect().width,
+                overflow: document.documentElement.scrollWidth > innerWidth,
+                clipped: cards.flatMap(card => [...card.querySelectorAll(".course-price,.course-price-amount,.course-price del,.discount,.card-bottom,.course-fact-value")]
+                    .filter(node => node.scrollWidth > node.clientWidth + 1).map(node => node.className))
+            };
+        });
+        expect(metrics.columns).toBe(width >= 1280 ? 4 : 3);
+        expect(metrics.overflow).toBe(false);
+        expect(metrics.clipped).toEqual([]);
+        await page.locator("#courseSearch").fill("Laptop course 0");
+        await expect(page.locator("#courseGrid .course-card")).toHaveCount(1);
+        const filteredWidth = await page.locator("#courseGrid .course-card").evaluate(node => node.getBoundingClientRect().width);
+        expect(filteredWidth).toBeCloseTo(metrics.cardWidth, 0);
+    }
+});
+
 test("TOEFL sizing stays consistent across phone, tablet and desktop without an Explore sidebar", async ({ page, context }) => {
     test.setTimeout(120000);
     await context.addInitScript(() => {
@@ -89,13 +184,14 @@ test("TOEFL sizing stays consistent across phone, tablet and desktop without an 
         for (let index = 1; index <= 4; index++) data.tutor_courses[`sizing-${index}`] = { ...data.tutor_courses.beta };
         localStorage.setItem("beta-db", JSON.stringify(data));
     });
+
     const pages = [
         ["history.html", ".history-main", ".history-content"],
         ["MyProgress.html", "main.main", "main.main"],
         ["tutor-check.html", ".marketplace", ".marketplace"],
         ["social.html", ".community-page", ".community-page"]
     ];
-    for (const width of [390, 768, 820, 1023, 1024, 1440, 1920]) {
+    for (const width of [390, 768, 820, 1023, 1024, 1280, 1440, 1920]) {
         await page.setViewportSize({ width, height: 900 });
         for (const [file, shell, content] of pages) {
             await page.goto(`/toefl-sample/${file}`);
@@ -130,7 +226,11 @@ test("TOEFL sizing stays consistent across phone, tablet and desktop without an 
                 await expect(page.locator(compact ? ".browse-content > .filter-panel" : "#marketplaceSidebarFilters > .filter-panel")).toBeVisible();
                 const cards = await page.locator("#courseGrid .course-card").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().width));
                 expect(cards.length).toBeGreaterThan(3);
-                expect(Math.min(...cards), `Readable catalog cards at ${width}`).toBeGreaterThanOrEqual(260);
+                expect(Math.min(...cards), `Readable catalog cards at ${width}`).toBeGreaterThanOrEqual(width >= 1280 ? 220 : 260);
+                if (width >= 1280) {
+                    const columns = await page.locator("#courseGrid").evaluate(node => getComputedStyle(node).gridTemplateColumns.split(" ").length);
+                    expect(columns, `Four catalog columns at ${width}`).toBe(4);
+                }
             }
             if (file === "tutor-check.html" || file === "MyProgress.html") {
                 const tinyText = await page.locator("main").evaluate(root => {

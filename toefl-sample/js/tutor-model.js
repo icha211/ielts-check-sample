@@ -6,6 +6,33 @@ export const TUTOR_CATEGORIES = [
     ["others", "Others", "category"]
 ];
 export const TUTOR_TYPES = { live: "Live Classes", self: "Self-Paced", package: "Packages" };
+export function courseAgreement(input, { draft = false } = {}) {
+    if (input.agreementEnabled !== true) return null;
+    const agreement = {
+        version: 1,
+        sessionCount: Number(input.sessionCount || 0),
+        sessionDurationMinutes: Number(input.sessionDurationMinutes || 0),
+        completionDeadline: String(input.completionDeadline || ""),
+        cancellationTerms: String(input.cancellationTerms || "").trim()
+    };
+    for (const [key, max, label] of [["sessionCount", 100, "session count"], ["sessionDurationMinutes", 480, "session duration in minutes"]]) {
+        if (!Number.isSafeInteger(agreement[key]) || agreement[key] < (draft ? 0 : 1) || agreement[key] > max) {
+            throw new Error(`Enter ${label} from 1 to ${max}.`);
+        }
+    }
+    const date = new Date(`${agreement.completionDeadline}T00:00:00.000Z`);
+    if ((!draft || agreement.completionDeadline) && (!/^\d{4}-\d{2}-\d{2}$/.test(agreement.completionDeadline) ||
+        Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== agreement.completionDeadline)) {
+        throw new Error("Choose a valid course completion deadline.");
+    }
+    if (input.startDate && agreement.completionDeadline && agreement.completionDeadline < input.startDate) {
+        throw new Error("The completion deadline cannot be before the first class date.");
+    }
+    if ((!draft && !agreement.cancellationTerms) || agreement.cancellationTerms.length > 2000) {
+        throw new Error("Enter cancellation and rescheduling terms (1-2,000 characters).");
+    }
+    return agreement;
+}
 export function validateCourse(input, { draft = false } = {}) {
     const course = {};
     for (const [key, max] of [["title", 120], ["summary", 500], ["whatYouLearn", 1200], ["curriculum", 5000], ["schedule", 300], ["teacherName", 100]]) {
@@ -55,9 +82,13 @@ export function validateCourse(input, { draft = false } = {}) {
     }
     if (mode && !["online", "offline"].includes(mode)) throw new Error("Choose online or in-person classes.");
     if (!Number.isSafeInteger(maxStudents) || maxStudents < 0 || maxStudents > 500) throw new Error("Set course capacity from 1 to 500, or leave it blank for no limit.");
+    const agreement = courseAgreement(input, { draft });
     return {
         ...course, category: input.category, type: input.type, price: input.price, originalPrice: input.originalPrice,
         coverURL, previewURL, previewPath, previewType, scheduleDays, startTime, endTime, startDate, mode, maxStudents,
+        agreementEnabled: agreement !== null,
+        sessionCount: agreement?.sessionCount || 0, sessionDurationMinutes: agreement?.sessionDurationMinutes || 0,
+        completionDeadline: agreement?.completionDeadline || "", cancellationTerms: agreement?.cancellationTerms || "",
         published: !draft && input.published === true
     };
 }

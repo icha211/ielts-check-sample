@@ -1,8 +1,8 @@
 import { auth } from "./js/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, getBlob, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse } from "./js/tutor-model.js?v=20261108-course-card";
-import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStats, watchAccount, saveCourse, saveCourseDraft, deleteCourseDraft, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview, requestTutorVerification, getTutorVerificationStatus, listTutorVerificationRequests, reviewTutorVerification } from "./js/tutor-service.js?v=20261108-capacity";
+import { TUTOR_CATEGORIES, TUTOR_TYPES, selectCourses, courseStats, teachingSummary, rupiah, validateCourse, courseAgreement } from "./js/tutor-model.js?v=20261109-course-agreement";
+import { watchCatalog, watchReviews, watchTeachingProfile, watchTeacherIdentity, watchCourseStats, watchAccount, saveCourse, saveCourseDraft, deleteCourseDraft, saveTeachingProfile, setCourseState, toggleLibrary, requestEnrollment, changeRequest, submitReview, requestTutorVerification, getTutorVerificationStatus, listTutorVerificationRequests, reviewTutorVerification } from "./js/tutor-service.js?v=20261109-course-agreement";
 
 const $ = id => document.getElementById(id);
 $("editorFieldBank").append($("courseEditorFields").content.cloneNode(true));
@@ -27,6 +27,15 @@ function elSidebarFilters() {
     container.id = "marketplaceSidebarFilters";
     $("qcnavSidebar").append(container);
     return container;
+}
+function agreementText(agreement) {
+    return `${agreement.sessionCount} sessions, ${agreement.sessionDurationMinutes} minutes each.\nComplete all sessions by ${agreement.completionDeadline}, 23:59 UTC.\n\nCancellation and rescheduling:\n${agreement.cancellationTerms}`;
+}
+function agreementSection(agreement) {
+    const section = el("section", "detail-section-card panel course-agreement");
+    section.append(el("h3", "", "Course agreement"), el("p", "detail-copy", agreement
+        ? agreementText(agreement) : "No session agreement has been defined for this listing."));
+    return section;
 }
 function courseTeacher(course) {
     return teacherIdentities[course.teacherId]?.displayName || course.teacherName;
@@ -93,6 +102,10 @@ async function updateCourseState(id, state) {
 }
 async function sendEnrollment(course) {
     if (pendingEnrollments.has(course.id)) throw new Error("This enrollment request is already being sent.");
+    const agreement = courseAgreement(course);
+    if (agreement && !window.confirm(`Agree to the course terms for "${course.title}" at ${rupiah(course.price)}?\n\n${agreementText(agreement)}\n\nNo payment is collected yet. Attendance, payouts and refunds are not active.`)) {
+        throw new Error("Enrollment was not sent because the course agreement was not confirmed.");
+    }
     const current = version;
     pendingEnrollments.add(course.id);
     if (detailId === course.id && !$("coursePage").hidden) renderDetail();
@@ -573,8 +586,9 @@ function classCard(id, request) {
     const top = el("div", "class-card-top");
     top.append(el("span", `class-status ${tone}`, label), el("span", "class-card-date", new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short", year: "numeric" }).format(new Date(request.createdAt || 0))));
     const teacher = course ? courseTeacher(course) : "";
-    body.append(top, el("h4", "", course?.title || "Course unavailable"));
+    body.append(top, el("h4", "", request.agreement?.courseTitle || course?.title || "Course unavailable"));
     if (teacher) body.append(el("p", "class-card-teacher", `with ${teacher}`));
+    if (request.agreement) body.append(agreementSection(request.agreement));
     if (request.status === "accepted" && course?.schedule) {
         const schedule = el("p", "class-card-schedule");
         schedule.append(icon("calendar-event"), el("span", "", course.schedule));
@@ -799,7 +813,8 @@ function renderStudio() {
     }
     Object.entries(inbox).sort(([, a], [, b]) => b.createdAt - a.createdAt).forEach(([id, request]) => {
         if ($("teacherEnrollmentFilter").value && request.status !== $("teacherEnrollmentFilter").value) return;
-        const node = row(`${request.studentName} - ${courses[request.courseId]?.title || "Course"}`, `${request.status} | ${rupiah(request.price)}`);
+        const node = row(`${request.studentName} - ${request.agreement?.courseTitle || courses[request.courseId]?.title || "Course"}`, `${request.status} | ${rupiah(request.price)}`);
+        if (request.agreement) node.append(agreementSection(request.agreement));
         const buttons = el("div", "row-actions");
         if (request.status === "pending") {
             buttons.append(action("Accept", "primary", () => changeRequest(id, "accepted")), action("Decline", "", () => changeRequest(id, "declined")));
@@ -1227,6 +1242,23 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     scheduleSection.dataset.courseSection = "schedule";
     scheduleSection.append(el("h3", "", "Schedule and access"), el("p", "detail-copy", course.schedule));
     overview.append(aboutSection, outcomesSection, curriculumPreview, scheduleSection);
+    let agreement = null, agreementFailure = "";
+    if (!editorCourse) {
+        try { agreement = courseAgreement(course); }
+        catch (failure) {
+            console.error("[TutorCheck] Invalid course agreement:", failure);
+            agreementFailure = "This course has incomplete or invalid session terms. The teacher must correct them before enrollment.";
+        }
+    }
+    const agreementCard = agreementSection(agreement);
+    agreementCard.dataset.courseSection = "agreement";
+    agreementCard.append(el("p", "muted", "Session terms are saved when you request enrollment. Payments, attendance verification, payouts and refunds are not active yet."));
+    if (agreementFailure) {
+        const failure = el("p", "error", agreementFailure);
+        failure.setAttribute("role", "alert");
+        agreementCard.append(failure);
+    }
+    overview.append(agreementCard);
     panels.append(overview);
 
     const curriculumPanel = el("section", "detail-tab-panel detail-section-card panel");
@@ -1336,7 +1368,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
         if (requireLogin()) await toggleLibrary("cart", courseId, true);
     });
     add.prepend(icon("shopping-cart"));
-    add.disabled = courseFull || !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
+    add.disabled = Boolean(agreementFailure) || courseFull || !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
     if (requests[`${detailId}_${uid}`]) add.textContent = "Already requested";
     purchase.append(add);
     const book = action("Book a Class", "secondary purchase-action", async () => {
@@ -1354,7 +1386,7 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
         renderCatalog();
     });
     book.prepend(icon("calendar-event"));
-    book.disabled = courseFull || !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
+    book.disabled = Boolean(agreementFailure) || courseFull || !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
     if (requests[`${detailId}_${uid}`]) book.textContent = "Request sent";
     purchase.append(book);
     const saved = Boolean(library.favorites?.[detailId]);
@@ -1545,6 +1577,7 @@ function addCourseEditControls(target) {
         [".purchase-panel > .course-price", "price", "course price"],
         ['[data-course-section="summary"] > .detail-copy', "summary", "course description"],
         ['[data-course-section="schedule"] > .detail-copy', "schedule", "schedule"],
+        ['[data-course-section="agreement"]', "sessionCount", "course agreement"],
         [".detail-media", "previewFile", "course preview"]
     ]) {
         const node = target.querySelector(selector);
@@ -1692,12 +1725,13 @@ function openEditor(id = "", edit = { name: "title" }, draftId = "") {
     $("editorFieldBank").append(...editorLabels);
     form.reset();
     const course = editorSource();
-    for (const key of ["title", "category", "type", "price", "originalPrice", "summary", "whatYouLearn", "curriculum", "schedule", "scheduleDays", "startTime", "endTime", "startDate", "mode", "maxStudents"]) {
+    for (const key of ["title", "category", "type", "price", "originalPrice", "summary", "whatYouLearn", "curriculum", "schedule", "scheduleDays", "startTime", "endTime", "startDate", "mode", "maxStudents", "sessionCount", "sessionDurationMinutes", "completionDeadline", "cancellationTerms"]) {
         const value = course?.[key] ?? (key === "category" ? "ielts" : key === "type" ? "live" : key === "whatYouLearn" ? course?.curriculum || "" : "");
-        form.elements.namedItem(key).value = key === "maxStudents" && Number(value) === 0 ? "" : value;
+        form.elements.namedItem(key).value = ["maxStudents", "sessionCount", "sessionDurationMinutes"].includes(key) && Number(value) === 0 ? "" : value;
     }
     form.elements.namedItem("teacherName").value = auth.currentUser.displayName?.trim() || course?.teacherName || "";
     form.elements.namedItem("published").checked = draftId ? courses[id]?.published ?? true : course ? course.published : true;
+    form.elements.namedItem("agreementEnabled").checked = course?.agreementEnabled === true;
     removedPreview = false;
     editorDirty = false;
     $("browseLayout").hidden = true;
@@ -1829,6 +1863,13 @@ function inlineCourseControl(names, display, labelText) {
 }
 function activateCourseField(edit) {
     const canvas = $("editorCanvas");
+    if (["sessionCount", "sessionDurationMinutes", "completionDeadline", "cancellationTerms"].includes(edit.name)) {
+        selectDetailTab("overview", false, canvas);
+        const field = $("courseForm").elements.namedItem(edit.name);
+        field.scrollIntoView({ block: "center" });
+        field.focus({ preventScroll: true });
+        return;
+    }
     if (edit.name === "teacherIntroduction") {
         if (edit.teacherPanel) selectDetailTab("teacher", false, canvas);
         canvas.querySelector(`${edit.teacherPanel ? ".teacher-detail-panel .detail-copy" : ".detail-side-about"} .course-edit-icon`)?.click();
@@ -1859,6 +1900,14 @@ function arrangeCourseEditor() {
     const copy = overview.querySelectorAll(".detail-copy");
     moveField("summary", copy[0]);
     moveField("schedule", copy[1]);
+    const agreement = overview.querySelector('[data-course-section="agreement"]');
+    agreement.querySelector(".detail-copy").remove();
+    for (const name of ["agreementEnabled", "sessionCount", "sessionDurationMinutes", "completionDeadline", "cancellationTerms"]) {
+        const label = form.elements.namedItem(name).closest("label");
+        label.classList.add("inline-course-field");
+        agreement.append(label);
+    }
+    agreement.append(el("p", "muted", "Optional for existing listings and self-paced access. Enable this for an agreed set of teaching sessions. The deadline ends at 23:59 UTC."));
     for (const [fields, name, label] of [
         [["startTime", "endTime"], "startTime", "class time"],
         [["scheduleDays"], "scheduleDays", "class days"],
@@ -1985,6 +2034,12 @@ function createEditorList(name, target, noun) {
 }
 function updateEditorSummary() {
     const form = $("courseForm"), canvas = $("editorCanvas");
+    const agreementEnabled = form.elements.namedItem("agreementEnabled").checked;
+    for (const name of ["sessionCount", "sessionDurationMinutes", "completionDeadline", "cancellationTerms"]) {
+        const field = form.elements.namedItem(name);
+        field.disabled = !agreementEnabled;
+        field.required = agreementEnabled;
+    }
     const count = name => form.elements.namedItem(name).value.split(/\r?\n/).filter(line => line.trim()).length;
     const price = form.elements.namedItem("price").valueAsNumber;
     const original = form.elements.namedItem("originalPrice").valueAsNumber;
@@ -2097,6 +2152,7 @@ $("courseForm").addEventListener("submit", async event => {
     const disabledStates = fields.map(field => field.disabled);
     const data = Object.fromEntries(new FormData(form));
     data.price = Number(data.price); data.originalPrice = Number(data.originalPrice || 0); data.maxStudents = Number(data.maxStudents || 0); data.published = form.elements.namedItem("published").checked;
+    data.agreementEnabled = form.elements.namedItem("agreementEnabled").checked;
     let file = form.elements.namedItem("previewFile").files?.[0];
     const existing = editorSource();
     data.coverURL = removedPreview ? "" : existing?.coverURL || "";

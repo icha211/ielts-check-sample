@@ -28,4 +28,30 @@ function reservedSeatCount(state = {}) {
     return seatRequestIds(state).size;
 }
 
-module.exports = { reserveSeat, releaseSeat, reservedSeatCount };
+function enrollmentAgreement(course, expected, now = Date.now()) {
+    if (course.agreementEnabled !== true) {
+        if (expected != null) throw new Error("The course agreement changed. Reopen the course and review its terms.");
+        return null;
+    }
+    const agreement = {
+        version: 1, sessionCount: course.sessionCount, sessionDurationMinutes: course.sessionDurationMinutes,
+        completionDeadline: course.completionDeadline, cancellationTerms: course.cancellationTerms
+    };
+    const date = new Date(`${agreement.completionDeadline}T00:00:00.000Z`);
+    if (!Number.isSafeInteger(agreement.sessionCount) || agreement.sessionCount < 1 || agreement.sessionCount > 100 ||
+        !Number.isSafeInteger(agreement.sessionDurationMinutes) || agreement.sessionDurationMinutes < 1 || agreement.sessionDurationMinutes > 480 ||
+        typeof agreement.completionDeadline !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(agreement.completionDeadline) ||
+        Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== agreement.completionDeadline ||
+        (course.startDate && agreement.completionDeadline < course.startDate) ||
+        typeof agreement.cancellationTerms !== "string" || !agreement.cancellationTerms.trim() || agreement.cancellationTerms.length > 2000) {
+        throw new Error("The teacher must complete the course agreement before enrollment.");
+    }
+    if (now >= date.getTime() + 86400000) throw new Error("The course completion deadline has passed.");
+    const terms = { ...agreement, courseTitle: course.title, teacherId: course.teacherId, price: course.price };
+    if (!expected || Object.entries(terms).some(([key, value]) => expected[key] !== value)) {
+        throw new Error("The course agreement changed. Reopen the course and review its terms.");
+    }
+    return { ...terms, currency: "IDR", acceptedAt: now };
+}
+
+module.exports = { reserveSeat, releaseSeat, reservedSeatCount, enrollmentAgreement };
