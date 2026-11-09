@@ -321,6 +321,41 @@ test("catalog pictures fill the 16:9 frame while videos retain contain fitting",
     }
 });
 
+test("course detail pictures fill their frame without changing video fitting", async ({ page }) => {
+    await page.goto("/toefl-sample/tutor-check.html?course=beta");
+    await expect(page.locator("#courseDetail .detail-media .course-cover")).toBeVisible();
+    for (const width of [390, 768, 1280, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        const metrics = await page.locator("#courseDetail .detail-media").evaluate(async frame => {
+            const original = frame.querySelector(".course-cover");
+            const image = document.createElement("img");
+            image.className = "course-cover detail-cover";
+            image.alt = "Portrait test picture";
+            image.src = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="200"><rect width="100" height="200" fill="green"/></svg>');
+            original.replaceWith(image);
+            await image.decode();
+            const bounds = image.getBoundingClientRect();
+            const style = getComputedStyle(image);
+            const video = document.createElement("video");
+            video.className = image.className;
+            image.replaceWith(video);
+            const videoFit = getComputedStyle(video).objectFit;
+            video.replaceWith(image);
+            return {
+                fit: style.objectFit, position: style.objectPosition, videoFit,
+                ratio: bounds.width / bounds.height,
+                widthDifference: Math.abs(frame.getBoundingClientRect().width - bounds.width)
+            };
+        });
+        expect(metrics.fit).toBe("cover");
+        expect(metrics.position).toBe("50% 50%");
+        expect(metrics.videoFit).toBe("contain");
+        expect(metrics.ratio).toBeCloseTo(1.65, 2);
+        expect(metrics.widthDifference).toBeLessThan(1);
+    }
+    expect(page.betaErrors).toEqual([]);
+});
+
 test("TOEFL sizing stays consistent across phone, tablet and desktop without an Explore sidebar", async ({ page, context }) => {
     test.setTimeout(120000);
     await context.addInitScript(() => {

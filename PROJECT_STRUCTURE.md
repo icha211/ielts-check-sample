@@ -35,6 +35,8 @@ smaller screens retain the automatic 260px-minimum responsive grid. Filtering
 to fewer results preserves the column width rather than stretching a single card.
 Catalog pictures use centered cover fitting to fill the 16:9 frame without
 stretching; non-16:9 pictures are cropped. Videos retain contain fitting.
+Course-detail pictures also use centered cover fitting to fill their existing
+frame without stretching; detail videos retain contain fitting.
 Marketplace navigation uses a 56px header with synchronized content, sidebar
 and mobile menu offsets. Other pages retain the shared 64px default.
 The promotional banner is 150px high, or 130px at widths up to 780px,
