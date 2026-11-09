@@ -33,6 +33,12 @@ The marketplace catalog uses four equal columns at browser viewport widths of
 1280 CSS pixels and above. At 1280-1439px it uses compact card padding and gaps;
 smaller screens retain the automatic 260px-minimum responsive grid. Filtering
 to fewer results preserves the column width rather than stretching a single card.
+Catalog pictures use centered cover fitting to fill the 16:9 frame without
+stretching; non-16:9 pictures are cropped. Videos retain contain fitting.
+Marketplace navigation uses a 56px header with synchronized content, sidebar
+and mobile menu offsets. Other pages retain the shared 64px default.
+The promotional banner is 150px high, or 130px at widths up to 780px,
+with edge-to-edge cover fitting for its video.
 
 Teachers can enable a session agreement in the course editor: 1-100 sessions,
 1-480 minutes per session, a completion date (inclusive through the end of that

@@ -175,6 +175,42 @@ test("four-card laptop grid fits long prices and keeps filtered card widths", as
     }
 });
 
+test("catalog pictures fill the 16:9 frame while videos retain contain fitting", async ({ page }) => {
+    await page.goto("/toefl-sample/tutor-check.html");
+    await expect(page.locator("#courseGrid")).toHaveAttribute("aria-busy", "false");
+    for (const width of [390, 1280, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        const metrics = await page.locator(".course-artwork").first().evaluate(async frame => {
+            const image = document.createElement("img");
+            image.className = "course-cover";
+            image.alt = "Portrait test picture";
+            image.src = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="200"><rect width="100" height="200" fill="green"/></svg>');
+            frame.replaceChildren(image);
+            await image.decode();
+            const bounds = frame.getBoundingClientRect();
+            const picture = image.getBoundingClientRect();
+            const style = getComputedStyle(image);
+            const video = document.createElement("video");
+            video.className = "course-cover";
+            frame.append(video);
+            const videoFit = getComputedStyle(video).objectFit;
+            video.remove();
+            return {
+                fit: style.objectFit, position: style.objectPosition, videoFit,
+                ratio: bounds.width / bounds.height,
+                widthDifference: Math.abs(bounds.width - picture.width),
+                heightDifference: Math.abs(bounds.height - picture.height)
+            };
+        });
+        expect(metrics.fit).toBe("cover");
+        expect(metrics.position).toBe("50% 50%");
+        expect(metrics.videoFit).toBe("contain");
+        expect(metrics.ratio).toBeCloseTo(16 / 9, 2);
+        expect(metrics.widthDifference).toBeLessThan(1);
+        expect(metrics.heightDifference).toBeLessThan(1);
+    }
+});
+
 test("TOEFL sizing stays consistent across phone, tablet and desktop without an Explore sidebar", async ({ page, context }) => {
     test.setTimeout(120000);
     await context.addInitScript(() => {
@@ -223,6 +259,11 @@ test("TOEFL sizing stays consistent across phone, tablet and desktop without an 
                 await expect(page.locator("#qcnavMenuBtn")).toBeHidden();
             }
             if (file === "tutor-check.html") {
+                await expect(page.locator(".qcnav-topbar")).toHaveCSS("height", "56px");
+                await expect(page.locator(".promo-banner")).toHaveCSS("height", width <= 780 ? "130px" : "150px");
+                await expect(page.locator(".promo-banner video")).toHaveCSS("object-fit", "cover");
+                await expect(page.locator("body")).toHaveCSS("padding-top", "56px");
+                await expect(page.locator(".qcnav-sidebar")).toHaveCSS("top", "56px");
                 await expect(page.locator(compact ? ".browse-content > .filter-panel" : "#marketplaceSidebarFilters > .filter-panel")).toBeVisible();
                 const cards = await page.locator("#courseGrid .course-card").evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().width));
                 expect(cards.length).toBeGreaterThan(3);
