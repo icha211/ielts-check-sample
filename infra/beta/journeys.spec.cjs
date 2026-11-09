@@ -111,6 +111,9 @@ test("course agreements save, restore and snapshot confirmed terms without activ
     });
     await page.reload();
     const book = page.getByRole("button", { name: "Book a Class", exact: true });
+    await expect(book).toBeVisible();
+    await expect(page.locator("#courseDetail .wishlist-action")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Share this course", exact: true })).toBeVisible();
     page.once("dialog", async dialog => {
         expect(dialog.message()).toContain("5 sessions, 60 minutes each");
         await dialog.dismiss();
@@ -151,7 +154,7 @@ test("four-card laptop grid fits long prices and keeps filtered card widths", as
         }
         localStorage.setItem("beta-db", JSON.stringify(db));
     });
-    for (const width of [1279, 1280, 1366, 1440, 1920]) {
+    for (const width of [390, 768, 1279, 1280, 1366, 1440, 1920]) {
         await page.setViewportSize({ width, height: 900 });
         await page.goto("/toefl-sample/tutor-check.html");
         await expect(page.locator("#courseGrid")).toHaveAttribute("aria-busy", "false");
@@ -165,9 +168,30 @@ test("four-card laptop grid fits long prices and keeps filtered card widths", as
                     .filter(node => node.scrollWidth > node.clientWidth + 1).map(node => node.className))
             };
         });
-        expect(metrics.columns).toBe(width >= 1280 ? 4 : 3);
+        expect(metrics.columns).toBe(width >= 1280 ? 4 : width >= 1024 ? 3 : width >= 768 ? 2 : 1);
         expect(metrics.overflow).toBe(false);
         expect(metrics.clipped).toEqual([]);
+        const priceLines = await page.locator("#courseGrid .course-price").evaluateAll(nodes => nodes.map(node => {
+            const centers = [...node.children].map(child => {
+                const rect = child.getBoundingClientRect();
+                return rect.top + rect.height / 2;
+            });
+            return Math.max(...centers) - Math.min(...centers);
+        }));
+        for (const difference of priceLines) expect(difference).toBeLessThan(1);
+        const facts = await page.locator("#courseGrid .course-facts").first().evaluate(node => ({
+            height: node.getBoundingClientRect().height,
+            bottomMargin: getComputedStyle(node).marginBottom,
+            bottomPadding: getComputedStyle(node).paddingBottom
+        }));
+        expect(facts.height).toBeLessThanOrEqual(106);
+        expect(facts.bottomMargin).toBe("0px");
+        expect(facts.bottomPadding).toBe("0px");
+        const sectionGaps = await page.locator("#courseGrid .course-content").evaluateAll(nodes => nodes.flatMap(node => {
+            const children = [...node.children].map(child => child.getBoundingClientRect());
+            return children.slice(1).map((child, index) => child.top - children[index].bottom);
+        }));
+        for (const gap of sectionGaps) expect(gap).toBeCloseTo(4, 1);
         await page.locator("#courseSearch").fill("Laptop course 0");
         await expect(page.locator("#courseGrid .course-card")).toHaveCount(1);
         const filteredWidth = await page.locator("#courseGrid .course-card").evaluate(node => node.getBoundingClientRect().width);

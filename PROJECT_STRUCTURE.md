@@ -39,6 +39,12 @@ Marketplace navigation uses a 56px header with synchronized content, sidebar
 and mobile menu offsets. Other pages retain the shared 64px default.
 The promotional banner is 150px high, or 130px at widths up to 780px,
 with edge-to-edge cover fitting for its video.
+Catalog fact cells use a 48px minimum height and 2px vertical padding.
+Card content sections use a consistent 4px gap with no section margins.
+Catalog current price, original price and discount share one non-wrapping row.
+The current amount is 16px; the secondary struck-through amount is 11px.
+Shared rows preserve alignment across different title lengths; longer content
+can still expand.
 
 Teachers can enable a session agreement in the course editor: 1-100 sessions,
 1-480 minutes per session, a completion date (inclusive through the end of that

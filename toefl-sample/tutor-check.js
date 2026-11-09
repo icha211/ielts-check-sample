@@ -385,7 +385,8 @@ function card(course, statistics) {
     viewDetail.prepend(icon("file-description"));
     viewDetail.dataset.focusKey = "detail";
     bottom.append(viewDetail, favoriteButton("save-button card-favorite"));
-    content.append(bottom);
+    // Temporarily hide the card actions; uncomment to restore them.
+    // content.append(bottom);
     node.append(content);
     return node;
 }
@@ -1389,13 +1390,6 @@ function renderDetail(target = $("courseDetail"), editorCourse = null) {
     book.disabled = Boolean(agreementFailure) || courseFull || !course.published || course.archived || course.teacherId === uid || pendingEnrollments.has(courseId) || Boolean(requests[`${courseId}_${uid}`]);
     if (requests[`${detailId}_${uid}`]) book.textContent = "Request sent";
     purchase.append(book);
-    const saved = Boolean(library.favorites?.[detailId]);
-    const wishlist = action(saved ? "Saved to Wishlist" : "Add to Wishlist", "wishlist-action", async () => {
-        if (requireLogin()) await toggleLibrary("favorites", detailId, !saved);
-    });
-    wishlist.prepend(icon(saved ? "heart-filled" : "heart"));
-    wishlist.setAttribute("aria-pressed", String(saved));
-    purchase.append(wishlist);
     const share = action("Share this course", "text-button share-action", async () => {
         const url = new URL(`tutor-check.html?course=${encodeURIComponent(detailId)}`, location.href).href;
         if (navigator.share) {
@@ -2034,12 +2028,6 @@ function createEditorList(name, target, noun) {
 }
 function updateEditorSummary() {
     const form = $("courseForm"), canvas = $("editorCanvas");
-    const agreementEnabled = form.elements.namedItem("agreementEnabled").checked;
-    for (const name of ["sessionCount", "sessionDurationMinutes", "completionDeadline", "cancellationTerms"]) {
-        const field = form.elements.namedItem(name);
-        field.disabled = !agreementEnabled;
-        field.required = agreementEnabled;
-    }
     const count = name => form.elements.namedItem(name).value.split(/\r?\n/).filter(line => line.trim()).length;
     const price = form.elements.namedItem("price").valueAsNumber;
     const original = form.elements.namedItem("originalPrice").valueAsNumber;
